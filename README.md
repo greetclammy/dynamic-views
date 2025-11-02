@@ -1,4 +1,4 @@
-# Datacore Explorer
+# Dynamic Views
 
 View [Datacore](https://obsidian.md/plugins?id=datacore) @page queries in multiple layouts.
 
