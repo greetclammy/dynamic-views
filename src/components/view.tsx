@@ -60,6 +60,9 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
         /<[^>]+>/g                                   // Remaining HTML tags
     ], []);
 
+    // Valid image extensions for thumbnail extraction
+    const validImageExtensions = ['avif', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'svg', 'webp'];
+
     const stripMarkdownSyntax = dc.useCallback((text: string) => {
         if (!text || text.trim().length === 0) return '';
 
@@ -400,10 +403,7 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
     // State to store file snippets and images
     const [snippets, setSnippets] = dc.useState({});
     const [images, setImages] = dc.useState({});
-    const [staticGifs, setStaticGifs] = dc.useState({});
-    const [hasMultipleImages, setHasMultipleImages] = dc.useState({});
     const [hasImageAvailable, setHasImageAvailable] = dc.useState({});
-    const [multiImagesLoaded, setMultiImagesLoaded] = dc.useState({});
 
     // Load file contents asynchronously (only for displayed items)
     dc.useEffect(() => {
@@ -411,7 +411,6 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
         if (!settings.showTextPreview && !settings.showThumbnails) {
             setSnippets({});
             setImages({});
-            setHasMultipleImages({});
             setHasImageAvailable({});
             return;
         }
@@ -420,7 +419,6 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
             const newSnippets: Record<string, string> = {};
             const newImages: Record<string, string | string[]> = {};
             const newHasImageAvailable: Record<string, boolean> = {};
-            const newHasMultipleImages: Record<string, boolean> = {};
 
             for (const p of sorted.slice(0, displayedCount)) {
                 try {
@@ -432,14 +430,12 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
                         // Check if image property contains valid image link(s)
                         const imgFromProp = p.value(settings.imageProperty);
-                        console.log('[DynamicViews] Image property raw value for', p.$path, ':', imgFromProp, 'Type:', typeof imgFromProp, 'IsArray:', Array.isArray(imgFromProp));
 
                         // Extract ALL property image paths (handle arrays)
                         const propertyImagePaths: string[] = [];
                         if (imgFromProp) {
                             // Handle array values (process ALL elements)
                             const propValues = Array.isArray(imgFromProp) ? imgFromProp : [imgFromProp];
-                            console.log('[DynamicViews] Processing', propValues.length, 'property value(s)');
 
                             for (const propValue of propValues) {
                                 let imgStr = '';
@@ -447,23 +443,19 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                                 // If it's a Link object with a path property, extract the path
                                 if (typeof propValue === 'object' && propValue !== null && 'path' in propValue) {
                                     imgStr = String(propValue.path).trim();
-                                    console.log('[DynamicViews] Extracted from Link object:', imgStr);
                                 } else {
                                     imgStr = String(propValue).trim();
-                                    console.log('[DynamicViews] Converted to string:', imgStr);
                                 }
 
                                 // Strip wikilink syntax if present: [[path]] or ![[path]] or [[path|caption]]
                                 const wikilinkMatch = imgStr.match(/^!?\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
                                 if (wikilinkMatch) {
                                     imgStr = wikilinkMatch[1].trim();
-                                    console.log('[DynamicViews] After wikilink stripping:', imgStr);
                                 }
 
                                 // Validate image extension
                                 const imageExtensions = /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i;
                                 const hasValidImg = imgStr.length > 0 && imageExtensions.test(imgStr);
-                                console.log('[DynamicViews] Final imgStr:', imgStr, 'hasValidImg:', hasValidImg);
 
                                 if (hasValidImg) {
                                     propertyImagePaths.push(imgStr);
@@ -471,7 +463,6 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                             }
                         }
 
-                        console.log('[DynamicViews] Total property images extracted:', propertyImagePaths.length);
                         const hasValidImg = propertyImagePaths.length > 0;
 
                         // Only read file if we need snippets or images from content
@@ -524,8 +515,6 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
                         // Process thumbnails only if enabled
                         if (settings.showThumbnails) {
-                            const validImageExtensions = ['avif', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'svg', 'webp'];
-
                             // Phase A: Convert property image paths to resource paths
                             const propertyResourcePaths: string[] = [];
                             for (const propPath of propertyImagePaths) {
@@ -535,11 +524,12 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                                     propertyResourcePaths.push(resourcePath);
                                 }
                             }
-                            console.log('[DynamicViews] Property resource paths:', propertyResourcePaths.length);
 
                             // Phase B: Extract body embed resource paths
                             const metadata = app.metadataCache.getFileCache(file);
-                            const imageEmbeds = metadata?.embeds?.filter((embed: any) => {
+                            if (!metadata) continue;
+
+                            const imageEmbeds = metadata.embeds?.filter((embed: any) => {
                                 const targetFile = app.metadataCache.getFirstLinkpathDest(embed.link, p.$path);
                                 return targetFile && validImageExtensions.includes(targetFile.extension);
                             }) || [];
@@ -552,49 +542,15 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                                     bodyResourcePaths.push(resourcePath);
                                 }
                             }
-                            console.log('[DynamicViews] Body resource paths:', bodyResourcePaths.length);
 
                             // Phase C: Merge property images first, then body embeds
                             const allResourcePaths = [...propertyResourcePaths, ...bodyResourcePaths];
-                            console.log('[DynamicViews] Combined resource paths:', allResourcePaths.length);
 
                             // Phase D: Store combined result
                             if (allResourcePaths.length > 0) {
                                 // Store as array if multiple, string if single
                                 newImages[p.$path] = allResourcePaths.length > 1 ? allResourcePaths : allResourcePaths[0];
                                 newHasImageAvailable[p.$path] = true;
-
-                                // Check for multiple images
-                                const firstPath = allResourcePaths[0];
-                                const isFirstGif = firstPath.toLowerCase().endsWith('.gif');
-                                if (isFirstGif || allResourcePaths.length > 1) {
-                                    newHasMultipleImages[p.$path] = true;
-                                    // Mark multiple images as loaded since we loaded them all upfront
-                                    if (allResourcePaths.length > 1) {
-                                        setMultiImagesLoaded(prev => ({...prev, [p.$path]: true}));
-                                    }
-                                }
-
-                                // Handle GIFs (static frame extraction for first image)
-                                if (isFirstGif) {
-                                    const cachedFrame = staticGifs[p.$path];
-                                    if (!cachedFrame) {
-                                        const img = new Image();
-                                        img.crossOrigin = "anonymous";
-                                        img.onload = () => {
-                                            const canvas = document.createElement('canvas');
-                                            canvas.width = img.width;
-                                            canvas.height = img.height;
-                                            const ctx = canvas.getContext('2d', { alpha: false });
-                                            if (ctx) {
-                                                ctx.drawImage(img, 0, 0);
-                                                const staticFrame = canvas.toDataURL('image/png');
-                                                setStaticGifs(prev => ({...prev, [p.$path]: staticFrame}));
-                                            }
-                                        };
-                                        img.src = firstPath;
-                                    }
-                                }
                             }
                         }
                     } else {
@@ -612,7 +568,6 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
             setSnippets(newSnippets);
             setImages(newImages);
-            setHasMultipleImages(newHasMultipleImages);
             setHasImageAvailable(newHasImageAvailable);
         };
 
@@ -1059,9 +1014,6 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
             isShuffled,
             snippets,
             images,
-            staticGifs,
-            multiImagesLoaded,
-            hasMultipleImages,
             hasImageAvailable,
             focusableCardIndex,
             containerRef,
@@ -1069,11 +1021,7 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
             app,
             dc,
             onCardClick: handleCardClick,
-            onFocusChange: setFocusableCardIndex,
-            onExtractMultipleImages: (path: string) => {
-                // Images already loaded in initial pass, so this is a no-op
-                // Kept for compatibility with card-view.tsx hover logic
-            }
+            onFocusChange: setFocusableCardIndex
         };
 
         if (viewMode === 'list') {

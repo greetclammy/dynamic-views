@@ -9,9 +9,6 @@ interface MasonryViewProps {
     isShuffled: boolean;
     snippets: Record<string, string>;
     images: Record<string, string | string[]>;
-    staticGifs: Record<string, string | string[]>;
-    multiImagesLoaded: Record<string, boolean>;
-    hasMultipleImages: Record<string, boolean>;
     hasImageAvailable: Record<string, boolean>;
     focusableCardIndex: number;
     containerRef: any;
@@ -20,7 +17,6 @@ interface MasonryViewProps {
     dc: any;
     onCardClick?: (path: string, newLeaf: boolean) => void;
     onFocusChange?: (index: number) => void;
-    onExtractMultipleImages?: (path: string) => void;
 }
 
 /**

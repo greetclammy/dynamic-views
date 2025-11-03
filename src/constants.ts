@@ -16,7 +16,8 @@ export const DEFAULT_SETTINGS: Settings = {
     thumbnailCacheSize: "balanced",
     queryHeight: 0,
     openFileAction: "card",
-    addCardBackground: true
+    addCardBackground: true,
+    hasCreatedWelcomeNote: false
 };
 
 export const DEFAULT_UI_STATE = {

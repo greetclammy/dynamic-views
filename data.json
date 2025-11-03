@@ -7,11 +7,11 @@
     "showTextPreview": false,
     "showThumbnails": true,
     "cardBottomDisplay": "tags",
-    "listMarker": "bullet",
+    "listMarker": "number",
     "showTimestamp": false,
     "showTimestampIcon": false,
     "minMasonryColumns": 1,
-    "randomizeAction": "shuffle",
+    "randomizeAction": "open",
     "thumbnailCacheSize": "balanced",
     "queryHeight": 0,
     "openFileAction": "title",
@@ -76,8 +76,8 @@
     },
     "1762122189077": {
       "sortMethod": "mtime-desc",
-      "viewMode": "masonry",
-      "searchQuery": "original",
+      "viewMode": "card",
+      "searchQuery": "jerry",
       "resultLimit": "",
       "widthMode": "normal"
     },
@@ -285,6 +285,55 @@
       "widthMode": "normal"
     },
     "1762193305068": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762122189000": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762201357934": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762201957906": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "masonry",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762201961257": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762201985429": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762202139518": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762202167486": {
       "sortMethod": "mtime-desc",
       "viewMode": "card",
       "searchQuery": "",

@@ -9,9 +9,6 @@ interface CardViewProps {
     isShuffled: boolean;
     snippets: Record<string, string>;
     images: Record<string, string | string[]>;
-    staticGifs: Record<string, string | string[]>;
-    multiImagesLoaded: Record<string, boolean>;
-    hasMultipleImages: Record<string, boolean>;
     hasImageAvailable: Record<string, boolean>;
     focusableCardIndex: number;
     containerRef: any;
@@ -20,7 +17,6 @@ interface CardViewProps {
     dc: any;
     onCardClick?: (path: string, newLeaf: boolean) => void;
     onFocusChange?: (index: number) => void;
-    onExtractMultipleImages?: (path: string) => void;
 }
 
 export function CardView({
@@ -32,9 +28,6 @@ export function CardView({
     isShuffled,
     snippets,
     images,
-    staticGifs,
-    multiImagesLoaded,
-    hasMultipleImages,
     hasImageAvailable,
     focusableCardIndex,
     containerRef,
@@ -42,8 +35,7 @@ export function CardView({
     app,
     dc,
     onCardClick,
-    onFocusChange,
-    onExtractMultipleImages
+    onFocusChange
 }: CardViewProps) {
     return (
         <div
@@ -78,11 +70,9 @@ export function CardView({
                 // Handle both single images and arrays
                 const isArray = Array.isArray(imageSrc);
                 const imageArray = isArray ? imageSrc : (imageSrc ? [imageSrc] : []);
-                const staticFrameArray = Array.isArray(staticGifs[p.$path]) ? staticGifs[p.$path] : (staticGifs[p.$path] ? [staticGifs[p.$path]] : []);
 
                 // State for tracking hovered image in multi-image mode
                 const [hoveredImageIndex, setHoveredImageIndex] = dc.useState(0);
-                const [isCardHovered, setIsCardHovered] = dc.useState(false);
 
                 return (
                     <div
@@ -215,17 +205,8 @@ export function CardView({
                                 });
                             }
 
-                            // Lazy load multiple images if not already loaded
-                            if (!multiImagesLoaded[p.$path] && onExtractMultipleImages) {
-                                onExtractMultipleImages(p.$path);
-                            }
-
-                            // Reset to first image and trigger GIF animation
+                            // Reset to first image
                             setHoveredImageIndex(0);
-                            setIsCardHovered(true);
-                        }}
-                        onMouseLeave={() => {
-                            setIsCardHovered(false);
                         }}
                         style={{ cursor: 'pointer' }}
                     >
@@ -244,7 +225,7 @@ export function CardView({
                                 {settings.showThumbnails && (
                                     imageArray.length > 0 ? (
                                         <div
-                                            className={`card-thumbnail ${(isArray && imageArray.length > 1) || hasMultipleImages[p.$path] ? 'multi-image' : ''}`}
+                                            className={`card-thumbnail ${isArray && imageArray.length > 1 ? 'multi-image' : ''}`}
                                             onMouseMove={!app.isMobile && isArray && imageArray.length > 1 ? ((e: MouseEvent) => {
                                                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                                 const x = e.clientX - rect.left;
@@ -257,11 +238,7 @@ export function CardView({
                                             onMouseLeave={!app.isMobile ? (() => setHoveredImageIndex(0)) : undefined}
                                         >
                                             <img
-                                                src={
-                                                    isCardHovered
-                                                        ? (imageArray[hoveredImageIndex] || imageArray[0] || '')
-                                                        : (staticFrameArray[hoveredImageIndex] || imageArray[hoveredImageIndex] || imageArray[0] || '')
-                                                }
+                                                src={imageArray[hoveredImageIndex] || imageArray[0] || ''}
                                                 alt=""
                                                 onLoad={() => {
                                                     // Trigger layout recalculation when image loads
@@ -272,7 +249,7 @@ export function CardView({
                                             />
                                         </div>
                                     ) : hasImageAvailable[p.$path] ? (
-                                        <div className={`card-thumbnail-placeholder ${hasMultipleImages[p.$path] ? 'multi-image' : ''}`}></div>
+                                        <div className={`card-thumbnail-placeholder ${isArray && imageArray.length > 1 ? 'multi-image' : ''}`}></div>
                                     ) : null
                                 )}
                             </div>
