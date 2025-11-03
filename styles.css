@@ -1165,7 +1165,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 .dynamic-views .snippet-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 12px;
     margin-top: 4px;
     margin-bottom: 8px;
@@ -1578,6 +1578,11 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     .dynamic-views .path-wrapper {
         justify-content: flex-start !important;
         flex-wrap: wrap;
+    }
+
+    /* Compact breakpoint: move thumbnails below text snippets */
+    .dynamic-views .snippet-container {
+        flex-direction: column;
     }
 
     /* Settings panel responsive */
