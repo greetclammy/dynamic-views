@@ -1,0 +1,1607 @@
+/* ============================================
+   DATACORE EXPLORER STYLES
+   ============================================ */
+
+/* ============================================
+   FOCUS & ACCESSIBILITY STYLES
+   ============================================ */
+
+.dynamic-views button:not(.clickable-icon) {
+    box-shadow: none !important;
+}
+
+.dynamic-views button:focus-visible,
+.dynamic-views [role="button"]:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: 2px;
+}
+
+.dynamic-views [role="menuitem"]:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: -2px;
+    border-radius: 0;
+}
+
+.dynamic-views [role="menuitem"]:first-child:focus-visible {
+    border-radius: 5px 5px 0 0;
+}
+
+.dynamic-views [role="menuitem"]:last-child:focus-visible {
+    border-radius: 0 0 5px 5px;
+}
+
+.dynamic-views [role="menuitem"]:only-child:focus-visible {
+    border-radius: 5px;
+}
+
+.dynamic-views [role="checkbox"]:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: 2px;
+}
+
+.dynamic-views .writing-card:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: -2px;
+}
+
+
+/* ============================================
+   CONTAINER & LAYOUT STYLES
+   ============================================ */
+
+/* Results container with fade effect */
+.dynamic-views .results-container {
+    position: relative;
+}
+
+.dynamic-views .results-container.with-fade::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent, var(--background-primary));
+    pointer-events: none;
+}
+
+/* Enable container queries for responsive button visibility */
+.markdown-preview-view,
+.markdown-reading-view,
+.markdown-source-view {
+    container-type: inline-size;
+}
+
+/* Minimal-style width system: CSS variables control container width */
+body {
+    --container-datacorejsx-width: 100%;
+    --container-datacorejsx-max-width: 100%;
+}
+
+/* Helper classes set width variables (applied to section) */
+.dc-wide {
+    --container-datacorejsx-width: min(calc(1.75 * var(--file-line-width)), 100%);
+    --container-datacorejsx-max-width: min(calc(1.75 * var(--file-line-width)), 100%);
+}
+
+.dc-max {
+    --container-datacorejsx-width: 100%;
+    --container-datacorejsx-max-width: 100%;
+}
+
+/* Constrain element wrappers to normal width (Reading View) */
+.markdown-preview-view.dc-wide .markdown-preview-sizer > *:not(.el-pre):not(:has(.block-language-datacorejsx)),
+.markdown-preview-view.dc-max .markdown-preview-sizer > *:not(.el-pre):not(:has(.block-language-datacorejsx)),
+.markdown-reading-view.dc-wide .markdown-reading-sizer > *:not(.el-pre):not(:has(.block-language-datacorejsx)),
+.markdown-reading-view.dc-max .markdown-reading-sizer > *:not(.el-pre):not(:has(.block-language-datacorejsx)) {
+    max-width: var(--file-line-width, 45rem) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* Expand sizer in wide and max modes (Reading View) */
+.markdown-preview-view.dc-wide .markdown-preview-sizer,
+.markdown-reading-view.dc-wide .markdown-reading-sizer {
+    max-width: min(calc(1.75 * var(--file-line-width)), 96vw) !important;
+}
+
+.markdown-preview-view.dc-max .markdown-preview-sizer,
+.markdown-reading-view.dc-max .markdown-reading-sizer {
+    max-width: 96vw !important;
+}
+
+/* Live Preview: DON'T expand cm-sizer/cm-content (would affect whole note) */
+/* Only expand the specific code block wrapper below */
+
+/* Allow code block to overflow in wide/max modes */
+.markdown-source-view.dc-wide .cm-contentContainer,
+.markdown-source-view.dc-max .cm-contentContainer,
+.markdown-source-view.dc-wide .cm-content,
+.markdown-source-view.dc-max .cm-content {
+    overflow: visible !important;
+}
+
+/* Reading View wrappers */
+/* Wide mode: expand wrapper (sizer already expanded above) */
+.markdown-preview-view.dc-wide .el-pre:has(.block-language-datacorejsx),
+.markdown-reading-view.dc-wide .el-pre:has(.block-language-datacorejsx) {
+    max-width: var(--container-datacorejsx-max-width) !important;
+    width: var(--container-datacorejsx-width) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* Max mode: expand sizer, then expand wrapper */
+.markdown-preview-view.dc-max .el-pre:has(.block-language-datacorejsx),
+.markdown-reading-view.dc-max .el-pre:has(.block-language-datacorejsx) {
+    max-width: var(--container-datacorejsx-max-width) !important;
+    width: var(--container-datacorejsx-width) !important;
+}
+
+/* Live Preview: .cm-preview-code-block - use positioning to break out */
+.markdown-source-view.dc-wide .cm-preview-code-block:has(.block-language-datacorejsx) {
+    width: min(calc(1.75 * var(--file-line-width)), 96vw) !important;
+    max-width: min(calc(1.75 * var(--file-line-width)), 96vw) !important;
+    position: relative !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+}
+
+.markdown-source-view.dc-max .cm-preview-code-block:has(.block-language-datacorejsx) {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    position: relative !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+}
+
+/* Expand datacore block when wide/max active */
+.markdown-preview-view.dc-wide .block-language-datacorejsx,
+.markdown-preview-view.dc-max .block-language-datacorejsx,
+.markdown-reading-view.dc-wide .block-language-datacorejsx,
+.markdown-reading-view.dc-max .block-language-datacorejsx,
+.markdown-source-view.dc-wide .block-language-datacorejsx,
+.markdown-source-view.dc-max .block-language-datacorejsx {
+    width: var(--container-datacorejsx-width) !important;
+    max-width: var(--container-datacorejsx-max-width) !important;
+    margin: 0 auto !important;
+}
+
+/* Default width for datacorejsx blocks (readable line width) */
+.markdown-source-view.is-readable-line-width .cm-content > .block-language-datacorejsx,
+.markdown-preview-view.is-readable-line-width .block-language-datacorejsx,
+.markdown-reading-view.is-readable-line-width .block-language-datacorejsx {
+    width: var(--container-datacorejsx-width);
+    max-width: var(--container-datacorejsx-max-width);
+    margin: 0 auto;
+    transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+.dynamic-views {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 270px;
+    overflow: visible;
+}
+
+
+/* ============================================
+   TOOLBAR & CONTROLS STYLES
+   ============================================ */
+
+.dynamic-views .controls-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 100%;
+    padding: 3px 0;
+    position: relative;
+    background-color: var(--background-primary);
+    padding-bottom: 8px;
+}
+
+.dynamic-views .controls-wrapper.pinned {
+    position: fixed !important;
+    top: var(--sticky-top, 0);
+    z-index: 1000 !important;
+    background-color: var(--background-primary);
+    box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
+    box-sizing: border-box;
+    padding: 3px 0;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+.dynamic-views .controls-wrapper.scrolled::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.04) 40%, rgba(0, 0, 0, 0.01) 70%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0px, black 40px, black calc(100% - 40px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0px, black 40px, black calc(100% - 40px), transparent 100%);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.theme-dark .dynamic-views .controls-wrapper.scrolled::after {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 40%, rgba(255, 255, 255, 0.01) 70%, transparent 100%);
+}
+
+.dynamic-views .bottom-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .view-controls-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+/* ============================================
+   VIEW DROPDOWN
+   ============================================ */
+
+.dynamic-views .view-dropdown-wrapper {
+    position: relative;
+}
+
+.dynamic-views .view-dropdown-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    font-size: 0.9em;
+    color: var(--text-normal);
+    box-shadow: none;
+    height: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .view-dropdown-btn .chevron {
+    opacity: 0.6;
+}
+
+.view-dropdown-btn:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--text-faint);
+}
+
+.dynamic-views .view-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px var(--background-modifier-box-shadow);
+    z-index: 1000;
+    min-width: 120px;
+    overflow: hidden;
+}
+
+.dynamic-views .view-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.view-option:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+
+/* ============================================
+   SORT DROPDOWN
+   ============================================ */
+
+.dynamic-views .sort-dropdown-wrapper {
+    position: relative;
+}
+
+.dynamic-views .sort-dropdown-btn {
+    padding: 6px 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+    color: var(--text-normal);
+    box-shadow: none;
+    height: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .sort-dropdown-btn svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.dynamic-views .sort-dropdown-btn .chevron {
+    width: 12px;
+    height: 12px;
+    opacity: 0.6;
+}
+
+.sort-dropdown-btn:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--text-faint);
+}
+
+.dynamic-views .sort-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px var(--background-modifier-box-shadow);
+    z-index: 1000;
+    min-width: 240px;
+    overflow: hidden;
+}
+
+.dynamic-views .sort-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9em;
+}
+
+.sort-option:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dynamic-views .sort-option svg {
+    flex-shrink: 0;
+}
+
+
+/* ============================================
+   RESULTS COUNT & LIMIT CONTROLS
+   ============================================ */
+
+.dynamic-views .results-count-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s, transform 0.2s ease, margin 0.3s ease;
+}
+
+@media (hover: hover) {
+    .results-count-wrapper:hover {
+        background-color: var(--background-modifier-hover);
+        opacity: var(--icon-opacity-hover);
+    }
+}
+
+.results-count-wrapper.active,
+.results-count-wrapper-compact.active {
+    background-color: var(--background-modifier-hover);
+    opacity: var(--icon-opacity-hover);
+}
+
+.dynamic-views .results-count {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.dynamic-views .results-count.limited {
+    color: var(--interactive-accent);
+}
+
+.dynamic-views .results-count-chevron {
+    color: var(--text-muted);
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.dynamic-views .limit-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px var(--background-modifier-box-shadow);
+    z-index: 1000;
+    min-width: 200px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    cursor: default;
+}
+
+.dynamic-views .limit-dropdown-menu > *:not(:last-child) {
+    margin-bottom: 8px;
+}
+
+.dynamic-views .limit-dropdown-menu .limit-reset-button {
+    margin-bottom: 0 !important;
+}
+
+.dynamic-views .limit-dropdown-label {
+    font-size: 0.85em;
+    color: var(--text-normal);
+    font-weight: 500;
+    cursor: default;
+}
+
+.dynamic-views .limit-dropdown-input {
+    padding: 6px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 0.9em;
+}
+
+.limit-dropdown-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+}
+
+.dynamic-views .limit-reset-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.limit-reset-button:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dynamic-views .limit-reset-button-icon {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+}
+
+.dynamic-views .limit-reset-button-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.dynamic-views .limit-reset-button-text {
+    font-size: 0.9em;
+    color: var(--text-normal);
+}
+
+.dynamic-views .limit-dropdown-menu .bases-toolbar-menu-item {
+    margin: 0;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.dynamic-views .limit-dropdown-menu .bases-toolbar-menu-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+
+/* ============================================
+   TOOLBAR BUTTONS
+   ============================================ */
+
+.dynamic-views .create-note-button {
+    padding: 6px !important;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    height: 30px;
+    width: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .create-note-button svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-normal);
+}
+
+.dynamic-views .create-note-button:hover {
+    border-color: var(--text-faint);
+    background-color: var(--background-modifier-hover);
+}
+
+.dynamic-views .meta-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+}
+
+.dynamic-views .settings-btn {
+    padding: 6px !important;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: none;
+    height: 30px;
+    width: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .settings-btn svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-normal);
+}
+
+.settings-btn:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--text-faint);
+}
+
+.dynamic-views .query-toggle-btn {
+    padding: 6px !important;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: none;
+    height: 30px;
+    width: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .query-toggle-btn svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-normal);
+}
+
+.query-toggle-btn:hover {
+    border-color: var(--text-faint);
+    background-color: var(--background-modifier-hover);
+}
+
+.dynamic-views .shuffle-btn {
+    padding: 6px !important;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    height: 30px;
+    width: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .shuffle-btn svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-normal);
+}
+
+.shuffle-btn:hover {
+    border-color: var(--text-faint);
+    background-color: var(--background-modifier-hover);
+}
+
+.dynamic-views .width-toggle-btn {
+    padding: 6px !important;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    height: 30px;
+    width: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .width-toggle-btn svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-normal);
+}
+
+.width-toggle-btn:hover {
+    border-color: var(--text-faint);
+    background-color: var(--background-modifier-hover);
+}
+
+.dynamic-views .pin-btn {
+    padding: 6px !important;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    height: 30px;
+    width: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .pin-btn svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-normal);
+}
+
+.pin-btn:hover {
+    border-color: var(--text-faint);
+    background-color: var(--background-modifier-hover);
+}
+
+
+/* ============================================
+   QUERY EDITOR
+   ============================================ */
+
+.dynamic-views .query-dropdown-wrapper {
+    position: relative;
+}
+
+.dynamic-views .query-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px var(--background-modifier-box-shadow);
+    z-index: 1000;
+    width: 675px;
+    max-width: calc(100vw - 16px);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .query-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background-color: var(--background-primary-alt);
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-border);
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: 0;
+    box-sizing: border-box;
+}
+
+.dynamic-views .query-input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 0.9em;
+    font-family: var(--font-monospace);
+    resize: none;
+    overflow: hidden;
+    min-height: 32px;
+}
+
+.dynamic-views .query-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.dynamic-views .query-btn {
+    padding: 6px 16px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.query-btn:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dynamic-views .query-apply-btn {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.dynamic-views .query-apply-btn:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+.dynamic-views .query-clear-btn {
+    background-color: var(--background-secondary);
+    color: var(--text-muted);
+    border-color: var(--background-modifier-border);
+}
+
+.dynamic-views .query-clear-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.dynamic-views .query-tip {
+    font-size: 0.8em;
+    color: var(--text-faint);
+    flex: 1;
+    text-align: left;
+}
+
+.dynamic-views .query-error {
+    font-family: var(--font-monospace);
+    font-size: 0.85em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 16px 0;
+    padding: 0;
+    color: var(--text-muted);
+    overflow-x: auto;
+}
+
+
+/* ============================================
+   SETTINGS PANEL
+   ============================================ */
+
+.dynamic-views .settings-dropdown-wrapper {
+    position: relative;
+}
+
+.dynamic-views .settings-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px var(--background-modifier-box-shadow);
+    z-index: 1000;
+    width: 500px;
+    max-width: calc(100vw - 16px);
+    max-height: min(500px, calc(100vh - 100px));
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .settings-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px;
+    padding: 16px;
+    background-color: var(--background-primary-alt);
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-border);
+    text-align: left !important;
+    align-items: flex-start !important;
+    max-width: 900px;
+    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.dynamic-views .setting-item {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px;
+    align-items: flex-start !important;
+    width: 100%;
+    max-width: 100%;
+    text-align: left !important;
+    box-sizing: border-box;
+}
+
+.dynamic-views .setting-item-toggle {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.dynamic-views .setting-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left !important;
+}
+
+.dynamic-views .setting-item label {
+    font-size: 0.9em;
+    color: var(--text-normal);
+    font-weight: 500;
+    text-align: left !important;
+}
+
+.dynamic-views .setting-item input[type="text"] {
+    padding: 6px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 0.9em;
+    box-sizing: border-box;
+}
+
+.dynamic-views .setting-item select {
+    padding: 6px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 0.9em;
+    box-sizing: border-box;
+}
+
+.dynamic-views .setting-desc {
+    font-size: 0.8em;
+    color: var(--text-faint);
+    text-align: left !important;
+}
+
+.dynamic-views .setting-item-text {
+    flex-direction: row !important;
+    gap: 16px;
+    align-items: flex-start !important;
+}
+
+.dynamic-views .setting-item-text .setting-item-info {
+    flex: 1;
+    min-width: 150px;
+}
+
+.dynamic-views .setting-text-input {
+    width: 180px;
+    max-width: 180px;
+    flex-shrink: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--background-modifier-border);
+    box-sizing: border-box;
+    border-radius: 4px;
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 0.9em;
+}
+
+.dynamic-views .dropdown {
+    width: 180px;
+    max-width: 180px;
+    flex-shrink: 1;
+}
+
+.dynamic-views .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.dynamic-views .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.dynamic-views .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--background-modifier-border);
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--background-primary);
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
+    background-color: var(--interactive-accent) !important;
+}
+
+.dynamic-views .toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+
+.toggle-switch:hover .toggle-slider {
+    opacity: 0.9;
+}
+
+
+/* ============================================
+   SEARCH CONTROLS
+   ============================================ */
+
+.dynamic-views .search-controls {
+    flex: 1;
+    transition: opacity 0.3s ease, flex 0.3s ease, margin 0.3s ease;
+    overflow: hidden;
+    margin: 0 -3px;
+    max-width: 400px;
+}
+
+.dynamic-views .search-input-container {
+    position: relative;
+    flex: 1;
+    --search-icon-size: 16px;
+    --search-icon-color: var(--text-normal);
+    padding: 2px 3px;
+}
+
+.dynamic-views .search-input-container:before {
+    display: none;
+}
+
+.dynamic-views .search-input-loupe-icon {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.dynamic-views .desktop-search {
+    width: 100%;
+    padding: 6px 28px 6px 32px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    color: var(--text-normal);
+    font-size: 0.9em;
+    transition: all 0.2s;
+    height: 30px;
+    box-sizing: border-box;
+    line-height: 1;
+}
+
+.dynamic-views .search-input-clear-button {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    color: var(--text-muted);
+    opacity: 0.7;
+    transition: opacity 0.2s, color 0.2s;
+    display: block;
+}
+
+.search-input-clear-button:hover {
+    opacity: 1;
+    color: var(--text-normal);
+}
+
+.desktop-search:hover {
+    border-color: var(--text-muted);
+}
+
+.desktop-search:focus {
+    border-color: var(--interactive-accent);
+}
+
+.dynamic-views .desktop-search::placeholder {
+    color: var(--text-faint);
+}
+
+
+/* ============================================
+   VIEW-SPECIFIC STYLES: CARD VIEW
+   ============================================ */
+
+.dynamic-views .cards-feed {
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    overflow-x: hidden;
+    gap: 8px;
+}
+
+/* Card grid: multiple columns in wide/max modes */
+.dc-wide .dynamic-views .cards-feed {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 8px;
+}
+
+.dc-max .dynamic-views .cards-feed {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px;
+}
+
+/* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
+.dc-wide .dynamic-views .cards-feed .writing-card,
+.dc-max .dynamic-views .cards-feed .writing-card {
+    margin: 0 !important;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.dynamic-views .writing-card {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 0;
+    background-color: var(--background-primary-alt);
+    break-inside: avoid;
+    page-break-inside: avoid;
+    transition: border-color 0.2s;
+}
+
+.dynamic-views.no-card-background .writing-card {
+    background-color: transparent;
+}
+
+/* Snippet container flexbox in grid mode to push metadata to bottom */
+.dc-wide .dynamic-views .cards-feed .snippet-container,
+.dc-max .dynamic-views .cards-feed .snippet-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (hover: hover) {
+    .writing-card:hover {
+        border-color: var(--text-faint);
+    }
+}
+
+.dynamic-views .writing-title {
+    font-weight: calc(var(--font-weight) + var(--bold-modifier));
+    color: var(--bold-color);
+    max-width: 100%;
+    word-break: break-word;
+}
+
+.dynamic-views .card-title-link {
+    text-decoration: none !important;
+    color: var(--bold-color) !important;
+    font-weight: calc(var(--font-weight) + var(--bold-modifier));
+    display: block;
+    width: 100%;
+}
+
+.dynamic-views .card-title-link .title-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+@media (hover: hover) {
+    .dynamic-views .card-title-link:hover {
+        color: var(--text-normal) !important;
+    }
+    .dynamic-views .card-title-link:hover .title-text {
+        text-decoration: underline !important;
+    }
+}
+
+.dynamic-views .snippet-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+.dynamic-views .writing-snippet {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    flex: 1;
+    min-width: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.dynamic-views .card-thumbnail {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    overflow: hidden;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.dynamic-views .card-thumbnail-placeholder {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    border-radius: 4px;
+    background-color: var(--background-modifier-border);
+}
+
+.dynamic-views .card-thumbnail.multi-image,
+.dynamic-views .card-thumbnail-placeholder.multi-image {
+    box-shadow: 0 3px 16px rgba(0, 0, 0, 0.4);
+}
+
+.theme-dark .dynamic-views .card-thumbnail.multi-image,
+.theme-dark .dynamic-views .card-thumbnail-placeholder.multi-image {
+    box-shadow: 0 3px 18px rgba(255, 255, 255, 0.45);
+}
+
+.is-mobile .dynamic-views .card-thumbnail.multi-image,
+.is-mobile .dynamic-views .card-thumbnail-placeholder.multi-image,
+.is-mobile.theme-dark .dynamic-views .card-thumbnail.multi-image,
+.is-mobile.theme-dark .dynamic-views .card-thumbnail-placeholder.multi-image {
+    box-shadow: none;
+    pointer-events: none;
+}
+
+.dynamic-views .card-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: auto;
+}
+
+.dynamic-views .writing-meta {
+    display: flex;
+    align-items: center;
+    font-size: 0.8em;
+    margin-top: 4px;
+    color: var(--text-faint);
+    min-height: 24px;
+    max-height: 24px;
+    overflow: hidden;
+}
+
+.dynamic-views .meta-left {
+    flex-shrink: 0;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1;
+}
+
+.dynamic-views .timestamp-icon {
+    flex-shrink: 0;
+    opacity: 0.7;
+    display: block;
+    margin-bottom: 1px;
+}
+
+.dynamic-views .meta-right {
+    overflow-x: auto;
+    flex: 1;
+    min-width: 0;
+    margin-left: 6px;
+    scrollbar-width: none;
+    text-align: right;
+}
+
+.dynamic-views .meta-right::-webkit-scrollbar {
+    display: none;
+}
+
+.dynamic-views .writing-meta.no-timestamp .meta-right {
+    margin-left: 0;
+    text-align: left;
+}
+
+.dynamic-views .writing-meta.no-timestamp .tags-wrapper,
+.dynamic-views .writing-meta.no-timestamp .path-wrapper {
+    justify-content: flex-start;
+}
+
+.dynamic-views .tags-wrapper {
+    display: flex;
+    gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    min-width: min-content;
+}
+
+.dynamic-views .path-wrapper {
+    display: flex;
+    white-space: nowrap;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    min-width: min-content;
+}
+
+.dynamic-views .writing-meta .tag {
+    background-color: transparent;
+    color: var(--text-faint);
+    border-radius: var(--tag-radius);
+	border: 1px solid var(--background-modifier-border);
+    padding: 2px 6px;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.dynamic-views .writing-meta .tag:hover {
+	color: var(--text-muted);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.dynamic-views .file-path-segment {
+    color: var(--text-faint);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.file-path-segment:hover {
+    color: var(--text-muted);
+    text-decoration: underline;
+}
+
+.dynamic-views .path-separator {
+    color: var(--text-faint);
+    margin: 0 2px;
+    user-select: none;
+}
+
+
+/* ============================================
+   VIEW-SPECIFIC STYLES: MASONRY VIEW
+   ============================================ */
+
+.dynamic-views .cards-masonry {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.dynamic-views .cards-masonry .writing-card {
+    max-width: 100%;
+}
+
+
+/* ============================================
+   VIEW-SPECIFIC STYLES: LIST VIEW
+   ============================================ */
+
+.dynamic-views .list-view {
+    margin: 0;
+    padding-left: 0;
+}
+
+.dynamic-views .list-view.marker-bullet {
+    list-style-type: disc !important;
+    list-style-position: outside;
+    padding-left: 20px;
+}
+
+.dynamic-views .list-view.marker-bullet .list-item {
+    display: list-item !important;
+}
+
+.dynamic-views .list-view.marker-number {
+    list-style-type: decimal !important;
+    list-style-position: outside;
+    padding-left: 20px;
+}
+
+.dynamic-views .list-view.marker-number .list-item {
+    display: list-item !important;
+}
+
+.dynamic-views .list-view.marker-none {
+    list-style-type: none !important;
+    padding-left: 0 !important;
+}
+
+.dynamic-views .list-view.marker-none .list-item {
+    display: list-item !important;
+}
+
+.dynamic-views .list-item {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.dynamic-views .list-link {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.list-link:hover {
+    color: var(--link-color-hover);
+}
+
+.dynamic-views .list-meta {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 0.9em;
+    margin-left: 8px;
+}
+
+.dynamic-views .list-meta .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background-color: var(--tag-background);
+    color: var(--tag-text);
+    font-size: 0.85em;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.dynamic-views .list-meta .tag:hover {
+    opacity: 0.8;
+}
+
+.dynamic-views .list-meta.list-path {
+    color: var(--text-faint);
+}
+
+
+/* ============================================
+   RESPONSIVE STYLES - COMPACT VIEWPORT
+   ============================================ */
+
+/* Compact viewport - search below toolbar */
+.search-controls-compact {
+    display: none;
+}
+
+.compact-bottom-row {
+    display: none;
+}
+
+.results-count-wrapper-compact {
+    display: none;
+}
+
+.create-note-button-compact {
+    display: none;
+}
+
+@container (max-width: 700px) {
+    .dynamic-views .controls-wrapper {
+        padding: 3px 8px;
+    }
+
+    .dynamic-views .width-toggle-btn {
+        display: none;
+    }
+
+    .dynamic-views.wide,
+    .dynamic-views.max {
+        width: 100%;
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .search-controls-compact {
+        display: block;
+        width: 100%;
+        padding: 0;
+        margin-top: 8px;
+    }
+
+    .search-controls-compact .search-input-container {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        margin-bottom: 8px;
+    }
+
+    .search-controls-compact .desktop-search {
+        width: 100%;
+    }
+
+    .compact-bottom-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .results-count-wrapper-compact {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        padding: 6px 8px;
+        position: relative;
+        border-radius: 6px;
+        transition: background-color 0.2s, opacity 0.2s;
+    }
+
+    .results-count-wrapper-compact .limit-dropdown-menu {
+        left: 0;
+        right: auto;
+    }
+
+    .create-note-button-compact {
+        display: flex;
+        padding: 6px !important;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 6px;
+        background-color: transparent;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        height: 30px;
+        width: 30px;
+        box-sizing: border-box;
+    }
+
+    .create-note-button-compact svg {
+        width: 16px;
+        height: 16px;
+        color: var(--text-normal);
+    }
+
+    .create-note-button-compact:hover {
+        border-color: var(--text-faint);
+        background-color: var(--background-modifier-hover);
+    }
+
+    .dynamic-views .search-controls {
+        display: none !important;
+    }
+
+    .dynamic-views .results-count-wrapper {
+        display: none !important;
+    }
+
+    .dynamic-views .create-note-button {
+        display: none !important;
+    }
+
+    .dynamic-views .settings-panel {
+        max-width: 100%;
+    }
+
+    /* Switch to single column at narrow widths */
+    .dc-wide .dynamic-views .cards-feed,
+    .dc-max .dynamic-views .cards-feed {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Stack metadata on narrow cards */
+    .dynamic-views .writing-meta {
+        flex-direction: column-reverse;
+        align-items: flex-start;
+        min-height: auto;
+        max-height: none;
+        gap: 8px;
+    }
+
+    .dynamic-views .meta-left {
+        width: 100%;
+    }
+
+    .dynamic-views .meta-right {
+        width: 100%;
+        margin-left: 0 !important;
+        text-align: left;
+    }
+
+    .dynamic-views .tags-wrapper,
+    .dynamic-views .path-wrapper {
+        justify-content: flex-start !important;
+        flex-wrap: wrap;
+    }
+
+    /* Settings panel responsive */
+    .dynamic-views .setting-item-text {
+        flex-direction: column !important;
+        gap: 4px;
+    }
+
+    .dynamic-views .setting-item-text .setting-item-info {
+        min-width: 0;
+    }
+
+    .dynamic-views .setting-text-input,
+    .dynamic-views .dropdown {
+        width: 100%;
+    }
+}
+
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+@media (hover: hover) {
+    .markdown-source-view.mod-cm6 .cm-embed-block:not(.cm-table-widget, .cm-lang-base):has(.dynamic-views):hover {
+        box-shadow: none;
+    }
+    .markdown-source-view.mod-cm6 .cm-embed-block:not(.cm-table-widget, .cm-lang-base):has(.dynamic-views):hover .edit-block-button {
+        display: none;
+    }
+}
