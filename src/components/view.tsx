@@ -848,13 +848,17 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
         };
 
         // Setup ResizeObserver (watches masonry container)
+        let resizeTimer: any = null;
         const resizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 // Masonry just completed layout, clear loading flag
                 isLoadingRef.current = false;
 
-                // Check if need more items
-                loadMoreItems('ResizeObserver');
+                // Debounce loadMoreItems check to prevent rapid-fire loading during initial render
+                if (resizeTimer) clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    loadMoreItems('ResizeObserver');
+                }, 150);
             }
         });
         resizeObserver.observe(containerRef.current);
@@ -889,8 +893,9 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
             window.removeEventListener('resize', handleWindowResize);
             scrollableElement.removeEventListener('scroll', handleScroll);
             if (scrollTimer) clearTimeout(scrollTimer);
+            if (resizeTimer) clearTimeout(resizeTimer);
         };
-    }, [sorted.length, columnCount, app, dc]);
+    }, [sorted.length, app, dc]);
 
     // Auto-reload: Watch for USER_QUERY prop changes (Datacore re-renders on code block edits)
     dc.useEffect(() => {
