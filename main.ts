@@ -33,11 +33,17 @@ export default class DynamicViewsPlugin extends Plugin {
 		this.persistenceManager = new PersistenceManager(this);
 		await this.persistenceManager.load();
 
-		// Create welcome note on first load
+		// Create welcome note on first load (after workspace is ready)
 		const settings = this.persistenceManager.getGlobalSettings();
 		if (!settings.hasCreatedWelcomeNote) {
-			await this.createWelcomeNote();
-			this.persistenceManager.setGlobalSettings({ hasCreatedWelcomeNote: true });
+			this.app.workspace.onLayoutReady(async () => {
+				try {
+					await this.createWelcomeNote();
+					this.persistenceManager.setGlobalSettings({ hasCreatedWelcomeNote: true });
+				} catch (error) {
+					// Failed to create welcome note, will retry on next load
+				}
+			});
 		}
 
 		this.addCommand({

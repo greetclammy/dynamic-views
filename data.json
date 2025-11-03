@@ -4,7 +4,7 @@
     "descriptionProperty": "description",
     "imageProperty": "cover",
     "alwaysOmitFirstLine": false,
-    "showTextPreview": false,
+    "showTextPreview": true,
     "showThumbnails": true,
     "cardBottomDisplay": "tags",
     "listMarker": "number",
@@ -15,7 +15,8 @@
     "thumbnailCacheSize": "balanced",
     "queryHeight": 0,
     "openFileAction": "title",
-    "addCardBackground": false
+    "addCardBackground": false,
+    "hasCreatedWelcomeNote": true
   },
   "queryStates": {
     "1762111394975": {
@@ -76,10 +77,10 @@
     },
     "1762122189077": {
       "sortMethod": "mtime-desc",
-      "viewMode": "card",
-      "searchQuery": "jerry",
+      "viewMode": "masonry",
+      "searchQuery": "",
       "resultLimit": "",
-      "widthMode": "normal"
+      "widthMode": "max"
     },
     "1762122799975": {
       "sortMethod": "mtime-desc",
@@ -334,6 +335,13 @@
       "widthMode": "normal"
     },
     "1762202167486": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762204856747": {
       "sortMethod": "mtime-desc",
       "viewMode": "card",
       "searchQuery": "",
