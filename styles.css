@@ -1111,12 +1111,14 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 8px;
+    align-items: start;
 }
 
 .dc-max .dynamic-views .cards-feed {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 8px;
+    align-items: start;
 }
 
 /* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
