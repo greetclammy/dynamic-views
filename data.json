@@ -15,7 +15,7 @@
     "thumbnailCacheSize": "balanced",
     "queryHeight": 0,
     "openFileAction": "title",
-    "addCardBackground": false,
+    "addCardBackground": true,
     "hasCreatedWelcomeNote": true
   },
   "queryStates": {
@@ -347,6 +347,13 @@
       "searchQuery": "",
       "resultLimit": "",
       "widthMode": "normal"
+    },
+    "1762204974298": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "max"
     }
   }
 }

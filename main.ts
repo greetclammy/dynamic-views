@@ -132,28 +132,23 @@ return dv.createView(dc, USER_QUERY);
 	}
 
 	async createWelcomeNote() {
-		try {
-			// Use empty folder path for vault root
-			const folderPath = '';
-			const filePath = this.getAvailablePath(folderPath, 'Dynamic view');
-			const template = this.getQueryTemplate();
+		// Use empty folder path for vault root
+		const folderPath = '';
+		const filePath = this.getAvailablePath(folderPath, 'Dynamic view');
+		const template = this.getQueryTemplate();
 
-			await this.app.vault.create(filePath, template);
+		await this.app.vault.create(filePath, template);
 
-			const file = this.app.vault.getFileByPath(filePath);
-			if (file) {
-				const leaf = this.app.workspace.getLeaf('tab');
-				await leaf.openFile(file);
-				const view = leaf.view;
-				if (view instanceof MarkdownView) {
-					const viewState = view.getState();
-					viewState.mode = 'preview';
-					await view.setState(viewState, { history: false });
-				}
+		const file = this.app.vault.getFileByPath(filePath);
+		if (file) {
+			const leaf = this.app.workspace.getLeaf('tab');
+			await leaf.openFile(file);
+			const view = leaf.view;
+			if (view instanceof MarkdownView) {
+				const viewState = view.getState();
+				viewState.mode = 'preview';
+				await view.setState(viewState, { history: false });
 			}
-		} catch (error) {
-			new Notice(`Failed to create welcome note. Check console for details.`);
-			console.error('Welcome note creation failed:', error);
 		}
 	}
 
