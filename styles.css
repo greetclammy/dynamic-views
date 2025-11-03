@@ -630,6 +630,32 @@ body {
     background-color: var(--background-modifier-hover);
 }
 
+.dynamic-views .open-random-btn {
+    padding: 6px !important;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    height: 30px;
+    width: 30px;
+    box-sizing: border-box;
+}
+
+.dynamic-views .open-random-btn svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-normal);
+}
+
+.open-random-btn:hover {
+    border-color: var(--text-faint);
+    background-color: var(--background-modifier-hover);
+}
+
 .dynamic-views .width-toggle-btn {
     padding: 6px !important;
     border: 1px solid var(--background-modifier-border);

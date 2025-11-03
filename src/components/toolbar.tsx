@@ -32,6 +32,7 @@ interface ToolbarProps {
     // Shuffle
     settings: Settings;
     onShuffle: () => void;
+    onOpenRandom: () => void;
 
     // Query editor
     showQueryEditor: boolean;
@@ -93,6 +94,7 @@ export function Toolbar({
     onClearSearch,
     settings,
     onShuffle,
+    onOpenRandom,
     showQueryEditor,
     draftQuery,
     onToggleCode,
@@ -448,30 +450,34 @@ export function Toolbar({
                 </svg>
             </button>
 
-            {/* Meta Controls (Shuffle, Query Editor, Pin, Settings, Width) */}
+            {/* Meta Controls (Shuffle, Open Random, Query Editor, Pin, Settings, Width) */}
             <div className="meta-controls">
                 <button
                     className="shuffle-btn"
                     onClick={onShuffle}
-                    title={settings.randomizeAction === 'open' ? 'Open random file' : 'Shuffle'}
+                    title="Shuffle"
                     tabIndex={0}
                 >
-                    {settings.randomizeAction === 'open' ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z"></path>
-                            <path d="M17 16C17 16.5523 16.5523 17 16 17C15.4477 17 15 16.5523 15 16C15 15.4477 15.4477 15 16 15C16.5523 15 17 15.4477 17 16Z"></path>
-                            <path d="M13 12C13 12.5523 12.5523 13 12 13C11.4477 13 11 12.5523 11 12C11 11.4477 11.4477 11 12 11C12.5523 11 13 11.4477 13 12Z"></path>
-                            <path d="M9 8C9 8.55228 8.55228 9 8 9C7.44772 9 7 8.55228 7 8C7 7.44772 7.44772 7 8 7C8.55228 7 9 7.44772 9 8Z"></path>
-                        </svg>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/>
-                            <path d="m18 2 4 4-4 4"/>
-                            <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/>
-                            <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>
-                            <path d="m18 14 4 4-4 4"/>
-                        </svg>
-                    )}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/>
+                        <path d="m18 2 4 4-4 4"/>
+                        <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/>
+                        <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/>
+                        <path d="m18 14 4 4-4 4"/>
+                    </svg>
+                </button>
+                <button
+                    className="open-random-btn"
+                    onClick={onOpenRandom}
+                    title="Open random file"
+                    tabIndex={0}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z"></path>
+                        <path d="M17 16C17 16.5523 16.5523 17 16 17C15.4477 17 15 16.5523 15 16C15 15.4477 15.4477 15 16 15C16.5523 15 17 15.4477 17 16Z"></path>
+                        <path d="M13 12C13 12.5523 12.5523 13 12 13C11.4477 13 11 12.5523 11 12C11 11.4477 11.4477 11 12 11C12.5523 11 13 11.4477 13 12Z"></path>
+                        <path d="M9 8C9 8.55228 8.55228 9 8 9C7.44772 9 7 8.55228 7 8C7 7.44772 7.44772 7 8 7C8.55228 7 9 7.44772 9 8Z"></path>
+                    </svg>
                 </button>
                 <div className="query-dropdown-wrapper">
                     <button

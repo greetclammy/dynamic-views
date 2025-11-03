@@ -841,17 +841,6 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
     }, []);
 
     const handleShuffle = dc.useCallback(() => {
-        if (settings.randomizeAction === 'open') {
-            if (sorted.length === 0) return;
-            const randomIndex = Math.floor(Math.random() * sorted.length);
-            const randomPath = sorted[randomIndex].$path;
-            const file = app.vault.getAbstractFileByPath(randomPath);
-            if (file) {
-                app.workspace.getLeaf(false).openFile(file as TFile);
-            }
-            return;
-        }
-
         // Shuffle the results
         const paths = sorted.map(p => p.$path);
         const shuffled = [...paths];
@@ -862,7 +851,17 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
         setShuffledOrder(shuffled);
         setIsShuffled(true);
         setShowSortDropdown(false);
-    }, [settings.randomizeAction, sorted, app]);
+    }, [sorted]);
+
+    const handleOpenRandom = dc.useCallback(() => {
+        if (sorted.length === 0) return;
+        const randomIndex = Math.floor(Math.random() * sorted.length);
+        const randomPath = sorted[randomIndex].$path;
+        const file = app.vault.getAbstractFileByPath(randomPath);
+        if (file) {
+            app.workspace.getLeaf(false).openFile(file as TFile);
+        }
+    }, [sorted, app]);
 
     const handleToggleCode = dc.useCallback(() => {
         setShowQueryEditor(!showQueryEditor);
@@ -1075,6 +1074,7 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                     onClearSearch={handleClearSearch}
                     settings={settings}
                     onShuffle={handleShuffle}
+                    onOpenRandom={handleOpenRandom}
                     showQueryEditor={showQueryEditor}
                     draftQuery={draftQuery}
                     onToggleCode={handleToggleCode}
