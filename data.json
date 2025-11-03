@@ -6,7 +6,7 @@
     "alwaysOmitFirstLine": false,
     "showTextPreview": true,
     "showThumbnails": true,
-    "cardBottomDisplay": "path",
+    "cardBottomDisplay": "tags",
     "listMarker": "bullet",
     "showTimestamp": true,
     "showTimestampIcon": true,
@@ -15,7 +15,7 @@
     "thumbnailCacheSize": "balanced",
     "queryHeight": 0,
     "openFileAction": "title",
-    "addCardBackground": true
+    "addCardBackground": false
   },
   "queryStates": {
     "1762111394975": {
@@ -75,8 +75,8 @@
       "widthMode": "normal"
     },
     "1762122189077": {
-      "sortMethod": "mtime-desc",
-      "viewMode": "masonry",
+      "sortMethod": "name-asc",
+      "viewMode": "card",
       "searchQuery": "",
       "resultLimit": "",
       "widthMode": "max"
@@ -154,6 +154,34 @@
     "1762171799156": {
       "sortMethod": "mtime-desc",
       "viewMode": "masonry",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "max"
+    },
+    "1762172301563": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "masonry",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "max"
+    },
+    "1762172510389": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "masonry",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "max"
+    },
+    "1762174517200": {
+      "sortMethod": "name-asc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "max"
+    },
+    "1762175100405": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
       "searchQuery": "",
       "resultLimit": "",
       "widthMode": "max"

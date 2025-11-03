@@ -120,6 +120,7 @@ export function Toolbar({
     onSettingsChange,
 }: ToolbarProps) {
     return (
+        <>
         <div className="bottom-controls">
             {/* View Controls */}
             <div className="view-controls-wrapper">
@@ -609,5 +610,170 @@ export function Toolbar({
                 </button>
             </div>
         </div>
+
+        {/* Compact Layout - Search + Results + Create Note (shown only at narrow widths) */}
+        <div className="search-controls-compact">
+            <div className="search-input-container">
+                <svg
+                    className="search-input-loupe-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input
+                    type="text"
+                    placeholder="Filter..."
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    onFocus={onSearchFocus}
+                    className="search-input desktop-search"
+                />
+                {searchQuery ? (
+                    <svg
+                        className="search-input-clear-button"
+                        aria-label="Clear search"
+                        onClick={onClearSearch}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                onClearSearch();
+                            }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 16 16"
+                    >
+                        <circle cx="8" cy="8" r="7" fill="currentColor"/>
+                        <line x1="5" y1="5" x2="11" y2="11" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                        <line x1="11" y1="5" x2="5" y2="11" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                ) : null}
+            </div>
+            <div className="compact-bottom-row">
+                {/* Results Count Wrapper (Compact) */}
+                <div
+                    className={`results-count-wrapper-compact${showLimitDropdown ? ' active' : ''}`}
+                    onClick={onToggleLimitDropdown}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onToggleLimitDropdown();
+                        }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-expanded={showLimitDropdown}
+                >
+                    <span className={`results-count${(() => {
+                        const limit = parseInt(resultLimit);
+                        return limit > 0 && totalCount > limit ? ' limited' : '';
+                    })()}`}>
+                        {(() => {
+                            const limit = parseInt(resultLimit);
+                            if (limit > 0 && totalCount > limit) {
+                                return `${limit} result${limit === 1 ? '' : 's'}`;
+                            }
+                            return `${displayedCount} result${displayedCount === 1 ? '' : 's'}`;
+                        })()}
+                    </span>
+                    <svg
+                        className="results-count-chevron"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                    {showLimitDropdown ? (
+                        <div className="limit-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                            <div className="limit-dropdown-label" onClick={(e) => e.stopPropagation()}>Limit number of results</div>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                className="limit-dropdown-input"
+                                placeholder="e.g., 10"
+                                value={resultLimit}
+                                onKeyDown={(e) => {
+                                    // Allow: backspace, delete, tab, escape, enter, arrows
+                                    if ([8, 9, 13, 27, 37, 38, 39, 40, 46].includes(e.keyCode)) {
+                                        return;
+                                    }
+                                    // Allow: Ctrl/Cmd+A, Ctrl/Cmd+C, Ctrl/Cmd+V, Ctrl/Cmd+X
+                                    if ((e.ctrlKey || e.metaKey) && [65, 67, 86, 88].includes(e.keyCode)) {
+                                        return;
+                                    }
+                                    // Block: non-digit keys, or digit 0 if it would be first character
+                                    if (e.key < '0' || e.key > '9' || (e.key === '0' && resultLimit === '')) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    // Only allow positive integers (no leading zeros, no whitespace, no special chars)
+                                    if (val === '' || /^[1-9]\d*$/.test(val)) {
+                                        onResultLimitChange(val);
+                                    }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            {resultLimit.trim() && parseInt(resultLimit) > 0 ? (
+                                <div
+                                    className="limit-reset-button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onResetLimit();
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onResetLimit();
+                                        }
+                                    }}
+                                    tabIndex={0}
+                                    role="menuitem"
+                                >
+                                    <div className="limit-reset-button-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                            <path d="M3 3v5h5"></path>
+                                        </svg>
+                                    </div>
+                                    <div className="limit-reset-button-text">Show all ({totalCount.toLocaleString()})</div>
+                                </div>
+                            ) : null}
+                            {copyMenuItem}
+                        </div>
+                    ) : null}
+                </div>
+                {/* Create Note Button (Compact) */}
+                <button
+                    className="create-note-button-compact"
+                    tabIndex={0}
+                    onClick={onCreateNote}
+                    aria-label="Create new note"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        </>
     );
 }

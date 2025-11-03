@@ -403,7 +403,24 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
                         // Check if image property contains valid image link
                         const imgFromProp = p.value(settings.imageProperty);
-                        const imgStr = imgFromProp ? String(imgFromProp).trim() : '';
+                        let imgStr = '';
+
+                        // Handle different property value types (Link objects or strings)
+                        if (imgFromProp) {
+                            // If it's a Link object with a path property, extract the path
+                            if (typeof imgFromProp === 'object' && imgFromProp !== null && 'path' in imgFromProp) {
+                                imgStr = String(imgFromProp.path).trim();
+                            } else {
+                                imgStr = String(imgFromProp).trim();
+                            }
+                        }
+
+                        // Strip wikilink syntax if present: [[path]] or ![[path]] or [[path|caption]]
+                        const wikilinkMatch = imgStr.match(/^!?\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
+                        if (wikilinkMatch) {
+                            imgStr = wikilinkMatch[1].trim();
+                        }
+
                         const imageExtensions = /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i;
                         const hasValidImg = imgStr.length > 0 && imageExtensions.test(imgStr);
 
@@ -451,9 +468,8 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                                     description += '…';
                                 }
                             }
-                            if (description) {
-                                newSnippets[p.$path] = description;
-                            }
+                            // Always set snippet value, even if empty (to prevent perpetual "Loading...")
+                            newSnippets[p.$path] = description || '';
                         }
 
                         // Process thumbnails only if enabled
@@ -462,10 +478,8 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
                             // Try to get image from property first
                             if (hasValidImg) {
-                                let propImagePath = imgFromProp;
-                                if (propImagePath && typeof propImagePath !== 'string') {
-                                    propImagePath = String(propImagePath);
-                                }
+                                // Use stripped version (imgStr) without wikilink syntax
+                                const propImagePath = imgStr;
 
                                 // Verify the property image actually resolves to a valid image file
                                 if (propImagePath) {
