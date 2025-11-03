@@ -890,7 +890,7 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
             scrollableElement.removeEventListener('scroll', handleScroll);
             if (scrollTimer) clearTimeout(scrollTimer);
         };
-    }, [sorted.length, columnCount, displayedCount, app, dc]);
+    }, [sorted.length, columnCount, app, dc]);
 
     // Auto-reload: Watch for USER_QUERY prop changes (Datacore re-renders on code block edits)
     dc.useEffect(() => {
