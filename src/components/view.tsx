@@ -597,6 +597,8 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                 });
                 container.style.height = '';
             }
+            // Clear the ref so image onLoad handlers don't trigger masonry layout
+            updateLayoutRef.current = null;
             return;
         }
 
@@ -734,28 +736,6 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
             clearTimeout(layoutTimeout);
         };
     }, [sorted, viewMode, settings.minMasonryColumns, dc]);
-
-    // Continuous cleanup for card mode: remove masonry styles from all cards
-    dc.useEffect(() => {
-        if (viewMode === 'card') {
-            const container = containerRef.current;
-            if (container) {
-                const cards = container.querySelectorAll('.writing-card');
-                cards.forEach((card: any) => {
-                    if (card.style.position === 'absolute') {
-                        card.style.position = '';
-                        card.style.left = '';
-                        card.style.top = '';
-                        card.style.width = '';
-                        card.style.transition = '';
-                    }
-                });
-                if (container.style.height) {
-                    container.style.height = '';
-                }
-            }
-        }
-    }, [sorted, viewMode, dc]);
 
     // Track scroll position for toolbar shadow and fade effect
     dc.useEffect(() => {
