@@ -1,7 +1,8 @@
-import { Plugin, Notice, Editor, MarkdownView, normalizePath } from 'obsidian';
+import { Plugin, Notice, Editor, MarkdownView } from 'obsidian';
 import { PersistenceManager } from './src/persistence';
 import { View } from './src/components/view';
 import { setDatacorePreact } from './src/jsx-runtime';
+import { getAvailablePath } from './src/utils/file';
 import './src/jsx-runtime'; // Ensure h and Fragment are globally available
 
 export default class DynamicViewsPlugin extends Plugin {
@@ -88,28 +89,11 @@ return dv.createView(dc, USER_QUERY);
 \`\`\`\n`;
 	}
 
-	getAvailablePath(folderPath: string, baseName: string): string {
-		const name = baseName.replace(/\.md$/, '');
-		let filePath = folderPath ? `${folderPath}/${name}.md` : `${name}.md`;
-		filePath = normalizePath(filePath);
-
-		let counter = 1;
-		while (this.app.vault.getFileByPath(filePath)) {
-			const unnormalizedPath = folderPath
-				? `${folderPath}/${name} ${counter}.md`
-				: `${name} ${counter}.md`;
-			filePath = normalizePath(unnormalizedPath);
-			counter++;
-		}
-
-		return filePath;
-	}
-
 	async createExplorerFile() {
 		try {
 			const activeFile = this.app.workspace.getActiveFile();
 			const folderPath = activeFile?.parent?.path || '';
-			const filePath = this.getAvailablePath(folderPath, 'Dynamic view');
+			const filePath = getAvailablePath(this.app, folderPath, 'Dynamic view');
 			const template = this.getQueryTemplate();
 
 			await this.app.vault.create(filePath, template);
@@ -134,7 +118,7 @@ return dv.createView(dc, USER_QUERY);
 	async createWelcomeNote() {
 		// Use empty folder path for vault root
 		const folderPath = '';
-		const filePath = this.getAvailablePath(folderPath, 'Dynamic view');
+		const filePath = getAvailablePath(this.app, folderPath, 'Dynamic view');
 		const template = this.getQueryTemplate();
 
 		await this.app.vault.create(filePath, template);

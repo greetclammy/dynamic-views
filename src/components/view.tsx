@@ -6,7 +6,7 @@ import { CardView } from './card-view';
 import { MasonryView } from './masonry-view';
 import { ListView } from './list-view';
 import { Toolbar } from './toolbar';
-import { getCurrentFile, getFileCtime } from '../utils/file';
+import { getCurrentFile, getFileCtime, getAvailablePath } from '../utils/file';
 import { ensurePageSelector, updateQueryInBlock, findQueryInBlock } from '../utils/query-sync';
 
 interface ViewProps {
@@ -951,9 +951,11 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
     }, []);
 
     const handleCreateNote = dc.useCallback(async (event: MouseEvent) => {
-        // TODO: Implement note creation
-        const fileName = `Untitled ${Date.now()}.md`;
-        const file = await app.vault.create(fileName, '');
+        const activeFile = app.workspace.getActiveFile();
+        const sourcePath = activeFile?.path || '';
+        const folder = app.fileManager.getNewFileParent(sourcePath);
+        const filePath = getAvailablePath(app, folder.path, 'Untitled');
+        const file = await app.vault.create(filePath, '');
         const newLeaf = Keymap.isModEvent(event);
         app.workspace.getLeaf(newLeaf).openFile(file);
     }, [app]);
