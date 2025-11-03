@@ -1,0 +1,6 @@
+main.js
+*.js.map
+*.map
+node_modules
+.DS_Store
+CLAUDE.md
