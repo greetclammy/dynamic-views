@@ -32,7 +32,7 @@ interface ToolbarProps {
     // Shuffle
     settings: Settings;
     onShuffle: () => void;
-    onOpenRandom: () => void;
+    onOpenRandom: (event: MouseEvent) => void;
 
     // Query editor
     showQueryEditor: boolean;
@@ -468,8 +468,8 @@ export function Toolbar({
                 </button>
                 <button
                     className="open-random-btn"
-                    onClick={onOpenRandom}
-                    title="Open random file"
+                    onClick={(e) => onOpenRandom(e as any)}
+                    title="Open random file (Ctrl/Cmd+Click for new tab)"
                     tabIndex={0}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

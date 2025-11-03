@@ -853,13 +853,15 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
         setShowSortDropdown(false);
     }, [sorted]);
 
-    const handleOpenRandom = dc.useCallback(() => {
+    const handleOpenRandom = dc.useCallback((event: MouseEvent) => {
         if (sorted.length === 0) return;
         const randomIndex = Math.floor(Math.random() * sorted.length);
         const randomPath = sorted[randomIndex].$path;
         const file = app.vault.getAbstractFileByPath(randomPath);
         if (file) {
-            app.workspace.getLeaf(false).openFile(file as TFile);
+            // Open in new tab if Ctrl (Win/Linux) or Cmd (Mac) is held
+            const newTab = event.ctrlKey || event.metaKey;
+            app.workspace.getLeaf(newTab).openFile(file as TFile);
         }
     }, [sorted, app]);
 
