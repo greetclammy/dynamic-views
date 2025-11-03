@@ -1602,6 +1602,6 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
         box-shadow: none;
     }
     .markdown-source-view.mod-cm6 .cm-embed-block:not(.cm-table-widget, .cm-lang-base):has(.dynamic-views):hover .edit-block-button {
-        opacity: 0;
+        display: none;
     }
 }
