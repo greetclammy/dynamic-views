@@ -77,9 +77,9 @@
     },
     "1762122189077": {
       "sortMethod": "mtime-desc",
-      "viewMode": "card",
+      "viewMode": "masonry",
       "searchQuery": "",
-      "resultLimit": "50",
+      "resultLimit": "",
       "widthMode": "max"
     },
     "1762122799975": {
