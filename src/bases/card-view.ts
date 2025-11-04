@@ -33,11 +33,15 @@ export class DynamicViewsCardView extends BasesView {
         // DEBUG: Log controller structure to find stable ID
         console.log('// DEBUG: Bases controller structure');
         console.log('//   controller:', controller);
+        console.log('//   controller keys:', Object.keys(controller));
         console.log('//   controller.source:', controller.source);
-        console.log('//   controller.source?.path:', controller.source?.path);
-        console.log('//   controller.source?.stat:', controller.source?.stat);
-        console.log('//   controller.source?.stat?.ctime:', controller.source?.stat?.ctime);
         console.log('//   controller.database:', controller.database);
+        console.log('//   controller.query:', controller.query);
+        console.log('//   controller.currentFile:', controller.currentFile);
+        console.log('//   controller.id:', controller.id);
+        console.log('//   controller._id:', controller._id);
+        console.log('//   controller.viewId:', controller.viewId);
+        console.log('//   controller.leafId:', controller.leafId);
 
         // Generate stable view ID from source file ctime (survives renames/moves) and view type
         const ctime = controller.source?.stat?.ctime || Date.now();
@@ -55,6 +59,10 @@ export class DynamicViewsCardView extends BasesView {
 
     async onDataUpdated(): Promise<void> {
         console.log('// DEBUG: card-view onDataUpdated() CALLED');
+        console.log('//   this.data:', this.data);
+        console.log('//   this.data.source:', (this.data as any).source);
+        console.log('//   this.config:', this.config);
+
         const { app } = this;
         const entries = this.data.data;
 
