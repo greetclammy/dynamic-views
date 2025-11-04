@@ -59,18 +59,24 @@ export function basesEntryToCardData(
     imageUrl?: string | string[],
     hasImageAvailable?: boolean
 ): CardData {
+    // Get file base name from Bases file property
+    const fileBaseName = entry.getValue('file base name');
+    const fileName = fileBaseName != null && fileBaseName !== ''
+        ? String(fileBaseName)
+        : entry.file.name;
+
     // Get title from property or fallback to filename
     const titleValue = entry.getValue(settings.titleProperty);
     const title = titleValue != null && titleValue !== ''
         ? String(titleValue)
-        : entry.file.name;
+        : fileName;
 
     // Get folder path (without filename)
     const path = entry.file.path;
     const folderPath = path.split('/').slice(0, -1).join('/');
 
-    // Get tags
-    const tagsValue = entry.getValue('tags');
+    // Get tags from Bases file property
+    const tagsValue = entry.getValue('file tags');
     const tags = Array.isArray(tagsValue)
         ? tagsValue.map((t: any) => String(t))
         : tagsValue != null && tagsValue !== ''
@@ -83,7 +89,7 @@ export function basesEntryToCardData(
 
     return {
         path,
-        name: entry.file.name,
+        name: fileName,
         title,
         tags,
         ctime,
