@@ -1303,6 +1303,26 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     display: none;
 }
 
+/* Single-side metadata layout */
+.dynamic-views .writing-meta.meta-left-only .meta-left {
+    width: 100%;
+    flex: 1;
+}
+
+.dynamic-views .writing-meta.meta-left-only .meta-right {
+    display: none;
+}
+
+.dynamic-views .writing-meta.meta-right-only .meta-left {
+    display: none;
+}
+
+.dynamic-views .writing-meta.meta-right-only .meta-right {
+    width: 100%;
+    flex: 1;
+    margin-left: 0;
+}
+
 .dynamic-views .writing-meta.no-timestamp .meta-right {
     margin-left: 0;
     text-align: left;

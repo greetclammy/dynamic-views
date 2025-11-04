@@ -103,29 +103,8 @@ export function Settings({
                 />
             </div>
 
-            {/* Show Timestamp Toggle */}
-            <div className="setting-item setting-item-toggle">
-                <div className="setting-item-info">
-                    <label>Show timestamp</label>
-                    <div className="setting-desc">Display file modification or creation timestamp in cards.</div>
-                </div>
-                <div
-                    className={`checkbox-container ${settings.showTimestamp ? 'is-enabled' : ''}`}
-                    onClick={() => onSettingsChange({ showTimestamp: !settings.showTimestamp })}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            onSettingsChange({ showTimestamp: !settings.showTimestamp });
-                        }
-                    }}
-                    tabIndex={0}
-                    role="checkbox"
-                    aria-checked={settings.showTimestamp}
-                />
-            </div>
-
             {/* Show Timestamp Icon Toggle (conditional) */}
-            {settings.showTimestamp && (
+            {(settings.metadataDisplayLeft === 'timestamp' || settings.metadataDisplayRight === 'timestamp') && (
                 <div className="setting-item setting-item-toggle">
                     <div className="setting-item-info">
                         <label>Show timestamp icon</label>
@@ -187,20 +166,55 @@ export function Settings({
                 </select>
             </div>
 
-            {/* File Metadata Display */}
+            {/* Metadata Display (Left) */}
             <div className="setting-item setting-item-text">
                 <div className="setting-item-info">
-                    <label>File metadata display</label>
-                    <div className="setting-desc">Set what metadata to show.</div>
+                    <label>Metadata display (left)</label>
+                    <div className="setting-desc">Set what metadata to show on the left side.</div>
                 </div>
                 <select
-                    value={settings.cardBottomDisplay}
-                    onChange={(e) => onSettingsChange({ cardBottomDisplay: e.target.value })}
+                    value={settings.metadataDisplayLeft}
+                    onChange={(e) => {
+                        const newValue = e.target.value as 'none' | 'timestamp' | 'tags' | 'path';
+                        // If selecting same as right, clear right
+                        if (newValue !== 'none' && newValue === settings.metadataDisplayRight) {
+                            onSettingsChange({ metadataDisplayLeft: newValue, metadataDisplayRight: 'none' });
+                        } else {
+                            onSettingsChange({ metadataDisplayLeft: newValue });
+                        }
+                    }}
                     className="dropdown"
                 >
-                    <option value="tags">File tags</option>
-                    <option value="path">File path</option>
-                    <option value="none">Nothing</option>
+                    <option value="none">None</option>
+                    <option value="timestamp" disabled={settings.metadataDisplayRight === 'timestamp'}>Timestamp</option>
+                    <option value="tags" disabled={settings.metadataDisplayRight === 'tags'}>File tags</option>
+                    <option value="path" disabled={settings.metadataDisplayRight === 'path'}>File path</option>
+                </select>
+            </div>
+
+            {/* Metadata Display (Right) */}
+            <div className="setting-item setting-item-text">
+                <div className="setting-item-info">
+                    <label>Metadata display (right)</label>
+                    <div className="setting-desc">Set what metadata to show on the right side.</div>
+                </div>
+                <select
+                    value={settings.metadataDisplayRight}
+                    onChange={(e) => {
+                        const newValue = e.target.value as 'none' | 'timestamp' | 'tags' | 'path';
+                        // If selecting same as left, clear left
+                        if (newValue !== 'none' && newValue === settings.metadataDisplayLeft) {
+                            onSettingsChange({ metadataDisplayRight: newValue, metadataDisplayLeft: 'none' });
+                        } else {
+                            onSettingsChange({ metadataDisplayRight: newValue });
+                        }
+                    }}
+                    className="dropdown"
+                >
+                    <option value="none">None</option>
+                    <option value="timestamp" disabled={settings.metadataDisplayLeft === 'timestamp'}>Timestamp</option>
+                    <option value="tags" disabled={settings.metadataDisplayLeft === 'tags'}>File tags</option>
+                    <option value="path" disabled={settings.metadataDisplayLeft === 'path'}>File path</option>
                 </select>
             </div>
 

@@ -63,29 +63,56 @@ export function ListView({
                         >
                             {titleValue}
                         </a>
-                        {settings.cardBottomDisplay === 'tags' && p.$tags && p.$tags.length > 0 ? (
+                        {/* Metadata - show both left and right inline */}
+                        {(settings.metadataDisplayLeft !== 'none' || settings.metadataDisplayRight !== 'none') && (
                             <span className="list-meta">
-                                {p.$tags.map((tag: string) => (
-                                    <a
-                                        key={tag}
-                                        href="#"
-                                        className="tag"
-                                        onClick={(e: MouseEvent) => {
-                                            e.preventDefault();
-                                            const searchPlugin = app.internalPlugins.plugins["global-search"];
-                                            if (searchPlugin && searchPlugin.instance) {
-                                                const searchView = searchPlugin.instance;
-                                                searchView.openGlobalSearch("tag:" + tag);
-                                            }
-                                        }}
-                                    >
-                                        {tag.replace(/^#/, '')}
-                                    </a>
-                                ))}
+                                {settings.metadataDisplayLeft === 'tags' && p.$tags && p.$tags.length > 0 ? (
+                                    <>
+                                        {p.$tags.map((tag: string) => (
+                                            <a
+                                                key={tag}
+                                                href="#"
+                                                className="tag"
+                                                onClick={(e: MouseEvent) => {
+                                                    e.preventDefault();
+                                                    const searchPlugin = app.internalPlugins.plugins["global-search"];
+                                                    if (searchPlugin && searchPlugin.instance) {
+                                                        searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                                                    }
+                                                }}
+                                            >
+                                                {tag.replace(/^#/, '')}
+                                            </a>
+                                        ))}
+                                    </>
+                                ) : settings.metadataDisplayLeft === 'path' && folderPath ? (
+                                    <span className="list-path">{folderPath}</span>
+                                ) : null}
+                                {settings.metadataDisplayLeft !== 'none' && settings.metadataDisplayRight !== 'none' && ' · '}
+                                {settings.metadataDisplayRight === 'tags' && p.$tags && p.$tags.length > 0 ? (
+                                    <>
+                                        {p.$tags.map((tag: string) => (
+                                            <a
+                                                key={tag}
+                                                href="#"
+                                                className="tag"
+                                                onClick={(e: MouseEvent) => {
+                                                    e.preventDefault();
+                                                    const searchPlugin = app.internalPlugins.plugins["global-search"];
+                                                    if (searchPlugin && searchPlugin.instance) {
+                                                        searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                                                    }
+                                                }}
+                                            >
+                                                {tag.replace(/^#/, '')}
+                                            </a>
+                                        ))}
+                                    </>
+                                ) : settings.metadataDisplayRight === 'path' && folderPath ? (
+                                    <span className="list-path">{folderPath}</span>
+                                ) : null}
                             </span>
-                        ) : settings.cardBottomDisplay === 'path' && folderPath ? (
-                            <span className="list-meta list-path">{folderPath}</span>
-                        ) : null}
+                        )}
                     </li>
                 );
             })}

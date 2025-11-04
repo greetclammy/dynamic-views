@@ -254,92 +254,154 @@ export function CardView({
                                 )}
                             </div>
                         )}
-                        {(() => {
-                            const hasTimestamp = settings.showTimestamp && date;
-                            const hasMetadata = settings.cardBottomDisplay === 'tags'
-                                ? tags.length > 0
-                                : settings.cardBottomDisplay === 'path'
-                                ? folderPath.length > 0
-                                : false;
-                            return hasTimestamp || hasMetadata;
-                        })() ? (
-                        <div className={`writing-meta${!settings.showTimestamp || !date ? ' no-timestamp' : ''}`}>
-                            <span className="meta-left">
-                                {settings.showTimestamp && date ? (
-                                    <>
-                                        {settings.showTimestampIcon ? (
-                                            <svg className="timestamp-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                {timeIcon === "calendar" ? (
-                                                    <>
-                                                        <path d="M8 2v4"/>
-                                                        <path d="M16 2v4"/>
-                                                        <rect width="18" height="18" x="3" y="4" rx="2"/>
-                                                        <path d="M3 10h18"/>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <polyline points="12 6 12 12 16 14"/>
-                                                    </>
-                                                )}
-                                            </svg>
-                                        ) : null}
-                                        {date}
-                                    </>
-                                ) : null}
-                            </span>
-                            <div className="meta-right">
-                                {settings.cardBottomDisplay === "tags" ? (
-                                    <div className="tags-wrapper">
-                                        {tags.map(tag => (
-                                            <a
-                                                key={tag}
-                                                href="#"
-                                                className="tag"
-                                                onClick={(e: MouseEvent) => {
-                                                    e.preventDefault();
-                                                    const searchPlugin = app.internalPlugins.plugins["global-search"];
-                                                    if (searchPlugin && searchPlugin.instance) {
-                                                        const searchView = searchPlugin.instance;
-                                                        searchView.openGlobalSearch("tag:" + tag);
-                                                    }
-                                                }}
-                                            >
-                                                {tag.replace(/^#/, '')}
-                                            </a>
-                                        ))}
-                                    </div>
-                                ) : settings.cardBottomDisplay === "path" ? (
-                                    <div className="path-wrapper">
-                                        {folderPath.split('/').filter(f => f).map((folder, index, array) => {
-                                            const allParts = folderPath.split('/').filter(f => f);
-                                            const cumulativePath = allParts.slice(0, index + 1).join('/');
-                                            return (
-                                                <span key={index} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                                    <span
-                                                        className="path-segment file-path-segment"
-                                                        onClick={(e: MouseEvent) => {
-                                                            e.stopPropagation();
-                                                            const fileExplorer = app.internalPlugins?.plugins?.["file-explorer"];
-                                                            if (fileExplorer && fileExplorer.instance) {
-                                                                const folder = app.vault.getAbstractFileByPath(cumulativePath);
-                                                                if (folder) {
-                                                                    fileExplorer.instance.revealInFolder(folder);
+                        {/* Metadata */}
+                        {(settings.metadataDisplayLeft !== 'none' || settings.metadataDisplayRight !== 'none') && (
+                            <div className={`writing-meta${
+                                settings.metadataDisplayLeft === 'none' && settings.metadataDisplayRight !== 'none' ? ' meta-right-only' :
+                                settings.metadataDisplayLeft !== 'none' && settings.metadataDisplayRight === 'none' ? ' meta-left-only' : ''
+                            }`}>
+                                <div className="meta-left">
+                                    {settings.metadataDisplayLeft === 'timestamp' && date ? (
+                                        <>
+                                            {settings.showTimestampIcon && (
+                                                <svg className="timestamp-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    {timeIcon === "calendar" ? (
+                                                        <>
+                                                            <path d="M8 2v4"/>
+                                                            <path d="M16 2v4"/>
+                                                            <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                                            <path d="M3 10h18"/>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <polyline points="12 6 12 12 16 14"/>
+                                                        </>
+                                                    )}
+                                                </svg>
+                                            )}
+                                            {date}
+                                        </>
+                                    ) : settings.metadataDisplayLeft === 'tags' && tags.length > 0 ? (
+                                        <div className="tags-wrapper">
+                                            {tags.map(tag => (
+                                                <a
+                                                    key={tag}
+                                                    href="#"
+                                                    className="tag"
+                                                    onClick={(e: MouseEvent) => {
+                                                        e.preventDefault();
+                                                        const searchPlugin = app.internalPlugins.plugins["global-search"];
+                                                        if (searchPlugin && searchPlugin.instance) {
+                                                            searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                                                        }
+                                                    }}
+                                                >
+                                                    {tag.replace(/^#/, '')}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    ) : settings.metadataDisplayLeft === 'path' && folderPath.length > 0 ? (
+                                        <div className="path-wrapper">
+                                            {folderPath.split('/').filter(f => f).map((folder, index, array) => {
+                                                const allParts = folderPath.split('/').filter(f => f);
+                                                const cumulativePath = allParts.slice(0, index + 1).join('/');
+                                                return (
+                                                    <span key={index} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                                        <span
+                                                            className="path-segment file-path-segment"
+                                                            onClick={(e: MouseEvent) => {
+                                                                e.stopPropagation();
+                                                                const fileExplorer = app.internalPlugins?.plugins?.["file-explorer"];
+                                                                if (fileExplorer && fileExplorer.instance) {
+                                                                    const folder = app.vault.getAbstractFileByPath(cumulativePath);
+                                                                    if (folder) {
+                                                                        fileExplorer.instance.revealInFolder(folder);
+                                                                    }
                                                                 }
-                                                            }
-                                                        }}
-                                                    >
-                                                        {folder}
+                                                            }}
+                                                        >
+                                                            {folder}
+                                                        </span>
+                                                        {index < array.length - 1 && <span className="path-separator">/</span>}
                                                     </span>
-                                                    {index < array.length - 1 ? <span className="path-separator">/</span> : null}
-                                                </span>
-                                            );
-                                        })}
-                                    </div>
-                                ) : null}
+                                                );
+                                            })}
+                                        </div>
+                                    ) : null}
+                                </div>
+                                <div className="meta-right">
+                                    {settings.metadataDisplayRight === 'timestamp' && date ? (
+                                        <>
+                                            {settings.showTimestampIcon && (
+                                                <svg className="timestamp-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    {timeIcon === "calendar" ? (
+                                                        <>
+                                                            <path d="M8 2v4"/>
+                                                            <path d="M16 2v4"/>
+                                                            <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                                            <path d="M3 10h18"/>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <polyline points="12 6 12 12 16 14"/>
+                                                        </>
+                                                    )}
+                                                </svg>
+                                            )}
+                                            {date}
+                                        </>
+                                    ) : settings.metadataDisplayRight === 'tags' && tags.length > 0 ? (
+                                        <div className="tags-wrapper">
+                                            {tags.map(tag => (
+                                                <a
+                                                    key={tag}
+                                                    href="#"
+                                                    className="tag"
+                                                    onClick={(e: MouseEvent) => {
+                                                        e.preventDefault();
+                                                        const searchPlugin = app.internalPlugins.plugins["global-search"];
+                                                        if (searchPlugin && searchPlugin.instance) {
+                                                            searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                                                        }
+                                                    }}
+                                                >
+                                                    {tag.replace(/^#/, '')}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    ) : settings.metadataDisplayRight === 'path' && folderPath.length > 0 ? (
+                                        <div className="path-wrapper">
+                                            {folderPath.split('/').filter(f => f).map((folder, index, array) => {
+                                                const allParts = folderPath.split('/').filter(f => f);
+                                                const cumulativePath = allParts.slice(0, index + 1).join('/');
+                                                return (
+                                                    <span key={index} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                                        <span
+                                                            className="path-segment file-path-segment"
+                                                            onClick={(e: MouseEvent) => {
+                                                                e.stopPropagation();
+                                                                const fileExplorer = app.internalPlugins?.plugins?.["file-explorer"];
+                                                                if (fileExplorer && fileExplorer.instance) {
+                                                                    const folder = app.vault.getAbstractFileByPath(cumulativePath);
+                                                                    if (folder) {
+                                                                        fileExplorer.instance.revealInFolder(folder);
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            {folder}
+                                                        </span>
+                                                        {index < array.length - 1 && <span className="path-separator">/</span>}
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : null}
+                                </div>
                             </div>
-                        </div>
-                        ) : null}
+                        )}
                     </div>
                 );
             })}
