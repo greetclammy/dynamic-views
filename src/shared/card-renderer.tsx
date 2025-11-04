@@ -333,18 +333,26 @@ function Card({
 
             {/* Metadata */}
             {(() => {
-                // Duplicate detection: treat right as 'none' if both match
-                const effectiveRight = settings.metadataDisplayLeft !== 'none' && settings.metadataDisplayLeft === settings.metadataDisplayRight
-                    ? 'none'
-                    : settings.metadataDisplayRight;
+                // Apply winner logic: if both match and there's a winner, treat loser as 'none'
+                const effectiveLeft = settings.metadataDisplayWinner === 'right' &&
+                    settings.metadataDisplayLeft !== 'none' &&
+                    settings.metadataDisplayLeft === settings.metadataDisplayRight
+                        ? 'none'
+                        : settings.metadataDisplayLeft;
 
-                return (settings.metadataDisplayLeft !== 'none' || effectiveRight !== 'none') && (
+                const effectiveRight = settings.metadataDisplayWinner === 'left' &&
+                    settings.metadataDisplayRight !== 'none' &&
+                    settings.metadataDisplayLeft === settings.metadataDisplayRight
+                        ? 'none'
+                        : settings.metadataDisplayRight;
+
+                return (effectiveLeft !== 'none' || effectiveRight !== 'none') && (
                     <div className={`writing-meta${
-                        settings.metadataDisplayLeft === 'none' && effectiveRight !== 'none' ? ' meta-right-only' :
-                        settings.metadataDisplayLeft !== 'none' && effectiveRight === 'none' ? ' meta-left-only' : ''
+                        effectiveLeft === 'none' && effectiveRight !== 'none' ? ' meta-right-only' :
+                        effectiveLeft !== 'none' && effectiveRight === 'none' ? ' meta-left-only' : ''
                     }`}>
                         <div className="meta-left">
-                            {renderMetadataContent(settings.metadataDisplayLeft, card, date, timeIcon, settings, app)}
+                            {renderMetadataContent(effectiveLeft, card, date, timeIcon, settings, app)}
                         </div>
                         <div className="meta-right">
                             {renderMetadataContent(effectiveRight, card, date, timeIcon, settings, app)}

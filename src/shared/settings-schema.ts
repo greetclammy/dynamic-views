@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
     showThumbnails: true,
     metadataDisplayLeft: "timestamp",
     metadataDisplayRight: "tags",
+    metadataDisplayWinner: null,
     listMarker: "bullet",
     showTimestampIcon: true,
     minMasonryColumns: 1,
@@ -152,15 +153,6 @@ export function getMasonryViewOptions(): any[] {
  * Maps Bases config values to Settings object
  */
 export function readBasesSettings(config: any): Settings {
-    let metadataDisplayLeft = config.get('metadataDisplayLeft') || DEFAULT_SETTINGS.metadataDisplayLeft;
-    let metadataDisplayRight = config.get('metadataDisplayRight') || DEFAULT_SETTINGS.metadataDisplayRight;
-
-    // Duplicate detection: If both are set to same non-none value, fix it
-    if (metadataDisplayLeft !== 'none' && metadataDisplayLeft === metadataDisplayRight) {
-        console.warn(`Dynamic Views: Both metadata displays set to '${metadataDisplayLeft}'. Auto-correcting right to 'none'.`);
-        metadataDisplayRight = 'none';
-    }
-
     return {
         titleProperty: String(config.get('titleProperty') || DEFAULT_SETTINGS.titleProperty),
         descriptionProperty: String(config.get('descriptionProperty') || DEFAULT_SETTINGS.descriptionProperty),
@@ -168,8 +160,9 @@ export function readBasesSettings(config: any): Settings {
         alwaysOmitFirstLine: Boolean(config.get('alwaysOmitFirstLine')),
         showTextPreview: Boolean(config.get('showTextPreview') ?? DEFAULT_SETTINGS.showTextPreview),
         showThumbnails: Boolean(config.get('showThumbnails') ?? DEFAULT_SETTINGS.showThumbnails),
-        metadataDisplayLeft: metadataDisplayLeft as 'none' | 'timestamp' | 'tags' | 'path',
-        metadataDisplayRight: metadataDisplayRight as 'none' | 'timestamp' | 'tags' | 'path',
+        metadataDisplayLeft: String(config.get('metadataDisplayLeft') || DEFAULT_SETTINGS.metadataDisplayLeft) as 'none' | 'timestamp' | 'tags' | 'path',
+        metadataDisplayRight: String(config.get('metadataDisplayRight') || DEFAULT_SETTINGS.metadataDisplayRight) as 'none' | 'timestamp' | 'tags' | 'path',
+        metadataDisplayWinner: null, // Computed at runtime by view instances
         listMarker: String(config.get('listMarker') || DEFAULT_SETTINGS.listMarker) as 'bullet' | 'number',
         showTimestampIcon: Boolean(config.get('showTimestampIcon') ?? DEFAULT_SETTINGS.showTimestampIcon),
         minMasonryColumns: Number(config.get('minMasonryColumns') || DEFAULT_SETTINGS.minMasonryColumns),

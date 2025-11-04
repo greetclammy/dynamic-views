@@ -20,6 +20,8 @@ export class DynamicViewsCardView extends BasesView {
     private hasImageAvailable: Record<string, boolean> = {};
     private updateLayoutRef: { current: (() => void) | null } = { current: null };
     private focusableCardIndex: number = 0;
+    private previousSettings: { metadataDisplayLeft: string; metadataDisplayRight: string } | null = null;
+    private metadataDisplayWinner: 'left' | 'right' | null = null;
 
     constructor(controller: any, containerEl: HTMLElement) {
         super(controller);
@@ -38,6 +40,41 @@ export class DynamicViewsCardView extends BasesView {
 
         // Read settings from Bases config
         const settings = readBasesSettings(this.config);
+
+        // Track previous settings to determine winner when both match
+        if (this.previousSettings) {
+            const leftChanged = settings.metadataDisplayLeft !== this.previousSettings.metadataDisplayLeft;
+            const rightChanged = settings.metadataDisplayRight !== this.previousSettings.metadataDisplayRight;
+
+            // Check if both are now the same non-none value
+            if (settings.metadataDisplayLeft !== 'none' &&
+                settings.metadataDisplayLeft === settings.metadataDisplayRight) {
+                // Determine which one changed (the one that changed loses, the one that stayed wins)
+                if (leftChanged && !rightChanged) {
+                    this.metadataDisplayWinner = 'right'; // Right had it first
+                } else if (rightChanged && !leftChanged) {
+                    this.metadataDisplayWinner = 'left'; // Left had it first
+                } else {
+                    // Both changed or initial load with duplicates - default to left wins
+                    this.metadataDisplayWinner = 'left';
+                }
+            } else {
+                // No duplicate, clear winner
+                this.metadataDisplayWinner = null;
+            }
+        } else {
+            // First load - check if there's already a duplicate
+            if (settings.metadataDisplayLeft !== 'none' &&
+                settings.metadataDisplayLeft === settings.metadataDisplayRight) {
+                this.metadataDisplayWinner = 'left'; // Default to left on initial load
+            }
+        }
+
+        // Update previous settings for next comparison
+        this.previousSettings = {
+            metadataDisplayLeft: settings.metadataDisplayLeft,
+            metadataDisplayRight: settings.metadataDisplayRight
+        };
 
         // Load snippets and images for visible entries
         await this.loadContentForEntries(entries, settings);
@@ -127,24 +164,36 @@ export class DynamicViewsCardView extends BasesView {
             }
         }
 
-        // Metadata - check if we have any content to display
-        if (settings.metadataDisplayLeft !== 'none' || settings.metadataDisplayRight !== 'none') {
+        // Metadata - apply winner logic
+        const effectiveLeft = this.metadataDisplayWinner === 'right' &&
+            settings.metadataDisplayLeft !== 'none' &&
+            settings.metadataDisplayLeft === settings.metadataDisplayRight
+                ? 'none'
+                : settings.metadataDisplayLeft;
+
+        const effectiveRight = this.metadataDisplayWinner === 'left' &&
+            settings.metadataDisplayRight !== 'none' &&
+            settings.metadataDisplayLeft === settings.metadataDisplayRight
+                ? 'none'
+                : settings.metadataDisplayRight;
+
+        if (effectiveLeft !== 'none' || effectiveRight !== 'none') {
             const metaEl = cardEl.createDiv('writing-meta');
 
             // Add class if only one side has content (for full-width styling)
-            if (settings.metadataDisplayLeft === 'none' && settings.metadataDisplayRight !== 'none') {
+            if (effectiveLeft === 'none' && effectiveRight !== 'none') {
                 metaEl.addClass('meta-right-only');
-            } else if (settings.metadataDisplayLeft !== 'none' && settings.metadataDisplayRight === 'none') {
+            } else if (effectiveLeft !== 'none' && effectiveRight === 'none') {
                 metaEl.addClass('meta-left-only');
             }
 
             // Left side
             const metaLeft = metaEl.createDiv('meta-left');
-            this.renderMetadataContent(metaLeft, settings.metadataDisplayLeft, card, settings);
+            this.renderMetadataContent(metaLeft, effectiveLeft, card, settings);
 
             // Right side
             const metaRight = metaEl.createDiv('meta-right');
-            this.renderMetadataContent(metaRight, settings.metadataDisplayRight, card, settings);
+            this.renderMetadataContent(metaRight, effectiveRight, card, settings);
         }
     }
 

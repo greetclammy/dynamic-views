@@ -174,7 +174,16 @@ export function Settings({
                 </div>
                 <select
                     value={settings.metadataDisplayLeft}
-                    onChange={(e) => onSettingsChange({ metadataDisplayLeft: e.target.value as 'none' | 'timestamp' | 'tags' | 'path' })}
+                    onChange={(e) => {
+                        const newValue = e.target.value as 'none' | 'timestamp' | 'tags' | 'path';
+                        // Check if this creates a duplicate
+                        const isDuplicate = newValue !== 'none' && newValue === settings.metadataDisplayRight;
+                        onSettingsChange({
+                            metadataDisplayLeft: newValue,
+                            // If duplicate, right was first (it wins), left loses
+                            metadataDisplayWinner: isDuplicate ? 'right' : null
+                        });
+                    }}
                     className="dropdown"
                 >
                     <option value="none">None</option>
@@ -192,7 +201,16 @@ export function Settings({
                 </div>
                 <select
                     value={settings.metadataDisplayRight}
-                    onChange={(e) => onSettingsChange({ metadataDisplayRight: e.target.value as 'none' | 'timestamp' | 'tags' | 'path' })}
+                    onChange={(e) => {
+                        const newValue = e.target.value as 'none' | 'timestamp' | 'tags' | 'path';
+                        // Check if this creates a duplicate
+                        const isDuplicate = newValue !== 'none' && newValue === settings.metadataDisplayLeft;
+                        onSettingsChange({
+                            metadataDisplayRight: newValue,
+                            // If duplicate, left was first (it wins), right loses
+                            metadataDisplayWinner: isDuplicate ? 'left' : null
+                        });
+                    }}
                     className="dropdown"
                 >
                     <option value="none">None</option>

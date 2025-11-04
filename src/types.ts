@@ -7,6 +7,7 @@ export interface Settings {
     showThumbnails: boolean;
     metadataDisplayLeft: 'none' | 'timestamp' | 'tags' | 'path';
     metadataDisplayRight: 'none' | 'timestamp' | 'tags' | 'path';
+    metadataDisplayWinner: 'left' | 'right' | null;
     listMarker: string;
     showTimestampIcon: boolean;
     minMasonryColumns: number;

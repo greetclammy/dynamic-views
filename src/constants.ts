@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: Settings = {
     showThumbnails: true,
     metadataDisplayLeft: "timestamp",
     metadataDisplayRight: "tags",
+    metadataDisplayWinner: null,
     listMarker: "bullet",
     showTimestampIcon: true,
     minMasonryColumns: 1,

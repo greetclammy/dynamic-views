@@ -65,14 +65,22 @@ export function ListView({
                         </a>
                         {/* Metadata - show both left and right inline */}
                         {(() => {
-                            // Duplicate detection: treat right as 'none' if both match
-                            const effectiveRight = settings.metadataDisplayLeft !== 'none' && settings.metadataDisplayLeft === settings.metadataDisplayRight
-                                ? 'none'
-                                : settings.metadataDisplayRight;
+                            // Apply winner logic: if both match and there's a winner, treat loser as 'none'
+                            const effectiveLeft = settings.metadataDisplayWinner === 'right' &&
+                                settings.metadataDisplayLeft !== 'none' &&
+                                settings.metadataDisplayLeft === settings.metadataDisplayRight
+                                    ? 'none'
+                                    : settings.metadataDisplayLeft;
 
-                            return (settings.metadataDisplayLeft !== 'none' || effectiveRight !== 'none') && (
+                            const effectiveRight = settings.metadataDisplayWinner === 'left' &&
+                                settings.metadataDisplayRight !== 'none' &&
+                                settings.metadataDisplayLeft === settings.metadataDisplayRight
+                                    ? 'none'
+                                    : settings.metadataDisplayRight;
+
+                            return (effectiveLeft !== 'none' || effectiveRight !== 'none') && (
                                 <span className="list-meta">
-                                    {settings.metadataDisplayLeft === 'tags' && p.$tags && p.$tags.length > 0 ? (
+                                    {effectiveLeft === 'tags' && p.$tags && p.$tags.length > 0 ? (
                                         <>
                                             {p.$tags.map((tag: string) => (
                                                 <a
@@ -91,7 +99,7 @@ export function ListView({
                                                 </a>
                                             ))}
                                         </>
-                                    ) : settings.metadataDisplayLeft === 'path' && folderPath ? (
+                                    ) : effectiveLeft === 'path' && folderPath ? (
                                         <span className="list-path">{folderPath}</span>
                                     ) : null}
                                     {effectiveRight === 'tags' && p.$tags && p.$tags.length > 0 ? (
