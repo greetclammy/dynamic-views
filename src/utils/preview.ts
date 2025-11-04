@@ -18,16 +18,17 @@ const markdownPatterns = [
     /~~((?:(?!~~).)+)~~/g,                       // Strikethrough
     /==((?:(?!==).)+)==/g,                       // Highlight
     /\[([^\]]+)\]\([^)]+\)/g,                    // Links
-    /\[\[[^\]|]+\|([^\]]+)\]\]/g,                // Wiki links with display
-    /\[\[([^\]]+)\]\]/g,                         // Wiki links
+    /!\[\[[^\]]+\]\]/g,                          // Embedded wikilinks (images, etc.)
+    /\[\[[^\]|]+\|[^\]]+\]\]/g,                  // Wikilinks with display
+    /\[\[[^\]]+\]\]/g,                           // Wikilinks
     /#[a-zA-Z0-9_\-/]+/g,                        // Tags
     /^[-*+]\s+/gm,                               // Bullet list markers
     /^#{1,6}\s+.+$/gm,                           // Heading lines (full removal)
     /^\s*(?:[-_*])\s*(?:[-_*])\s*(?:[-_*])[\s\-_*]*$/gm, // Horizontal rules
     /^\s*\|.*\|.*$/gm,                           // Tables
     /\^\[[^\]]*?]/g,                             // Inline footnotes
-    /\[\^[^\]]+]/g,                              // Footnote references
-    /^\s*\[\^[^\]]+]:.*$/gm,                     // Footnote definitions
+    /\[\^[^\]]+]/g,                              // Footnote markers
+    /^\s*\[\^[^\]]+]:.*$/gm,                     // Footnote details
     /<([a-z][a-z0-9]*)\b[^>]*>(.*?)<\/\1>/gi,    // HTML tag pairs
     /<[^>]+>/g                                   // Remaining HTML tags
 ];
