@@ -186,9 +186,9 @@ export function Settings({
                     className="dropdown"
                 >
                     <option value="none">None</option>
-                    {settings.metadataDisplayRight !== 'timestamp' && <option value="timestamp">Timestamp</option>}
-                    {settings.metadataDisplayRight !== 'tags' && <option value="tags">File tags</option>}
-                    {settings.metadataDisplayRight !== 'path' && <option value="path">File path</option>}
+                    {(settings.metadataDisplayRight !== 'timestamp' || settings.metadataDisplayLeft === 'timestamp') && <option value="timestamp">Timestamp</option>}
+                    {(settings.metadataDisplayRight !== 'tags' || settings.metadataDisplayLeft === 'tags') && <option value="tags">File tags</option>}
+                    {(settings.metadataDisplayRight !== 'path' || settings.metadataDisplayLeft === 'path') && <option value="path">File path</option>}
                 </select>
             </div>
 
@@ -212,9 +212,9 @@ export function Settings({
                     className="dropdown"
                 >
                     <option value="none">None</option>
-                    {settings.metadataDisplayLeft !== 'timestamp' && <option value="timestamp">Timestamp</option>}
-                    {settings.metadataDisplayLeft !== 'tags' && <option value="tags">File tags</option>}
-                    {settings.metadataDisplayLeft !== 'path' && <option value="path">File path</option>}
+                    {(settings.metadataDisplayLeft !== 'timestamp' || settings.metadataDisplayRight === 'timestamp') && <option value="timestamp">Timestamp</option>}
+                    {(settings.metadataDisplayLeft !== 'tags' || settings.metadataDisplayRight === 'tags') && <option value="tags">File tags</option>}
+                    {(settings.metadataDisplayLeft !== 'path' || settings.metadataDisplayRight === 'path') && <option value="path">File path</option>}
                 </select>
             </div>
 
