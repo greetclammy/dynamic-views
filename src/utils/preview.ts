@@ -20,6 +20,7 @@ const markdownPatterns = [
     /\[([^\]]+)\]\([^)]+\)/g,                    // Links
     /\[\[[^\]|]+\|([^\]]+)\]\]/g,                // Wiki links with display
     /\[\[([^\]]+)\]\]/g,                         // Wiki links
+    /#[a-zA-Z0-9_\-/]+/g,                        // Tags
     /^[-*+]\s+/gm,                               // Bullet list markers
     /^#{1,6}\s+.+$/gm,                           // Heading lines (full removal)
     /^\s*(?:[-_*])\s*(?:[-_*])\s*(?:[-_*])[\s\-_*]*$/gm, // Horizontal rules
