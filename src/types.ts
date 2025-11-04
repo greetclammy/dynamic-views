@@ -2,6 +2,8 @@ export interface Settings {
     titleProperty: string;
     descriptionProperty: string;
     imageProperty: string;
+    createdProperty: string;
+    modifiedProperty: string;
     alwaysOmitFirstLine: boolean;
     showTextPreview: boolean;
     showThumbnails: boolean;

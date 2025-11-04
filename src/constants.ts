@@ -4,6 +4,8 @@ export const DEFAULT_SETTINGS: Settings = {
     titleProperty: "",
     descriptionProperty: "",
     imageProperty: "",
+    createdProperty: "",
+    modifiedProperty: "",
     alwaysOmitFirstLine: false,
     showTextPreview: true,
     showThumbnails: true,

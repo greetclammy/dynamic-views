@@ -101,6 +101,35 @@ export class DynamicViewsCardView extends BasesView {
         // Load snippets and images for visible entries
         await this.loadContentForEntries(entries, settings);
 
+        // DEBUG: Test date property format
+        if (entries.length > 0 && (settings.createdProperty || settings.modifiedProperty)) {
+            const testEntry = entries[0];
+            if (settings.createdProperty) {
+                const createdValue = testEntry.getValue(settings.createdProperty as any);
+                console.log('// DEBUG: Created property test');
+                console.log('//   Property name:', settings.createdProperty);
+                console.log('//   Value:', createdValue);
+                console.log('//   Value type:', typeof createdValue);
+                console.log('//   Value constructor:', createdValue?.constructor?.name);
+                console.log('//   Value.data:', (createdValue as any)?.data);
+                console.log('//   Value.type:', (createdValue as any)?.type);
+                console.log('//   Value.toString():', createdValue?.toString());
+                console.log('//   Has isEmpty():', typeof (createdValue as any)?.isEmpty === 'function');
+            }
+            if (settings.modifiedProperty) {
+                const modifiedValue = testEntry.getValue(settings.modifiedProperty as any);
+                console.log('// DEBUG: Modified property test');
+                console.log('//   Property name:', settings.modifiedProperty);
+                console.log('//   Value:', modifiedValue);
+                console.log('//   Value type:', typeof modifiedValue);
+                console.log('//   Value constructor:', modifiedValue?.constructor?.name);
+                console.log('//   Value.data:', (modifiedValue as any)?.data);
+                console.log('//   Value.type:', (modifiedValue as any)?.type);
+                console.log('//   Value.toString():', modifiedValue?.toString());
+                console.log('//   Has isEmpty():', typeof (modifiedValue as any)?.isEmpty === 'function');
+            }
+        }
+
         // Transform to CardData
         const cards = transformBasesEntries(
             entries,

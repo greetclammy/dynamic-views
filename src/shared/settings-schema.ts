@@ -10,6 +10,8 @@ export const DEFAULT_SETTINGS: Settings = {
     titleProperty: "",
     descriptionProperty: "",
     imageProperty: "",
+    createdProperty: "",
+    modifiedProperty: "",
     alwaysOmitFirstLine: false,
     showTextPreview: true,
     showThumbnails: true,
@@ -49,6 +51,18 @@ export function getBasesViewOptions(): any[] {
             displayName: 'Image property',
             key: 'imageProperty',
             placeholder: 'Property name for cover image'
+        },
+        {
+            type: 'property',
+            displayName: 'Created time property',
+            key: 'createdProperty',
+            placeholder: 'Property name for created timestamp'
+        },
+        {
+            type: 'property',
+            displayName: 'Modified time property',
+            key: 'modifiedProperty',
+            placeholder: 'Property name for modified timestamp'
         },
         {
             type: 'toggle',
@@ -154,6 +168,8 @@ export function readBasesSettings(config: any): Settings {
         titleProperty: String(config.get('titleProperty') || DEFAULT_SETTINGS.titleProperty),
         descriptionProperty: String(config.get('descriptionProperty') || DEFAULT_SETTINGS.descriptionProperty),
         imageProperty: String(config.get('imageProperty') || DEFAULT_SETTINGS.imageProperty),
+        createdProperty: String(config.get('createdProperty') || DEFAULT_SETTINGS.createdProperty),
+        modifiedProperty: String(config.get('modifiedProperty') || DEFAULT_SETTINGS.modifiedProperty),
         alwaysOmitFirstLine: Boolean(config.get('alwaysOmitFirstLine')),
         showTextPreview: Boolean(config.get('showTextPreview') ?? DEFAULT_SETTINGS.showTextPreview),
         showThumbnails: Boolean(config.get('showThumbnails') ?? DEFAULT_SETTINGS.showThumbnails),
