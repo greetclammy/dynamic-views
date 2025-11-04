@@ -325,17 +325,25 @@ export class DynamicViewsMasonryView extends BasesView {
             let timestamp: number | null = null;
             let isInvalid = false;
 
-            // Check if a custom property is set
             if (customProperty) {
                 const value = entry.getValue(customProperty as any);
-                if (this.isDateValue(value)) {
+
+                // Check if property exists on note (not null/empty)
+                const propertyExists = value &&
+                    !(typeof value === 'object' && 'isEmpty' in value && value.isEmpty());
+
+                if (!propertyExists) {
+                    // Property not set on this note - fall back to file metadata
+                    timestamp = useCreatedTime ? card.ctime : card.mtime;
+                } else if (this.isDateValue(value)) {
+                    // Property exists and is valid date/datetime
                     timestamp = this.extractTimestamp(value);
                 } else {
-                    // Property exists but is not a date/datetime
+                    // Property exists but is wrong type
                     isInvalid = true;
                 }
             } else {
-                // No custom property, use file timestamp
+                // No custom property configured - use file metadata
                 timestamp = useCreatedTime ? card.ctime : card.mtime;
             }
 

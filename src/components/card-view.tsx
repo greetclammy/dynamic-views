@@ -58,24 +58,35 @@ export function CardView({
                 let date = "";
                 let isInvalid = false;
 
-                // Check if a custom property is set
                 if (customProperty) {
                     const propValue = p.value(customProperty);
 
-                    // Check if it's a valid date/datetime value (Datacore DateTime object)
-                    if (propValue && typeof propValue === 'object' && 'toMillis' in propValue) {
+                    // Check if property exists on note (not null/undefined/empty)
+                    const propertyExists = propValue !== null &&
+                        propValue !== undefined &&
+                        !(typeof propValue === 'object' && 'isEmpty' in propValue && propValue.isEmpty());
+
+                    if (!propertyExists) {
+                        // Property not set on this note - fall back to file metadata
+                        timestamp = useCreatedTime ? p.$ctime : p.$mtime;
+                        timestampMillis = timestamp?.toMillis() || 0;
+                        const now = Date.now();
+                        const isRecent = now - timestampMillis < 86400000;
+                        date = timestamp ? (isRecent ? timestamp.toFormat("yyyy-MM-dd HH:mm") : timestamp.toFormat("yyyy-MM-dd")) : "";
+                    } else if (propValue && typeof propValue === 'object' && 'toMillis' in propValue) {
+                        // Property exists and is valid date/datetime (Datacore DateTime object)
                         timestamp = propValue;
                         timestampMillis = propValue.toMillis();
                         const now = Date.now();
                         const isRecent = now - timestampMillis < 86400000;
                         date = isRecent ? propValue.toFormat("yyyy-MM-dd HH:mm") : propValue.toFormat("yyyy-MM-dd");
                     } else {
-                        // Property exists but is not a date/datetime
+                        // Property exists but is wrong type
                         isInvalid = true;
                         date = "Invalid";
                     }
                 } else {
-                    // No custom property, use file timestamp
+                    // No custom property configured - use file metadata
                     timestamp = useCreatedTime ? p.$ctime : p.$mtime;
                     timestampMillis = timestamp?.toMillis() || 0;
                     const now = Date.now();
