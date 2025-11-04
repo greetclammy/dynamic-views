@@ -22,8 +22,6 @@ export class DynamicViewsMasonryView extends BasesView {
     private updateLayoutRef: { current: (() => void) | null } = { current: null };
     private focusableCardIndex: number = 0;
     private masonryContainer: HTMLElement | null = null;
-    private previousSettings: { metadataDisplayLeft: string; metadataDisplayRight: string } | null = null;
-    private metadataDisplayWinner: 'left' | 'right' | null = null;
 
     constructor(controller: any, containerEl: HTMLElement, plugin: DynamicViewsPlugin) {
         super(controller);
@@ -42,44 +40,6 @@ export class DynamicViewsMasonryView extends BasesView {
 
         // Read settings from Bases config
         const settings = readBasesSettings(this.config);
-
-        // Track previous settings to determine winner when both match
-        if (this.previousSettings) {
-            const leftChanged = settings.metadataDisplayLeft !== this.previousSettings.metadataDisplayLeft;
-            const rightChanged = settings.metadataDisplayRight !== this.previousSettings.metadataDisplayRight;
-
-            // Check if both are now the same non-none value
-            if (settings.metadataDisplayLeft !== 'none' &&
-                settings.metadataDisplayLeft === settings.metadataDisplayRight) {
-                // Determine which one changed (the one that changed loses, the one that stayed wins)
-                if (leftChanged && !rightChanged) {
-                    this.metadataDisplayWinner = 'right'; // Right had it first
-                } else if (rightChanged && !leftChanged) {
-                    this.metadataDisplayWinner = 'left'; // Left had it first
-                } else {
-                    // Both changed simultaneously - shouldn't happen in normal use
-                    // Keep existing winner if set
-                    if (this.metadataDisplayWinner === null) {
-                        this.metadataDisplayWinner = 'left';
-                    }
-                }
-            } else {
-                // No duplicate, clear winner
-                this.metadataDisplayWinner = null;
-            }
-        } else {
-            // First load - default to left wins
-            if (settings.metadataDisplayLeft !== 'none' &&
-                settings.metadataDisplayLeft === settings.metadataDisplayRight) {
-                this.metadataDisplayWinner = 'left';
-            }
-        }
-
-        // Update previous settings for next comparison
-        this.previousSettings = {
-            metadataDisplayLeft: settings.metadataDisplayLeft,
-            metadataDisplayRight: settings.metadataDisplayRight
-        };
 
         // Load snippets and images for visible entries
         await this.loadContentForEntries(entries, settings);
@@ -258,18 +218,12 @@ export class DynamicViewsMasonryView extends BasesView {
             }
         }
 
-        // Metadata - apply winner logic
-        const effectiveLeft = this.metadataDisplayWinner === 'right' &&
-            settings.metadataDisplayLeft !== 'none' &&
-            settings.metadataDisplayLeft === settings.metadataDisplayRight
-                ? 'none'
-                : settings.metadataDisplayLeft;
+        // Metadata - left always wins when both are the same non-none value
+        const isDuplicate = settings.metadataDisplayLeft !== 'none' &&
+            settings.metadataDisplayLeft === settings.metadataDisplayRight;
 
-        const effectiveRight = this.metadataDisplayWinner === 'left' &&
-            settings.metadataDisplayRight !== 'none' &&
-            settings.metadataDisplayLeft === settings.metadataDisplayRight
-                ? 'none'
-                : settings.metadataDisplayRight;
+        const effectiveLeft = settings.metadataDisplayLeft;
+        const effectiveRight = isDuplicate ? 'none' : settings.metadataDisplayRight;
 
         if (effectiveLeft !== 'none' || effectiveRight !== 'none') {
             const metaEl = cardEl.createDiv('writing-meta');

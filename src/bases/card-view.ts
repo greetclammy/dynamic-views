@@ -21,8 +21,6 @@ export class DynamicViewsCardView extends BasesView {
     private hasImageAvailable: Record<string, boolean> = {};
     private updateLayoutRef: { current: (() => void) | null } = { current: null };
     private focusableCardIndex: number = 0;
-    private previousSettings: { metadataDisplayLeft: string; metadataDisplayRight: string } | null = null;
-    private metadataDisplayWinner: 'left' | 'right' | null = null;
 
     constructor(controller: any, containerEl: HTMLElement, plugin: DynamicViewsPlugin) {
         super(controller);
@@ -42,59 +40,6 @@ export class DynamicViewsCardView extends BasesView {
 
         // Read settings from Bases config
         const settings = readBasesSettings(this.config);
-
-        console.log('// DEBUG: Metadata winner tracking');
-        console.log('//   Current settings - left:', settings.metadataDisplayLeft, 'right:', settings.metadataDisplayRight);
-        console.log('//   Previous settings:', this.previousSettings);
-        console.log('//   Current winner:', this.metadataDisplayWinner);
-
-        // Track previous settings to determine winner when both match
-        if (this.previousSettings) {
-            const leftChanged = settings.metadataDisplayLeft !== this.previousSettings.metadataDisplayLeft;
-            const rightChanged = settings.metadataDisplayRight !== this.previousSettings.metadataDisplayRight;
-
-            console.log('//   Changes detected - leftChanged:', leftChanged, 'rightChanged:', rightChanged);
-
-            // Check if both are now the same non-none value
-            if (settings.metadataDisplayLeft !== 'none' &&
-                settings.metadataDisplayLeft === settings.metadataDisplayRight) {
-                console.log('//   DUPLICATE DETECTED');
-                // Determine which one changed (the one that changed loses, the one that stayed wins)
-                if (leftChanged && !rightChanged) {
-                    console.log('//   Left changed, right stayed → RIGHT WINS');
-                    this.metadataDisplayWinner = 'right'; // Right had it first
-                } else if (rightChanged && !leftChanged) {
-                    console.log('//   Right changed, left stayed → LEFT WINS');
-                    this.metadataDisplayWinner = 'left'; // Left had it first
-                } else {
-                    console.log('//   Both changed or neither changed → KEEP EXISTING or default to LEFT');
-                    // Both changed simultaneously - shouldn't happen in normal use
-                    // Keep existing winner if set
-                    if (this.metadataDisplayWinner === null) {
-                        this.metadataDisplayWinner = 'left';
-                    }
-                }
-                console.log('//   Winner set to:', this.metadataDisplayWinner);
-            } else {
-                console.log('//   No duplicate');
-                // No duplicate, clear winner
-                this.metadataDisplayWinner = null;
-            }
-        } else {
-            console.log('//   FIRST LOAD (no previous settings)');
-            // First load - default to left wins
-            if (settings.metadataDisplayLeft !== 'none' &&
-                settings.metadataDisplayLeft === settings.metadataDisplayRight) {
-                console.log('//   Duplicate exists on first load → LEFT WINS');
-                this.metadataDisplayWinner = 'left';
-            }
-        }
-
-        // Update previous settings for next comparison
-        this.previousSettings = {
-            metadataDisplayLeft: settings.metadataDisplayLeft,
-            metadataDisplayRight: settings.metadataDisplayRight
-        };
 
         // Load snippets and images for visible entries
         await this.loadContentForEntries(entries, settings);
@@ -186,24 +131,12 @@ export class DynamicViewsCardView extends BasesView {
             }
         }
 
-        // Metadata - apply winner logic
-        console.log('// DEBUG: Applying winner in renderCard for', card.title);
-        console.log('//   Winner:', this.metadataDisplayWinner);
-        console.log('//   Settings - left:', settings.metadataDisplayLeft, 'right:', settings.metadataDisplayRight);
+        // Metadata - left always wins when both are the same non-none value
+        const isDuplicate = settings.metadataDisplayLeft !== 'none' &&
+            settings.metadataDisplayLeft === settings.metadataDisplayRight;
 
-        const effectiveLeft = this.metadataDisplayWinner === 'right' &&
-            settings.metadataDisplayLeft !== 'none' &&
-            settings.metadataDisplayLeft === settings.metadataDisplayRight
-                ? 'none'
-                : settings.metadataDisplayLeft;
-
-        const effectiveRight = this.metadataDisplayWinner === 'left' &&
-            settings.metadataDisplayRight !== 'none' &&
-            settings.metadataDisplayLeft === settings.metadataDisplayRight
-                ? 'none'
-                : settings.metadataDisplayRight;
-
-        console.log('//   Effective - left:', effectiveLeft, 'right:', effectiveRight);
+        const effectiveLeft = settings.metadataDisplayLeft;
+        const effectiveRight = isDuplicate ? 'none' : settings.metadataDisplayRight;
 
         if (effectiveLeft !== 'none' || effectiveRight !== 'none') {
             const metaEl = cardEl.createDiv('writing-meta');
