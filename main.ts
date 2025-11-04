@@ -37,10 +37,12 @@ export default class DynamicViewsPlugin extends Plugin {
 		await this.persistenceManager.load();
 
 		// Register Bases views
+		console.log('Registering Bases views...');
 		this.registerBasesView('dynamic-views-card', {
 			name: 'Cards',
 			icon: 'lucide-layout-grid',
 			factory: (controller: any, containerEl: HTMLElement) => {
+				console.log('Card view factory called', { controller, containerEl });
 				return new DynamicViewsCardView(controller, containerEl);
 			},
 			options: cardViewOptions,
@@ -50,10 +52,12 @@ export default class DynamicViewsPlugin extends Plugin {
 			name: 'Masonry',
 			icon: 'lucide-columns',
 			factory: (controller: any, containerEl: HTMLElement) => {
+				console.log('Masonry view factory called', { controller, containerEl });
 				return new DynamicViewsMasonryView(controller, containerEl);
 			},
 			options: masonryViewOptions,
 		});
+		console.log('Bases views registered');
 
 		// Create welcome note on first load (after workspace is ready)
 		const settings = this.persistenceManager.getGlobalSettings();
