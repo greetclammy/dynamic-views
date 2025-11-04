@@ -772,55 +772,53 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
     // Infinite scroll: ResizeObserver + scroll + window resize
     dc.useEffect(() => {
-        console.log('[InfiniteScroll:Setup] Effect running, initial displayedCount:', displayedCount, 'sorted.length:', sorted.length);
-
         if (!containerRef.current) {
-            console.log('[InfiniteScroll:Setup] No containerRef, aborting setup');
+            console.log('[InfiniteScroll] containerRef not available, skipping setup');
             return;
         }
+
+        console.log('[InfiniteScroll] Setting up infinite scroll system');
 
         // Configuration: preload distance multipliers
         const DESKTOP_VIEWPORT_MULTIPLIER = 2; // Load when within 2x viewport height from bottom
         const MOBILE_VIEWPORT_MULTIPLIER = Math.max(1, DESKTOP_VIEWPORT_MULTIPLIER * 0.5); // Mobile: 0.5x of desktop, minimum 1x
 
-        // Find scrollable element (walk DOM tree)
-        let scrollableElement: any = null;
+        // Find the element that actually scrolls
         let element: any = containerRef.current;
-        while (element && element !== document.body) {
-            const style = getComputedStyle(element);
-            // Only use elements with overflow AND non-zero height (skip collapsed containers)
-            if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && element.clientHeight > 0) {
+        let scrollableElement: any = null;
+
+        while (element && !scrollableElement) {
+            if (element.scrollHeight > element.clientHeight) {
                 scrollableElement = element;
-                break;
             }
             element = element.parentElement;
         }
 
         if (!scrollableElement) {
             scrollableElement = window;
-            console.log('[InfiniteScroll:Setup] Using window as scroll container');
+            console.log('[InfiniteScroll] Using window as scroll container');
         } else {
-            console.log('[InfiniteScroll:Setup] Using element as scroll container:', scrollableElement.className);
+            console.log('[InfiniteScroll] Using element as scroll container:', scrollableElement.className);
         }
 
         // Core batch loading function
         const loadMoreItems = (trigger = 'unknown') => {
-            console.log(`[InfiniteScroll:LoadMore] Called by: ${trigger}, isLoadingRef: ${isLoadingRef.current}, displayedCountRef: ${displayedCountRef.current}`);
+            console.log(`[InfiniteScroll] loadMoreItems() called by: ${trigger}`);
 
             // Guard: already loading or no container
             if (isLoadingRef.current) {
-                console.log('[InfiniteScroll:LoadMore] Guard: Already loading, returning false');
+                console.log('[InfiniteScroll] Already loading, skipping');
                 return false;
             }
             if (!containerRef.current) {
-                console.log('[InfiniteScroll:LoadMore] Guard: No container, returning false');
+                console.log('[InfiniteScroll] No container, skipping');
                 return false;
             }
 
             // Get current count from ref (captures latest value)
             const currentCount = displayedCountRef.current;
             if (currentCount >= sorted.length) {
-                console.log(`[InfiniteScroll:LoadMore] Guard: All items loaded (${currentCount}/${sorted.length}), returning false`);
+                console.log(`[InfiniteScroll] All items loaded (${currentCount}/${sorted.length})`);
                 return false; // All items loaded
             }
 
@@ -828,7 +826,7 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
             let scrollTop, editorHeight, scrollHeight, distanceFromBottom;
 
             if (scrollableElement === window) {
-                scrollTop = window.scrollY;
+                scrollTop = window.scrollY || document.documentElement.scrollTop;
                 editorHeight = window.innerHeight;
                 scrollHeight = document.documentElement.scrollHeight;
             } else {
@@ -842,73 +840,57 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
             // Calculate threshold
             const threshold = editorHeight * ((app as any).isMobile ? MOBILE_VIEWPORT_MULTIPLIER : DESKTOP_VIEWPORT_MULTIPLIER);
 
-            console.log(`[InfiniteScroll:LoadMore] Metrics: scrollTop=${scrollTop.toFixed(0)}px, editorHeight=${editorHeight}px, scrollHeight=${scrollHeight}px, distance=${distanceFromBottom.toFixed(0)}px, threshold=${threshold.toFixed(0)}px`);
-
-            // Guard: Don't load if container isn't scrollable AND triggered by ResizeObserver (not user scroll)
-            // This prevents infinite loading when queryHeight=0 and container expands to fit content
-            // But allows scroll/resize events to still load when user takes action
-            if (scrollHeight === editorHeight && trigger === 'ResizeObserver') {
-                console.log('[InfiniteScroll:LoadMore] Guard: Container not scrollable, ResizeObserver trigger, returning false');
-                return false;
-            }
+            console.log(`[InfiniteScroll] Metrics: scrollTop=${scrollTop.toFixed(0)}px, editorHeight=${editorHeight}px, scrollHeight=${scrollHeight}px, distance=${distanceFromBottom.toFixed(0)}px, threshold=${threshold.toFixed(0)}px`);
 
             // Check if we should load
             if (distanceFromBottom > threshold) {
-                console.log(`[InfiniteScroll:LoadMore] Distance (${distanceFromBottom.toFixed(0)}px) > threshold (${threshold.toFixed(0)}px), returning false`);
+                console.log(`[InfiniteScroll] Distance (${distanceFromBottom.toFixed(0)}px) > threshold (${threshold.toFixed(0)}px), not loading`);
                 return false;
             }
 
             // Load batch
+            console.log('[InfiniteScroll] Distance within threshold, loading batch...');
             isLoadingRef.current = true;
 
-            const currentCols = columnCountRef.current || columnCount || 2;
+            const currentCols = columnCountRef.current || 2;
             const rowsPerColumn = 10;
             const batchSize = Math.min(currentCols * rowsPerColumn, 7 * rowsPerColumn);
             const newCount = Math.min(currentCount + batchSize, sorted.length);
 
-            console.log(`[InfiniteScroll:LoadMore] Loading batch: ${currentCount} → ${newCount} (${batchSize} items, ${currentCols} cols × ${rowsPerColumn} rows)`);
-            console.log(`[InfiniteScroll:LoadMore] columnCountRef: ${columnCountRef.current}, columnCount state: ${columnCount}, used: ${currentCols}`);
+            console.log(`[InfiniteScroll] Loading batch: ${currentCount} → ${newCount} (${batchSize} items, ${currentCols} cols × ${rowsPerColumn} rows)`);
 
             displayedCountRef.current = newCount;
             setDisplayedCount(newCount);
 
-            console.log('[InfiniteScroll:LoadMore] Batch loaded, returning true');
             return true; // Batch loaded
         };
 
         // Setup ResizeObserver (watches masonry container)
-        let resizeTimer: any = null;
+        console.log('[InfiniteScroll] Setting up ResizeObserver on masonry container');
         const resizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const height = entry.contentRect.height;
-                console.log(`[InfiniteScroll:ResizeObserver] Container height changed to ${height}px, clearing isLoadingRef`);
+                console.log(`[InfiniteScroll] ResizeObserver: Container height changed to ${height}px (masonry completed layout)`);
 
                 // Masonry just completed layout, clear loading flag
                 isLoadingRef.current = false;
 
-                // Debounce loadMoreItems check to prevent rapid-fire loading during initial render
-                if (resizeTimer) {
-                    console.log('[InfiniteScroll:ResizeObserver] Debounce timer active, clearing and restarting');
-                    clearTimeout(resizeTimer);
-                }
-                resizeTimer = setTimeout(() => {
-                    console.log('[InfiniteScroll:ResizeObserver] Debounce complete (150ms), calling loadMoreItems');
-                    loadMoreItems('ResizeObserver');
-                }, 150);
+                // Check if need more items
+                loadMoreItems('ResizeObserver');
             }
         });
         resizeObserver.observe(containerRef.current);
-        console.log('[InfiniteScroll:Setup] ResizeObserver attached');
 
         // Setup window resize listener (handles viewport height changes)
+        console.log('[InfiniteScroll] Setting up window resize listener');
         const handleWindowResize = () => {
-            console.log('[InfiniteScroll:WindowResize] Window resized');
+            console.log('[InfiniteScroll] Window resized, checking if need more items');
             loadMoreItems('window.resize');
         };
         window.addEventListener('resize', handleWindowResize);
-        console.log('[InfiniteScroll:Setup] Window resize listener attached');
 
         // Setup scroll listener with leading-edge throttle
+        console.log('[InfiniteScroll] Setting up scroll listener with leading-edge throttle');
         let scrollTimer: any = null;
         const handleScroll = () => {
             if (scrollTimer) {
@@ -916,30 +898,30 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                 return;
             }
 
-            console.log('[InfiniteScroll:Scroll] Scroll event (cooldown started)');
+            console.log('[InfiniteScroll] Scroll event (cooldown started)');
 
             // Check immediately (leading edge)
             loadMoreItems('scroll');
 
             // Start cooldown
             scrollTimer = setTimeout(() => {
-                console.log('[InfiniteScroll:Scroll] Cooldown ended');
+                console.log('[InfiniteScroll] Scroll cooldown ended');
                 scrollTimer = null;
             }, 100);
         };
         scrollableElement.addEventListener('scroll', handleScroll, { passive: true });
-        console.log('[InfiniteScroll:Setup] Scroll listener attached, setup complete');
+
+        console.log('[InfiniteScroll] All listeners attached, system ready');
 
         // Cleanup
         return () => {
-            console.log('[InfiniteScroll:Cleanup] Cleaning up all listeners');
+            console.log('[InfiniteScroll] Cleaning up all listeners');
             resizeObserver.disconnect();
             window.removeEventListener('resize', handleWindowResize);
             scrollableElement.removeEventListener('scroll', handleScroll);
             if (scrollTimer) clearTimeout(scrollTimer);
-            if (resizeTimer) clearTimeout(resizeTimer);
         };
-    }, [sorted.length, app, dc]);
+    }, []); // Empty deps - only set up once on mount
 
     // Auto-reload: Watch for USER_QUERY prop changes (Datacore re-renders on code block edits)
     dc.useEffect(() => {
