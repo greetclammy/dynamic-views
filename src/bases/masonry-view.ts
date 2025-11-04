@@ -29,6 +29,9 @@ export class DynamicViewsMasonryView extends BasesView {
         // Add both classes - 'dynamic-views' for CSS styling, 'dynamic-views-bases-container' for identification
         this.containerEl.addClass('dynamic-views');
         this.containerEl.addClass('dynamic-views-bases-container');
+        // Make container scrollable
+        this.containerEl.style.overflowY = 'auto';
+        this.containerEl.style.height = '100%';
     }
 
     async onDataUpdated(): Promise<void> {
