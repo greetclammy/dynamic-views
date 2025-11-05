@@ -19,7 +19,7 @@
     "metadataDisplayWinner": "right",
     "timestampDisplay": "mtime",
     "listMarker": "bullet",
-    "showTimestampIcon": true,
+    "showTimestampIcon": false,
     "minMasonryColumns": 2,
     "minGridColumns": 2,
     "randomizeAction": "shuffle",
