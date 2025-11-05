@@ -243,7 +243,7 @@ export function Settings({
                     >
                         <option value="ctime">Created time</option>
                         <option value="mtime">Modified time</option>
-                        <option value="sort-based">Depending on sort method</option>
+                        <option value="sort-based">Sort method</option>
                     </select>
                 </div>
             )}
@@ -262,22 +262,6 @@ export function Settings({
                     <option value="bullet">Bullet</option>
                     <option value="number">Number</option>
                     <option value="none">None</option>
-                </select>
-            </div>
-
-            {/* Randomize Action */}
-            <div className="setting-item setting-item-text">
-                <div className="setting-item-info">
-                    <label>Randomize action</label>
-                    <div className="setting-desc">Choose what the Randomize button does.</div>
-                </div>
-                <select
-                    value={settings.randomizeAction}
-                    onChange={(e) => onSettingsChange({ randomizeAction: e.target.value })}
-                    className="dropdown"
-                >
-                    <option value="shuffle">Shuffle order</option>
-                    <option value="open">Open random file</option>
                 </select>
             </div>
 

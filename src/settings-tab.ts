@@ -100,7 +100,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 			.setDesc('Which timestamp to display in card metadata')
 			.addDropdown((dropdown) =>
 				dropdown
-					.addOption('sort-based', 'Depending on sort method')
+					.addOption('sort-based', 'Sort method')
 					.addOption('ctime', 'Created time')
 					.addOption('mtime', 'Modified time')
 					.setValue(settings.timestampDisplay)
