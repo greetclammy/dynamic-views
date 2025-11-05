@@ -1,6 +1,6 @@
 {
   "globalSettings": {
-    "minCardWidth": 250,
+    "minCardWidth": 500,
     "titleProperty": "hello",
     "descriptionProperty": "there",
     "imageProperty": "how",
@@ -48,8 +48,8 @@
       "sortMethod": "mtime-desc",
       "viewMode": "card",
       "searchQuery": "",
-      "resultLimit": "100",
-      "widthMode": "max"
+      "resultLimit": "10",
+      "widthMode": "normal"
     },
     "1762363307189": {
       "sortMethod": "mtime-desc",

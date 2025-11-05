@@ -1134,6 +1134,12 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     overflow: hidden;
 }
 
+/* Grid mode: push metadata to bottom of card */
+.bases-view[data-view-type="dynamic-views-card"] .cards-feed .writing-card .writing-meta,
+.dynamic-views .cards-feed .writing-card .writing-meta {
+    margin-top: auto;
+}
+
 .dynamic-views .writing-card {
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
