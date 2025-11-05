@@ -1281,7 +1281,6 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     min-height: 24px;
     line-height: 1.4;
     white-space: nowrap;
-    overflow: hidden;
 }
 
 .dynamic-views .meta-left {
