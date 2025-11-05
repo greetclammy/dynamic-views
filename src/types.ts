@@ -4,7 +4,7 @@ export interface Settings {
     imageProperty: string;
     createdProperty: string;
     modifiedProperty: string;
-    alwaysOmitFirstLine: boolean;
+    omitFirstLine: boolean;
     showTextPreview: boolean;
     showThumbnails: boolean;
     thumbnailPosition: 'left' | 'right';
@@ -15,6 +15,7 @@ export interface Settings {
     metadataDisplayLeft: 'none' | 'timestamp' | 'tags' | 'path';
     metadataDisplayRight: 'none' | 'timestamp' | 'tags' | 'path';
     metadataDisplayWinner: 'left' | 'right' | null;
+    timestampDisplay: 'ctime' | 'mtime' | 'sort-based';
     listMarker: string;
     showTimestampIcon: boolean;
     minMasonryColumns: number;

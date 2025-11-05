@@ -38,6 +38,75 @@ export function Settings({
                 />
             </div>
 
+            {/* Metadata Display (Left) */}
+            <div className="setting-item setting-item-text">
+                <div className="setting-item-info">
+                    <label>Metadata display (left)</label>
+                    <div className="setting-desc">Set what metadata to show on the left side.</div>
+                </div>
+                <select
+                    value={settings.metadataDisplayLeft}
+                    onChange={(e) => {
+                        const newValue = e.target.value as 'none' | 'timestamp' | 'tags' | 'path';
+                        // Check if this creates a duplicate
+                        const isDuplicate = newValue !== 'none' && newValue === settings.metadataDisplayRight;
+                        onSettingsChange({
+                            metadataDisplayLeft: newValue,
+                            // If duplicate, right was first (it wins), left loses
+                            metadataDisplayWinner: isDuplicate ? 'right' : null
+                        });
+                    }}
+                    className="dropdown"
+                >
+                    <option value="timestamp">Timestamp</option>
+                    <option value="path">File path</option>
+                    <option value="tags">File tags</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+
+            {/* Metadata Display (Right) */}
+            <div className="setting-item setting-item-text">
+                <div className="setting-item-info">
+                    <label>Metadata display (right)</label>
+                    <div className="setting-desc">Set what metadata to show on the right side.</div>
+                </div>
+                <select
+                    value={settings.metadataDisplayRight}
+                    onChange={(e) => {
+                        const newValue = e.target.value as 'none' | 'timestamp' | 'tags' | 'path';
+                        // Check if this creates a duplicate
+                        const isDuplicate = newValue !== 'none' && newValue === settings.metadataDisplayLeft;
+                        onSettingsChange({
+                            metadataDisplayRight: newValue,
+                            // If duplicate, left was first (it wins), right loses
+                            metadataDisplayWinner: isDuplicate ? 'left' : null
+                        });
+                    }}
+                    className="dropdown"
+                >
+                    <option value="timestamp">Timestamp</option>
+                    <option value="path">File path</option>
+                    <option value="tags">File tags</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+
+            {/* Title Property */}
+            <div className="setting-item setting-item-text">
+                <div className="setting-item-info">
+                    <label>Title property</label>
+                    <div className="setting-desc">Set property to show as file title. Will use filename if unavailable.</div>
+                </div>
+                <input
+                    type="text"
+                    value={settings.titleProperty}
+                    onChange={(e) => onSettingsChange({ titleProperty: e.target.value })}
+                    placeholder="Comma-separated if multiple"
+                    className="setting-text-input"
+                />
+            </div>
+
             {/* Show Text Preview Toggle */}
             <div className="setting-item setting-item-toggle">
                 <div className="setting-item-info">
@@ -59,46 +128,42 @@ export function Settings({
                 />
             </div>
 
-            {/* Fall back to note content Toggle */}
-            <div className="setting-item setting-item-toggle">
-                <div className="setting-item-info">
-                    <label>Fall back to note content if unavailable</label>
-                    <div className="setting-desc">Use note content when text preview property is not set or empty.</div>
+            {/* Text Preview Property (conditional) */}
+            {settings.showTextPreview && (
+                <div className="setting-item setting-item-text">
+                    <div className="setting-item-info">
+                        <label>Text preview property</label>
+                        <div className="setting-desc">Set property to show as text preview. Will use first few lines in note if unavailable.</div>
+                    </div>
+                    <input
+                        type="text"
+                        value={settings.descriptionProperty}
+                        onChange={(e) => onSettingsChange({ descriptionProperty: e.target.value })}
+                        placeholder="Comma-separated if multiple"
+                        className="setting-text-input"
+                    />
                 </div>
-                <div
-                    className={`checkbox-container ${settings.fallbackToContent ? 'is-enabled' : ''}`}
-                    onClick={() => onSettingsChange({ fallbackToContent: !settings.fallbackToContent })}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            onSettingsChange({ fallbackToContent: !settings.fallbackToContent });
-                        }
-                    }}
-                    tabIndex={0}
-                    role="checkbox"
-                    aria-checked={settings.fallbackToContent}
-                />
-            </div>
+            )}
 
-            {/* Omit First Line Toggle (conditional) */}
+            {/* Fall back to note content Toggle */}
             {settings.showTextPreview && (
                 <div className="setting-item setting-item-toggle">
                     <div className="setting-item-info">
-                        <label>Omit first line in preview</label>
-                        <div className="setting-desc">Always skip first line in text previews (in addition to automatic omission when first line matches title/filename).</div>
+                        <label>Use note content if property unavailable</label>
+                        <div className="setting-desc">Fall back to note content when text preview property is not set or empty.</div>
                     </div>
                     <div
-                        className={`checkbox-container ${settings.alwaysOmitFirstLine ? 'is-enabled' : ''}`}
-                        onClick={() => onSettingsChange({ alwaysOmitFirstLine: !settings.alwaysOmitFirstLine })}
+                        className={`checkbox-container ${settings.fallbackToContent ? 'is-enabled' : ''}`}
+                        onClick={() => onSettingsChange({ fallbackToContent: !settings.fallbackToContent })}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault();
-                                onSettingsChange({ alwaysOmitFirstLine: !settings.alwaysOmitFirstLine });
+                                onSettingsChange({ fallbackToContent: !settings.fallbackToContent });
                             }
                         }}
                         tabIndex={0}
                         role="checkbox"
-                        aria-checked={settings.alwaysOmitFirstLine}
+                        aria-checked={settings.fallbackToContent}
                     />
                 </div>
             )}
@@ -124,32 +189,70 @@ export function Settings({
                 />
             </div>
 
-            {/* Fall back to image embeds Toggle */}
-            <div className="setting-item setting-item-toggle">
-                <div className="setting-item-info">
-                    <label>Fall back to image embeds if unavailable</label>
-                    <div className="setting-desc">Use image embeds from note content when image property is not set or empty.</div>
+            {/* Image Property (conditional) */}
+            {settings.showThumbnails && (
+                <div className="setting-item setting-item-text">
+                    <div className="setting-item-info">
+                        <label>Image property</label>
+                        <div className="setting-desc">Set property to show as thumbnail. Will use first image embed in note if unavailable. Supports: .avif, .bmp, .gif, .jpeg, .jpg, .png, .svg, .webp</div>
+                    </div>
+                    <input
+                        type="text"
+                        value={settings.imageProperty}
+                        onChange={(e) => onSettingsChange({ imageProperty: e.target.value })}
+                        placeholder="Comma-separated if multiple"
+                        className="setting-text-input"
+                    />
                 </div>
-                <div
-                    className={`checkbox-container ${settings.fallbackToEmbeds ? 'is-enabled' : ''}`}
-                    onClick={() => onSettingsChange({ fallbackToEmbeds: !settings.fallbackToEmbeds })}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            onSettingsChange({ fallbackToEmbeds: !settings.fallbackToEmbeds });
-                        }
-                    }}
-                    tabIndex={0}
-                    role="checkbox"
-                    aria-checked={settings.fallbackToEmbeds}
-                />
-            </div>
+            )}
+
+            {/* Fall back to image embeds Toggle */}
+            {settings.showThumbnails && (
+                <div className="setting-item setting-item-toggle">
+                    <div className="setting-item-info">
+                        <label>Use images in note if property unavailable</label>
+                        <div className="setting-desc">Fall back to image embeds from note content when image property is not set or empty.</div>
+                    </div>
+                    <div
+                        className={`checkbox-container ${settings.fallbackToEmbeds ? 'is-enabled' : ''}`}
+                        onClick={() => onSettingsChange({ fallbackToEmbeds: !settings.fallbackToEmbeds })}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                onSettingsChange({ fallbackToEmbeds: !settings.fallbackToEmbeds });
+                            }
+                        }}
+                        tabIndex={0}
+                        role="checkbox"
+                        aria-checked={settings.fallbackToEmbeds}
+                    />
+                </div>
+            )}
+
+            {/* Timestamp Reflects - Only show if timestamp is displayed */}
+            {(settings.metadataDisplayLeft === 'timestamp' || settings.metadataDisplayRight === 'timestamp') && (
+                <div className="setting-item setting-item-text">
+                    <div className="setting-item-info">
+                        <label>Timestamp reflects</label>
+                        <div className="setting-desc">Which timestamp to display in card metadata.</div>
+                    </div>
+                    <select
+                        value={settings.timestampDisplay}
+                        onChange={(e) => onSettingsChange({ timestampDisplay: e.target.value as 'ctime' | 'mtime' | 'sort-based' })}
+                        className="dropdown"
+                    >
+                        <option value="ctime">Created time</option>
+                        <option value="mtime">Modified time</option>
+                        <option value="sort-based">Depending on sort method</option>
+                    </select>
+                </div>
+            )}
 
             {/* Created Time Property (conditional) */}
             {(settings.metadataDisplayLeft === 'timestamp' || settings.metadataDisplayRight === 'timestamp') && (
                 <div className="setting-item setting-item-text">
                     <div className="setting-item-info">
-                        <label>Created time property</label>
+                        <label>Date created property</label>
                         <div className="setting-desc">Set property to show as created timestamp. Will use file created time if unavailable. Must be a date or datetime property.</div>
                     </div>
                     <input
@@ -189,7 +292,7 @@ export function Settings({
             {(settings.metadataDisplayLeft === 'timestamp' || settings.metadataDisplayRight === 'timestamp') && (
                 <div className="setting-item setting-item-text">
                     <div className="setting-item-info">
-                        <label>Modified time property</label>
+                        <label>Date modified property</label>
                         <div className="setting-desc">Set property to show as modified timestamp. Will use file modified time if unavailable. Must be a date or datetime property.</div>
                     </div>
                     <input
@@ -224,60 +327,6 @@ export function Settings({
                     />
                 </div>
             )}
-
-            {/* Metadata Display (Left) */}
-            <div className="setting-item setting-item-text">
-                <div className="setting-item-info">
-                    <label>Metadata display (left)</label>
-                    <div className="setting-desc">Set what metadata to show on the left side.</div>
-                </div>
-                <select
-                    value={settings.metadataDisplayLeft}
-                    onChange={(e) => {
-                        const newValue = e.target.value as 'none' | 'timestamp' | 'tags' | 'path';
-                        // Check if this creates a duplicate
-                        const isDuplicate = newValue !== 'none' && newValue === settings.metadataDisplayRight;
-                        onSettingsChange({
-                            metadataDisplayLeft: newValue,
-                            // If duplicate, right was first (it wins), left loses
-                            metadataDisplayWinner: isDuplicate ? 'right' : null
-                        });
-                    }}
-                    className="dropdown"
-                >
-                    <option value="none">None</option>
-                    <option value="timestamp">Timestamp</option>
-                    <option value="tags">File tags</option>
-                    <option value="path">File path</option>
-                </select>
-            </div>
-
-            {/* Metadata Display (Right) */}
-            <div className="setting-item setting-item-text">
-                <div className="setting-item-info">
-                    <label>Metadata display (right)</label>
-                    <div className="setting-desc">Set what metadata to show on the right side.</div>
-                </div>
-                <select
-                    value={settings.metadataDisplayRight}
-                    onChange={(e) => {
-                        const newValue = e.target.value as 'none' | 'timestamp' | 'tags' | 'path';
-                        // Check if this creates a duplicate
-                        const isDuplicate = newValue !== 'none' && newValue === settings.metadataDisplayLeft;
-                        onSettingsChange({
-                            metadataDisplayRight: newValue,
-                            // If duplicate, left was first (it wins), right loses
-                            metadataDisplayWinner: isDuplicate ? 'left' : null
-                        });
-                    }}
-                    className="dropdown"
-                >
-                    <option value="none">None</option>
-                    <option value="timestamp">Timestamp</option>
-                    <option value="tags">File tags</option>
-                    <option value="path">File path</option>
-                </select>
-            </div>
 
             {/* List Marker */}
             <div className="setting-item setting-item-text">
@@ -344,55 +393,6 @@ export function Settings({
                     />
                 </div>
             </div>
-
-            {/* Title Property */}
-            <div className="setting-item setting-item-text">
-                <div className="setting-item-info">
-                    <label>Title property</label>
-                    <div className="setting-desc">Set property to show as file title. Will use filename if unavailable.</div>
-                </div>
-                <input
-                    type="text"
-                    value={settings.titleProperty}
-                    onChange={(e) => onSettingsChange({ titleProperty: e.target.value })}
-                    placeholder="Comma-separated if multiple"
-                    className="setting-text-input"
-                />
-            </div>
-
-            {/* Text Preview Property (conditional) */}
-            {settings.showTextPreview && (
-                <div className="setting-item setting-item-text">
-                    <div className="setting-item-info">
-                        <label>Text preview property</label>
-                        <div className="setting-desc">Set property to show as text preview. Will use first few lines in note if unavailable.</div>
-                    </div>
-                    <input
-                        type="text"
-                        value={settings.descriptionProperty}
-                        onChange={(e) => onSettingsChange({ descriptionProperty: e.target.value })}
-                        placeholder="Comma-separated if multiple"
-                        className="setting-text-input"
-                    />
-                </div>
-            )}
-
-            {/* Image Property (conditional) */}
-            {settings.showThumbnails && (
-                <div className="setting-item setting-item-text">
-                    <div className="setting-item-info">
-                        <label>Image property</label>
-                        <div className="setting-desc">Set property to show as thumbnail. Will use first image embed in note if unavailable. Supports: .avif, .bmp, .gif, .jpeg, .jpg, .png, .svg, .webp</div>
-                    </div>
-                    <input
-                        type="text"
-                        value={settings.imageProperty}
-                        onChange={(e) => onSettingsChange({ imageProperty: e.target.value })}
-                        placeholder="Comma-separated if multiple"
-                        className="setting-text-input"
-                    />
-                </div>
-            )}
         </div>
     );
 }

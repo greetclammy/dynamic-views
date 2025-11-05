@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: Settings = {
     imageProperty: "",
     createdProperty: "",
     modifiedProperty: "",
-    alwaysOmitFirstLine: false,
+    omitFirstLine: false,
     showTextPreview: true,
     showThumbnails: true,
     thumbnailPosition: "right",
@@ -21,8 +21,9 @@ export const DEFAULT_SETTINGS: Settings = {
     fallbackToCtime: true,
     fallbackToMtime: true,
     metadataDisplayLeft: "timestamp",
-    metadataDisplayRight: "tags",
+    metadataDisplayRight: "path",
     metadataDisplayWinner: null,
+    timestampDisplay: "sort-based",
     listMarker: "bullet",
     showTimestampIcon: true,
     minMasonryColumns: 2,
@@ -40,10 +41,40 @@ export const DEFAULT_SETTINGS: Settings = {
 export function getBasesViewOptions(): any[] {
     return [
         {
+            type: 'dropdown',
+            displayName: 'Metadata display (left)',
+            key: 'metadataDisplayLeft',
+            default: 'timestamp',
+            options: {
+                'timestamp': 'Timestamp',
+                'path': 'File path',
+                'tags': 'File tags',
+                'none': 'None'
+            }
+        },
+        {
+            type: 'dropdown',
+            displayName: 'Metadata display (right)',
+            key: 'metadataDisplayRight',
+            default: 'path',
+            options: {
+                'timestamp': 'Timestamp',
+                'path': 'File path',
+                'tags': 'File tags',
+                'none': 'None'
+            }
+        },
+        {
             type: 'text',
             displayName: 'Title property',
             key: 'titleProperty',
             placeholder: 'Comma-separated if multiple'
+        },
+        {
+            type: 'toggle',
+            displayName: 'Show text preview',
+            key: 'showTextPreview',
+            default: true
         },
         {
             type: 'text',
@@ -52,14 +83,32 @@ export function getBasesViewOptions(): any[] {
             placeholder: 'Comma-separated if multiple'
         },
         {
+            type: 'toggle',
+            displayName: 'Use note content if property unavailable',
+            key: 'fallbackToContent',
+            default: true
+        },
+        {
+            type: 'toggle',
+            displayName: 'Show thumbnails',
+            key: 'showThumbnails',
+            default: true
+        },
+        {
             type: 'text',
             displayName: 'Image property',
             key: 'imageProperty',
             placeholder: 'Comma-separated if multiple'
         },
         {
+            type: 'toggle',
+            displayName: 'Use images in note if property unavailable',
+            key: 'fallbackToEmbeds',
+            default: true
+        },
+        {
             type: 'text',
-            displayName: 'Created time property',
+            displayName: 'Date created property',
             key: 'createdProperty',
             placeholder: 'Comma-separated if multiple'
         },
@@ -71,7 +120,7 @@ export function getBasesViewOptions(): any[] {
         },
         {
             type: 'text',
-            displayName: 'Modified time property',
+            displayName: 'Date modified property',
             key: 'modifiedProperty',
             placeholder: 'Comma-separated if multiple'
         },
@@ -80,60 +129,6 @@ export function getBasesViewOptions(): any[] {
             displayName: 'Use file metadata if property unavailable',
             key: 'fallbackToMtime',
             default: true
-        },
-        {
-            type: 'toggle',
-            displayName: 'Show text preview',
-            key: 'showTextPreview',
-            default: true
-        },
-        {
-            type: 'toggle',
-            displayName: 'Fall back to note content if unavailable',
-            key: 'fallbackToContent',
-            default: true
-        },
-        {
-            type: 'toggle',
-            displayName: 'Show thumbnails',
-            key: 'showThumbnails',
-            default: true
-        },
-        {
-            type: 'toggle',
-            displayName: 'Fall back to image embeds if unavailable',
-            key: 'fallbackToEmbeds',
-            default: true
-        },
-        {
-            type: 'toggle',
-            displayName: 'Always omit first line',
-            key: 'alwaysOmitFirstLine',
-            default: false
-        },
-        {
-            type: 'dropdown',
-            displayName: 'Metadata display (left)',
-            key: 'metadataDisplayLeft',
-            default: 'timestamp',
-            options: {
-                'none': 'None',
-                'timestamp': 'Timestamp',
-                'tags': 'File tags',
-                'path': 'File path'
-            }
-        },
-        {
-            type: 'dropdown',
-            displayName: 'Metadata display (right)',
-            key: 'metadataDisplayRight',
-            default: 'tags',
-            options: {
-                'none': 'None',
-                'timestamp': 'Timestamp',
-                'tags': 'File tags',
-                'path': 'File path'
-            }
         },
     ];
 }
@@ -156,7 +151,7 @@ export function readBasesSettings(config: any, globalSettings: Settings): Settin
         imageProperty: String(config.get('imageProperty') || DEFAULT_SETTINGS.imageProperty),
         createdProperty: String(config.get('createdProperty') || DEFAULT_SETTINGS.createdProperty),
         modifiedProperty: String(config.get('modifiedProperty') || DEFAULT_SETTINGS.modifiedProperty),
-        alwaysOmitFirstLine: Boolean(config.get('alwaysOmitFirstLine')),
+        omitFirstLine: globalSettings.omitFirstLine, // From global settings
         showTextPreview: Boolean(config.get('showTextPreview') ?? DEFAULT_SETTINGS.showTextPreview),
         showThumbnails: Boolean(config.get('showThumbnails') ?? DEFAULT_SETTINGS.showThumbnails),
         thumbnailPosition: globalSettings.thumbnailPosition, // From global settings
@@ -167,6 +162,7 @@ export function readBasesSettings(config: any, globalSettings: Settings): Settin
         metadataDisplayLeft: String(config.get('metadataDisplayLeft') || DEFAULT_SETTINGS.metadataDisplayLeft) as 'none' | 'timestamp' | 'tags' | 'path',
         metadataDisplayRight: String(config.get('metadataDisplayRight') || DEFAULT_SETTINGS.metadataDisplayRight) as 'none' | 'timestamp' | 'tags' | 'path',
         metadataDisplayWinner: null, // Computed at runtime by view instances
+        timestampDisplay: globalSettings.timestampDisplay, // From global settings
         listMarker: String(config.get('listMarker') || DEFAULT_SETTINGS.listMarker) as 'bullet' | 'number',
         showTimestampIcon: globalSettings.showTimestampIcon, // From global settings
         minMasonryColumns: globalSettings.minMasonryColumns, // From global settings

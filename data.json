@@ -23,7 +23,7 @@
     "thumbnailCacheSize": "balanced",
     "queryHeight": 0,
     "openFileAction": "card",
-    "addCardBackground": "transparent"
+    "addCardBackground": "tinted"
   },
   "queryStates": {
     "1762122189077": {

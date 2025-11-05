@@ -94,5 +94,30 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 						await this.plugin.persistenceManager.setGlobalSettings({ showTimestampIcon: value });
 					})
 			);
+
+		new Setting(containerEl)
+			.setName('Timestamp reflects')
+			.setDesc('Which timestamp to display in card metadata')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('sort-based', 'Depending on sort method')
+					.addOption('ctime', 'Created time')
+					.addOption('mtime', 'Modified time')
+					.setValue(settings.timestampDisplay)
+					.onChange(async (value: 'ctime' | 'mtime' | 'sort-based') => {
+						await this.plugin.persistenceManager.setGlobalSettings({ timestampDisplay: value });
+					})
+			);
+
+		new Setting(containerEl)
+			.setName('Omit first line in text preview')
+			.setDesc('Always skip first line in text previews (in addition to automatic omission when first line matches title/filename)')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(settings.omitFirstLine)
+					.onChange(async (value) => {
+						await this.plugin.persistenceManager.setGlobalSettings({ omitFirstLine: value });
+					})
+			);
 	}
 }

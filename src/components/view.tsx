@@ -489,8 +489,8 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
                                 let titleValue = p.value(settings.titleProperty);
                                 if (Array.isArray(titleValue)) titleValue = titleValue[0];
 
-                                // Omit first line if it matches filename/title or if alwaysOmitFirstLine enabled
-                                if (firstLine === fileName || (titleValue && firstLine === dc.coerce.string(titleValue)) || settings.alwaysOmitFirstLine) {
+                                // Omit first line if it matches filename/title or if omitFirstLine enabled
+                                if (firstLine === fileName || (titleValue && firstLine === dc.coerce.string(titleValue)) || settings.omitFirstLine) {
                                     stripped = firstLineEnd !== -1 ? stripped.substring(firstLineEnd + 1).trim() : '';
                                 }
 

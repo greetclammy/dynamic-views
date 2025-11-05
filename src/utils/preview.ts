@@ -167,14 +167,14 @@ function stripMarkdownSyntax(text: string): string {
 /**
  * Sanitize markdown content for preview display
  * @param content - Raw markdown content
- * @param alwaysOmitFirstLine - Whether to always omit the first line
+ * @param omitFirstLine - Whether to always omit the first line
  * @param filename - Optional filename to compare against first line
  * @param titleValue - Optional title value to compare against first line
  * @returns Sanitized preview text (max 500 chars)
  */
 export function sanitizeForPreview(
     content: string,
-    alwaysOmitFirstLine: boolean = false,
+    omitFirstLine: boolean = false,
     filename?: string,
     titleValue?: string
 ): string {
@@ -186,8 +186,8 @@ export function sanitizeForPreview(
     const firstLineEnd = stripped.indexOf('\n');
     const firstLine = (firstLineEnd !== -1 ? stripped.substring(0, firstLineEnd) : stripped).trim();
 
-    // Omit first line if it matches filename/title or if alwaysOmitFirstLine enabled
-    if (alwaysOmitFirstLine ||
+    // Omit first line if it matches filename/title or if omitFirstLine enabled
+    if (omitFirstLine ||
         (filename && firstLine === filename) ||
         (titleValue && firstLine === titleValue)) {
         stripped = firstLineEnd !== -1 ? stripped.substring(firstLineEnd + 1).trim() : '';

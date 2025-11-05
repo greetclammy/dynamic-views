@@ -412,7 +412,7 @@ export class DynamicViewsMasonryView extends BasesView {
                                     const content = await this.app.vault.cachedRead(file);
                                     const snippet = sanitizeForPreview(
                                         content,
-                                        settings.alwaysOmitFirstLine
+                                        settings.omitFirstLine
                                     );
                                     this.snippets[path] = snippet;
                                 }
