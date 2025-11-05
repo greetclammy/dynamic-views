@@ -18,7 +18,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Minimum card width')
-			.setDesc('Minimum width of cards in pixels')
+			.setDesc('Minimum width of cards in pixels. Reload view to apply.')
 			.addSlider((slider) =>
 				slider
 					.setLimits(50, 800, 10)

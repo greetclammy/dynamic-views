@@ -1280,6 +1280,8 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     color: var(--text-faint);
     min-height: 24px;
     line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .dynamic-views .meta-left {
@@ -1288,6 +1290,13 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+/* Ensure timestamp text never shrinks or wraps */
+.dynamic-views .meta-left > span,
+.dynamic-views .meta-right > span {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .dynamic-views .timestamp-icon {
@@ -1312,7 +1321,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     scrollbar-width: none;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: flex-end;
     gap: 4px;
 }
 
@@ -1354,17 +1363,15 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     display: flex;
     gap: 4px;
     white-space: nowrap;
-    flex-shrink: 0;
-    justify-content: flex-end;
-    min-width: min-content;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .dynamic-views .path-wrapper {
     display: flex;
     white-space: nowrap;
-    flex-shrink: 0;
-    justify-content: flex-end;
-    min-width: min-content;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .dynamic-views .writing-meta .tag {
@@ -1623,13 +1630,15 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
     /* Switch to single column at narrow widths */
     .dc-wide .dynamic-views .cards-feed,
-    .dc-max .dynamic-views .cards-feed {
+    .dc-max .dynamic-views .cards-feed,
+    .bases-view[data-view-type="dynamic-views-card"] .cards-feed {
         display: flex;
         flex-direction: column;
     }
 
     /* Stack metadata on narrow cards */
-    .dynamic-views .writing-meta {
+    .dynamic-views .writing-meta,
+    .bases-view .writing-meta {
         flex-direction: column-reverse;
         align-items: flex-start;
         min-height: auto;
@@ -1637,24 +1646,29 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
         gap: 8px;
     }
 
-    .dynamic-views .meta-left {
+    .dynamic-views .meta-left,
+    .bases-view .meta-left {
         width: 100%;
     }
 
-    .dynamic-views .meta-right {
+    .dynamic-views .meta-right,
+    .bases-view .meta-right {
         width: 100%;
         margin-left: 0 !important;
         text-align: left;
     }
 
     .dynamic-views .tags-wrapper,
-    .dynamic-views .path-wrapper {
+    .dynamic-views .path-wrapper,
+    .bases-view .tags-wrapper,
+    .bases-view .path-wrapper {
         justify-content: flex-start !important;
         flex-wrap: wrap;
     }
 
     /* Compact breakpoint: move thumbnails below text snippets */
-    .dynamic-views .snippet-container {
+    .dynamic-views .snippet-container,
+    .bases-view .snippet-container {
         flex-direction: column;
     }
 

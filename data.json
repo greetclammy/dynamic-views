@@ -1,6 +1,6 @@
 {
   "globalSettings": {
-    "minCardWidth": 500,
+    "minCardWidth": 340,
     "titleProperty": "hello",
     "descriptionProperty": "there",
     "imageProperty": "how",
@@ -15,13 +15,13 @@
     "fallbackToCtime": true,
     "fallbackToMtime": true,
     "metadataDisplayLeft": "timestamp",
-    "metadataDisplayRight": "timestamp",
+    "metadataDisplayRight": "tags",
     "metadataDisplayWinner": "right",
     "timestampDisplay": "mtime",
     "listMarker": "bullet",
     "showTimestampIcon": false,
     "minMasonryColumns": 2,
-    "minGridColumns": 2,
+    "minGridColumns": 1,
     "randomizeAction": "shuffle",
     "thumbnailCacheSize": "balanced",
     "queryHeight": 0,
@@ -46,7 +46,7 @@
   "queryStates": {
     "1762122189077": {
       "sortMethod": "mtime-desc",
-      "viewMode": "card",
+      "viewMode": "masonry",
       "searchQuery": "",
       "resultLimit": "10",
       "widthMode": "normal"
