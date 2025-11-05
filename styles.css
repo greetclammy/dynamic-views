@@ -1113,7 +1113,9 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     grid-template-columns: repeat(var(--grid-columns, 1), 1fr);
     gap: 8px;
     align-items: stretch;
+    width: 100%;
     max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
@@ -1123,6 +1125,8 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .dynamic-views .writing-card {

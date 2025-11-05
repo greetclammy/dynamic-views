@@ -1,6 +1,6 @@
 {
   "globalSettings": {
-    "minCardWidth": 50,
+    "minCardWidth": 250,
     "titleProperty": "hello",
     "descriptionProperty": "there",
     "imageProperty": "how",
@@ -48,7 +48,7 @@
       "sortMethod": "mtime-desc",
       "viewMode": "card",
       "searchQuery": "",
-      "resultLimit": "",
+      "resultLimit": "100",
       "widthMode": "max"
     },
     "1762363307189": {
@@ -66,6 +66,13 @@
       "widthMode": "normal"
     },
     "1762266777296": {
+      "sortMethod": "mtime-desc",
+      "viewMode": "card",
+      "searchQuery": "",
+      "resultLimit": "",
+      "widthMode": "normal"
+    },
+    "1762375187564": {
       "sortMethod": "mtime-desc",
       "viewMode": "card",
       "searchQuery": "",

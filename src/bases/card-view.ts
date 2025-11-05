@@ -37,8 +37,9 @@ export class DynamicViewsCardView extends BasesView {
         // Add both classes - 'dynamic-views' for CSS styling, 'dynamic-views-bases-container' for identification
         this.containerEl.addClass('dynamic-views');
         this.containerEl.addClass('dynamic-views-bases-container');
-        // Make container scrollable
+        // Make container scrollable vertically, hidden horizontally
         this.containerEl.style.overflowY = 'auto';
+        this.containerEl.style.overflowX = 'hidden';
         this.containerEl.style.height = '100%';
         // Set initial batch size based on device
         this.displayedCount = (this.app as any).isMobile ? 25 : 50;
