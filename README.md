@@ -1,5 +1,8 @@
 # Dynamic Views
 
+> [!NOTE]  
+> Currently in early stages of development.
+
 View notes in elegant card layouts with rich metadata display. Works with [Bases](https://help.obsidian.md/bases) or [Datacore](https://obsidian.md/plugins?id=datacore).
 
 #### Masonry
