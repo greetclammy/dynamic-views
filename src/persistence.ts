@@ -19,25 +19,8 @@ export class PersistenceManager {
     async load(): Promise<void> {
         const loadedData = await this.plugin.loadData();
         if (loadedData) {
-            const globalSettings = { ...DEFAULT_SETTINGS, ...loadedData.globalSettings };
-
-            // Migrate old boolean addCardBackground to new string format
-            if (typeof globalSettings.addCardBackground === 'boolean') {
-                globalSettings.addCardBackground = globalSettings.addCardBackground ? 'tinted' : 'transparent';
-            }
-
-            // Migrate old thumbnailCacheSize values if needed
-            if (globalSettings.thumbnailCacheSize === 'small' ||
-                globalSettings.thumbnailCacheSize === 'balanced' ||
-                globalSettings.thumbnailCacheSize === 'large') {
-                // Already valid, no migration needed
-            } else if (!['minimal', 'unlimited'].includes(globalSettings.thumbnailCacheSize)) {
-                // Invalid value, reset to default
-                globalSettings.thumbnailCacheSize = DEFAULT_SETTINGS.thumbnailCacheSize;
-            }
-
             this.data = {
-                globalSettings,
+                globalSettings: { ...DEFAULT_SETTINGS, ...loadedData.globalSettings },
                 queryStates: loadedData.queryStates || {},
                 basesViewMetadataWinners: loadedData.basesViewMetadataWinners || {}
             };
