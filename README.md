@@ -1,14 +1,12 @@
 # Dynamic Views
 
-View [Datacore](https://obsidian.md/plugins?id=datacore) @page queries in multiple layouts.
+View notes in elegant card layouts with rich metadata display. Works with [Bases](https://help.obsidian.md/bases) or [Datacore](https://obsidian.md/plugins?id=datacore).
 
 #### Masonry
 
 <img width="1156" height="935" alt="Screenshot 2025-10-29 at 06 45 53" src="https://github.com/user-attachments/assets/74aa4f21-50da-4c43-8464-ca9e4fbecc3b" />
 
-#### Card
-
-#### List
+#### Grid
 
 ## 💡 Tips
 
