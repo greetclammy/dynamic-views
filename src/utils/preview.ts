@@ -39,40 +39,54 @@ const markdownPatterns = [
 /**
  * Remove code blocks (fenced with backticks or tildes) with matching fence counts
  * Must be done before strikethrough processing since ~~~ can be code fences
+ * Handles both inline (~~~hi~~~) and multi-line code blocks
  */
 function removeCodeBlocks(text: string): string {
-    const lines = text.split('\n');
-    const processedLines: string[] = [];
-    let inCodeBlock = false;
-    let codeBlockFenceChar = '';
-    let codeBlockFenceLength = 0;
+    let result = text;
+    let changed = true;
 
-    for (const line of lines) {
-        if (!inCodeBlock) {
-            // Check for opening fence (3+ backticks or tildes)
-            const openMatch = line.match(/^([`~]{3,})/);
-            if (openMatch) {
-                inCodeBlock = true;
-                codeBlockFenceChar = openMatch[1][0]; // ` or ~
-                codeBlockFenceLength = openMatch[1].length;
-                continue; // Skip fence line
-            }
-            processedLines.push(line);
+    // Keep processing until no more code blocks found
+    while (changed) {
+        changed = false;
+
+        // Find opening fence (3+ backticks or tildes at start of line)
+        const openMatch = result.match(/^([`~]{3,})/m);
+        if (!openMatch) break;
+
+        const fenceChar = openMatch[1][0];
+        const fenceLength = openMatch[1].length;
+        const openIndex = openMatch.index!;
+
+        // Build regex for matching closing fence (same char, exact count)
+        const escapedChar = fenceChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const closePattern = new RegExp(`^${escapedChar}{${fenceLength}}\\s*$`, 'm');
+
+        // Search for closing fence after opening
+        const afterOpen = result.substring(openIndex + openMatch[1].length);
+        const closeMatch = afterOpen.match(closePattern);
+
+        if (closeMatch) {
+            // Found matching closing fence
+            const closeIndex = openIndex + openMatch[1].length + closeMatch.index!;
+            const blockEnd = closeIndex + closeMatch[0].length;
+
+            // Remove entire code block (opening fence + content + closing fence)
+            result = result.substring(0, openIndex) + result.substring(blockEnd);
+            changed = true;
         } else {
-            // Check for closing fence with exact same character and count
-            const closePattern = `^${codeBlockFenceChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}{${codeBlockFenceLength}}\\s*$`;
-            const closeMatch = line.match(new RegExp(closePattern));
-            if (closeMatch) {
-                inCodeBlock = false;
-                codeBlockFenceChar = '';
-                codeBlockFenceLength = 0;
-                continue; // Skip fence line
+            // No closing fence found, remove just the opening fence line to continue processing
+            const lineEnd = result.indexOf('\n', openIndex);
+            if (lineEnd === -1) {
+                // Opening fence is on last line with no closing, remove it
+                result = result.substring(0, openIndex);
+            } else {
+                result = result.substring(0, openIndex) + result.substring(lineEnd + 1);
             }
-            // Inside code block, skip all content
+            changed = true;
         }
     }
 
-    return processedLines.join('\n');
+    return result;
 }
 
 /**
