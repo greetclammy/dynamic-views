@@ -5,9 +5,9 @@
 
 /**
  * Markdown patterns for syntax stripping
+ * Note: Code blocks are handled separately before these patterns
  */
 const markdownPatterns = [
-    /`{3,}[\s\S]*?`{3,}/g,                       // Code blocks
     /`([^`]+)`/g,                                // Inline code
     /\*\*\*((?:(?!\*\*\*).)+)\*\*\*/g,          // Bold + italic asterisks
     /___((?:(?!___).)+)___/g,                    // Bold + italic underscores
@@ -15,14 +15,17 @@ const markdownPatterns = [
     /__((?:(?!__).)+)__/g,                       // Bold underscores
     /\*((?:(?!\*).)+)\*/g,                       // Italic asterisks
     /_((?:(?!_).)+)_/g,                          // Italic underscores
-    /~~((?:(?!~~).)+)~~/g,                       // Strikethrough
+    /~~((?:(?!~~).)+)~~/g,                       // Strikethrough (after code blocks processed)
     /==((?:(?!==).)+)==/g,                       // Highlight
     /\[([^\]]+)\]\([^)]+\)/g,                    // Links
     /!\[\[[^\]]+\]\]/g,                          // Embedded wikilinks (images, etc.)
     /\[\[[^\]|]+\|[^\]]+\]\]/g,                  // Wikilinks with display
     /\[\[[^\]]+\]\]/g,                           // Wikilinks
     /#[a-zA-Z0-9_\-/]+/g,                        // Tags
+    /^[-*+]\s*\[[ xX]\]\s+/gm,                   // Task list markers (bullet-style)
+    /^\d+\.\s*\[[ xX]\]\s+/gm,                   // Task list markers (numbered)
     /^[-*+]\s+/gm,                               // Bullet list markers
+    /^\d+\.\s+/gm,                               // Numbered list markers
     /^#{1,6}\s+.+$/gm,                           // Heading lines (full removal)
     /^\s*(?:[-_*])\s*(?:[-_*])\s*(?:[-_*])[\s\-_*]*$/gm, // Horizontal rules
     /^\s*\|.*\|.*$/gm,                           // Tables
@@ -32,6 +35,45 @@ const markdownPatterns = [
     /<([a-z][a-z0-9]*)\b[^>]*>(.*?)<\/\1>/gi,    // HTML tag pairs
     /<[^>]+>/g                                   // Remaining HTML tags
 ];
+
+/**
+ * Remove code blocks (fenced with backticks or tildes) with matching fence counts
+ * Must be done before strikethrough processing since ~~~ can be code fences
+ */
+function removeCodeBlocks(text: string): string {
+    const lines = text.split('\n');
+    const processedLines: string[] = [];
+    let inCodeBlock = false;
+    let codeBlockFenceChar = '';
+    let codeBlockFenceLength = 0;
+
+    for (const line of lines) {
+        if (!inCodeBlock) {
+            // Check for opening fence (3+ backticks or tildes)
+            const openMatch = line.match(/^([`~]{3,})/);
+            if (openMatch) {
+                inCodeBlock = true;
+                codeBlockFenceChar = openMatch[1][0]; // ` or ~
+                codeBlockFenceLength = openMatch[1].length;
+                continue; // Skip fence line
+            }
+            processedLines.push(line);
+        } else {
+            // Check for closing fence with exact same character and count
+            const closePattern = `^${codeBlockFenceChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}{${codeBlockFenceLength}}\\s*$`;
+            const closeMatch = line.match(new RegExp(closePattern));
+            if (closeMatch) {
+                inCodeBlock = false;
+                codeBlockFenceChar = '';
+                codeBlockFenceLength = 0;
+                continue; // Skip fence line
+            }
+            // Inside code block, skip all content
+        }
+    }
+
+    return processedLines.join('\n');
+}
 
 /**
  * Strip markdown syntax from text while preserving content
@@ -44,7 +86,8 @@ function stripMarkdownSyntax(text: string): string {
     // Second pass: strip > prefix from remaining blockquote lines
     text = text.replace(/^>\s?/gm, '');
 
-    let result = text;
+    // Remove code blocks before other processing (important for tildes before strikethrough)
+    let result = removeCodeBlocks(text);
 
     // Apply each pattern
     markdownPatterns.forEach((pattern) => {
