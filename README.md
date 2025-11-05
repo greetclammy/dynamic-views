@@ -25,4 +25,11 @@ Elegant card layouts for [Bases](https://help.obsidian.md/bases) and [Datacore](
 - Explore settings to configure things to your liking.
 - Cards can be keyboard navigated with arrows keys.
 
+## 👀 Similar plugins
 
+- [Cards view](https://obsidian.md/plugins?id=cards-view)
+- [Notes Explorer](https://obsidian.md/plugins?id=notes-explorer)
+- [Note Gallery](https://obsidian.md/plugins?id=note-gallery)
+- [GridExplorer](https://obsidian.md/plugins?id=gridexplorer)
+- [Vault Explorer](https://obsidian.md/plugins?id=vault-explorer)
+- [Notebook Navigator](https://obsidian.md/plugins?id=notebook-navigator)
