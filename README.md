@@ -33,3 +33,9 @@ Elegant card layouts for [Bases](https://help.obsidian.md/bases) and [Datacore](
 - [GridExplorer](https://obsidian.md/plugins?id=gridexplorer)
 - [Vault Explorer](https://obsidian.md/plugins?id=vault-explorer)
 - [Notebook Navigator](https://obsidian.md/plugins?id=notebook-navigator)
+
+## 👨‍💻 My plugins
+
+- [Adapt to Current View](https://github.com/greetclammy/adapt-to-current-view/) - Set different accent colors for Reading view, Live Preview and Source view.
+- [Copy Link](https://github.com/greetclammy/copy-link) - Add commands to quickly copy links to files, headings and blocks.
+- [First Line is Title](https://github.com/greetclammy/first-line-is-title) - Automatically set the first line as note title.
