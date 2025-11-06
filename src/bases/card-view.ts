@@ -476,7 +476,13 @@ export class DynamicViewsCardView extends BasesView {
                             const imageValues = getAllBasesImagePropertyValues(entry, settings.imageProperty);
                             const validImages: string[] = [];
 
-                            for (const imageStr of imageValues) {
+                            for (let imageStr of imageValues) {
+                                // Strip wikilink syntax if present: [[path]] or ![[path]] or [[path|caption]]
+                                const wikilinkMatch = imageStr.match(/^!?\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
+                                if (wikilinkMatch) {
+                                    imageStr = wikilinkMatch[1].trim();
+                                }
+
                                 // Handle external URLs
                                 if (isExternalUrl(imageStr)) {
                                     const isValid = await validateImageUrl(imageStr);
