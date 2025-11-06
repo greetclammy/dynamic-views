@@ -3,9 +3,10 @@
  * Converts various data sources (Datacore, Bases) into normalized CardData format
  */
 
+import type { BasesEntry } from 'obsidian';
 import type { CardData } from './card-renderer';
 import type { Settings } from '../types';
-import type { DatacoreAPI } from '../types/datacore';
+import type { DatacoreAPI, DatacoreFile } from '../types/datacore';
 import {
     getFirstDatacorePropertyValue,
     getFirstBasesPropertyValue,
@@ -18,7 +19,7 @@ import { isBasesDateValue } from './render-utils';
  * Resolve timestamp for Datacore result based on settings and sort method
  */
 function resolveDatacoreTimestamp(
-    result: any,
+    result: DatacoreFile,
     settings: Settings,
     sortMethod: string,
     isShuffled: boolean
@@ -55,7 +56,7 @@ function resolveDatacoreTimestamp(
  * Handles Datacore-specific API (p.value(), p.$path, etc.)
  */
 export function datacoreResultToCardData(
-    result: any,
+    result: DatacoreFile,
     dc: DatacoreAPI,
     settings: Settings,
     sortMethod: string,
@@ -102,7 +103,7 @@ export function datacoreResultToCardData(
  * Resolve timestamp for Bases entry based on settings and sort method
  */
 function resolveBasesTimestamp(
-    entry: any,
+    entry: BasesEntry,
     settings: Settings,
     sortMethod: string,
     isShuffled: boolean
@@ -137,7 +138,7 @@ function resolveBasesTimestamp(
  * Handles Bases-specific API (entry.getValue(), entry.file.path, etc.)
  */
 export function basesEntryToCardData(
-    entry: any, // BasesEntry type
+    entry: BasesEntry,
     settings: Settings,
     sortMethod: string,
     isShuffled: boolean,
@@ -159,13 +160,13 @@ export function basesEntryToCardData(
     const folderPath = path.split('/').slice(0, -1).join('/');
 
     // Get tags from file.tags property (includes both YAML and inline body tags)
-    const tagsValue = entry.getValue('file.tags');
+    const tagsValue = entry.getValue('file.tags') as { data?: unknown } | null;
     let tags: string[] = [];
 
     if (tagsValue && tagsValue.data != null) {
         const tagData = tagsValue.data;
         const rawTags = Array.isArray(tagData)
-            ? tagData.map((t: any) => String(t))
+            ? tagData.map((t: unknown) => String(t))
             : [String(tagData)];
 
         // Strip leading # from tags if present
@@ -198,7 +199,7 @@ export function basesEntryToCardData(
  * Batch transform Datacore results to CardData array
  */
 export function transformDatacoreResults(
-    results: any[],
+    results: DatacoreFile[],
     dc: DatacoreAPI,
     settings: Settings,
     sortMethod: string,
@@ -225,7 +226,7 @@ export function transformDatacoreResults(
  * Batch transform Bases entries to CardData array
  */
 export function transformBasesEntries(
-    entries: any[], // BasesEntry[]
+    entries: BasesEntry[],
     settings: Settings,
     sortMethod: string,
     isShuffled: boolean,
