@@ -1,4 +1,4 @@
-import { Plugin, Notice, Editor, MarkdownView } from 'obsidian';
+import { Plugin, Notice, Editor, MarkdownView, QueryController } from 'obsidian';
 import { PersistenceManager } from './src/persistence';
 import { View } from './src/components/view';
 import { setDatacorePreact } from './src/jsx-runtime';
@@ -46,7 +46,7 @@ export default class DynamicViewsPlugin extends Plugin {
 		this.registerBasesView('dynamic-views-card', {
 			name: 'Grid',
 			icon: 'rows-2',
-			factory: (controller: any, containerEl: HTMLElement) => {
+			factory: (controller: QueryController, containerEl: HTMLElement) => {
 				return new DynamicViewsCardView(controller, containerEl, this);
 			},
 			options: cardViewOptions,
@@ -55,7 +55,7 @@ export default class DynamicViewsPlugin extends Plugin {
 		this.registerBasesView('dynamic-views-masonry', {
 			name: 'Masonry',
 			icon: 'panels-right-bottom',
-			factory: (controller: any, containerEl: HTMLElement) => {
+			factory: (controller: QueryController, containerEl: HTMLElement) => {
 				return new DynamicViewsMasonryView(controller, containerEl, this);
 			},
 			options: masonryViewOptions,
