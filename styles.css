@@ -1274,7 +1274,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 .dynamic-views .writing-meta {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: auto 1fr;
     align-items: center;
     font-size: 0.8em;
     margin-top: 4px;
@@ -1311,8 +1311,12 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     flex-shrink: 0;
 }
 
-/* Grid items must be constrained to their grid cells */
-.dynamic-views .meta-left,
+/* Left item capped at 50% of container to enable right to fill remaining space */
+.dynamic-views .meta-left {
+    max-width: 50%;
+}
+
+/* Right item fills its grid column (which takes remaining space) */
 .dynamic-views .meta-right {
     max-width: 100%;
 }
