@@ -310,9 +310,10 @@ export function Toolbar({
                             className="search-input-clear-button"
                             aria-label="Clear search"
                             onClick={onClearSearch}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
+                            onKeyDown={(e: unknown) => {
+                                const evt = e as KeyboardEvent;
+                                if (evt.key === 'Enter' || evt.key === ' ') {
+                                    evt.preventDefault();
                                     onClearSearch();
                                 }
                             }}
@@ -333,9 +334,10 @@ export function Toolbar({
             <div
                 className={`results-count-wrapper${showLimitDropdown ? ' active' : ''}`}
                 onClick={onToggleLimitDropdown}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
+                onKeyDown={(e: unknown) => {
+                    const evt = e as KeyboardEvent;
+                    if (evt.key === 'Enter' || evt.key === ' ') {
+                        evt.preventDefault();
                         onToggleLimitDropdown();
                     }
                 }}
@@ -370,51 +372,55 @@ export function Toolbar({
                     <polyline points="6 9 12 15 18 9"/>
                 </svg>
                 {showLimitDropdown ? (
-                    <div className="limit-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                        <div className="limit-dropdown-label" onClick={(e) => e.stopPropagation()}>Limit number of results</div>
+                    <div className="limit-dropdown-menu" onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}>
+                        <div className="limit-dropdown-label" onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}>Limit number of results</div>
                         <input
                             type="text"
                             inputMode="numeric"
                             className="limit-dropdown-input"
                             placeholder="e.g., 10"
                             value={resultLimit}
-                            onKeyDown={(e) => {
+                            onKeyDown={(e: unknown) => {
+                                const evt = e as KeyboardEvent;
                                 // Allow: backspace, delete, tab, escape, enter, arrows
-                                if ([8, 9, 13, 27, 37, 38, 39, 40, 46].includes(e.keyCode)) {
+                                if ([8, 9, 13, 27, 37, 38, 39, 40, 46].includes(evt.keyCode)) {
                                     return;
                                 }
                                 // Allow: Ctrl/Cmd+A, Ctrl/Cmd+C, Ctrl/Cmd+V, Ctrl/Cmd+X
-                                if ((e.ctrlKey || e.metaKey) && [65, 67, 86, 88].includes(e.keyCode)) {
+                                if ((evt.ctrlKey || evt.metaKey) && [65, 67, 86, 88].includes(evt.keyCode)) {
                                     return;
                                 }
                                 // Block: non-digit keys, or digit 0 if it would be first character
-                                if (e.key < '0' || e.key > '9' || (e.key === '0' && resultLimit === '')) {
-                                    e.preventDefault();
+                                if (evt.key < '0' || evt.key > '9' || (evt.key === '0' && resultLimit === '')) {
+                                    evt.preventDefault();
                                 }
                             }}
-                            onChange={(e) => {
-                                const val = e.target.value;
+                            onChange={(e: unknown) => {
+                                const evt = e as InputEvent & { target: HTMLInputElement };
+                                const val = evt.target.value;
                                 // Only allow positive integers (no leading zeros, no whitespace, no special chars)
                                 if (val === '' || /^[1-9]\d*$/.test(val)) {
                                     onResultLimitChange(val);
                                 }
                             }}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}
                         />
                         <div
                             className={`limit-reset-button${!(resultLimit.trim() && parseInt(resultLimit) > 0) ? ' disabled' : ''}`}
-                            onClick={(e) => {
-                                e.stopPropagation();
+                            onClick={(e: unknown) => {
+                                const evt = e as MouseEvent;
+                                evt.stopPropagation();
                                 if (resultLimit.trim() && parseInt(resultLimit) > 0) {
                                     onResetLimit();
                                 } else {
                                     onToggleLimitDropdown();
                                 }
                             }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    e.stopPropagation();
+                            onKeyDown={(e: unknown) => {
+                                const evt = e as KeyboardEvent;
+                                if (evt.key === 'Enter' || evt.key === ' ') {
+                                    evt.preventDefault();
+                                    evt.stopPropagation();
                                     if (resultLimit.trim() && parseInt(resultLimit) > 0) {
                                         onResetLimit();
                                     } else {
@@ -446,7 +452,7 @@ export function Toolbar({
             <button
                 className="create-note-button"
                 tabIndex={0}
-                onClick={(e) => onCreateNote(e)}
+                onClick={(e: unknown) => onCreateNote(e as MouseEvent)}
                 aria-label="Create new note"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -473,7 +479,7 @@ export function Toolbar({
                 </button>
                 <button
                     className="open-random-btn"
-                    onClick={(e) => onOpenRandom(e)}
+                    onClick={(e: unknown) => onOpenRandom(e as MouseEvent)}
                     aria-label="Open random file"
                     tabIndex={0}
                 >
@@ -499,14 +505,15 @@ export function Toolbar({
                         <div className="query-dropdown-menu">
                             <textarea
                                 value={draftQuery}
-                                onChange={(e) => {
-                                    onDraftQueryChange(e.target.value);
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                onChange={(e: unknown) => {
+                                    const evt = e as InputEvent & { target: HTMLTextAreaElement };
+                                    onDraftQueryChange(evt.target.value);
+                                    evt.target.style.height = 'auto';
+                                    evt.target.style.height = evt.target.scrollHeight + 'px';
                                 }}
                                 className="query-input"
                                 placeholder="#tag&#10;path(&quot;path/to/folder&quot;)&#10;key = &quot;value&quot;"
-                                ref={(el) => {
+                                ref={(el: HTMLTextAreaElement | null) => {
                                     if (el) {
                                         el.style.height = 'auto';
                                         el.style.height = el.scrollHeight + 'px';
@@ -640,7 +647,7 @@ export function Toolbar({
                     type="text"
                     placeholder="Filter..."
                     value={searchQuery}
-                    onChange={(e) => onSearchChange(e.target.value)}
+                    onChange={(e: unknown) => { const evt = e as InputEvent & { target: HTMLInputElement }; onSearchChange(evt.target.value); }}
                     onFocus={onSearchFocus}
                     className="search-input desktop-search"
                 />
@@ -649,9 +656,10 @@ export function Toolbar({
                         className="search-input-clear-button"
                         aria-label="Clear search"
                         onClick={onClearSearch}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
+                        onKeyDown={(e: unknown) => {
+                            const evt = e as KeyboardEvent;
+                            if (evt.key === 'Enter' || evt.key === ' ') {
+                                evt.preventDefault();
                                 onClearSearch();
                             }
                         }}
@@ -671,9 +679,10 @@ export function Toolbar({
                 <div
                     className={`results-count-wrapper-compact${showLimitDropdown ? ' active' : ''}`}
                     onClick={onToggleLimitDropdown}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
+                    onKeyDown={(e: unknown) => {
+                        const evt = e as KeyboardEvent;
+                        if (evt.key === 'Enter' || evt.key === ' ') {
+                            evt.preventDefault();
                             onToggleLimitDropdown();
                         }
                     }}
@@ -708,51 +717,55 @@ export function Toolbar({
                         <polyline points="6 9 12 15 18 9"/>
                     </svg>
                     {showLimitDropdown ? (
-                        <div className="limit-dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                            <div className="limit-dropdown-label" onClick={(e) => e.stopPropagation()}>Limit number of results</div>
+                        <div className="limit-dropdown-menu" onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}>
+                            <div className="limit-dropdown-label" onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}>Limit number of results</div>
                             <input
                                 type="text"
                                 inputMode="numeric"
                                 className="limit-dropdown-input"
                                 placeholder="e.g., 10"
                                 value={resultLimit}
-                                onKeyDown={(e) => {
+                                onKeyDown={(e: unknown) => {
+                                    const evt = e as KeyboardEvent;
                                     // Allow: backspace, delete, tab, escape, enter, arrows
-                                    if ([8, 9, 13, 27, 37, 38, 39, 40, 46].includes(e.keyCode)) {
+                                    if ([8, 9, 13, 27, 37, 38, 39, 40, 46].includes(evt.keyCode)) {
                                         return;
                                     }
                                     // Allow: Ctrl/Cmd+A, Ctrl/Cmd+C, Ctrl/Cmd+V, Ctrl/Cmd+X
-                                    if ((e.ctrlKey || e.metaKey) && [65, 67, 86, 88].includes(e.keyCode)) {
+                                    if ((evt.ctrlKey || evt.metaKey) && [65, 67, 86, 88].includes(evt.keyCode)) {
                                         return;
                                     }
                                     // Block: non-digit keys, or digit 0 if it would be first character
-                                    if (e.key < '0' || e.key > '9' || (e.key === '0' && resultLimit === '')) {
-                                        e.preventDefault();
+                                    if (evt.key < '0' || evt.key > '9' || (evt.key === '0' && resultLimit === '')) {
+                                        evt.preventDefault();
                                     }
                                 }}
-                                onChange={(e) => {
-                                    const val = e.target.value;
+                                onChange={(e: unknown) => {
+                                    const evt = e as InputEvent & { target: HTMLInputElement };
+                                    const val = evt.target.value;
                                     // Only allow positive integers (no leading zeros, no whitespace, no special chars)
                                     if (val === '' || /^[1-9]\d*$/.test(val)) {
                                         onResultLimitChange(val);
                                     }
                                 }}
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}
                             />
                             <div
                                 className={`limit-reset-button${!(resultLimit.trim() && parseInt(resultLimit) > 0) ? ' disabled' : ''}`}
-                                onClick={(e) => {
-                                    e.stopPropagation();
+                                onClick={(e: unknown) => {
+                                    const evt = e as MouseEvent;
+                                    evt.stopPropagation();
                                     if (resultLimit.trim() && parseInt(resultLimit) > 0) {
                                         onResetLimit();
                                     } else {
                                         onToggleLimitDropdown();
                                     }
                                 }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                        e.preventDefault();
-                                        e.stopPropagation();
+                                onKeyDown={(e: unknown) => {
+                                    const evt = e as KeyboardEvent;
+                                    if (evt.key === 'Enter' || evt.key === ' ') {
+                                        evt.preventDefault();
+                                        evt.stopPropagation();
                                         if (resultLimit.trim() && parseInt(resultLimit) > 0) {
                                             onResetLimit();
                                         } else {
@@ -783,7 +796,7 @@ export function Toolbar({
                 <button
                     className="create-note-button-compact"
                     tabIndex={0}
-                    onClick={(e) => onCreateNote(e)}
+                    onClick={(e: unknown) => onCreateNote(e as MouseEvent)}
                     aria-label="Create new note"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
