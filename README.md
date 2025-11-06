@@ -18,7 +18,7 @@ Elegant card views for [Bases](https://help.obsidian.md/bases) and [Datacore](ht
 - Hover over thumbnails that have shadow to view up to first seven images in note, or to animate GIFs.
 - Right click (long press on mobile) on card title to open link context menu.
 - Card title can be drag and dropped to another note or open tabs.
-- Press on thumbnail to enlarge it (if [Image Toolkit](https://obsidian.md/plugins?id=obsidian-image-toolkit) or snippet is enabled).
+- Press on thumbnail to enlarge it (if [Image Toolkit](https://obsidian.md/plugins?id=obsidian-image-toolkit) or [snippet](https://forum.obsidian.md/t/image-zoom-click-hold-to-expand-images/5164) is enabled).
 - Search filter accepts #tags (use -#tag to exclude).
 - File path and tags in cards are horizontally scrollable.
 - In case of errors, edit your query at top of code block in Source view.
