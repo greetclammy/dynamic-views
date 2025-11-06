@@ -1352,10 +1352,11 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     max-width: 100%;
 }
 
-/* Remove max-width constraints when using measured layout - MUST come after default max-width rules */
+/* Constrain grid items to their column widths */
 .dynamic-views .writing-meta.meta-measured .meta-left,
 .dynamic-views .writing-meta.meta-measured .meta-right {
-    max-width: none;
+    max-width: 100%;  /* Respect column width */
+    width: 100%;      /* Fill the column */
 }
 
 /* Left column: always left-aligned */
@@ -1363,19 +1364,10 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     justify-content: flex-start;
 }
 
-/* Right column: always right-aligned using direction: rtl */
+/* Right column: always right-aligned */
 .dynamic-views .writing-meta:not(.meta-left-only):not(.meta-right-only) .meta-right {
-    margin-left: auto;  /* Pushes to the right within grid column */
+    justify-content: flex-end;  /* Align content to right within flex container */
     padding-left: 6px;
-    direction: rtl;  /* Flip coordinate system for right-alignment with proper scrolling */
-}
-
-/* Reset direction for text elements to preserve normal text flow */
-/* Don't reset on wrapper containers (tags-wrapper, path-wrapper) - they need RTL for right-alignment */
-.dynamic-views .meta-right span,
-.dynamic-views .meta-right a,
-.dynamic-views .meta-right .tag {
-    direction: ltr;
 }
 
 .dynamic-views .timestamp-icon {
