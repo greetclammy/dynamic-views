@@ -3,7 +3,7 @@
  * Primary implementation using Bases API
  */
 
-import { BasesView, TFile, setIcon, QueryController } from 'obsidian';
+import { BasesView, BasesEntry, TFile, setIcon, QueryController } from 'obsidian';
 import { CardData } from '../shared/card-renderer';
 import { transformBasesEntries } from '../shared/data-transform';
 import { readBasesSettings, getBasesViewOptions } from '../shared/settings-schema';
@@ -12,6 +12,7 @@ import { sanitizeForPreview } from '../utils/preview';
 import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../utils/property';
 import { formatTimestamp, getTimestampIcon } from '../shared/render-utils';
 import type DynamicViewsPlugin from '../../main';
+import type { Settings } from '../types';
 
 // Extend App type to include isMobile property
 declare module 'obsidian' {
@@ -231,9 +232,9 @@ export class DynamicViewsCardView extends BasesView {
     private renderCard(
         container: HTMLElement,
         card: CardData,
-        entry: any,
+        entry: BasesEntry,
         index: number,
-        settings: any
+        settings: Settings
     ): void {
         const { app } = this;
 
@@ -347,8 +348,8 @@ export class DynamicViewsCardView extends BasesView {
         container: HTMLElement,
         displayType: 'none' | 'timestamp' | 'tags' | 'path',
         card: CardData,
-        entry: any,
-        settings: any
+        entry: BasesEntry,
+        settings: Settings
     ): void {
         if (displayType === 'none') return;
 
@@ -422,7 +423,7 @@ export class DynamicViewsCardView extends BasesView {
         return 'mtime-desc';
     }
 
-    private async loadContentForEntries(entries: any[], settings: any): Promise<void> {
+    private async loadContentForEntries(entries: BasesEntry[], settings: Settings): Promise<void> {
         // Load snippets for text preview
         if (settings.showTextPreview) {
             await Promise.all(
@@ -481,11 +482,15 @@ export class DynamicViewsCardView extends BasesView {
                                     }
                                 } else {
                                     // Handle internal file paths
+                                    // Normalize cache size for loadImageForFile (which only accepts small/balanced/large)
+                                    const cacheSize = settings.thumbnailCacheSize === 'minimal' ? 'small' :
+                                                      settings.thumbnailCacheSize === 'unlimited' ? 'large' :
+                                                      settings.thumbnailCacheSize;
                                     const result = await loadImageForFile(
                                         this.app,
                                         path,
                                         imageStr,
-                                        settings.thumbnailCacheSize,
+                                        cacheSize,
                                         settings.fallbackToEmbeds,
                                         settings.imageProperty
                                     );
@@ -549,7 +554,7 @@ export class DynamicViewsCardView extends BasesView {
             const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
 
             // Dynamic threshold based on viewport and device
-            const isMobile = (this.app as any).isMobile;
+            const isMobile = this.app.isMobile;
             const viewportMultiplier = isMobile ? 1 : 2;
             const threshold = clientHeight * viewportMultiplier;
 

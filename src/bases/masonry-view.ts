@@ -3,7 +3,7 @@
  * Masonry layout view using Bases API
  */
 
-import { BasesView, TFile, setIcon, QueryController } from 'obsidian';
+import { BasesView, BasesEntry, TFile, setIcon, QueryController } from 'obsidian';
 import { CardData } from '../shared/card-renderer';
 import { transformBasesEntries } from '../shared/data-transform';
 import { readBasesSettings, getMasonryViewOptions } from '../shared/settings-schema';
@@ -12,6 +12,7 @@ import { sanitizeForPreview } from '../utils/preview';
 import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../utils/property';
 import { formatTimestamp, getTimestampIcon } from '../shared/render-utils';
 import type DynamicViewsPlugin from '../../main';
+import type { Settings } from '../types';
 
 export const MASONRY_VIEW_TYPE = 'dynamic-views-masonry';
 
@@ -42,7 +43,7 @@ export class DynamicViewsMasonryView extends BasesView {
         this.containerEl.style.overflowY = 'auto';
         this.containerEl.style.height = '100%';
         // Set initial batch size based on device
-        this.displayedCount = (this.app as any).isMobile ? 25 : 50;
+        this.displayedCount = this.app.isMobile ? 25 : 50;
     }
 
     onDataUpdated(): void {
@@ -148,7 +149,7 @@ export class DynamicViewsMasonryView extends BasesView {
         })();
     }
 
-    private setupMasonryLayout(settings: any): void {
+    private setupMasonryLayout(settings: Settings): void {
         if (!this.masonryContainer) return;
 
         const minColumns = settings.minMasonryColumns;
@@ -225,9 +226,9 @@ export class DynamicViewsMasonryView extends BasesView {
     private renderCard(
         container: HTMLElement,
         card: CardData,
-        entry: any,
+        entry: BasesEntry,
         index: number,
-        settings: any
+        settings: Settings
     ): void {
         const { app } = this;
 
@@ -318,8 +319,8 @@ export class DynamicViewsMasonryView extends BasesView {
         container: HTMLElement,
         displayType: 'none' | 'timestamp' | 'tags' | 'path',
         card: CardData,
-        entry: any,
-        settings: any
+        entry: BasesEntry,
+        settings: Settings
     ): void {
         if (displayType === 'none') return;
 
@@ -393,7 +394,7 @@ export class DynamicViewsMasonryView extends BasesView {
         return 'mtime-desc';
     }
 
-    private async loadContentForEntries(entries: any[], settings: any): Promise<void> {
+    private async loadContentForEntries(entries: BasesEntry[], settings: Settings): Promise<void> {
         // Load snippets for text preview
         if (settings.showTextPreview) {
             await Promise.all(
@@ -452,11 +453,15 @@ export class DynamicViewsMasonryView extends BasesView {
                                     }
                                 } else {
                                     // Handle internal file paths
+                                    // Normalize cache size for loadImageForFile (which only accepts small/balanced/large)
+                                    const cacheSize = settings.thumbnailCacheSize === 'minimal' ? 'small' :
+                                                      settings.thumbnailCacheSize === 'unlimited' ? 'large' :
+                                                      settings.thumbnailCacheSize;
                                     const result = await loadImageForFile(
                                         this.app,
                                         path,
                                         imageStr,
-                                        settings.thumbnailCacheSize,
+                                        cacheSize,
                                         settings.fallbackToEmbeds,
                                         settings.imageProperty
                                     );
@@ -519,7 +524,7 @@ export class DynamicViewsMasonryView extends BasesView {
             const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
 
             // Dynamic threshold based on viewport and device
-            const isMobile = (this.app as any).isMobile;
+            const isMobile = this.app.isMobile;
             const viewportMultiplier = isMobile ? 1 : 2;
             const threshold = clientHeight * viewportMultiplier;
 
