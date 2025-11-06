@@ -1,5 +1,5 @@
 import { App, TFile, Plugin, Keymap } from 'obsidian';
-import { Settings, UIState, ViewMode, WidthMode } from '../types';
+import { Settings, UIState, ViewMode, WidthMode, DefaultViewSettings } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { PersistenceManager } from '../persistence';
 import { CardView } from './card-view';
@@ -104,44 +104,45 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
         const globalSettings = persistenceManager.getGlobalSettings();
         const defaultViewSettings = persistenceManager.getDefaultViewSettings();
+        const viewSettings = persistenceManager.getViewSettings(ctime);
 
         // Start with global settings as base
         const baseSettings = { ...globalSettings };
 
         // For template properties (those that appear in view settings),
-        // use defaultViewSettings if USER_SETTINGS doesn't have them
+        // merge in this order: defaultViewSettings -> viewSettings (persisted) -> USER_SETTINGS
         if (USER_SETTINGS.titleProperty === undefined) {
-            baseSettings.titleProperty = defaultViewSettings.titleProperty;
+            baseSettings.titleProperty = viewSettings.titleProperty ?? defaultViewSettings.titleProperty;
         }
         if (USER_SETTINGS.descriptionProperty === undefined) {
-            baseSettings.descriptionProperty = defaultViewSettings.descriptionProperty;
+            baseSettings.descriptionProperty = viewSettings.descriptionProperty ?? defaultViewSettings.descriptionProperty;
         }
         if (USER_SETTINGS.imageProperty === undefined) {
-            baseSettings.imageProperty = defaultViewSettings.imageProperty;
+            baseSettings.imageProperty = viewSettings.imageProperty ?? defaultViewSettings.imageProperty;
         }
         if (USER_SETTINGS.metadataDisplayLeft === undefined) {
-            baseSettings.metadataDisplayLeft = defaultViewSettings.metadataDisplayLeft;
+            baseSettings.metadataDisplayLeft = viewSettings.metadataDisplayLeft ?? defaultViewSettings.metadataDisplayLeft;
         }
         if (USER_SETTINGS.metadataDisplayRight === undefined) {
-            baseSettings.metadataDisplayRight = defaultViewSettings.metadataDisplayRight;
+            baseSettings.metadataDisplayRight = viewSettings.metadataDisplayRight ?? defaultViewSettings.metadataDisplayRight;
         }
         if (USER_SETTINGS.showTextPreview === undefined) {
-            baseSettings.showTextPreview = defaultViewSettings.showTextPreview;
+            baseSettings.showTextPreview = viewSettings.showTextPreview ?? defaultViewSettings.showTextPreview;
         }
         if (USER_SETTINGS.fallbackToContent === undefined) {
-            baseSettings.fallbackToContent = defaultViewSettings.fallbackToContent;
+            baseSettings.fallbackToContent = viewSettings.fallbackToContent ?? defaultViewSettings.fallbackToContent;
         }
         if (USER_SETTINGS.showThumbnails === undefined) {
-            baseSettings.showThumbnails = defaultViewSettings.showThumbnails;
+            baseSettings.showThumbnails = viewSettings.showThumbnails ?? defaultViewSettings.showThumbnails;
         }
         if (USER_SETTINGS.fallbackToEmbeds === undefined) {
-            baseSettings.fallbackToEmbeds = defaultViewSettings.fallbackToEmbeds;
+            baseSettings.fallbackToEmbeds = viewSettings.fallbackToEmbeds ?? defaultViewSettings.fallbackToEmbeds;
         }
         if (USER_SETTINGS.queryHeight === undefined) {
-            baseSettings.queryHeight = defaultViewSettings.queryHeight;
+            baseSettings.queryHeight = viewSettings.queryHeight ?? defaultViewSettings.queryHeight;
         }
         if (USER_SETTINGS.listMarker === undefined) {
-            baseSettings.listMarker = defaultViewSettings.listMarker;
+            baseSettings.listMarker = viewSettings.listMarker ?? defaultViewSettings.listMarker;
         }
 
         // Finally, apply any USER_SETTINGS overrides
@@ -252,17 +253,29 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
     // Persist settings changes
     dc.useEffect(() => {
-        // TODO: Write settings to USER_SETTINGS in file (requires file modification)
-        // For now, save to global settings
         if (settingsTimeoutRef.current) {
             clearTimeout(settingsTimeoutRef.current);
         }
         settingsTimeoutRef.current = setTimeout(() => {
-            if (persistenceManager) {
-                persistenceManager.setGlobalSettings(settings);
+            if (ctime && persistenceManager) {
+                // Extract only view-specific settings (those in DefaultViewSettings)
+                const viewSettings: Partial<DefaultViewSettings> = {
+                    titleProperty: settings.titleProperty,
+                    descriptionProperty: settings.descriptionProperty,
+                    imageProperty: settings.imageProperty,
+                    metadataDisplayLeft: settings.metadataDisplayLeft,
+                    metadataDisplayRight: settings.metadataDisplayRight,
+                    showTextPreview: settings.showTextPreview,
+                    fallbackToContent: settings.fallbackToContent,
+                    showThumbnails: settings.showThumbnails,
+                    fallbackToEmbeds: settings.fallbackToEmbeds,
+                    queryHeight: settings.queryHeight,
+                    listMarker: settings.listMarker
+                };
+                persistenceManager.setViewSettings(ctime, viewSettings);
             }
         }, 300);
-    }, [settings, persistenceManager]);
+    }, [settings, ctime, persistenceManager]);
 
     // Calculate sticky toolbar positioning
     dc.useEffect(() => {

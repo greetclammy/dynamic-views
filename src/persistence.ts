@@ -13,6 +13,7 @@ export class PersistenceManager {
             globalSettings: { ...DEFAULT_SETTINGS },
             defaultViewSettings: { ...DEFAULT_VIEW_SETTINGS },
             queryStates: {},
+            viewSettings: {},
             basesViewMetadataWinners: {}
         };
     }
@@ -24,6 +25,7 @@ export class PersistenceManager {
                 globalSettings: { ...DEFAULT_SETTINGS, ...loadedData.globalSettings },
                 defaultViewSettings: { ...DEFAULT_VIEW_SETTINGS, ...loadedData.defaultViewSettings },
                 queryStates: loadedData.queryStates || {},
+                viewSettings: loadedData.viewSettings || {},
                 basesViewMetadataWinners: loadedData.basesViewMetadataWinners || {}
             };
         }
@@ -80,6 +82,27 @@ export class PersistenceManager {
 
     async clearUIState(ctime: number): Promise<void> {
         delete this.data.queryStates[ctime.toString()];
+        await this.save();
+    }
+
+    getViewSettings(ctime: number): Partial<DefaultViewSettings> {
+        const settings = this.data.viewSettings[ctime.toString()];
+        return settings ? { ...settings } : {};
+    }
+
+    async setViewSettings(ctime: number, settings: Partial<DefaultViewSettings>): Promise<void> {
+        const key = ctime.toString();
+        const current = this.data.viewSettings[key] || {};
+
+        // Sanitize settings
+        const sanitized = sanitizeObject(settings);
+
+        this.data.viewSettings[key] = { ...current, ...sanitized };
+        await this.save();
+    }
+
+    async clearViewSettings(ctime: number): Promise<void> {
+        delete this.data.viewSettings[ctime.toString()];
         await this.save();
     }
 

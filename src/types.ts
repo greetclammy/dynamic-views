@@ -54,6 +54,7 @@ export interface PluginData {
     globalSettings: Settings;
     defaultViewSettings: DefaultViewSettings;
     queryStates: Record<string, UIState>;
+    viewSettings: Record<string, Partial<DefaultViewSettings>>;
     basesViewMetadataWinners: Record<string, 'left' | 'right' | null>;
 }
 
