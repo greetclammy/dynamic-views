@@ -1303,6 +1303,13 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     flex: 0 0 auto !important;
 }
 
+/* Force max-content on nested containers too */
+.dynamic-views .writing-meta.meta-measuring .tags-wrapper,
+.dynamic-views .writing-meta.meta-measuring .path-wrapper {
+    width: max-content !important;
+    min-width: 0 !important;
+}
+
 /* Disable direction: rtl during measurement to get accurate widths */
 .dynamic-views .writing-meta.meta-measuring .meta-right {
     direction: ltr !important;
