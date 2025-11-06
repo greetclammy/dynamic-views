@@ -51,7 +51,7 @@ interface ToolbarProps {
     onToggleLimitDropdown: () => void;
     onResultLimitChange: (limit: string) => void;
     onResetLimit: () => void;
-    copyMenuItem: any;
+    copyMenuItem: unknown;
 
     // Create note
     onCreateNote: (event: MouseEvent) => void;
@@ -117,7 +117,7 @@ export function Toolbar({
     onToggleSettings,
     showSettings,
     onSettingsChange,
-}: ToolbarProps) {
+}: ToolbarProps): unknown {
     return (
         <>
         <div className="bottom-controls">
@@ -159,14 +159,14 @@ export function Toolbar({
                     </button>
                     {showViewDropdown ? (
                         <div className="view-dropdown-menu">
-                            <div className="view-option" onClick={onSetViewCard} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetViewCard(); }}} tabIndex={0} role="menuitem">
+                            <div className="view-option" onClick={onSetViewCard} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetViewCard(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect width="18" height="7" x="3" y="3" rx="1"/>
                                     <rect width="18" height="7" x="3" y="14" rx="1"/>
                                 </svg>
                                 <span>Grid</span>
                             </div>
-                            <div className="view-option" onClick={onSetViewMasonry} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetViewMasonry(); }}} tabIndex={0} role="menuitem">
+                            <div className="view-option" onClick={onSetViewMasonry} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetViewMasonry(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect width="18" height="18" x="3" y="3" rx="2"/>
                                     <path d="M3 15h12"/>
@@ -174,7 +174,7 @@ export function Toolbar({
                                 </svg>
                                 <span>Masonry</span>
                             </div>
-                            <div className="view-option" onClick={onSetViewList} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetViewList(); }}} tabIndex={0} role="menuitem">
+                            <div className="view-option" onClick={onSetViewList} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetViewList(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="8" y1="6" x2="21" y2="6"/>
                                     <line x1="8" y1="12" x2="21" y2="12"/>
@@ -240,37 +240,37 @@ export function Toolbar({
                     </button>
                     {showSortDropdown ? (
                         <div className="sort-dropdown-menu">
-                            <div className="sort-option" onClick={onSetSortNameAsc} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetSortNameAsc(); }}} tabIndex={0} role="menuitem">
+                            <div className="sort-option" onClick={onSetSortNameAsc} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetSortNameAsc(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/>
                                 </svg>
                                 <span>File name (A to Z)</span>
                             </div>
-                            <div className="sort-option" onClick={onSetSortNameDesc} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetSortNameDesc(); }}} tabIndex={0} role="menuitem">
+                            <div className="sort-option" onClick={onSetSortNameDesc} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetSortNameDesc(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="M15 4h5l-5 6h5"/><path d="M15 20v-3.5a2.5 2.5 0 0 1 5 0V20"/><path d="M20 20h-5"/>
                                 </svg>
                                 <span>File name (Z to A)</span>
                             </div>
-                            <div className="sort-option" onClick={onSetSortMtimeDesc} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetSortMtimeDesc(); }}} tabIndex={0} role="menuitem">
+                            <div className="sort-option" onClick={onSetSortMtimeDesc} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetSortMtimeDesc(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12.338 21.994A10 10 0 1 1 21.925 13.227"/><path d="M12 6v6l2 1"/><path d="m14 18 4-4 4 4"/><path d="M18 14v8"/>
                                 </svg>
                                 <span>Modified time (new to old)</span>
                             </div>
-                            <div className="sort-option" onClick={onSetSortMtimeAsc} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetSortMtimeAsc(); }}} tabIndex={0} role="menuitem">
+                            <div className="sort-option" onClick={onSetSortMtimeAsc} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetSortMtimeAsc(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M13.228 21.925A10 10 0 1 1 21.994 12.338"/><path d="M12 6v6l1.562.781"/><path d="m14 18 4 4 4-4"/><path d="M18 22v-8"/>
                                 </svg>
                                 <span>Modified time (old to new)</span>
                             </div>
-                            <div className="sort-option" onClick={onSetSortCtimeDesc} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetSortCtimeDesc(); }}} tabIndex={0} role="menuitem">
+                            <div className="sort-option" onClick={onSetSortCtimeDesc} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetSortCtimeDesc(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M12 14 8 18"/><path d="M12 14 16 18"/>
                                 </svg>
                                 <span>Created time (new to old)</span>
                             </div>
-                            <div className="sort-option" onClick={onSetSortCtimeAsc} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetSortCtimeAsc(); }}} tabIndex={0} role="menuitem">
+                            <div className="sort-option" onClick={onSetSortCtimeAsc} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetSortCtimeAsc(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M12 18 8 14"/><path d="M12 18 16 14"/>
                                 </svg>
@@ -301,7 +301,7 @@ export function Toolbar({
                         type="text"
                         placeholder="Filter..."
                         value={searchQuery}
-                        onChange={(e) => onSearchChange(e.target.value)}
+                        onChange={(e: unknown) => { const evt = e as InputEvent & { target: HTMLInputElement }; onSearchChange(evt.target.value); }}
                         onFocus={onSearchFocus}
                         className="search-input desktop-search"
                     />

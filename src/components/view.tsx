@@ -314,7 +314,15 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
 
     dc.useEffect(() => {
         // Access Datacore core directly
-        const core = (window as any).datacore?.core;
+        const core = (window as unknown as {
+            datacore?: {
+                core?: {
+                    revision: number;
+                    on: (event: string, callback: (revision: number) => void) => unknown;
+                    offref: (ref: unknown) => void;
+                }
+            }
+        }).datacore?.core;
         if (!core) {
             return;
         }
@@ -391,7 +399,7 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
         }
 
         // Sort the filtered results
-        let sorted: any[];
+        let sorted: DatacoreFile[];
         if (isShuffled) {
             sorted = filtered.sort((a, b) => {
                 const indexA = shuffledOrder.indexOf(a.$path);
@@ -454,8 +462,8 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
 
             for (const p of sorted.slice(0, displayedCount)) {
                 try {
-                    const file = app.vault.getAbstractFileByPath(p.$path) as any;
-                    if (file) {
+                    const file = app.vault.getAbstractFileByPath(p.$path);
+                    if (file instanceof TFile) {
                         // Check if property values are actually useful (not empty/whitespace)
                         const descFromProp = getFirstDatacorePropertyValue(p, settings.descriptionProperty);
                         const hasValidDesc = descFromProp && String(descFromProp).trim().length > 0;
@@ -617,8 +625,8 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
                             newSnippets[p.$path] = "(File not found)";
                         }
                     }
-                } catch (e: any) {
-                    console.error("Error reading file:", p.$path, e.message || e);
+                } catch (e: unknown) {
+                    console.error("Error reading file:", p.$path, e instanceof Error ? e.message : e);
                     if (settings.showTextPreview) {
                         newSnippets[p.$path] = "(Error reading file)";
                     }
@@ -646,8 +654,8 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
         if (viewMode !== 'masonry') {
             const container = containerRef.current;
             if (container) {
-                const cards = container.querySelectorAll('.writing-card');
-                cards.forEach((card: any) => {
+                const cards = container.querySelectorAll<HTMLElement>('.writing-card');
+                cards.forEach((card) => {
                     card.style.position = '';
                     card.style.left = '';
                     card.style.top = '';
@@ -702,11 +710,11 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
             // Batch DOM operations
             requestAnimationFrame(() => {
                 const cardsToProcess = isIncremental ?
-                    Array.from(cards).slice(previousCount) :
-                    Array.from(cards);
+                    Array.from(cards).slice(previousCount) as HTMLElement[] :
+                    Array.from(cards) as HTMLElement[];
 
                 // Set widths
-                cardsToProcess.forEach((card: any) => {
+                cardsToProcess.forEach((card) => {
                     card.style.width = `${cardWidth}px`;
                 });
 
@@ -714,13 +722,13 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
                 container.offsetHeight;
 
                 // Read heights
-                const cardHeights = cardsToProcess.map((card: any) => card.offsetHeight);
+                const cardHeights = cardsToProcess.map((card) => card.offsetHeight);
 
                 // Calculate positions
                 const heights = isIncremental ?
                     [...columnHeightsRef.current!] :
                     new Array(cols).fill(0);
-                const positions: any[] = [];
+                const positions: { left: number; top: number }[] = [];
 
                 cardHeights.forEach((cardHeight) => {
                     const shortestCol = heights.indexOf(Math.min(...heights));
@@ -733,7 +741,7 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
 
                 // Apply positions
                 requestAnimationFrame(() => {
-                    cardsToProcess.forEach((card: any, i: number) => {
+                    cardsToProcess.forEach((card: HTMLElement, i: number) => {
                         const pos = positions[i];
                         card.style.position = 'absolute';
                         card.style.transition = 'none';
@@ -758,9 +766,9 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
         updateLayoutRef.current = updateLayout;
 
         // Debounced layout
-        let layoutTimeout: any;
+        let layoutTimeout: ReturnType<typeof setTimeout> | null = null;
         const debouncedLayout = () => {
-            clearTimeout(layoutTimeout);
+            if (layoutTimeout) clearTimeout(layoutTimeout);
             layoutTimeout = setTimeout(updateLayout, 16);
         };
 
@@ -792,7 +800,7 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
             intersectionObserver.disconnect();
             resizeObserver.disconnect();
             window.removeEventListener('resize', handleResize);
-            clearTimeout(layoutTimeout);
+            if (layoutTimeout) clearTimeout(layoutTimeout);
         };
     }, [sorted, viewMode, settings.minMasonryColumns, settings.minCardWidth, dc]);
 
@@ -870,8 +878,8 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
         const MOBILE_VIEWPORT_MULTIPLIER = Math.max(1, DESKTOP_VIEWPORT_MULTIPLIER * 0.5); // Mobile: 0.5x of desktop, minimum 1x
 
         // Find the element that actually scrolls
-        let element: any = containerRef.current;
-        let scrollableElement: any = null;
+        let element: HTMLElement | null = containerRef.current;
+        let scrollableElement: HTMLElement | Window | null = null;
 
         while (element && !scrollableElement) {
             if (element.scrollHeight > element.clientHeight) {
@@ -915,16 +923,20 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
                 scrollTop = window.scrollY || document.documentElement.scrollTop;
                 editorHeight = window.innerHeight;
                 scrollHeight = document.documentElement.scrollHeight;
-            } else {
+            } else if (scrollableElement instanceof HTMLElement) {
+                // TypeScript narrowing: must be HTMLElement here
                 scrollTop = scrollableElement.scrollTop;
                 editorHeight = scrollableElement.clientHeight;
                 scrollHeight = scrollableElement.scrollHeight;
+            } else {
+                // Fallback if somehow scrollableElement is null (shouldn't happen)
+                return false;
             }
 
             distanceFromBottom = scrollHeight - (scrollTop + editorHeight);
 
             // Calculate threshold
-            const threshold = editorHeight * ((app as any).isMobile ? MOBILE_VIEWPORT_MULTIPLIER : DESKTOP_VIEWPORT_MULTIPLIER);
+            const threshold = editorHeight * (app.isMobile ? MOBILE_VIEWPORT_MULTIPLIER : DESKTOP_VIEWPORT_MULTIPLIER);
 
             // console.log(`[InfiniteScroll] Metrics: scrollTop=${scrollTop.toFixed(0)}px, editorHeight=${editorHeight}px, scrollHeight=${scrollHeight}px, distance=${distanceFromBottom.toFixed(0)}px, threshold=${threshold.toFixed(0)}px`);
 
@@ -974,7 +986,7 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
 
         // Setup scroll listener with leading-edge throttle
         // console.log('[InfiniteScroll] Setting up scroll listener with leading-edge throttle');
-        let scrollTimer: any = null;
+        let scrollTimer: ReturnType<typeof setTimeout> | null = null;
         const handleScroll = () => {
             if (scrollTimer) {
                 // Cooldown active, ignore
@@ -1093,8 +1105,8 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
 
     const handleSearchChange = dc.useCallback((query: string) => {
         setSearchQuery(query);
-        setDisplayedCount((app as any).isMobile ? 25 : 50);
-    }, [(app as any).isMobile]);
+        setDisplayedCount(app.isMobile ? 25 : 50);
+    }, [app.isMobile]);
 
     const handleSearchFocus = dc.useCallback(() => {
         setShowViewDropdown(false);
