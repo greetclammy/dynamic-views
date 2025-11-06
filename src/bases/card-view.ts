@@ -160,7 +160,11 @@ export class DynamicViewsCardView extends BasesView {
             leftScrollWidth: leftInner ? leftInner.scrollWidth : 'N/A',
             rightScrollWidth: rightInner ? rightInner.scrollWidth : 'N/A',
             leftDisplay: leftInner ? getComputedStyle(leftInner).display : 'N/A',
-            rightDisplay: rightInner ? getComputedStyle(rightInner).display : 'N/A'
+            rightDisplay: rightInner ? getComputedStyle(rightInner).display : 'N/A',
+            leftWidth: leftInner ? getComputedStyle(leftInner).width : 'N/A',
+            rightWidth: rightInner ? getComputedStyle(rightInner).width : 'N/A',
+            leftChildren: leftInner ? leftInner.children.length : 'N/A',
+            rightChildren: rightInner ? rightInner.children.length : 'N/A'
         });
 
         const leftScrollWidth = leftInner ? leftInner.scrollWidth : 0;
