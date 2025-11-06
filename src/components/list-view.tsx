@@ -104,7 +104,7 @@ export function ListView({
                                                     onClick={(e: MouseEvent) => {
                                                         e.preventDefault();
                                                         const searchPlugin = app.internalPlugins.plugins["global-search"];
-                                                        if (searchPlugin && searchPlugin.instance) {
+                                                        if (searchPlugin?.instance?.openGlobalSearch) {
                                                             searchPlugin.instance.openGlobalSearch("tag:" + tag);
                                                         }
                                                     }}
@@ -126,7 +126,7 @@ export function ListView({
                                                     onClick={(e: MouseEvent) => {
                                                         e.preventDefault();
                                                         const searchPlugin = app.internalPlugins.plugins["global-search"];
-                                                        if (searchPlugin && searchPlugin.instance) {
+                                                        if (searchPlugin?.instance?.openGlobalSearch) {
                                                             searchPlugin.instance.openGlobalSearch("tag:" + tag);
                                                         }
                                                     }}
