@@ -13,7 +13,7 @@ export default class DynamicViewsPlugin extends Plugin {
 	persistenceManager: PersistenceManager;
 
 	// Helper function for datacorejsx blocks
-	createView(dc: any, userQuery?: string, userSettings?: any) {
+	createView(dc: any, userQuery?: string) {
 		const plugin = this;
 		const app = this.app;
 
@@ -28,8 +28,7 @@ export default class DynamicViewsPlugin extends Plugin {
 				plugin,
 				app,
 				dc,
-				USER_QUERY: userQuery || '@page',
-				USER_SETTINGS: userSettings || {}
+				USER_QUERY: userQuery || '@page'
 			});
 		};
 	}

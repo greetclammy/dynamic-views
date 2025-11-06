@@ -16,10 +16,9 @@ interface ViewProps {
     app: App;
     dc: any;
     USER_QUERY?: string;
-    USER_SETTINGS?: Partial<Settings>;
 }
 
-export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: ViewProps) {
+export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps) {
     // Get file containing this query (memoized to prevent re-fetching on every render)
     // This is used to exclude the query note itself from results
     const currentFile = dc.useMemo(() => {
@@ -100,7 +99,7 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
 
     // Helper: get persisted settings
     const getPersistedSettings = dc.useCallback((): Settings => {
-        if (!ctime || !persistenceManager) return { ...DEFAULT_SETTINGS, ...USER_SETTINGS };
+        if (!ctime || !persistenceManager) return DEFAULT_SETTINGS;
 
         const globalSettings = persistenceManager.getGlobalSettings();
         const defaultViewSettings = persistenceManager.getDefaultViewSettings();
@@ -109,45 +108,21 @@ export function View({ plugin, app, dc, USER_QUERY = '', USER_SETTINGS = {} }: V
         // Start with global settings as base
         const baseSettings = { ...globalSettings };
 
-        // For template properties (those that appear in view settings),
-        // merge in this order: defaultViewSettings -> viewSettings (persisted) -> USER_SETTINGS
-        if (USER_SETTINGS.titleProperty === undefined) {
-            baseSettings.titleProperty = viewSettings.titleProperty ?? defaultViewSettings.titleProperty;
-        }
-        if (USER_SETTINGS.descriptionProperty === undefined) {
-            baseSettings.descriptionProperty = viewSettings.descriptionProperty ?? defaultViewSettings.descriptionProperty;
-        }
-        if (USER_SETTINGS.imageProperty === undefined) {
-            baseSettings.imageProperty = viewSettings.imageProperty ?? defaultViewSettings.imageProperty;
-        }
-        if (USER_SETTINGS.metadataDisplayLeft === undefined) {
-            baseSettings.metadataDisplayLeft = viewSettings.metadataDisplayLeft ?? defaultViewSettings.metadataDisplayLeft;
-        }
-        if (USER_SETTINGS.metadataDisplayRight === undefined) {
-            baseSettings.metadataDisplayRight = viewSettings.metadataDisplayRight ?? defaultViewSettings.metadataDisplayRight;
-        }
-        if (USER_SETTINGS.showTextPreview === undefined) {
-            baseSettings.showTextPreview = viewSettings.showTextPreview ?? defaultViewSettings.showTextPreview;
-        }
-        if (USER_SETTINGS.fallbackToContent === undefined) {
-            baseSettings.fallbackToContent = viewSettings.fallbackToContent ?? defaultViewSettings.fallbackToContent;
-        }
-        if (USER_SETTINGS.showThumbnails === undefined) {
-            baseSettings.showThumbnails = viewSettings.showThumbnails ?? defaultViewSettings.showThumbnails;
-        }
-        if (USER_SETTINGS.fallbackToEmbeds === undefined) {
-            baseSettings.fallbackToEmbeds = viewSettings.fallbackToEmbeds ?? defaultViewSettings.fallbackToEmbeds;
-        }
-        if (USER_SETTINGS.queryHeight === undefined) {
-            baseSettings.queryHeight = viewSettings.queryHeight ?? defaultViewSettings.queryHeight;
-        }
-        if (USER_SETTINGS.listMarker === undefined) {
-            baseSettings.listMarker = viewSettings.listMarker ?? defaultViewSettings.listMarker;
-        }
+        // For view-specific properties, merge: defaultViewSettings -> viewSettings (persisted)
+        baseSettings.titleProperty = viewSettings.titleProperty ?? defaultViewSettings.titleProperty;
+        baseSettings.descriptionProperty = viewSettings.descriptionProperty ?? defaultViewSettings.descriptionProperty;
+        baseSettings.imageProperty = viewSettings.imageProperty ?? defaultViewSettings.imageProperty;
+        baseSettings.metadataDisplayLeft = viewSettings.metadataDisplayLeft ?? defaultViewSettings.metadataDisplayLeft;
+        baseSettings.metadataDisplayRight = viewSettings.metadataDisplayRight ?? defaultViewSettings.metadataDisplayRight;
+        baseSettings.showTextPreview = viewSettings.showTextPreview ?? defaultViewSettings.showTextPreview;
+        baseSettings.fallbackToContent = viewSettings.fallbackToContent ?? defaultViewSettings.fallbackToContent;
+        baseSettings.showThumbnails = viewSettings.showThumbnails ?? defaultViewSettings.showThumbnails;
+        baseSettings.fallbackToEmbeds = viewSettings.fallbackToEmbeds ?? defaultViewSettings.fallbackToEmbeds;
+        baseSettings.queryHeight = viewSettings.queryHeight ?? defaultViewSettings.queryHeight;
+        baseSettings.listMarker = viewSettings.listMarker ?? defaultViewSettings.listMarker;
 
-        // Finally, apply any USER_SETTINGS overrides
-        return { ...baseSettings, ...USER_SETTINGS };
-    }, [ctime, persistenceManager, USER_SETTINGS]);
+        return baseSettings;
+    }, [ctime, persistenceManager]);
 
     // Helper: get persisted UI state value
     const getFilePersistedValue = dc.useCallback(<K extends keyof UIState>(

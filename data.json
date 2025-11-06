@@ -47,7 +47,22 @@
       "viewMode": "card",
       "searchQuery": "",
       "resultLimit": "",
-      "widthMode": "normal"
+      "widthMode": "max"
+    }
+  },
+  "viewSettings": {
+    "1762122189077": {
+      "titleProperty": "",
+      "descriptionProperty": "",
+      "imageProperty": "",
+      "metadataDisplayLeft": "tags",
+      "metadataDisplayRight": "timestamp",
+      "showTextPreview": true,
+      "fallbackToContent": true,
+      "showThumbnails": true,
+      "fallbackToEmbeds": true,
+      "queryHeight": 0,
+      "listMarker": "bullet"
     }
   },
   "basesViewMetadataWinners": {}
