@@ -150,8 +150,12 @@ export class DynamicViewsCardView extends BasesView {
         void metaEl.offsetWidth;
 
         // Step 3: Measure TRUE unconstrained content widths
-        const leftScrollWidth = metaLeft.scrollWidth;
-        const rightScrollWidth = metaRight.scrollWidth;
+        // Measure inner content containers, not outer wrappers
+        const leftInner = metaLeft.querySelector('.tags-wrapper, .path-wrapper, span') as HTMLElement;
+        const rightInner = metaRight.querySelector('.tags-wrapper, .path-wrapper, span') as HTMLElement;
+
+        const leftScrollWidth = leftInner ? leftInner.scrollWidth : 0;
+        const rightScrollWidth = rightInner ? rightInner.scrollWidth : 0;
         const containerWidth = metaEl.clientWidth;
 
         const leftPercent = (leftScrollWidth / containerWidth) * 100;
