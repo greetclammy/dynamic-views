@@ -117,10 +117,25 @@ export function datacoreResultToCardData(
     });
 
     // Resolve property values
+    console.log(`// [DEBUG Datacore Result] Settings metadata props:`, {
+        metadataDisplay1: settings.metadataDisplay1,
+        metadataDisplay2: settings.metadataDisplay2,
+        metadataDisplay3: settings.metadataDisplay3,
+        metadataDisplay4: settings.metadataDisplay4
+    });
+    console.log(`// [DEBUG Datacore Result] Effective props after deduplication:`, effectiveProps);
+
     cardData.metadata1 = effectiveProps[0] ? resolveDatacoreMetadataProperty(effectiveProps[0], result, cardData, settings, dc) : null;
     cardData.metadata2 = effectiveProps[1] ? resolveDatacoreMetadataProperty(effectiveProps[1], result, cardData, settings, dc) : null;
     cardData.metadata3 = effectiveProps[2] ? resolveDatacoreMetadataProperty(effectiveProps[2], result, cardData, settings, dc) : null;
     cardData.metadata4 = effectiveProps[3] ? resolveDatacoreMetadataProperty(effectiveProps[3], result, cardData, settings, dc) : null;
+
+    console.log(`// [DEBUG Datacore Result] Resolved metadata:`, {
+        metadata1: cardData.metadata1,
+        metadata2: cardData.metadata2,
+        metadata3: cardData.metadata3,
+        metadata4: cardData.metadata4
+    });
 
     return cardData;
 }
@@ -252,10 +267,25 @@ export function basesEntryToCardData(
     });
 
     // Resolve property values
+    console.log(`// [DEBUG Bases Entry] Settings metadata props:`, {
+        metadataDisplay1: settings.metadataDisplay1,
+        metadataDisplay2: settings.metadataDisplay2,
+        metadataDisplay3: settings.metadataDisplay3,
+        metadataDisplay4: settings.metadataDisplay4
+    });
+    console.log(`// [DEBUG Bases Entry] Effective props after deduplication:`, effectiveProps);
+
     cardData.metadata1 = effectiveProps[0] ? resolveBasesMetadataProperty(effectiveProps[0], entry, cardData, settings) : null;
     cardData.metadata2 = effectiveProps[1] ? resolveBasesMetadataProperty(effectiveProps[1], entry, cardData, settings) : null;
     cardData.metadata3 = effectiveProps[2] ? resolveBasesMetadataProperty(effectiveProps[2], entry, cardData, settings) : null;
     cardData.metadata4 = effectiveProps[3] ? resolveBasesMetadataProperty(effectiveProps[3], entry, cardData, settings) : null;
+
+    console.log(`// [DEBUG Bases Entry] Resolved metadata:`, {
+        metadata1: cardData.metadata1,
+        metadata2: cardData.metadata2,
+        metadata3: cardData.metadata3,
+        metadata4: cardData.metadata4
+    });
 
     return cardData;
 }
@@ -320,21 +350,32 @@ export function resolveBasesMetadataProperty(
     cardData: CardData,
     settings: Settings
 ): string | null {
-    if (!propertyName || propertyName === '') return null;
+    console.log(`// [DEBUG Bases Metadata] Resolving property "${propertyName}" for file: ${cardData.path}`);
+
+    if (!propertyName || propertyName === '') {
+        console.log(`// [DEBUG Bases Metadata] Empty property name, returning null`);
+        return null;
+    }
 
     // Handle special properties (support both Bases and Datacore formats)
     // Bases format: file.path, file.tags, file.mtime, file.ctime
     // Datacore format: "file path", "file tags", "modified time", "created time"
     if (propertyName === 'file.path' || propertyName === 'file path') {
-        // Extract folder path, trim after last /, return null if root
+        console.log(`// [DEBUG Bases Metadata] Special property: file path. folderPath="${cardData.folderPath}"`);
         const path = cardData.folderPath;
-        if (!path || path === '') return null;
+        if (!path || path === '') {
+            console.log(`// [DEBUG Bases Metadata] No folder path, returning null`);
+            return null;
+        }
+        console.log(`// [DEBUG Bases Metadata] Returning folder path: "${path}"`);
         return path;
     }
 
     if (propertyName === 'file.tags' || propertyName === 'file tags' || propertyName === 'tags') {
-        // Tags are already resolved in cardData.tags
-        return cardData.tags.length > 0 ? 'tags' : null; // Special marker
+        console.log(`// [DEBUG Bases Metadata] Special property: file tags. tags=${JSON.stringify(cardData.tags)}`);
+        const result = cardData.tags.length > 0 ? 'tags' : null;
+        console.log(`// [DEBUG Bases Metadata] Returning: ${result}`);
+        return result;
     }
 
     // Check if property is a timestamp property
@@ -344,29 +385,40 @@ export function resolveBasesMetadataProperty(
         settings.modifiedProperty.split(',').map(p => p.trim()).includes(propertyName);
 
     if (isCreatedTimestamp || isModifiedTimestamp) {
-        // Use displayTimestamp if available, otherwise fall back to file timestamps
+        console.log(`// [DEBUG Bases Metadata] Timestamp property. isCreated=${isCreatedTimestamp}, isModified=${isModifiedTimestamp}`);
         const timestamp = cardData.displayTimestamp ||
             (isCreatedTimestamp ? cardData.ctime : cardData.mtime);
 
-        if (!timestamp) return null;
-        return formatTimestamp(timestamp);
+        if (!timestamp) {
+            console.log(`// [DEBUG Bases Metadata] No timestamp, returning null`);
+            return null;
+        }
+        const formatted = formatTimestamp(timestamp);
+        console.log(`// [DEBUG Bases Metadata] Formatted timestamp: "${formatted}"`);
+        return formatted;
     }
 
     // Generic property: read from frontmatter
+    console.log(`// [DEBUG Bases Metadata] Generic property, reading from frontmatter`);
     const value = getFirstBasesPropertyValue(entry, propertyName) as { data?: unknown } | null;
     const data = value?.data;
+    console.log(`// [DEBUG Bases Metadata] Property value:`, value, 'data:', data);
 
     // Return null for missing or empty values
     if (data == null || data === '' || (Array.isArray(data) && data.length === 0)) {
+        console.log(`// [DEBUG Bases Metadata] Empty/null data, returning null`);
         return null;
     }
 
     // Convert to string
     if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
-        return String(data);
+        const result = String(data);
+        console.log(`// [DEBUG Bases Metadata] Returning string: "${result}"`);
+        return result;
     }
 
     // For complex types, return null (can't display)
+    console.log(`// [DEBUG Bases Metadata] Complex type, returning null`);
     return null;
 }
 
