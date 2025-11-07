@@ -70,7 +70,12 @@ function renderMetadataContent(
     settings: Settings,
     app: App
 ): unknown {
-    if (propertyName === '' || !resolvedValue) return null;
+    console.log(`// [DEBUG Renderer] renderMetadataContent called with propertyName="${propertyName}", resolvedValue="${resolvedValue}"`);
+
+    if (propertyName === '' || !resolvedValue) {
+        console.log(`// [DEBUG Renderer] Returning null - empty propertyName or no resolvedValue`);
+        return null;
+    }
 
     // Handle special properties by property name
     // For timestamps: file.mtime, file.ctime, or legacy formats

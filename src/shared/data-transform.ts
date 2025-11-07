@@ -288,13 +288,20 @@ export function basesEntryToCardData(
     cardData.metadataProperty3 = effectiveProps[2] || undefined;
     cardData.metadataProperty4 = effectiveProps[3] || undefined;
 
+    console.log(`// [DEBUG Bases Entry] Stored property names:`, {
+        metadataProperty1: cardData.metadataProperty1,
+        metadataProperty2: cardData.metadataProperty2,
+        metadataProperty3: cardData.metadataProperty3,
+        metadataProperty4: cardData.metadataProperty4
+    });
+
     // Resolve property values
     cardData.metadata1 = effectiveProps[0] ? resolveBasesMetadataProperty(effectiveProps[0], entry, cardData, settings) : null;
     cardData.metadata2 = effectiveProps[1] ? resolveBasesMetadataProperty(effectiveProps[1], entry, cardData, settings) : null;
     cardData.metadata3 = effectiveProps[2] ? resolveBasesMetadataProperty(effectiveProps[2], entry, cardData, settings) : null;
     cardData.metadata4 = effectiveProps[3] ? resolveBasesMetadataProperty(effectiveProps[3], entry, cardData, settings) : null;
 
-    console.log(`// [DEBUG Bases Entry] Resolved metadata:`, {
+    console.log(`// [DEBUG Bases Entry] Resolved metadata values:`, {
         metadata1: cardData.metadata1,
         metadata2: cardData.metadata2,
         metadata3: cardData.metadata3,
