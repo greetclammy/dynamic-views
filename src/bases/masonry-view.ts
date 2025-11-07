@@ -375,8 +375,21 @@ export class DynamicViewsMasonryView extends BasesView {
             const metaRight = metaEl.createDiv('meta-right');
             this.renderMetadataContent(metaRight, effectiveRight, card, entry, settings);
 
-            // Setup dynamic layout measurement for both-sided metadata
-            if (effectiveLeft !== 'none' && effectiveRight !== 'none') {
+            // Check if content actually rendered (not just settings configured)
+            const hasLeftContent = metaLeft.children.length > 0 || metaLeft.textContent?.trim().length > 0;
+            const hasRightContent = metaRight.children.length > 0 || metaRight.textContent?.trim().length > 0;
+
+            // Update classes based on actual content
+            if (!hasLeftContent && hasRightContent) {
+                metaEl.removeClass('meta-left-only');
+                metaEl.addClass('meta-right-only');
+            } else if (hasLeftContent && !hasRightContent) {
+                metaEl.removeClass('meta-right-only');
+                metaEl.addClass('meta-left-only');
+            }
+
+            // Setup dynamic layout measurement only if both sides actually have content
+            if (hasLeftContent && hasRightContent) {
                 // Initial measurement after DOM paint
                 requestAnimationFrame(() => {
                     this.measureMetadataLayout(metaEl, metaLeft, metaRight);

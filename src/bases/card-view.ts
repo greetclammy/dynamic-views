@@ -321,9 +321,24 @@ export class DynamicViewsCardView extends BasesView {
             const metaRight = metaEl.createDiv('meta-right');
             this.renderMetadataContent(metaRight, effectiveRight, card, entry, settings);
 
-            // Setup dynamic layout measurement for both-sided metadata
-            console.log(`// [DEBUG Condition] Checking: effectiveLeft=${effectiveLeft} !== 'none' && effectiveRight=${effectiveRight} !== 'none' =`, effectiveLeft !== 'none' && effectiveRight !== 'none');
-            if (effectiveLeft !== 'none' && effectiveRight !== 'none') {
+            // Check if content actually rendered (not just settings configured)
+            const hasLeftContent = metaLeft.children.length > 0 || metaLeft.textContent?.trim().length > 0;
+            const hasRightContent = metaRight.children.length > 0 || metaRight.textContent?.trim().length > 0;
+
+            console.log(`// [DEBUG Content] File: ${card.path}, hasLeftContent: ${hasLeftContent}, hasRightContent: ${hasRightContent}`);
+
+            // Update classes based on actual content
+            if (!hasLeftContent && hasRightContent) {
+                metaEl.removeClass('meta-left-only');
+                metaEl.addClass('meta-right-only');
+            } else if (hasLeftContent && !hasRightContent) {
+                metaEl.removeClass('meta-right-only');
+                metaEl.addClass('meta-left-only');
+            }
+
+            // Setup dynamic layout measurement only if both sides actually have content
+            console.log(`// [DEBUG Condition] Checking: hasLeftContent=${hasLeftContent} && hasRightContent=${hasRightContent} =`, hasLeftContent && hasRightContent);
+            if (hasLeftContent && hasRightContent) {
                 const cardPath = cardEl.getAttribute('data-path');
                 console.log('// [MetadataLayout] Setting up measurement for card:', cardPath);
 
