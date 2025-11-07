@@ -129,6 +129,17 @@ settings:
 */
 
 /* ============================================
+   PLUGIN SETTINGS STYLES
+   ============================================ */
+
+/* Add border-top to description after Appearance heading */
+.setting-item-heading + p.setting-item-description {
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+/* ============================================
    DATACORE EXPLORER STYLES
    ============================================ */
 
