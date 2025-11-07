@@ -1441,105 +1441,6 @@ body.dynamic-views-thumbnail-right .dynamic-views .snippet-container {
     pointer-events: auto;
 }
 
-.dynamic-views .writing-meta {
-    display: grid;
-    grid-template-columns: minmax(auto, 50%) minmax(auto, 50%);
-    column-gap: 8px;
-    font-size: 0.8em;
-    margin-top: 4px;
-    color: var(--text-faint);
-    min-height: 24px;
-    line-height: 1.4;
-    white-space: nowrap;
-}
-
-/* Dynamic layout using CSS variables for explicit pixel values */
-.dynamic-views .writing-meta.meta-measured {
-    grid-template-columns: var(--meta-left-width, auto) var(--meta-right-width, auto);
-}
-
-/* Temporary state for measuring unconstrained content widths */
-.dynamic-views .writing-meta.meta-measuring {
-    display: flex !important;  /* Use flex instead of grid for measurement */
-    gap: 0 !important;
-}
-
-.dynamic-views .writing-meta.meta-measuring .meta-left,
-.dynamic-views .writing-meta.meta-measuring .meta-right {
-    max-width: none !important;
-    width: max-content !important;  /* Force max-content sizing */
-    min-width: 0 !important;  /* Override flex automatic minimum */
-    flex: 0 0 auto !important;
-}
-
-/* Force max-content on nested containers too */
-.dynamic-views .writing-meta.meta-measuring .tags-wrapper,
-.dynamic-views .writing-meta.meta-measuring .path-wrapper {
-    width: max-content !important;
-    min-width: 0 !important;
-}
-
-/* Disable direction: rtl during measurement to get accurate widths */
-.dynamic-views .writing-meta.meta-measuring .meta-right {
-    direction: ltr !important;
-}
-
-.dynamic-views .meta-left {
-    min-width: 0;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    position: relative;  /* For gradient ::after positioning */
-}
-
-.dynamic-views .meta-left::-webkit-scrollbar {
-    display: none;
-}
-
-/* Ensure timestamp text never shrinks or wraps */
-.dynamic-views .meta-left > span,
-.dynamic-views .meta-right > span {
-    flex-shrink: 0;
-    white-space: nowrap;
-    height: 20px;
-    display: flex;
-    align-items: center;
-}
-
-/* Prevent timestamp container from shrinking (timestamp = direct span child) */
-.dynamic-views .meta-left:has(> span),
-.dynamic-views .meta-right:has(> span) {
-    flex-shrink: 0;
-}
-
-/* Left item capped at 50% of container to enable right to fill remaining space */
-.dynamic-views .meta-left {
-    max-width: 50%;
-}
-
-/* Right item fills its grid column (which takes remaining space) */
-.dynamic-views .meta-right {
-    max-width: 100%;
-}
-
-/* Constrain grid items to their column widths */
-.dynamic-views .writing-meta.meta-measured .meta-left,
-.dynamic-views .writing-meta.meta-measured .meta-right {
-    max-width: 100%;  /* Respect column width */
-    width: 100%;      /* Fill the column */
-}
-
-/* Left column: always left-aligned */
-.dynamic-views .meta-left {
-    justify-content: flex-start;
-}
-
-/* Right column: always right-aligned */
-.dynamic-views .writing-meta:not(.meta-left-only):not(.meta-right-only) .meta-right {
-    justify-content: flex-end;  /* Right-align content in right column */
-}
-
 .dynamic-views .timestamp-icon {
     flex-shrink: 0;
     opacity: 0.7;
@@ -1557,58 +1458,6 @@ body:not(.dynamic-views-show-timestamp-icon) .dynamic-views .timestamp-icon {
     width: 100%;
     height: 100%;
     display: block;
-}
-
-.dynamic-views .meta-right {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    position: relative;  /* For gradient ::after positioning */
-}
-
-.dynamic-views .meta-right::-webkit-scrollbar {
-    display: none;
-}
-
-/* Single-side metadata layout - collapse to 1 column grid */
-.dynamic-views .writing-meta.meta-left-only {
-    grid-template-columns: 1fr;
-}
-
-.dynamic-views .writing-meta.meta-left-only .meta-left {
-    width: 100%;
-    max-width: 100%;  /* Override 50% constraint for single-side */
-    flex: 1;
-}
-
-.dynamic-views .writing-meta.meta-left-only .meta-right {
-    display: none;
-}
-
-.dynamic-views .writing-meta.meta-right-only {
-    grid-template-columns: 1fr;
-}
-
-.dynamic-views .writing-meta.meta-right-only .meta-left {
-    display: none;
-}
-
-.dynamic-views .writing-meta.meta-right-only .meta-right {
-    width: 100%;
-    flex: 1;
-    justify-content: flex-end;  /* Right-align content when only right column */
-}
-
-/* Remove margin-left: auto from inner containers when right-only */
-.dynamic-views .writing-meta.meta-right-only .meta-right .tags-wrapper,
-.dynamic-views .writing-meta.meta-right-only .meta-right .path-wrapper,
-.dynamic-views .writing-meta.meta-right-only .meta-right > span {
-    margin-left: 0;
-}
-
-.dynamic-views .writing-meta.no-timestamp .meta-right {
-    margin-left: 0;
 }
 
 .dynamic-views .tags-wrapper {
@@ -1632,59 +1481,6 @@ body:not(.dynamic-views-show-timestamp-icon) .dynamic-views .timestamp-icon {
 /* Path segments must be inline for ellipsis to work across the whole path */
 .dynamic-views .path-wrapper > span {
     display: inline;
-}
-
-/* Constrain inner containers to grid item width and handle overflow */
-/* Timestamps (direct span children) never need scrolling - always shown in full */
-.dynamic-views .meta-left > span,
-.dynamic-views .meta-right > span {
-    max-width: 100%;
-}
-
-/* Tags and paths: always scrollable with dynamic gradient edges */
-.dynamic-views .meta-left .tags-wrapper,
-.dynamic-views .meta-left .path-wrapper {
-    max-width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-    position: relative;
-}
-
-.dynamic-views .meta-right .tags-wrapper,
-.dynamic-views .meta-right .path-wrapper {
-    max-width: 100%;
-    margin-left: auto;  /* Push content to the right */
-    overflow-x: auto;
-    scrollbar-width: none;
-    position: relative;
-}
-
-/* Gradient mask applied to parent containers - fades content opacity without adding color */
-/* Applied to meta-left/meta-right containers, which are parents of scrollable elements */
-body.dynamic-views-fade-trimmed-content .dynamic-views .meta-left.scroll-gradient-left,
-body.dynamic-views-fade-trimmed-content .dynamic-views .meta-right.scroll-gradient-left {
-    mask-image: linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.3) 4px, black 28px, black 100%);
-    -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.3) 4px, black 28px, black 100%);
-}
-
-body.dynamic-views-fade-trimmed-content .dynamic-views .meta-left.scroll-gradient-right,
-body.dynamic-views-fade-trimmed-content .dynamic-views .meta-right.scroll-gradient-right {
-    mask-image: linear-gradient(to right, black 0, black calc(100% - 28px), rgba(0,0,0,0.3) calc(100% - 4px), rgba(0,0,0,0) 100%);
-    -webkit-mask-image: linear-gradient(to right, black 0, black calc(100% - 28px), rgba(0,0,0,0.3) calc(100% - 4px), rgba(0,0,0,0) 100%);
-}
-
-body.dynamic-views-fade-trimmed-content .dynamic-views .meta-left.scroll-gradient-both,
-body.dynamic-views-fade-trimmed-content .dynamic-views .meta-right.scroll-gradient-both {
-    mask-image: linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.3) 4px, black 28px, black calc(100% - 28px), rgba(0,0,0,0.3) calc(100% - 4px), rgba(0,0,0,0) 100%);
-    -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.3) 4px, black 28px, black calc(100% - 28px), rgba(0,0,0,0.3) calc(100% - 4px), rgba(0,0,0,0) 100%);
-}
-
-/* Hide scrollbars */
-.dynamic-views .meta-left .tags-wrapper::-webkit-scrollbar,
-.dynamic-views .meta-left .path-wrapper::-webkit-scrollbar,
-.dynamic-views .meta-right .tags-wrapper::-webkit-scrollbar,
-.dynamic-views .meta-right .path-wrapper::-webkit-scrollbar {
-    display: none;
 }
 
 /* Base tag styles */
@@ -2146,25 +1942,6 @@ body.dynamic-views-fade-trimmed-content .dynamic-views .meta-row-sidebyside .met
 
     /* Stack metadata on narrow cards */
     .dynamic-views .writing-meta,
-    .bases-view .writing-meta {
-        flex-direction: column-reverse;
-        align-items: flex-start;
-        min-height: auto;
-        max-height: none;
-        gap: 8px;
-    }
-
-    .dynamic-views .meta-left,
-    .bases-view .meta-left {
-        width: 100%;
-    }
-
-    .dynamic-views .meta-right,
-    .bases-view .meta-right {
-        width: 100%;
-        margin-left: 0 !important;
-        text-align: left;
-    }
 
     .dynamic-views .tags-wrapper,
     .dynamic-views .path-wrapper,

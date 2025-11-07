@@ -178,78 +178,6 @@ export class DynamicViewsCardView extends BasesView {
         })();
     }
 
-    private measureMetadataLayout(metaEl: HTMLElement, metaLeft: HTMLElement, metaRight: HTMLElement): void {
-        // Step 1: Enter measuring state to remove ALL constraints
-        metaEl.removeClass('meta-measured');
-        metaEl.addClass('meta-measuring');
-
-        // Step 2: Force reflow to apply measuring state
-        void metaEl.offsetWidth;
-
-        // Step 3: Measure TRUE unconstrained content widths
-        // Measure inner content containers, not outer wrappers
-        const leftInner = metaLeft.querySelector('.tags-wrapper, .path-wrapper, span') as HTMLElement;
-        const rightInner = metaRight.querySelector('.tags-wrapper, .path-wrapper, span') as HTMLElement;
-
-        const leftScrollWidth = leftInner ? leftInner.scrollWidth : 0;
-        const rightScrollWidth = rightInner ? rightInner.scrollWidth : 0;
-        const containerWidth = metaEl.clientWidth;
-        const gap = 8;  // column-gap between left and right
-        const availableWidth = containerWidth - gap;
-
-        const leftPercent = (leftScrollWidth / availableWidth) * 100;
-        const rightPercent = (rightScrollWidth / availableWidth) * 100;
-
-        console.log(`// [MetadataLayout] TRUE unconstrained measurement: containerWidth=${containerWidth}px, availableWidth=${availableWidth}px, leftScrollWidth=${leftScrollWidth}px (${leftPercent.toFixed(1)}%), rightScrollWidth=${rightScrollWidth}px (${rightPercent.toFixed(1)}%)`);
-
-        // Step 4: Calculate optimal widths based on conditional logic
-        let leftWidth: string;
-        let rightWidth: string;
-        let strategy: string;
-
-        if (leftPercent <= 50 && rightPercent <= 50) {
-            // Both content fits: left gets exact size, right fills remainder to ensure full width
-            leftWidth = `${leftScrollWidth}px`;
-            rightWidth = `${availableWidth - leftScrollWidth}px`;
-            strategy = 'both-fit';
-        } else if (leftPercent <= 50 && rightPercent > 50) {
-            // Left small, right needs more: left gets exact size, right fills remainder
-            leftWidth = `${leftScrollWidth}px`;
-            rightWidth = `${availableWidth - leftScrollWidth}px`;
-            strategy = 'left-small';
-        } else if (leftPercent > 50 && rightPercent <= 50) {
-            // Right small, left needs more: right gets exact size, left fills remainder
-            leftWidth = `${availableWidth - rightScrollWidth}px`;
-            rightWidth = `${rightScrollWidth}px`;
-            strategy = 'right-small';
-        } else {
-            // Both >50%: split 50-50
-            const half = availableWidth / 2;
-            leftWidth = `${half}px`;
-            rightWidth = `${half}px`;
-            strategy = '50-50';
-        }
-
-        // Step 5: Exit measuring state, apply calculated values
-        metaEl.removeClass('meta-measuring');
-        metaEl.style.setProperty('--meta-left-width', leftWidth);
-        metaEl.style.setProperty('--meta-right-width', rightWidth);
-        metaEl.addClass('meta-measured');
-
-        console.log('// [MetadataLayout] Strategy:', strategy);
-        console.log('// [MetadataLayout] Set widths:', leftWidth, rightWidth);
-        console.log('// [MetadataLayout] New grid template:', getComputedStyle(metaEl).gridTemplateColumns);
-
-        // Step 6: Verify layout after applying measured widths
-        requestAnimationFrame(() => {
-            console.log('// [MetadataLayout] Grid item actual widths:', metaLeft.clientWidth, metaRight.clientWidth);
-            console.log('// [MetadataLayout] Inner container widths:', leftInner?.clientWidth, rightInner?.clientWidth);
-            console.log('// [MetadataLayout] Overflow detected:',
-                leftInner && leftInner.scrollWidth > leftInner.clientWidth,
-                rightInner && rightInner.scrollWidth > rightInner.clientWidth);
-        });
-    }
-
     private renderCard(
         container: HTMLElement,
         card: CardData,
@@ -419,7 +347,7 @@ export class DynamicViewsCardView extends BasesView {
 
     private updateScrollGradient(element: HTMLElement): void {
         // For .meta-field: apply gradient to element itself
-        // For .tags-wrapper/.path-wrapper: apply to parent (legacy behavior)
+        // For .tags-wrapper/.path-wrapper: apply to parent
         const isMetaField = element.classList.contains('meta-field');
         const target = isMetaField ? element : element.parentElement;
         if (!target) return;
@@ -545,9 +473,8 @@ export class DynamicViewsCardView extends BasesView {
     }
 
     private setupScrollGradients(container: HTMLElement): void {
-        // Find all scrollable elements:
-        // - tags-wrapper and path-wrapper from legacy 2-column system ONLY (not inside .meta-4field)
-        // - meta-field in side-by-side layout (4-field system)
+        // Find all scrollable metadata elements
+        // Note: Exclude .tags-wrapper/.path-wrapper from .meta-4field since they're content (not containers) there
         const scrollables = container.querySelectorAll('.writing-meta:not(.meta-4field) .tags-wrapper, .writing-meta:not(.meta-4field) .path-wrapper, .meta-row-sidebyside .meta-field');
 
         scrollables.forEach((el) => {
