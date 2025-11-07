@@ -389,12 +389,12 @@ export class DynamicViewsCardView extends BasesView {
         // Force reflow
         void row.offsetWidth;
 
-        // Measure inner content (first child element)
-        const inner1 = field1.querySelector('.tags-wrapper, .path-wrapper, .property-value, span') as HTMLElement;
-        const inner2 = field2.querySelector('.tags-wrapper, .path-wrapper, .property-value, span') as HTMLElement;
+        // Measure meta-content wrapper
+        const content1 = field1.querySelector('.meta-content') as HTMLElement;
+        const content2 = field2.querySelector('.meta-content') as HTMLElement;
 
-        const width1 = inner1 ? inner1.scrollWidth : 0;
-        const width2 = inner2 ? inner2.scrollWidth : 0;
+        const width1 = content1 ? content1.scrollWidth : 0;
+        const width2 = content2 ? content2.scrollWidth : 0;
         const containerWidth = row.clientWidth;
         const gap = 8;
         const availableWidth = containerWidth - gap;
@@ -496,6 +496,9 @@ export class DynamicViewsCardView extends BasesView {
             return;
         }
 
+        // Universal wrapper for all content types
+        const metaContent = container.createDiv('meta-content');
+
         // Handle special properties by property name
         if (propertyName === 'file.mtime' || propertyName === 'file.ctime' ||
             propertyName === 'timestamp' || propertyName === 'modified time' || propertyName === 'created time') {
@@ -504,8 +507,7 @@ export class DynamicViewsCardView extends BasesView {
 
             if (timestamp) {
                 const date = formatTimestamp(timestamp);
-                // Wrap in span for proper measurement
-                const timestampWrapper = container.createSpan();
+                const timestampWrapper = metaContent.createSpan();
                 if (showTimestampIcon()) {
                     const sortMethod = this.getSortMethod();
                     const iconName = getTimestampIcon(sortMethod);
@@ -517,7 +519,7 @@ export class DynamicViewsCardView extends BasesView {
         } else if ((propertyName === 'file.tags' || propertyName === 'tags' || propertyName === 'file tags') && card.tags.length > 0) {
             const tagStyle = getTagStyle();
             const showHashPrefix = tagStyle === 'minimal';
-            const tagsWrapper = container.createDiv('tags-wrapper');
+            const tagsWrapper = metaContent.createDiv('tags-wrapper');
             card.tags.forEach(tag => {
                 const tagEl = tagsWrapper.createEl('a', {
                     cls: 'tag',
@@ -533,7 +535,7 @@ export class DynamicViewsCardView extends BasesView {
                 });
             });
         } else if ((propertyName === 'file.path' || propertyName === 'path' || propertyName === 'file path') && card.folderPath.length > 0) {
-            const pathWrapper = container.createDiv('path-wrapper');
+            const pathWrapper = metaContent.createDiv('path-wrapper');
             const folders = card.folderPath.split('/').filter(f => f);
             folders.forEach((folder, idx) => {
                 const span = pathWrapper.createSpan();
@@ -543,9 +545,8 @@ export class DynamicViewsCardView extends BasesView {
                 }
             });
         } else {
-            // Generic property: wrap in span for measurement and scrolling
-            const wrapper = container.createSpan('property-value');
-            wrapper.appendText(resolvedValue);
+            // Generic property
+            metaContent.appendText(resolvedValue);
         }
     }
 

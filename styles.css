@@ -1596,134 +1596,73 @@ body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag:hover {
     gap: 8px;
 }
 
-/* Temporary state for measuring unconstrained content widths */
-.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring {
-    display: flex !important;
-    gap: 0 !important;
-}
-
-.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .meta-field {
-    max-width: none !important;
-    width: max-content !important;
-    min-width: 0 !important;
-    flex: 0 0 auto !important;
-    overflow-x: visible !important;
-}
-
-/* Force max-content on nested containers during measurement */
-.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .tags-wrapper,
-.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .path-wrapper,
-.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .property-value {
-    width: max-content !important;
-    min-width: 0 !important;
+/* Meta-field: scrollable container */
+.dynamic-views .meta-field {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    position: relative;
+    direction: ltr;
 }
 
 /* Default state: fields split space equally with 50% max */
 .dynamic-views .meta-row.meta-row-sidebyside .meta-field {
     flex: 1 1 0;
-    min-width: 0;
     max-width: 50%;
-    overflow-x: auto;
-    scrollbar-width: none;
-    position: relative;
 }
 
-/* Measured state: use calculated widths from CSS variables */
+/* Measured state: use calculated widths from CSS variables, remove 50% cap */
 .dynamic-views .meta-row.meta-row-sidebyside.meta-measured .meta-field-1,
 .dynamic-views .meta-row.meta-row-sidebyside.meta-measured .meta-field-3 {
     width: var(--field1-width);
-    max-width: var(--field1-width);
     flex: 0 0 auto;
 }
 
 .dynamic-views .meta-row.meta-row-sidebyside.meta-measured .meta-field-2,
 .dynamic-views .meta-row.meta-row-sidebyside.meta-measured .meta-field-4 {
     width: var(--field2-width);
-    max-width: var(--field2-width);
     flex: 0 0 auto;
 }
 
+/* Single field rows */
 .dynamic-views .meta-row.meta-row-single .meta-field {
     width: 100%;
 }
 
-.dynamic-views .meta-row.meta-row-sidebyside.meta-row-single .meta-field {
-    max-width: 100%;
-}
-
-.dynamic-views .meta-field {
+/* Universal meta-content wrapper */
+.dynamic-views .meta-content {
     display: flex;
     align-items: center;
     gap: 4px;
-    min-width: 0;
-    white-space: nowrap;
-    direction: ltr; /* Ensure scroll starts at position 0 */
-}
-
-/* Timestamps (direct span children) and custom properties need flex container styling */
-.dynamic-views .meta-field > span,
-.dynamic-views .meta-field .property-value {
-    white-space: nowrap;
+    min-width: 100%; /* Fills field, triggers scroll when content > field */
     flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
+    white-space: nowrap;
     height: 20px;
 }
 
-/* Ensure all content inside fields doesn't shrink */
-.dynamic-views .meta-field .tags-wrapper,
-.dynamic-views .meta-field .path-wrapper {
-    flex-shrink: 0;
+/* Measurement state: remove min-width to allow natural sizing */
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .meta-content {
+    min-width: 0 !important;
 }
 
-/* Field alignment in side-by-side layout */
-/* Left fields (1, 3) - left-aligned */
-.dynamic-views .meta-row-sidebyside .meta-field-1,
-.dynamic-views .meta-row-sidebyside .meta-field-3 {
-    justify-content: flex-start !important;
+/* Alignment via justify-content on meta-content wrapper */
+/* Left fields (1, 3) */
+.dynamic-views .meta-row-sidebyside .meta-field-1 .meta-content,
+.dynamic-views .meta-row-sidebyside .meta-field-3 .meta-content {
+    justify-content: flex-start;
 }
 
-.dynamic-views .meta-row-sidebyside .meta-field-1 .property-value,
-.dynamic-views .meta-row-sidebyside .meta-field-3 .property-value {
-    text-align: left !important;
+/* Right fields (2, 4) */
+.dynamic-views .meta-row-sidebyside .meta-field-2 .meta-content,
+.dynamic-views .meta-row-sidebyside .meta-field-4 .meta-content {
+    justify-content: flex-end;
 }
 
-/* Right fields (2, 4) - right-aligned content */
-.dynamic-views .meta-row-sidebyside .meta-field-2,
-.dynamic-views .meta-row-sidebyside .meta-field-4 {
-    justify-content: flex-start !important; /* Always start at scroll position 0 */
-}
-
-.dynamic-views .meta-row-sidebyside .meta-field-2 .property-value,
-.dynamic-views .meta-row-sidebyside .meta-field-4 .property-value,
-.dynamic-views .meta-row-sidebyside .meta-field-2 .tags-wrapper,
-.dynamic-views .meta-row-sidebyside .meta-field-4 .tags-wrapper,
-.dynamic-views .meta-row-sidebyside .meta-field-2 .path-wrapper,
-.dynamic-views .meta-row-sidebyside .meta-field-4 .path-wrapper {
-    text-align: right !important;
-    width: 100%;
-}
-
-/* Right fields: change inline-flex to flex so content takes full width and can right-align */
-.dynamic-views .meta-row-sidebyside .meta-field-2 > span,
-.dynamic-views .meta-row-sidebyside .meta-field-4 > span,
-.dynamic-views .meta-row-sidebyside .meta-field-2 .property-value,
-.dynamic-views .meta-row-sidebyside .meta-field-4 .property-value,
-.dynamic-views .meta-row-sidebyside .meta-field-2 .path-wrapper,
-.dynamic-views .meta-row-sidebyside .meta-field-4 .path-wrapper {
-    display: flex !important;
-}
-
-/* Stacked layout - all fields left-aligned */
-.dynamic-views .meta-row:not(.meta-row-sidebyside) .meta-field {
-    justify-content: flex-start !important;
-}
-
-.dynamic-views .meta-row:not(.meta-row-sidebyside) .meta-field .property-value,
-.dynamic-views .meta-row:not(.meta-row-sidebyside) .meta-field .tags-wrapper,
-.dynamic-views .meta-row:not(.meta-row-sidebyside) .meta-field .path-wrapper,
-.dynamic-views .meta-row:not(.meta-row-sidebyside) .meta-field > span {
-    text-align: left !important;
+/* Stacked layout */
+.dynamic-views .meta-row:not(.meta-row-sidebyside) .meta-content {
+    justify-content: flex-start;
 }
 
 /* Hide scrollbar for side-by-side fields */
