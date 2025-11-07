@@ -218,7 +218,7 @@ function Card({
     // Format timestamp
     const now = Date.now();
     const isRecent = now - timestamp < 86400000;
-    const date = timestamp ? (isRecent ? formatDate(timestamp, "yyyy-MM-dd HH:mm") : formatDate(timestamp, "yyyy-MM-dd")) : "";
+    const date = timestamp ? (isRecent ? formatDate(timestamp, "HH:mm") : formatDate(timestamp, "yyyy-MM-dd")) : "";
     const timeIcon = useCreatedTime ? "calendar" : "clock";
 
     // Handle images
@@ -469,15 +469,15 @@ function handleArrowKey(
 // Simple date formatter
 function formatDate(timestamp: number, format: string): string {
     const date = new Date(timestamp);
+
+    if (format === "HH:mm") {
+        const HH = String(date.getHours()).padStart(2, '0');
+        const mm = String(date.getMinutes()).padStart(2, '0');
+        return `${HH}:${mm}`;
+    }
+
     const yyyy = date.getFullYear();
     const MM = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
-    const HH = String(date.getHours()).padStart(2, '0');
-    const mm = String(date.getMinutes()).padStart(2, '0');
-
-    if (format === "yyyy-MM-dd HH:mm") {
-        return `${yyyy}-${MM}-${dd} ${HH}:${mm}`;
-    } else {
-        return `${yyyy}-${MM}-${dd}`;
-    }
+    return `${yyyy}-${MM}-${dd}`;
 }

@@ -15,23 +15,22 @@ interface DateValue {
 
 /**
  * Format timestamp with automatic date/datetime detection
- * Shows time if within last 24 hours, otherwise just date
+ * Shows time only if within last 24 hours, otherwise just date
  */
 export function formatTimestamp(timestamp: number): string {
     const date = new Date(timestamp);
     const now = Date.now();
     const isRecent = now - timestamp < 86400000;
 
-    const yyyy = date.getFullYear();
-    const MM = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-
     if (isRecent) {
         const HH = String(date.getHours()).padStart(2, '0');
         const mm = String(date.getMinutes()).padStart(2, '0');
-        return `${yyyy}-${MM}-${dd} ${HH}:${mm}`;
+        return `${HH}:${mm}`;
     }
 
+    const yyyy = date.getFullYear();
+    const MM = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${MM}-${dd}`;
 }
 
