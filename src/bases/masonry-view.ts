@@ -276,13 +276,6 @@ export class DynamicViewsMasonryView extends BasesView {
         metaEl.style.setProperty('--meta-left-width', leftWidth);
         metaEl.style.setProperty('--meta-right-width', rightWidth);
         metaEl.addClass('meta-measured');
-
-        // Step 6: For right column with overflow, scroll to show rightmost content
-        requestAnimationFrame(() => {
-            if (rightInner && rightInner.scrollWidth > rightInner.clientWidth) {
-                rightInner.scrollLeft = rightInner.scrollWidth - rightInner.clientWidth;
-            }
-        });
     }
 
     private renderCard(

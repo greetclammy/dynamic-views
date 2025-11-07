@@ -220,12 +220,6 @@ export class DynamicViewsCardView extends BasesView {
             console.log('// [MetadataLayout] Overflow detected:',
                 leftInner && leftInner.scrollWidth > leftInner.clientWidth,
                 rightInner && rightInner.scrollWidth > rightInner.clientWidth);
-
-            // Step 7: For right column with overflow, scroll to show rightmost content (e.g., filename)
-            if (rightInner && rightInner.scrollWidth > rightInner.clientWidth) {
-                rightInner.scrollLeft = rightInner.scrollWidth - rightInner.clientWidth;
-                console.log('// [MetadataLayout] Set right column scroll position to:', rightInner.scrollLeft);
-            }
         });
     }
 
