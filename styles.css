@@ -129,15 +129,6 @@ settings:
 */
 
 /* ============================================
-   PLUGIN SETTINGS STYLES
-   ============================================ */
-
-/* Section header styling - add underline only */
-.dynamic-views-section-header {
-    border-bottom: 1px solid var(--background-modifier-border);
-}
-
-/* ============================================
    DATACORE EXPLORER STYLES
    ============================================ */
 
