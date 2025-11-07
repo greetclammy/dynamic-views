@@ -33,6 +33,7 @@ export class DynamicViewsMasonryView extends BasesView {
     private resizeObserver: ResizeObserver | null = null;
     private metadataObservers: ResizeObserver[] = [];
     isShuffled: boolean = false;
+    shuffledOrder: string[] = [];
     private lastSortMethod: string | null = null;
 
     constructor(controller: QueryController, containerEl: HTMLElement, plugin: DynamicViewsPlugin) {
@@ -77,26 +78,48 @@ export class DynamicViewsMasonryView extends BasesView {
             }
         }
 
-        // Slice to displayed count for rendering
-        const visibleEntries = entries.slice(0, this.displayedCount);
-
-        // Load snippets and images ONLY for displayed entries
-        await this.loadContentForEntries(visibleEntries, settings);
-
         // Transform to CardData (only visible entries)
         const sortMethod = this.getSortMethod();
 
+        console.log('// [Shuffle Debug] masonry-view onDataUpdated - sortMethod:', sortMethod);
+        console.log('// [Shuffle Debug] lastSortMethod:', this.lastSortMethod);
+        console.log('// [Shuffle Debug] isShuffled:', this.isShuffled);
+        console.log('// [Shuffle Debug] shuffledOrder.length:', this.shuffledOrder.length);
+
         // Reset shuffle if sort method changed
         if (this.lastSortMethod !== null && this.lastSortMethod !== sortMethod) {
+            console.log('// [Shuffle Debug] Sort method changed, resetting shuffle');
             this.isShuffled = false;
+            this.shuffledOrder = [];
         }
         this.lastSortMethod = sortMethod;
+
+        // Apply shuffled order if enabled
+        let orderedEntries = entries;
+        if (this.isShuffled && this.shuffledOrder.length > 0) {
+            console.log('// [Shuffle Debug] Applying shuffled order to', entries.length, 'entries');
+            // Sort by shuffled order
+            orderedEntries = [...entries].sort((a, b) => {
+                const indexA = this.shuffledOrder.indexOf(a.file.path);
+                const indexB = this.shuffledOrder.indexOf(b.file.path);
+                return indexA - indexB;
+            });
+            console.log('// [Shuffle Debug] First 3 ordered paths:', orderedEntries.slice(0, 3).map(e => e.file.path));
+        } else {
+            console.log('// [Shuffle Debug] NOT applying shuffle - isShuffled:', this.isShuffled, 'shuffledOrder.length:', this.shuffledOrder.length);
+        }
+
+        // Slice to displayed count for rendering
+        const visibleEntries = orderedEntries.slice(0, this.displayedCount);
+
+        // Load snippets and images ONLY for displayed entries
+        await this.loadContentForEntries(visibleEntries, settings);
 
         const cards = transformBasesEntries(
             visibleEntries,
             settings,
             sortMethod,
-            this.isShuffled,
+            false, // Don't shuffle in transform, we already applied order above
             this.snippets,
             this.images,
             this.hasImageAvailable
