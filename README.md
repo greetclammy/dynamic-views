@@ -16,7 +16,7 @@ Elegant card views for [Bases](https://help.obsidian.md/bases) and [Datacore](ht
 
 ## ✅ Install
 
-Untill _Dynamic Views_ is [made availiable](https://github.com/obsidianmd/obsidian-releases/pull/7429) in the plugin directory, follow the steps below to install it.
+Untill _Dynamic Views_ is [made availiable](https://github.com/obsidianmd/obsidian-releases/pull/8400) in the plugin directory, follow the steps below to install it.
 
 ### BRAT (recommended)
 
