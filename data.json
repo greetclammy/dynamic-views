@@ -1,6 +1,5 @@
 {
   "globalSettings": {
-    "minCardWidth": 400,
     "titleProperty": "",
     "descriptionProperty": "",
     "imageProperty": "",
@@ -9,7 +8,6 @@
     "omitFirstLine": false,
     "showTextPreview": true,
     "showThumbnails": true,
-    "thumbnailPosition": "right",
     "fallbackToContent": true,
     "fallbackToEmbeds": true,
     "fallbackToCtime": true,
@@ -19,14 +17,16 @@
     "metadataDisplayWinner": null,
     "timestampDisplay": "sort-based",
     "listMarker": "bullet",
-    "showTimestampIcon": false,
-    "minMasonryColumns": 2,
-    "minGridColumns": 1,
     "randomizeAction": "shuffle",
     "thumbnailCacheSize": "balanced",
     "queryHeight": 0,
     "openFileAction": "card",
     "openRandomInNewPane": false,
+    "minCardWidth": 400,
+    "thumbnailPosition": "right",
+    "showTimestampIcon": false,
+    "minMasonryColumns": 2,
+    "minGridColumns": 1,
     "addCardBackground": "tinted"
   },
   "defaultViewSettings": {

@@ -475,10 +475,17 @@ export class DynamicViewsCardView extends BasesView {
             const showHashPrefix = tagStyle === 'minimal';
             const tagsWrapper = container.createDiv('tags-wrapper');
             card.tags.forEach(tag => {
-                tagsWrapper.createEl('a', {
+                const tagEl = tagsWrapper.createEl('a', {
                     cls: 'tag',
                     text: showHashPrefix ? '#' + tag : tag,
                     href: '#'
+                });
+                tagEl.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const searchPlugin = this.plugin.app.internalPlugins.plugins["global-search"];
+                    if (searchPlugin?.instance?.openGlobalSearch) {
+                        searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                    }
                 });
             });
         } else if (displayType === 'tags') {
