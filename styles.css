@@ -16,13 +16,13 @@ settings:
         default: 80px
         options:
             -
-                label: Compact (64×64 px)
+                label: Compact
                 value: 64px
             -
-                label: Standard (80×80 px)
+                label: Standard
                 value: 80px
             -
-                label: Expanded (94.5×94.5 px)
+                label: Expanded
                 value: 94.5px
     -
         id: dv-thumbnail-border-radius
@@ -31,7 +31,7 @@ settings:
         type: variable-number-slider
         default: 4
         min: 0
-        max: 20
+        max: 100
         step: 1
         format: px
 
