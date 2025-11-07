@@ -1790,6 +1790,29 @@ body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag:hover {
     gap: 8px;
 }
 
+/* Temporary state for measuring unconstrained content widths */
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring {
+    display: flex !important;
+    gap: 0 !important;
+}
+
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .meta-field {
+    max-width: none !important;
+    width: max-content !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    overflow-x: visible !important;
+}
+
+/* Force max-content on nested containers during measurement */
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .tags-wrapper,
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .path-wrapper,
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measuring .property-value {
+    width: max-content !important;
+    min-width: 0 !important;
+}
+
+/* Default state: fields split space equally with 50% max */
 .dynamic-views .meta-row.meta-row-sidebyside .meta-field {
     flex: 1 1 0;
     min-width: 0;
@@ -1797,6 +1820,21 @@ body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag:hover {
     overflow-x: auto;
     scrollbar-width: none;
     position: relative;
+}
+
+/* Measured state: use calculated widths from CSS variables */
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measured .meta-field-1,
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measured .meta-field-3 {
+    width: var(--field1-width);
+    max-width: var(--field1-width);
+    flex: 0 0 auto;
+}
+
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measured .meta-field-2,
+.dynamic-views .meta-row.meta-row-sidebyside.meta-measured .meta-field-4 {
+    width: var(--field2-width);
+    max-width: var(--field2-width);
+    flex: 0 0 auto;
 }
 
 .dynamic-views .meta-row.meta-row-single .meta-field {

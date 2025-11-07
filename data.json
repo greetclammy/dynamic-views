@@ -58,7 +58,7 @@
   },
   "queryStates": {
     "1762122189077": {
-      "sortMethod": "mtime-desc",
+      "sortMethod": "name-asc",
       "viewMode": "masonry",
       "searchQuery": "",
       "resultLimit": "",

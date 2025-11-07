@@ -410,23 +410,27 @@ export class DynamicViewsCardView extends BasesView {
         if (metaEl.children.length === 0) {
             metaEl.remove();
         } else {
+            // Measure side-by-side field widths
+            this.measureMetadataFields(cardEl);
             // Setup scroll gradients for tags and paths
             this.setupScrollGradients(cardEl);
         }
     }
 
     private updateScrollGradient(element: HTMLElement): void {
-        // Apply gradient classes to parent container, not scrollable element
-        const parent = element.parentElement;
-        if (!parent) return;
+        // For .meta-field: apply gradient to element itself
+        // For .tags-wrapper/.path-wrapper: apply to parent (legacy behavior)
+        const isMetaField = element.classList.contains('meta-field');
+        const target = isMetaField ? element : element.parentElement;
+        if (!target) return;
 
         const isScrollable = element.scrollWidth > element.clientWidth;
 
         if (!isScrollable) {
-            // Not scrollable - remove all gradient classes from parent
-            parent.removeClass('scroll-gradient-left');
-            parent.removeClass('scroll-gradient-right');
-            parent.removeClass('scroll-gradient-both');
+            // Not scrollable - remove all gradient classes
+            target.removeClass('scroll-gradient-left');
+            target.removeClass('scroll-gradient-right');
+            target.removeClass('scroll-gradient-both');
             return;
         }
 
@@ -436,23 +440,98 @@ export class DynamicViewsCardView extends BasesView {
         const atStart = scrollLeft <= 1; // Allow 1px tolerance
         const atEnd = scrollLeft + clientWidth >= scrollWidth - 1; // Allow 1px tolerance
 
-        // Remove all gradient classes first from parent
-        parent.removeClass('scroll-gradient-left');
-        parent.removeClass('scroll-gradient-right');
-        parent.removeClass('scroll-gradient-both');
+        // Remove all gradient classes first
+        target.removeClass('scroll-gradient-left');
+        target.removeClass('scroll-gradient-right');
+        target.removeClass('scroll-gradient-both');
 
-        // Apply appropriate gradient based on position to parent
+        // Apply appropriate gradient based on position
         if (atStart && !atEnd) {
             // At start, content extends right
-            parent.addClass('scroll-gradient-right');
+            target.addClass('scroll-gradient-right');
         } else if (atEnd && !atStart) {
             // At end, content extends left
-            parent.addClass('scroll-gradient-left');
+            target.addClass('scroll-gradient-left');
         } else if (!atStart && !atEnd) {
             // In middle, content extends both directions
-            parent.addClass('scroll-gradient-both');
+            target.addClass('scroll-gradient-both');
         }
         // If atStart && atEnd, content fits fully - no gradient
+    }
+
+    private measureSideBySideRow(row: HTMLElement, field1: HTMLElement, field2: HTMLElement): void {
+        // Enter measuring state to remove constraints
+        row.addClass('meta-measuring');
+
+        // Force reflow
+        void row.offsetWidth;
+
+        // Measure inner content (first child element)
+        const inner1 = field1.querySelector('.tags-wrapper, .path-wrapper, .property-value, span') as HTMLElement;
+        const inner2 = field2.querySelector('.tags-wrapper, .path-wrapper, .property-value, span') as HTMLElement;
+
+        const width1 = inner1 ? inner1.scrollWidth : 0;
+        const width2 = inner2 ? inner2.scrollWidth : 0;
+        const containerWidth = row.clientWidth;
+        const gap = 8;
+        const availableWidth = containerWidth - gap;
+
+        const percent1 = (width1 / availableWidth) * 100;
+        const percent2 = (width2 / availableWidth) * 100;
+
+        // Calculate optimal widths using smart strategy
+        let field1Width: string;
+        let field2Width: string;
+
+        if (percent1 <= 50 && percent2 <= 50) {
+            // Both fit: field1 gets exact width, field2 fills remainder
+            field1Width = `${width1}px`;
+            field2Width = `${availableWidth - width1}px`;
+        } else if (percent1 <= 50 && percent2 > 50) {
+            // Field1 small, field2 needs more: field1 exact, field2 fills
+            field1Width = `${width1}px`;
+            field2Width = `${availableWidth - width1}px`;
+        } else if (percent1 > 50 && percent2 <= 50) {
+            // Field2 small, field1 needs more: field2 exact, field1 fills
+            field1Width = `${availableWidth - width2}px`;
+            field2Width = `${width2}px`;
+        } else {
+            // Both > 50%: split 50-50
+            const half = availableWidth / 2;
+            field1Width = `${half}px`;
+            field2Width = `${half}px`;
+        }
+
+        // Exit measuring state, apply calculated values
+        row.removeClass('meta-measuring');
+        row.style.setProperty('--field1-width', field1Width);
+        row.style.setProperty('--field2-width', field2Width);
+        row.addClass('meta-measured');
+    }
+
+    private measureMetadataFields(container: HTMLElement): void {
+        const rows = container.querySelectorAll('.meta-row-sidebyside');
+        rows.forEach(row => {
+            const rowEl = row as HTMLElement;
+            // Skip if already measured or is single-field
+            if (rowEl.classList.contains('meta-row-single')) return;
+
+            const field1 = rowEl.querySelector('.meta-field-1, .meta-field-3') as HTMLElement;
+            const field2 = rowEl.querySelector('.meta-field-2, .meta-field-4') as HTMLElement;
+
+            if (field1 && field2) {
+                // Initial measurement
+                requestAnimationFrame(() => {
+                    this.measureSideBySideRow(rowEl, field1, field2);
+                });
+
+                // Re-measure on resize
+                const observer = new ResizeObserver(() => {
+                    this.measureSideBySideRow(rowEl, field1, field2);
+                });
+                observer.observe(rowEl);
+            }
+        });
     }
 
     private setupScrollGradients(container: HTMLElement): void {
@@ -533,8 +612,9 @@ export class DynamicViewsCardView extends BasesView {
                 }
             });
         } else {
-            // Generic property: render the resolved value as text
-            container.appendText(resolvedValue);
+            // Generic property: wrap in span for measurement and scrolling
+            const wrapper = container.createSpan('property-value');
+            wrapper.appendText(resolvedValue);
         }
     }
 
