@@ -1440,27 +1440,35 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 }
 
 .dynamic-views .path-wrapper {
-    display: flex;
+    display: inline-block;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
+/* Ensure path segments are inline for ellipsis to work */
+.dynamic-views .path-wrapper > span {
+    display: inline;
+}
+
 /* Constrain inner containers to grid item width and handle overflow */
 .dynamic-views .meta-left .tags-wrapper,
-.dynamic-views .meta-left .path-wrapper,
 .dynamic-views .meta-left > span {
     max-width: 100%;
     overflow-x: auto;
     scrollbar-width: none;
 }
 
-.dynamic-views .meta-left .tags-wrapper::-webkit-scrollbar,
-.dynamic-views .meta-left .path-wrapper::-webkit-scrollbar {
+.dynamic-views .meta-left .path-wrapper {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dynamic-views .meta-left .tags-wrapper::-webkit-scrollbar {
     display: none;
 }
 
 .dynamic-views .meta-right .tags-wrapper,
-.dynamic-views .meta-right .path-wrapper,
 .dynamic-views .meta-right > span {
     max-width: 100%;
     margin-left: auto;  /* Push content to the right */
@@ -1468,8 +1476,14 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     scrollbar-width: none;
 }
 
-.dynamic-views .meta-right .tags-wrapper::-webkit-scrollbar,
-.dynamic-views .meta-right .path-wrapper::-webkit-scrollbar {
+.dynamic-views .meta-right .path-wrapper {
+    max-width: 100%;
+    margin-left: auto;  /* Push content to the right */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dynamic-views .meta-right .tags-wrapper::-webkit-scrollbar {
     display: none;
 }
 
