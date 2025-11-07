@@ -1365,7 +1365,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 /* Right column: always right-aligned */
 .dynamic-views .writing-meta:not(.meta-left-only):not(.meta-right-only) .meta-right {
-    justify-content: flex-start;  /* Let inner containers handle alignment */
+    justify-content: flex-end;  /* Right-align content in right column */
 }
 
 .dynamic-views .timestamp-icon {
@@ -1401,6 +1401,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 .dynamic-views .writing-meta.meta-left-only .meta-left {
     width: 100%;
+    max-width: 100%;  /* Override 50% constraint for single-side */
     flex: 1;
 }
 
