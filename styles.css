@@ -1497,6 +1497,9 @@ body.dynamic-views-thumbnail-right .dynamic-views .snippet-container {
 .dynamic-views .meta-right > span {
     flex-shrink: 0;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    min-height: 20px;
 }
 
 /* Prevent timestamp container from shrinking (timestamp = direct span child) */
@@ -1609,12 +1612,16 @@ body:not(.dynamic-views-show-timestamp-icon) .dynamic-views .timestamp-icon {
     white-space: nowrap;
     flex-shrink: 0;
     min-width: 0;
+    align-items: center;
+    min-height: 20px;
 }
 
 .dynamic-views .path-wrapper {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     white-space: nowrap;
     flex-shrink: 0;
+    min-height: 20px;
 }
 
 /* Path segments must be inline for ellipsis to work across the whole path */
