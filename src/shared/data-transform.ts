@@ -322,23 +322,25 @@ export function resolveBasesMetadataProperty(
 ): string | null {
     if (!propertyName || propertyName === '') return null;
 
-    // Handle special properties
-    if (propertyName === 'file path') {
+    // Handle special properties (support both Bases and Datacore formats)
+    // Bases format: file.path, file.tags, file.mtime, file.ctime
+    // Datacore format: "file path", "file tags", "modified time", "created time"
+    if (propertyName === 'file.path' || propertyName === 'file path') {
         // Extract folder path, trim after last /, return null if root
         const path = cardData.folderPath;
         if (!path || path === '') return null;
         return path;
     }
 
-    if (propertyName === 'file tags' || propertyName === 'tags') {
+    if (propertyName === 'file.tags' || propertyName === 'file tags' || propertyName === 'tags') {
         // Tags are already resolved in cardData.tags
         return cardData.tags.length > 0 ? 'tags' : null; // Special marker
     }
 
     // Check if property is a timestamp property
-    const isCreatedTimestamp = propertyName === 'created time' ||
+    const isCreatedTimestamp = propertyName === 'file.ctime' || propertyName === 'created time' ||
         settings.createdProperty.split(',').map(p => p.trim()).includes(propertyName);
-    const isModifiedTimestamp = propertyName === 'modified time' ||
+    const isModifiedTimestamp = propertyName === 'file.mtime' || propertyName === 'modified time' ||
         settings.modifiedProperty.split(',').map(p => p.trim()).includes(propertyName);
 
     if (isCreatedTimestamp || isModifiedTimestamp) {
@@ -381,23 +383,25 @@ export function resolveDatacoreMetadataProperty(
 ): string | null {
     if (!propertyName || propertyName === '') return null;
 
-    // Handle special properties
-    if (propertyName === 'file path') {
+    // Handle special properties (support both Bases and Datacore formats)
+    // Bases format: file.path, file.tags, file.mtime, file.ctime
+    // Datacore format: "file path", "file tags", "modified time", "created time"
+    if (propertyName === 'file.path' || propertyName === 'file path') {
         // Extract folder path, trim after last /, return null if root
         const path = cardData.folderPath;
         if (!path || path === '') return null;
         return path;
     }
 
-    if (propertyName === 'file tags' || propertyName === 'tags') {
+    if (propertyName === 'file.tags' || propertyName === 'file tags' || propertyName === 'tags') {
         // Tags are already resolved in cardData.tags
         return cardData.tags.length > 0 ? 'tags' : null; // Special marker
     }
 
     // Check if property is a timestamp property
-    const isCreatedTimestamp = propertyName === 'created time' ||
+    const isCreatedTimestamp = propertyName === 'file.ctime' || propertyName === 'created time' ||
         settings.createdProperty.split(',').map(p => p.trim()).includes(propertyName);
-    const isModifiedTimestamp = propertyName === 'modified time' ||
+    const isModifiedTimestamp = propertyName === 'file.mtime' || propertyName === 'modified time' ||
         settings.modifiedProperty.split(',').map(p => p.trim()).includes(propertyName);
 
     if (isCreatedTimestamp || isModifiedTimestamp) {

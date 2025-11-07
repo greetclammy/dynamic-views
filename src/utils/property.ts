@@ -203,6 +203,11 @@ export function getAllVaultProperties(app: App): string[] {
     const properties = new Set<string>();
 
     // Add special built-in properties for metadata display
+    // Include both Bases format (file.tags) and human-readable format (file tags)
+    properties.add('file.path');
+    properties.add('file.tags');
+    properties.add('file.mtime');
+    properties.add('file.ctime');
     properties.add('file path');
     properties.add('file tags');
     properties.add('created time');
@@ -228,12 +233,19 @@ export function getAllVaultProperties(app: App): string[] {
 
     // Return sorted array
     return Array.from(properties).sort((a, b) => {
-        // Sort special properties first
-        const aSpecial = a.startsWith('file ') || a.includes(' time');
-        const bSpecial = b.startsWith('file ') || b.includes(' time');
+        // Bases format (file.tags) takes priority over human-readable format (file tags)
+        const aBasesFormat = a.startsWith('file.');
+        const bBasesFormat = b.startsWith('file.');
+        const aHumanFormat = (a.startsWith('file ') || a.includes(' time')) && !aBasesFormat;
+        const bHumanFormat = (b.startsWith('file ') || b.includes(' time')) && !bBasesFormat;
 
-        if (aSpecial && !bSpecial) return -1;
-        if (!aSpecial && bSpecial) return 1;
+        // Bases format first
+        if (aBasesFormat && !bBasesFormat) return -1;
+        if (!aBasesFormat && bBasesFormat) return 1;
+
+        // Human-readable format second
+        if (aHumanFormat && !bHumanFormat) return -1;
+        if (!aHumanFormat && bHumanFormat) return 1;
 
         // Alphabetical for rest
         return a.localeCompare(b);
