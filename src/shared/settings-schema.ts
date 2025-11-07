@@ -154,32 +154,32 @@ export function readBasesSettings(config: BasesConfig, globalSettings: Settings,
         metadataDisplay1: (() => {
             const value = config.get('metadataDisplay1');
             // If value is explicitly set (including empty string), use it
-            // Otherwise fall back to default view settings
             if (value !== undefined && value !== null) {
-                return typeof value === 'string' ? value : defaultViewSettings.metadataDisplay1;
+                return typeof value === 'string' ? value : '';
             }
-            return defaultViewSettings.metadataDisplay1;
+            // For Bases views, default to empty (no metadata shown)
+            return '';
         })(),
         metadataDisplay2: (() => {
             const value = config.get('metadataDisplay2');
             if (value !== undefined && value !== null) {
-                return typeof value === 'string' ? value : defaultViewSettings.metadataDisplay2;
+                return typeof value === 'string' ? value : '';
             }
-            return defaultViewSettings.metadataDisplay2;
+            return '';
         })(),
         metadataDisplay3: (() => {
             const value = config.get('metadataDisplay3');
             if (value !== undefined && value !== null) {
-                return typeof value === 'string' ? value : defaultViewSettings.metadataDisplay3;
+                return typeof value === 'string' ? value : '';
             }
-            return defaultViewSettings.metadataDisplay3;
+            return '';
         })(),
         metadataDisplay4: (() => {
             const value = config.get('metadataDisplay4');
             if (value !== undefined && value !== null) {
-                return typeof value === 'string' ? value : defaultViewSettings.metadataDisplay4;
+                return typeof value === 'string' ? value : '';
             }
-            return defaultViewSettings.metadataDisplay4;
+            return '';
         })(),
         metadataLayout12SideBySide: Boolean(config.get('metadataLayout12SideBySide') ?? defaultViewSettings.metadataLayout12SideBySide),
         metadataLayout34SideBySide: Boolean(config.get('metadataLayout34SideBySide') ?? defaultViewSettings.metadataLayout34SideBySide),

@@ -1,4 +1,4 @@
-import { Plugin, Notice, Editor, MarkdownView, QueryController } from 'obsidian';
+import { Plugin, Notice, Editor, MarkdownView, QueryController, Keymap } from 'obsidian';
 import { PersistenceManager } from './src/persistence';
 import { View } from './src/components/view';
 import { setDatacorePreact } from './src/jsx-runtime';
@@ -94,8 +94,10 @@ export default class DynamicViewsPlugin extends Plugin {
 		const settings = this.persistenceManager.getGlobalSettings();
 
 		if (settings.showRandomInRibbon) {
-			this.addRibbonIcon('dices', 'Open random file from Bases view', async () => {
-				const openInNewPane = this.persistenceManager.getGlobalSettings().openRandomInNewPane;
+			const randomRibbon = this.addRibbonIcon('dices', 'Open random file from Bases view', async (evt: MouseEvent) => {
+				const defaultOpenInNewPane = this.persistenceManager.getGlobalSettings().openRandomInNewPane;
+				// If modifier key is pressed, invert the default behavior
+				const openInNewPane = Keymap.isModEvent(evt) ? !defaultOpenInNewPane : defaultOpenInNewPane;
 				await openRandomFile(this.app, openInNewPane);
 			});
 		}

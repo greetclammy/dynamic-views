@@ -425,10 +425,10 @@ export class DynamicViewsMasonryView extends BasesView {
             }
 
             const field1El = row1El.createDiv('meta-field meta-field-1');
-            if (values[0]) this.renderMetadataContent(field1El, effectiveProps[0], card, entry, settings);
+            if (values[0]) this.renderMetadataContent(field1El, effectiveProps[0], values[0], card, entry, settings);
 
             const field2El = row1El.createDiv('meta-field meta-field-2');
-            if (values[1]) this.renderMetadataContent(field2El, effectiveProps[1], card, entry, settings);
+            if (values[1]) this.renderMetadataContent(field2El, effectiveProps[1], values[1], card, entry, settings);
 
             // Check actual rendered content
             const has1 = field1El.children.length > 0 || field1El.textContent?.trim().length > 0;
@@ -451,10 +451,10 @@ export class DynamicViewsMasonryView extends BasesView {
             }
 
             const field3El = row2El.createDiv('meta-field meta-field-3');
-            if (values[2]) this.renderMetadataContent(field3El, effectiveProps[2], card, entry, settings);
+            if (values[2]) this.renderMetadataContent(field3El, effectiveProps[2], values[2], card, entry, settings);
 
             const field4El = row2El.createDiv('meta-field meta-field-4');
-            if (values[3]) this.renderMetadataContent(field4El, effectiveProps[3], card, entry, settings);
+            if (values[3]) this.renderMetadataContent(field4El, effectiveProps[3], values[3], card, entry, settings);
 
             // Check actual rendered content
             const has3 = field3El.children.length > 0 || field3El.textContent?.trim().length > 0;
@@ -537,16 +537,19 @@ export class DynamicViewsMasonryView extends BasesView {
 
     private renderMetadataContent(
         container: HTMLElement,
-        displayType: string,
+        propertyName: string,
+        resolvedValue: string,
         card: CardData,
         entry: BasesEntry,
         settings: Settings
     ): void {
-        if (displayType === '') return;
+        if (propertyName === '' || !resolvedValue) {
+            return;
+        }
 
-        // TODO Phase 3: Implement full property resolution
-        // For now, map old built-in types to new property names
-        if (displayType === 'timestamp' || displayType === 'modified time' || displayType === 'created time') {
+        // Handle special properties by property name
+        if (propertyName === 'file.mtime' || propertyName === 'file.ctime' ||
+            propertyName === 'timestamp' || propertyName === 'modified time' || propertyName === 'created time') {
             // Use resolved displayTimestamp from CardData (already handles custom properties)
             const timestamp = card.displayTimestamp;
 
@@ -562,7 +565,7 @@ export class DynamicViewsMasonryView extends BasesView {
                 }
                 timestampWrapper.appendText(date);
             }
-        } else if ((displayType === 'tags' || displayType === 'file tags') && card.tags.length > 0) {
+        } else if ((propertyName === 'file.tags' || propertyName === 'tags' || propertyName === 'file tags') && card.tags.length > 0) {
             const tagStyle = getTagStyle();
             const showHashPrefix = tagStyle === 'minimal';
             const tagsWrapper = container.createDiv('tags-wrapper');
@@ -580,7 +583,7 @@ export class DynamicViewsMasonryView extends BasesView {
                     }
                 });
             });
-        } else if ((displayType === 'path' || displayType === 'file path') && card.folderPath.length > 0) {
+        } else if ((propertyName === 'file.path' || propertyName === 'path' || propertyName === 'file path') && card.folderPath.length > 0) {
             const pathWrapper = container.createDiv('path-wrapper');
             const folders = card.folderPath.split('/').filter(f => f);
             folders.forEach((folder, idx) => {
@@ -590,6 +593,9 @@ export class DynamicViewsMasonryView extends BasesView {
                     span.createSpan({ cls: 'path-separator', text: '/' });
                 }
             });
+        } else {
+            // Generic property: render the resolved value as text
+            container.appendText(resolvedValue);
         }
     }
 
