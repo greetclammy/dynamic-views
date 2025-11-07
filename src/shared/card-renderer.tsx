@@ -103,7 +103,7 @@ function renderMetadataContent(
                             }
                         }}
                     >
-                        {showHashPrefix ? tag : tag.replace(/^#/, '')}
+                        {showHashPrefix ? '#' + tag : tag}
                     </a>
                 ))}
             </div>

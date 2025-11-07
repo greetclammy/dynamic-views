@@ -526,7 +526,7 @@ export class DynamicViewsMasonryView extends BasesView {
             card.tags.forEach(tag => {
                 tagsWrapper.createEl('a', {
                     cls: 'tag',
-                    text: showHashPrefix ? tag : tag.replace(/^#/, ''),
+                    text: showHashPrefix ? '#' + tag : tag,
                     href: '#'
                 });
             });
