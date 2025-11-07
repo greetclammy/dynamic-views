@@ -93,7 +93,7 @@ export async function openRandomFile(app: App, openInNewPane: boolean): Promise<
 	const basesView = getActiveBasesView(app);
 
 	if (!basesView) {
-		new Notice('No Bases view is currently active');
+		new Notice('No active Bases view');
 		return;
 	}
 
@@ -123,7 +123,7 @@ export function toggleShuffleActiveView(app: App): void {
 	const basesView = getActiveBasesView(app);
 
 	if (!basesView) {
-		new Notice('No Bases view is currently active');
+		new Notice('No active Bases view');
 		return;
 	}
 
