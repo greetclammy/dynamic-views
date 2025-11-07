@@ -105,6 +105,20 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 					})
 			);
 
+		// Appearance section
+		containerEl.createEl('h2', { text: 'Appearance' });
+
+		const appearanceDesc = containerEl.createDiv();
+		appearanceDesc.innerHTML = `
+			<p style="margin-top: 0;">
+				Appearance settings can be configured via
+				<a href="obsidian://show-plugin?id=obsidian-style-settings">Style Settings</a>.
+			</p>
+			<p style="margin-bottom: 0;">
+				<strong>Tip:</strong> Run <em>Show style settings view</em> command to open settings in a tab.
+			</p>
+		`;
+
 		// Default settings for new views section
 		containerEl.createEl('h2', { text: 'Default settings for new views' });
 
