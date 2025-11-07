@@ -14,6 +14,29 @@ Elegant card views for [Bases](https://help.obsidian.md/bases) and [Datacore](ht
 
 #### Grid
 
+## ✅ Install
+
+Untill _Dynamic Views_ is [made availiable](https://github.com/obsidianmd/obsidian-releases/pull/7429) in the plugin directory, follow the steps below to install it.
+
+### BRAT (recommended)
+
+1. Download and enable the community plugin [BRAT](https://obsidian.md/plugins?id=obsidian42-brat).
+2. Open _BRAT_ settings.
+3. Press _Add Beta Plugin_.
+4. Paste https://github.com/greetclammy/dynamic-views in the text field.
+5. Select _Latest version_.
+6. Check _Enable after installing the plugin_.
+7. Press _Add Plugin_.
+
+### Install manually
+
+Note: to get updates for _Dynamic Views_, you will have to check for and install them manually.
+
+1. Download `dynamic-views.zip` in the `Assets` of the [latest release](https://github.com/greetclammy/dynamic-views/releases).
+2. Unzip the folder and place it in the `.obsidian/plugins` folder (hidden on most OSes) at the root of your vault.
+3. Reload plugins or app.
+4. Enable _Dynamic Views_ in Obsidian settings > Community plugins > Installed plugins.
+
 ## 💡 Tips
 
 - `@pages and` is automatically prepended to each query — need not add it in query editor.
