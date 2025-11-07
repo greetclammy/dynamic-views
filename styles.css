@@ -22,28 +22,16 @@ settings:
         id: dynamic-views-min-masonry-columns
         title: Minimum masonry columns
         description: Minimum number of columns in masonry view
-        type: variable-select
+        type: variable-number
         default: 2
-        options:
-            -
-                label: One
-                value: 1
-            -
-                label: Two
-                value: 2
+        format: ''
     -
         id: dynamic-views-min-grid-columns
         title: Minimum grid columns
         description: Minimum number of columns in grid view
-        type: variable-select
+        type: variable-number
         default: 1
-        options:
-            -
-                label: One
-                value: 1
-            -
-                label: Two
-                value: 2
+        format: ''
     -
         id: dynamic-views-card-background
         title: Card background
