@@ -1724,7 +1724,7 @@ body.dynamic-views-tag-style-theme .dynamic-views .list-meta .tag:hover {
 body.dynamic-views-tag-style-minimal .dynamic-views .writing-meta .tag,
 body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag {
     background-color: transparent;
-    color: inherit;
+    color: var(--text-faint);
     border: none;
     padding: 0;
     border-radius: 0;
@@ -1733,8 +1733,7 @@ body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag {
 
 body.dynamic-views-tag-style-minimal .dynamic-views .writing-meta .tag:hover,
 body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag:hover {
-    color: inherit;
-    opacity: 0.7;
+    color: var(--text-muted);
     text-decoration: underline;
 }
 
