@@ -1481,20 +1481,20 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 /* Applied to meta-left/meta-right containers, which are parents of scrollable elements */
 .dynamic-views .meta-left.scroll-gradient-left,
 .dynamic-views .meta-right.scroll-gradient-left {
-    mask-image: linear-gradient(to right, transparent 0, transparent 4px, black 20px, black 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, transparent 4px, black 20px, black 100%);
+    mask-image: linear-gradient(to right, transparent 0, transparent 4px, black 40px, black 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, transparent 4px, black 40px, black 100%);
 }
 
 .dynamic-views .meta-left.scroll-gradient-right,
 .dynamic-views .meta-right.scroll-gradient-right {
-    mask-image: linear-gradient(to right, black 0, black calc(100% - 20px), transparent calc(100% - 4px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, black 0, black calc(100% - 20px), transparent calc(100% - 4px), transparent 100%);
+    mask-image: linear-gradient(to right, black 0, black calc(100% - 40px), transparent calc(100% - 4px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 0, black calc(100% - 40px), transparent calc(100% - 4px), transparent 100%);
 }
 
 .dynamic-views .meta-left.scroll-gradient-both,
 .dynamic-views .meta-right.scroll-gradient-both {
-    mask-image: linear-gradient(to right, transparent 0, transparent 4px, black 20px, black calc(100% - 20px), transparent calc(100% - 4px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, transparent 4px, black 20px, black calc(100% - 20px), transparent calc(100% - 4px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, transparent 4px, black 40px, black calc(100% - 40px), transparent calc(100% - 4px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, transparent 4px, black 40px, black calc(100% - 40px), transparent calc(100% - 4px), transparent 100%);
 }
 
 /* Hide scrollbars */
