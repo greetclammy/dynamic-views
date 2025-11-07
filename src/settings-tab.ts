@@ -106,7 +106,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 			);
 
 		// Appearance section
-		containerEl.createEl('h2', { text: 'Appearance' });
+		new Setting(containerEl).setName('Appearance').setHeading();
 
 		const appearanceDesc = containerEl.createEl('p', { cls: 'setting-item-description' });
 		appearanceDesc.appendText('Appearance settings can be configured via ');
@@ -123,7 +123,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 		appearanceTip.appendText(' command to open settings in a tab.');
 
 		// Default settings for new views section
-		containerEl.createEl('h2', { text: 'Default settings for new views' });
+		new Setting(containerEl).setName('Default settings for new views').setHeading();
 
 		const defaultViewSettings = this.plugin.persistenceManager.getDefaultViewSettings();
 
