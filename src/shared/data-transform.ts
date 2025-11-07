@@ -84,7 +84,8 @@ export function datacoreResultToCardData(
     // Resolve display timestamp based on custom properties
     const displayTimestamp = resolveDatacoreTimestamp(result, settings, sortMethod, isShuffled);
 
-    return {
+    // Create base card data
+    const cardData: CardData = {
         path,
         name: result.$name || '',
         title,
@@ -97,6 +98,31 @@ export function datacoreResultToCardData(
         hasImageAvailable: hasImageAvailable || false,
         displayTimestamp: displayTimestamp || undefined
     };
+
+    // Resolve metadata properties
+    const props = [
+        settings.metadataDisplay1,
+        settings.metadataDisplay2,
+        settings.metadataDisplay3,
+        settings.metadataDisplay4
+    ];
+
+    // Detect duplicates (priority: 1 > 2 > 3 > 4)
+    const seen = new Set<string>();
+    const effectiveProps = props.map(prop => {
+        if (!prop || prop === '') return '';
+        if (seen.has(prop)) return ''; // Duplicate, skip
+        seen.add(prop);
+        return prop;
+    });
+
+    // Resolve property values
+    cardData.metadata1 = effectiveProps[0] ? resolveDatacoreMetadataProperty(effectiveProps[0], result, cardData, settings, dc) : null;
+    cardData.metadata2 = effectiveProps[1] ? resolveDatacoreMetadataProperty(effectiveProps[1], result, cardData, settings, dc) : null;
+    cardData.metadata3 = effectiveProps[2] ? resolveDatacoreMetadataProperty(effectiveProps[2], result, cardData, settings, dc) : null;
+    cardData.metadata4 = effectiveProps[3] ? resolveDatacoreMetadataProperty(effectiveProps[3], result, cardData, settings, dc) : null;
+
+    return cardData;
 }
 
 /**
@@ -193,7 +219,8 @@ export function basesEntryToCardData(
     // Resolve display timestamp based on custom properties
     const displayTimestamp = resolveBasesTimestamp(entry, settings, sortMethod, isShuffled);
 
-    return {
+    // Create base card data
+    const cardData: CardData = {
         path,
         name: fileName,
         title,
@@ -206,6 +233,31 @@ export function basesEntryToCardData(
         hasImageAvailable: hasImageAvailable || false,
         displayTimestamp: displayTimestamp || undefined
     };
+
+    // Resolve metadata properties
+    const props = [
+        settings.metadataDisplay1,
+        settings.metadataDisplay2,
+        settings.metadataDisplay3,
+        settings.metadataDisplay4
+    ];
+
+    // Detect duplicates (priority: 1 > 2 > 3 > 4)
+    const seen = new Set<string>();
+    const effectiveProps = props.map(prop => {
+        if (!prop || prop === '') return '';
+        if (seen.has(prop)) return ''; // Duplicate, skip
+        seen.add(prop);
+        return prop;
+    });
+
+    // Resolve property values
+    cardData.metadata1 = effectiveProps[0] ? resolveBasesMetadataProperty(effectiveProps[0], entry, cardData, settings) : null;
+    cardData.metadata2 = effectiveProps[1] ? resolveBasesMetadataProperty(effectiveProps[1], entry, cardData, settings) : null;
+    cardData.metadata3 = effectiveProps[2] ? resolveBasesMetadataProperty(effectiveProps[2], entry, cardData, settings) : null;
+    cardData.metadata4 = effectiveProps[3] ? resolveBasesMetadataProperty(effectiveProps[3], entry, cardData, settings) : null;
+
+    return cardData;
 }
 
 /**

@@ -315,72 +315,104 @@ export class DynamicViewsCardView extends BasesView {
             }
         }
 
-        // Metadata - TODO: Temporary stub until Phase 4 implements full 4-field rendering
-        const effectiveLeft = settings.metadataDisplay1;
-        const effectiveRight = settings.metadataDisplay3;
+        // Metadata - 4-field rendering with 2-row layout
+        this.renderMetadata(cardEl, card, entry, settings);
+    }
 
-        // Detect duplicates (field 1 takes priority)
-        const isDuplicate = effectiveLeft !== '' && effectiveLeft === effectiveRight;
+    private renderMetadata(
+        cardEl: HTMLElement,
+        card: CardData,
+        entry: BasesEntry,
+        settings: Settings
+    ): void {
+        const { resolveBasesMetadataProperty } = require('../shared/data-transform');
 
-        console.log(`// [DEBUG Setup] File: ${card.path}, effectiveLeft: ${effectiveLeft}, effectiveRight: ${effectiveRight}, isDuplicate: ${isDuplicate}`);
+        // Get all 4 property names
+        const props = [
+            settings.metadataDisplay1,
+            settings.metadataDisplay2,
+            settings.metadataDisplay3,
+            settings.metadataDisplay4
+        ];
 
-        if (effectiveLeft !== '' || (effectiveRight !== '' && !isDuplicate)) {
-            const metaEl = cardEl.createDiv('writing-meta');
+        // Detect duplicates (priority: 1 > 2 > 3 > 4)
+        const seen = new Set<string>();
+        const effectiveProps = props.map(prop => {
+            if (!prop || prop === '') return '';
+            if (seen.has(prop)) return ''; // Duplicate, skip
+            seen.add(prop);
+            return prop;
+        });
 
-            // Add class if only one side has content (for full-width styling)
-            if (effectiveLeft === '' && effectiveRight !== '' && !isDuplicate) {
-                metaEl.addClass('meta-right-only');
-            } else if (effectiveLeft !== '' && (effectiveRight === '' || isDuplicate)) {
-                metaEl.addClass('meta-left-only');
+        // Resolve property values
+        const values = effectiveProps.map(prop =>
+            prop ? resolveBasesMetadataProperty(prop, entry, card, settings) : null
+        );
+
+        // Check if any row has content
+        const row1HasContent = values[0] !== null || values[1] !== null;
+        const row2HasContent = values[2] !== null || values[3] !== null;
+
+        if (!row1HasContent && !row2HasContent) return;
+
+        const metaEl = cardEl.createDiv('writing-meta meta-4field');
+
+        // Row 1
+        if (row1HasContent) {
+            const row1El = metaEl.createDiv('meta-row meta-row-1');
+            if (settings.metadataLayout12SideBySide) {
+                row1El.addClass('meta-row-sidebyside');
             }
 
-            // Left side
-            const metaLeft = metaEl.createDiv('meta-left');
-            this.renderMetadataContent(metaLeft, effectiveLeft, card, entry, settings);
+            const field1El = row1El.createDiv('meta-field meta-field-1');
+            if (values[0]) this.renderMetadataContent(field1El, effectiveProps[0], card, entry, settings);
 
-            // Right side
-            const metaRight = metaEl.createDiv('meta-right');
-            this.renderMetadataContent(metaRight, effectiveRight, card, entry, settings);
+            const field2El = row1El.createDiv('meta-field meta-field-2');
+            if (values[1]) this.renderMetadataContent(field2El, effectiveProps[1], card, entry, settings);
 
-            // Check if content actually rendered (not just settings configured)
-            const hasLeftContent = metaLeft.children.length > 0 || metaLeft.textContent?.trim().length > 0;
-            const hasRightContent = metaRight.children.length > 0 || metaRight.textContent?.trim().length > 0;
+            // Check actual rendered content
+            const has1 = field1El.children.length > 0 || field1El.textContent?.trim().length > 0;
+            const has2 = field2El.children.length > 0 || field2El.textContent?.trim().length > 0;
 
-            console.log(`// [DEBUG Content] File: ${card.path}, hasLeftContent: ${hasLeftContent}, hasRightContent: ${hasRightContent}`);
+            if (!has1 && !has2) {
+                row1El.remove();
+            } else if (has1 && !has2) {
+                row1El.addClass('meta-row-single');
+            } else if (!has1 && has2) {
+                row1El.addClass('meta-row-single');
+            }
+        }
 
-            // Update classes based on actual content
-            if (!hasLeftContent && hasRightContent) {
-                metaEl.removeClass('meta-left-only');
-                metaEl.addClass('meta-right-only');
-            } else if (hasLeftContent && !hasRightContent) {
-                metaEl.removeClass('meta-right-only');
-                metaEl.addClass('meta-left-only');
+        // Row 2
+        if (row2HasContent) {
+            const row2El = metaEl.createDiv('meta-row meta-row-2');
+            if (settings.metadataLayout34SideBySide) {
+                row2El.addClass('meta-row-sidebyside');
             }
 
-            // Setup dynamic layout measurement only if both sides actually have content
-            console.log(`// [DEBUG Condition] Checking: hasLeftContent=${hasLeftContent} && hasRightContent=${hasRightContent} =`, hasLeftContent && hasRightContent);
-            if (hasLeftContent && hasRightContent) {
-                const cardPath = cardEl.getAttribute('data-path');
-                console.log('// [MetadataLayout] Setting up measurement for card:', cardPath);
+            const field3El = row2El.createDiv('meta-field meta-field-3');
+            if (values[2]) this.renderMetadataContent(field3El, effectiveProps[2], card, entry, settings);
 
-                // Initial measurement after DOM paint
-                requestAnimationFrame(() => {
-                    console.log('// [MetadataLayout] Initial measurement (requestAnimationFrame) for:', cardPath);
-                    this.measureMetadataLayout(metaEl, metaLeft, metaRight);
-                });
+            const field4El = row2El.createDiv('meta-field meta-field-4');
+            if (values[3]) this.renderMetadataContent(field4El, effectiveProps[3], card, entry, settings);
 
-                // Re-measure on resize
-                const observer = new ResizeObserver(() => {
-                    console.log('// [MetadataLayout] ResizeObserver triggered for:', cardPath);
-                    this.measureMetadataLayout(metaEl, metaLeft, metaRight);
-                });
-                observer.observe(metaEl);
+            // Check actual rendered content
+            const has3 = field3El.children.length > 0 || field3El.textContent?.trim().length > 0;
+            const has4 = field4El.children.length > 0 || field4El.textContent?.trim().length > 0;
 
-                // Store for cleanup
-                this.metadataObservers.push(observer);
-                console.log('// [MetadataLayout] Observer count:', this.metadataObservers.length);
+            if (!has3 && !has4) {
+                row2El.remove();
+            } else if (has3 && !has4) {
+                row2El.addClass('meta-row-single');
+            } else if (!has3 && has4) {
+                row2El.addClass('meta-row-single');
             }
+        }
 
+        // Remove meta container if no rows remain
+        if (metaEl.children.length === 0) {
+            metaEl.remove();
+        } else {
             // Setup scroll gradients for tags and paths
             this.setupScrollGradients(cardEl);
         }

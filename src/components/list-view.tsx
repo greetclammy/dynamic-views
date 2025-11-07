@@ -77,20 +77,24 @@ export function ListView({
                         >
                             {titleValue}
                         </a>
-                        {/* Metadata - show both left and right inline */}
-                        {/* TODO Phase 4: Implement full 4-field rendering */}
+                        {/* Metadata - inline display (list view doesn't use 2-row layout) */}
                         {(() => {
-                            // Temporary stub: map new fields to old two-field rendering
-                            const effectiveLeft = settings.metadataDisplay1;
-                            const effectiveRight = settings.metadataDisplay3;
+                            // Get resolved metadata from CardData
+                            // For list view, we need to transform DatacoreFile to CardData first
+                            const { datacoreResultToCardData } = require('../shared/data-transform');
 
-                            // Detect duplicates (field 1 takes priority)
-                            const isDuplicate = effectiveLeft !== '' && effectiveLeft === effectiveRight;
+                            // Transform to get resolved metadata
+                            const card = datacoreResultToCardData(p, dc, settings, 'mtime-desc', false);
+
+                            // Check if any metadata has content
+                            const hasMetadata = card.metadata1 || card.metadata2 || card.metadata3 || card.metadata4;
+
+                            if (!hasMetadata) return null;
 
                             // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
-                            return (effectiveLeft !== '' || (effectiveRight !== '' && !isDuplicate)) && (
+                            return (
                                 <span className="list-meta">
-                                    {(effectiveLeft === 'tags' || effectiveLeft === 'file tags') && p.$tags && p.$tags.length > 0 ? (
+                                    {card.metadata1 === 'tags' && p.$tags && p.$tags.length > 0 ? (
                                         <>
                                             {p.$tags.map((tag: string): JSX.Element => (
                                                 <a
@@ -109,10 +113,10 @@ export function ListView({
                                                 </a>
                                             ))}
                                         </>
-                                    ) : (effectiveLeft === 'path' || effectiveLeft === 'file path') && folderPath ? (
-                                        <span className="list-path">{folderPath}</span>
+                                    ) : card.metadata1 ? (
+                                        <span className="list-text">{card.metadata1}</span>
                                     ) : null}
-                                    {!isDuplicate && (effectiveRight === 'tags' || effectiveRight === 'file tags') && p.$tags && p.$tags.length > 0 ? (
+                                    {card.metadata2 === 'tags' && p.$tags && p.$tags.length > 0 ? (
                                         <>
                                             {p.$tags.map((tag: string): JSX.Element => (
                                                 <a
@@ -131,8 +135,52 @@ export function ListView({
                                                 </a>
                                             ))}
                                         </>
-                                    ) : !isDuplicate && (effectiveRight === 'path' || effectiveRight === 'file path') && folderPath ? (
-                                        <span className="list-path">{folderPath}</span>
+                                    ) : card.metadata2 ? (
+                                        <span className="list-text">{card.metadata2}</span>
+                                    ) : null}
+                                    {card.metadata3 === 'tags' && p.$tags && p.$tags.length > 0 ? (
+                                        <>
+                                            {p.$tags.map((tag: string): JSX.Element => (
+                                                <a
+                                                    key={tag}
+                                                    href="#"
+                                                    className="tag"
+                                                    onClick={(e: MouseEvent) => {
+                                                        e.preventDefault();
+                                                        const searchPlugin = app.internalPlugins.plugins["global-search"];
+                                                        if (searchPlugin?.instance?.openGlobalSearch) {
+                                                            searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                                                        }
+                                                    }}
+                                                >
+                                                    {tag.replace(/^#/, '')}
+                                                </a>
+                                            ))}
+                                        </>
+                                    ) : card.metadata3 ? (
+                                        <span className="list-text">{card.metadata3}</span>
+                                    ) : null}
+                                    {card.metadata4 === 'tags' && p.$tags && p.$tags.length > 0 ? (
+                                        <>
+                                            {p.$tags.map((tag: string): JSX.Element => (
+                                                <a
+                                                    key={tag}
+                                                    href="#"
+                                                    className="tag"
+                                                    onClick={(e: MouseEvent) => {
+                                                        e.preventDefault();
+                                                        const searchPlugin = app.internalPlugins.plugins["global-search"];
+                                                        if (searchPlugin?.instance?.openGlobalSearch) {
+                                                            searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                                                        }
+                                                    }}
+                                                >
+                                                    {tag.replace(/^#/, '')}
+                                                </a>
+                                            ))}
+                                        </>
+                                    ) : card.metadata4 ? (
+                                        <span className="list-text">{card.metadata4}</span>
                                     ) : null}
                                 </span>
                             );

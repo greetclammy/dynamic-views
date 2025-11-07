@@ -32,6 +32,11 @@ export interface CardData {
     imageUrl?: string | string[];
     hasImageAvailable: boolean;
     displayTimestamp?: number;  // Resolved timestamp after custom property extraction (milliseconds)
+    // Resolved metadata property values (null if missing/empty)
+    metadata1?: string | null;
+    metadata2?: string | null;
+    metadata3?: string | null;
+    metadata4?: string | null;
 }
 
 export interface CardRendererProps {
@@ -353,24 +358,43 @@ function Card({
                 </div>
             )}
 
-            {/* Metadata - TODO: Implement full 4-field rendering in Phase 4 */}
+            {/* Metadata - 4-field rendering with 2-row layout */}
             {(() => {
-                // Temporary stub: map new fields to old two-field rendering
-                const effectiveLeft = settings.metadataDisplay1;
-                const effectiveRight = settings.metadataDisplay3;
+                // Check if any row has content
+                const row1HasContent = card.metadata1 !== null || card.metadata2 !== null;
+                const row2HasContent = card.metadata3 !== null || card.metadata4 !== null;
+
+                if (!row1HasContent && !row2HasContent) return null;
 
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
-                return (effectiveLeft !== '' || effectiveRight !== '') && (
-                    <div className={`writing-meta${
-                        effectiveLeft === '' && effectiveRight !== '' ? ' meta-right-only' :
-                        effectiveLeft !== '' && effectiveRight === '' ? ' meta-left-only' : ''
-                    }`}>
-                        <div className="meta-left">
-                            {effectiveLeft !== '' && renderMetadataContent(effectiveLeft, card, date, timeIcon, settings, app)}
-                        </div>
-                        <div className="meta-right">
-                            {effectiveRight !== '' && renderMetadataContent(effectiveRight, card, date, timeIcon, settings, app)}
-                        </div>
+                return (
+                    <div className="writing-meta meta-4field">
+                        {/* Row 1 */}
+                        {row1HasContent && (
+                            <div className={`meta-row meta-row-1${settings.metadataLayout12SideBySide ? ' meta-row-sidebyside' : ''}${
+                                (card.metadata1 === null && card.metadata2 !== null) || (card.metadata1 !== null && card.metadata2 === null) ? ' meta-row-single' : ''
+                            }`}>
+                                <div className="meta-field meta-field-1">
+                                    {card.metadata1 && renderMetadataContent(card.metadata1, card, date, timeIcon, settings, app)}
+                                </div>
+                                <div className="meta-field meta-field-2">
+                                    {card.metadata2 && renderMetadataContent(card.metadata2, card, date, timeIcon, settings, app)}
+                                </div>
+                            </div>
+                        )}
+                        {/* Row 2 */}
+                        {row2HasContent && (
+                            <div className={`meta-row meta-row-2${settings.metadataLayout34SideBySide ? ' meta-row-sidebyside' : ''}${
+                                (card.metadata3 === null && card.metadata4 !== null) || (card.metadata3 !== null && card.metadata4 === null) ? ' meta-row-single' : ''
+                            }`}>
+                                <div className="meta-field meta-field-3">
+                                    {card.metadata3 && renderMetadataContent(card.metadata3, card, date, timeIcon, settings, app)}
+                                </div>
+                                <div className="meta-field meta-field-4">
+                                    {card.metadata4 && renderMetadataContent(card.metadata4, card, date, timeIcon, settings, app)}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             })()}
