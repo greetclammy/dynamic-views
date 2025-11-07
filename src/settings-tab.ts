@@ -106,9 +106,10 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 			);
 
 		// Appearance section
-		new Setting(containerEl)
+		const appearanceHeading = new Setting(containerEl)
 			.setName('Appearance')
 			.setHeading();
+		appearanceHeading.settingEl.addClass('dynamic-views-appearance-heading');
 
 		const appearanceDesc = containerEl.createEl('p', { cls: 'setting-item-description' });
 		appearanceDesc.appendText('Appearance settings can be configured via ');

@@ -132,11 +132,11 @@ settings:
    PLUGIN SETTINGS STYLES
    ============================================ */
 
-/* Add border-top to description after Appearance heading */
-.setting-item-heading + p.setting-item-description {
-    border-top: 1px solid var(--background-modifier-border);
-    padding-top: 12px;
-    margin-top: 12px;
+/* Add border-bottom to Appearance heading */
+.dynamic-views-appearance-heading {
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
 }
 
 /* ============================================
