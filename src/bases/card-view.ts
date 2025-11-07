@@ -11,7 +11,7 @@ import { processImagePaths, resolveInternalImagePaths, extractEmbedImages } from
 import { loadFilePreview } from '../utils/preview';
 import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../utils/property';
 import { formatTimestamp, getTimestampIcon } from '../shared/render-utils';
-import { getMinCardWidth, getMinGridColumns, showTimestampIcon } from '../utils/style-settings';
+import { getMinCardWidth, getMinGridColumns, getTagStyle, showTimestampIcon } from '../utils/style-settings';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
 
@@ -471,11 +471,13 @@ export class DynamicViewsCardView extends BasesView {
             }
         } else if (displayType === 'tags' && card.tags.length > 0) {
             console.log(`// [DEBUG Render] Rendering tags for ${card.path}:`, card.tags);
+            const tagStyle = getTagStyle();
+            const showHashPrefix = tagStyle === 'minimal';
             const tagsWrapper = container.createDiv('tags-wrapper');
             card.tags.forEach(tag => {
                 tagsWrapper.createEl('a', {
                     cls: 'tag',
-                    text: tag.replace(/^#/, ''),
+                    text: showHashPrefix ? tag : tag.replace(/^#/, ''),
                     href: '#'
                 });
             });

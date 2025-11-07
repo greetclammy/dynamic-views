@@ -11,7 +11,7 @@ import { processImagePaths, resolveInternalImagePaths, extractEmbedImages } from
 import { loadFilePreview } from '../utils/preview';
 import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../utils/property';
 import { formatTimestamp, getTimestampIcon } from '../shared/render-utils';
-import { getMinCardWidth, getMinMasonryColumns, showTimestampIcon } from '../utils/style-settings';
+import { getMinCardWidth, getMinMasonryColumns, getTagStyle, showTimestampIcon } from '../utils/style-settings';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
 
@@ -520,11 +520,13 @@ export class DynamicViewsMasonryView extends BasesView {
                 timestampWrapper.appendText(date);
             }
         } else if (displayType === 'tags' && card.tags.length > 0) {
+            const tagStyle = getTagStyle();
+            const showHashPrefix = tagStyle === 'minimal';
             const tagsWrapper = container.createDiv('tags-wrapper');
             card.tags.forEach(tag => {
                 tagsWrapper.createEl('a', {
                     cls: 'tag',
-                    text: tag.replace(/^#/, ''),
+                    text: showHashPrefix ? tag : tag.replace(/^#/, ''),
                     href: '#'
                 });
             });

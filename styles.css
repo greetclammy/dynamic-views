@@ -1696,7 +1696,6 @@ body.dynamic-views-tag-style-plain .dynamic-views .list-meta .tag {
     color: var(--text-faint);
     border-radius: var(--tag-radius);
     border: 1px solid var(--background-modifier-border);
-    padding: 2px 6px;
 }
 
 body.dynamic-views-tag-style-plain .dynamic-views .writing-meta .tag:hover,
@@ -1711,7 +1710,6 @@ body.dynamic-views-tag-style-theme .dynamic-views .list-meta .tag {
     background-color: var(--tag-background);
     color: var(--tag-color);
     border: none;
-    padding: 1px 8px;
     border-radius: var(--tag-radius);
 }
 
