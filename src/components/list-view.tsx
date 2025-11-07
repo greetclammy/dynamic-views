@@ -2,6 +2,8 @@ import type { Settings } from '../types';
 import { getFirstDatacorePropertyValue } from '../utils/property';
 import type { DatacoreAPI, DatacoreFile } from '../types/datacore';
 import type { App } from 'obsidian';
+import { datacoreResultToCardData } from '../shared/data-transform';
+import type { CardData } from '../shared/card-renderer';
 
 // Extend App type to include internal plugins
 declare module 'obsidian' {
@@ -44,8 +46,6 @@ export function ListView({
                 let rawTitle = getFirstDatacorePropertyValue(p, settings.titleProperty);
                 if (Array.isArray(rawTitle)) rawTitle = rawTitle[0];
                 const titleValue = dc.coerce.string(rawTitle || p.$name);
-                // Get folder path
-                const folderPath = (p.$path || '').split('/').slice(0, -1).join('/');
 
                 return (
                     <li key={p.$path} className="list-item">
@@ -79,12 +79,8 @@ export function ListView({
                         </a>
                         {/* Metadata - inline display (list view doesn't use 2-row layout) */}
                         {(() => {
-                            // Get resolved metadata from CardData
-                            // For list view, we need to transform DatacoreFile to CardData first
-                            const { datacoreResultToCardData } = require('../shared/data-transform');
-
                             // Transform to get resolved metadata
-                            const card = datacoreResultToCardData(p, dc, settings, 'mtime-desc', false);
+                            const card: CardData = datacoreResultToCardData(p, dc, settings, 'mtime-desc', false);
 
                             // Check if any metadata has content
                             const hasMetadata = card.metadata1 || card.metadata2 || card.metadata3 || card.metadata4;

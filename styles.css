@@ -1769,6 +1769,52 @@ body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag:hover {
 
 
 /* ============================================
+   4-FIELD METADATA SYSTEM
+   ============================================ */
+
+.dynamic-views .writing-meta.meta-4field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    grid-template-columns: unset;
+    min-height: auto;
+}
+
+.dynamic-views .meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dynamic-views .meta-row.meta-row-sidebyside {
+    flex-direction: row;
+    gap: 8px;
+}
+
+.dynamic-views .meta-row.meta-row-sidebyside .meta-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.dynamic-views .meta-row.meta-row-single .meta-field {
+    width: 100%;
+}
+
+.dynamic-views .meta-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+/* Hide empty fields */
+.dynamic-views .meta-field:empty {
+    display: none;
+}
+
+
+/* ============================================
    VIEW-SPECIFIC STYLES: MASONRY VIEW
    ============================================ */
 

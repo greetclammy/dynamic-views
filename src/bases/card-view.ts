@@ -5,7 +5,7 @@
 
 import { BasesView, BasesEntry, TFile, setIcon, QueryController } from 'obsidian';
 import { CardData } from '../shared/card-renderer';
-import { transformBasesEntries } from '../shared/data-transform';
+import { transformBasesEntries, resolveBasesMetadataProperty } from '../shared/data-transform';
 import { readBasesSettings, getBasesViewOptions } from '../shared/settings-schema';
 import { processImagePaths, resolveInternalImagePaths, extractEmbedImages } from '../utils/image';
 import { loadFilePreview } from '../utils/preview';
@@ -325,8 +325,6 @@ export class DynamicViewsCardView extends BasesView {
         entry: BasesEntry,
         settings: Settings
     ): void {
-        const { resolveBasesMetadataProperty } = require('../shared/data-transform');
-
         // Get all 4 property names
         const props = [
             settings.metadataDisplay1,
