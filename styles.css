@@ -1699,10 +1699,15 @@ body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag:hover {
 .dynamic-views .meta-row-sidebyside .meta-field-2 .tags-wrapper,
 .dynamic-views .meta-row-sidebyside .meta-field-4 .tags-wrapper,
 .dynamic-views .meta-row-sidebyside .meta-field-2 .path-wrapper,
-.dynamic-views .meta-row-sidebyside .meta-field-4 .path-wrapper,
+.dynamic-views .meta-row-sidebyside .meta-field-4 .path-wrapper {
+    text-align: right !important;
+    width: 100%;
+}
+
+/* Timestamps (direct span children) use justify-content since they're flex containers */
 .dynamic-views .meta-row-sidebyside .meta-field-2 > span,
 .dynamic-views .meta-row-sidebyside .meta-field-4 > span {
-    text-align: right !important;
+    justify-content: flex-end !important;
     width: 100%;
 }
 
