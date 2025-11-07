@@ -1441,6 +1441,16 @@ body.dynamic-views-thumbnail-right .dynamic-views .snippet-container {
     pointer-events: auto;
 }
 
+/* Base metadata container styles */
+.dynamic-views .writing-meta {
+    font-size: 0.8em;
+    margin-top: 4px;
+    color: var(--text-faint);
+    min-height: 24px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
 .dynamic-views .timestamp-icon {
     flex-shrink: 0;
     opacity: 0.7;
