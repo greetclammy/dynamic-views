@@ -1445,7 +1445,6 @@ body.dynamic-views-thumbnail-right .dynamic-views .snippet-container {
     display: grid;
     grid-template-columns: minmax(auto, 50%) minmax(auto, 50%);
     column-gap: 8px;
-    align-items: center;
     font-size: 0.8em;
     margin-top: 4px;
     color: var(--text-faint);
