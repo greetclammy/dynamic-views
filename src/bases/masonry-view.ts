@@ -7,14 +7,13 @@ import { BasesView, BasesEntry, TFile, setIcon, QueryController, Menu } from 'ob
 import { CardData } from '../shared/card-renderer';
 import { transformBasesEntries, resolveBasesProperty } from '../shared/data-transform';
 import { readBasesSettings, getMasonryViewOptions } from '../shared/settings-schema';
-import { processImagePaths, resolveInternalImagePaths, extractEmbedImages } from '../utils/image';
-import { loadFilePreview } from '../utils/preview';
 import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../utils/property';
 import { getTimestampIcon } from '../shared/render-utils';
 import { getMinCardWidth, getMinMasonryColumns, getTagStyle, showTimestampIcon, getCardSpacing } from '../utils/style-settings';
 import { calculateMasonryLayout, applyMasonryLayout } from '../utils/masonry-layout';
 import { setupImageLoadHandler } from '../shared/image-loader';
 import { updateScrollGradient, setupScrollGradients } from '../shared/scroll-gradient-manager';
+import { loadSnippetsForEntries, loadImagesForEntries } from '../shared/content-loader';
 import { BATCH_SIZE, GAP_SIZE } from '../shared/constants';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
@@ -757,76 +756,55 @@ export class DynamicViewsMasonryView extends BasesView {
     private async loadContentForEntries(entries: BasesEntry[], settings: Settings): Promise<void> {
         // Load snippets for text preview
         if (settings.showTextPreview) {
-            await Promise.all(
-                entries.map(async (entry) => {
-                    const path = entry.file.path;
-                    if (!(path in this.snippets)) {
-                        try {
-                            const file = this.app.vault.getAbstractFileByPath(path);
-                            if (file instanceof TFile && file.extension === 'md') {
-                                // Get property value
-                                const descValue = getFirstBasesPropertyValue(entry, settings.descriptionProperty) as { data?: unknown } | null;
-                                const descData = descValue?.data;
+            // Prepare entries for snippet loading
+            const snippetEntries = entries
+                .filter(entry => !(entry.file.path in this.snippets))
+                .map(entry => {
+                    const file = this.app.vault.getAbstractFileByPath(entry.file.path);
+                    if (!(file instanceof TFile)) return null;
 
-                                // Use shared utility for preview loading
-                                this.snippets[path] = await loadFilePreview(
-                                    file,
-                                    this.app,
-                                    descData,
-                                    {
-                                        fallbackToContent: settings.fallbackToContent,
-                                        omitFirstLine: settings.omitFirstLine
-                                    }
-                                );
-                            } else {
-                                this.snippets[path] = '';
-                            }
-                        } catch (error) {
-                            console.error(`Failed to load snippet for ${path}:`, error);
-                            this.snippets[path] = '';
-                        }
-                    }
+                    const descValue = getFirstBasesPropertyValue(entry, settings.descriptionProperty) as { data?: unknown } | null;
+                    return {
+                        path: entry.file.path,
+                        file,
+                        descriptionData: descValue?.data
+                    };
                 })
+                .filter((e): e is { path: string; file: TFile; descriptionData: unknown } => e !== null);
+
+            await loadSnippetsForEntries(
+                snippetEntries,
+                settings.fallbackToContent,
+                settings.omitFirstLine,
+                this.app,
+                this.snippets
             );
         }
 
         // Load images for thumbnails
         if (settings.imageFormat !== 'none') {
-            await Promise.all(
-                entries.map(async (entry) => {
-                    const path = entry.file.path;
-                    if (!(path in this.images)) {
-                        try {
-                            // Get ALL images from ALL comma-separated properties
-                            const imageValues = getAllBasesImagePropertyValues(entry, settings.imageProperty);
+            // Prepare entries for image loading
+            const imageEntries = entries
+                .filter(entry => !(entry.file.path in this.images))
+                .map(entry => {
+                    const file = this.app.vault.getAbstractFileByPath(entry.file.path);
+                    if (!(file instanceof TFile)) return null;
 
-                            // Process and validate image paths using shared utility
-                            const { internalPaths, externalUrls } = await processImagePaths(imageValues);
-
-                            // Convert internal paths to resource URLs using shared utility
-                            let validImages: string[] = [
-                                ...resolveInternalImagePaths(internalPaths, path, this.app),
-                                ...externalUrls  // External URLs already validated by processImagePaths
-                            ];
-
-                            // If no property images and fallback enabled, extract embed images
-                            if (validImages.length === 0 && settings.fallbackToEmbeds) {
-                                const file = this.app.vault.getAbstractFileByPath(path);
-                                if (file instanceof TFile) {
-                                    validImages = await extractEmbedImages(file, this.app);
-                                }
-                            }
-
-                            if (validImages.length > 0) {
-                                // Store as array if multiple, string if single
-                                this.images[path] = validImages.length > 1 ? validImages : validImages[0];
-                                this.hasImageAvailable[path] = true;
-                            }
-                        } catch (error) {
-                            console.error(`Failed to load image for ${path}:`, error);
-                        }
-                    }
+                    const imagePropertyValues = getAllBasesImagePropertyValues(entry, settings.imageProperty);
+                    return {
+                        path: entry.file.path,
+                        file,
+                        imagePropertyValues: imagePropertyValues as unknown[]
+                    };
                 })
+                .filter((e): e is NonNullable<typeof e> => e !== null);
+
+            await loadImagesForEntries(
+                imageEntries,
+                settings.fallbackToEmbeds,
+                this.app,
+                this.images,
+                this.hasImageAvailable
             );
         }
     }
