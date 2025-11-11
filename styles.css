@@ -2099,22 +2099,22 @@ body.dynamic-views-thumbnail-expand-click .dynamic-views .writing-card.image-for
 }
 
 /* Toggle OFF: Blur - hide ::before pseudo-element */
-body.dynamic-views-thumbnail-expand-click:not(.dynamic-views-bases-cards-cover-background-on-zoom).dynamic-views-cover-bg-blur .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active::before {
+body.dynamic-views-thumbnail-expand-click:not(.bases-cards-cover-background-on-zoom).dynamic-views-cover-bg-blur .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active::before {
     content: none !important;
 }
 
 /* Toggle OFF: Ambient - force default background */
-body.dynamic-views-thumbnail-expand-click:not(.dynamic-views-bases-cards-cover-background-on-zoom).dynamic-views-cover-bg-ambient .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active {
+body.dynamic-views-thumbnail-expand-click:not(.bases-cards-cover-background-on-zoom).dynamic-views-cover-bg-ambient .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active {
     background: var(--background-primary) !important;
 }
 
 /* Toggle OFF: Custom color - force default background */
-body.dynamic-views-thumbnail-expand-click:not(.dynamic-views-bases-cards-cover-background-on-zoom).dynamic-views-cover-bg-custom .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active {
+body.dynamic-views-thumbnail-expand-click:not(.bases-cards-cover-background-on-zoom).dynamic-views-cover-bg-custom .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active {
     background: var(--background-primary) !important;
 }
 
 /* Toggle ON: Blur - show blurred background */
-body.dynamic-views-thumbnail-expand-click.dynamic-views-bases-cards-cover-background-on-zoom.dynamic-views-cover-bg-blur .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active::before {
+body.dynamic-views-thumbnail-expand-click.bases-cards-cover-background-on-zoom.dynamic-views-cover-bg-blur .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active::before {
     content: '' !important;
     position: absolute;
     top: 0;
@@ -2129,17 +2129,17 @@ body.dynamic-views-thumbnail-expand-click.dynamic-views-bases-cards-cover-backgr
     z-index: 0;
 }
 
-.theme-dark body.dynamic-views-thumbnail-expand-click.dynamic-views-bases-cards-cover-background-on-zoom.dynamic-views-cover-bg-blur .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active::before {
+.theme-dark body.dynamic-views-thumbnail-expand-click.bases-cards-cover-background-on-zoom.dynamic-views-cover-bg-blur .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active::before {
     filter: blur(20px) brightness(0.5);
 }
 
 /* Toggle ON: Ambient - show ambient color background */
-body.dynamic-views-thumbnail-expand-click.dynamic-views-bases-cards-cover-background-on-zoom.dynamic-views-cover-bg-ambient .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active {
+body.dynamic-views-thumbnail-expand-click.bases-cards-cover-background-on-zoom.dynamic-views-cover-bg-ambient .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active {
     background: var(--ambient-color, var(--background-secondary)) !important;
 }
 
 /* Toggle ON: Custom color - show custom color background */
-body.dynamic-views-thumbnail-expand-click.dynamic-views-bases-cards-cover-background-on-zoom.dynamic-views-cover-bg-custom .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active {
+body.dynamic-views-thumbnail-expand-click.bases-cards-cover-background-on-zoom.dynamic-views-cover-bg-custom .dynamic-views .writing-card.image-format-cover .card-thumbnail .image-embed:active {
     background: var(--bases-cards-cover-background, var(--background-secondary)) !important;
 }
 
