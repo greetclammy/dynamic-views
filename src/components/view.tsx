@@ -8,8 +8,7 @@ import { ListView } from './list-view';
 import { Toolbar } from './toolbar';
 import { getCurrentFile, getFileCtime, getAvailablePath } from '../utils/file';
 import { ensurePageSelector, updateQueryInBlock, findQueryInBlock } from '../utils/query-sync';
-import { processImagePaths, resolveInternalImagePaths, extractEmbedImages } from '../utils/image';
-import { loadFilePreview } from '../utils/preview';
+import { loadSnippetsForEntries, loadImagesForEntries } from '../shared/content-loader';
 import { getFirstDatacorePropertyValue, getAllDatacoreImagePropertyValues } from '../utils/property';
 import { getMinCardWidth, getMinMasonryColumns, getMinGridColumns, getCardSpacing } from '../utils/style-settings';
 import { calculateMasonryLayout, applyMasonryLayout } from '../utils/masonry-layout';
@@ -467,81 +466,79 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
             const newImages: Record<string, string | string[]> = {};
             const newHasImageAvailable: Record<string, boolean> = {};
 
-            for (const p of sorted.slice(0, displayedCount)) {
-                try {
-                    const file = app.vault.getAbstractFileByPath(p.$path);
-                    if (file instanceof TFile) {
-                        // Get property value for text preview
-                        const descFromProp = getFirstDatacorePropertyValue(p, settings.descriptionProperty);
-                        const descAsString = typeof descFromProp === 'string' || typeof descFromProp === 'number'
-                            ? String(descFromProp)
-                            : null;
+            // Prepare entries for snippet loading
+            if (settings.showTextPreview) {
+                const snippetEntries = sorted.slice(0, displayedCount)
+                    .map(p => {
+                        try {
+                            const file = app.vault.getAbstractFileByPath(p.$path);
+                            if (!(file instanceof TFile)) {
+                                newSnippets[p.$path] = "(File not found)";
+                                return null;
+                            }
 
-                        // Get ALL image values from ALL comma-separated properties
-                        const propertyImageValues = getAllDatacoreImagePropertyValues(p, settings.imageProperty);
+                            const descFromProp = getFirstDatacorePropertyValue(p, settings.descriptionProperty);
+                            const descAsString = typeof descFromProp === 'string' || typeof descFromProp === 'number'
+                                ? String(descFromProp)
+                                : null;
 
-                        // Process and validate image paths using shared utility
-                        const { internalPaths: propertyImagePaths, externalUrls: propertyExternalUrls } =
-                            await processImagePaths(propertyImageValues);
-
-                        // Process text preview only if enabled
-                        if (settings.showTextPreview) {
                             // Get title for first line comparison
                             let titleValue: unknown = p.value(settings.titleProperty);
                             if (Array.isArray(titleValue)) titleValue = titleValue[0] as unknown;
                             const titleString = titleValue ? dc.coerce.string(titleValue) : undefined;
 
-                            // Use shared utility for preview loading
-                            const description = await loadFilePreview(
+                            return {
+                                path: p.$path,
                                 file,
-                                app,
-                                descAsString,
-                                {
-                                    fallbackToContent: settings.fallbackToContent,
-                                    omitFirstLine: settings.omitFirstLine
-                                },
-                                p.$name,
+                                descriptionData: descAsString as unknown,
+                                fileName: p.$name,
                                 titleString
-                            );
-
-                            // Always set snippet value, even if empty (to prevent perpetual "Loading...")
-                            newSnippets[p.$path] = description;
+                            };
+                        } catch (e: unknown) {
+                            console.error("Error reading file:", p.$path, e instanceof Error ? e.message : e);
+                            newSnippets[p.$path] = "(Error reading file)";
+                            return null;
                         }
+                    })
+                    .filter((e): e is NonNullable<typeof e> => e !== null);
 
-                        // Process thumbnails only if enabled
-                        if (settings.imageFormat !== 'none') {
-                            // Phase A: Convert property image paths to resource paths using shared utility
-                            const propertyResourcePaths: string[] = [
-                                ...resolveInternalImagePaths(propertyImagePaths, p.$path, app),
-                                ...propertyExternalUrls  // External URLs already validated by processImagePaths
-                            ];
+                await loadSnippetsForEntries(
+                    snippetEntries,
+                    settings.fallbackToContent,
+                    settings.omitFirstLine,
+                    app,
+                    newSnippets
+                );
+            }
 
-                            // Phase B: Extract body embed resource paths using shared utility
-                            const bodyResourcePaths = await extractEmbedImages(file, app);
+            // Prepare entries for image loading
+            if (settings.imageFormat !== 'none') {
+                const imageEntries = sorted.slice(0, displayedCount)
+                    .map(p => {
+                        try {
+                            const file = app.vault.getAbstractFileByPath(p.$path);
+                            if (!(file instanceof TFile)) return null;
 
-                            // Phase C: Merge with fallback: property images first, then body embeds (if enabled)
-                            const allResourcePaths = propertyResourcePaths.length > 0
-                                ? propertyResourcePaths
-                                : (settings.fallbackToEmbeds ? bodyResourcePaths : []);
-
-                            // Phase D: Store combined result
-                            if (allResourcePaths.length > 0) {
-                                // Store as array if multiple, string if single
-                                newImages[p.$path] = allResourcePaths.length > 1 ? allResourcePaths : allResourcePaths[0];
-                                newHasImageAvailable[p.$path] = true;
-                            }
+                            const imagePropertyValues = getAllDatacoreImagePropertyValues(p, settings.imageProperty);
+                            return {
+                                path: p.$path,
+                                file,
+                                imagePropertyValues: imagePropertyValues as unknown[]
+                            };
+                        } catch (e: unknown) {
+                            console.error("Error reading file:", p.$path, e instanceof Error ? e.message : e);
+                            return null;
                         }
-                    } else {
-                        if (settings.showTextPreview) {
-                            newSnippets[p.$path] = "(File not found)";
-                        }
-                    }
-                } catch (e: unknown) {
-                    console.error("Error reading file:", p.$path, e instanceof Error ? e.message : e);
-                    if (settings.showTextPreview) {
-                        newSnippets[p.$path] = "(Error reading file)";
-                    }
-                }
+                    })
+                    .filter((e): e is NonNullable<typeof e> => e !== null);
+
+                await loadImagesForEntries(
+                    imageEntries,
+                    settings.fallbackToEmbeds,
+                    app,
+                    newImages,
+                    newHasImageAvailable
+                );
             }
 
             setSnippets(newSnippets);
