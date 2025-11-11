@@ -127,14 +127,9 @@ export class DynamicViewsCardView extends BasesView {
         // Transform to CardData (only visible entries)
         const sortMethod = this.getSortMethod();
 
-        console.log('// [Shuffle Debug] card-view onDataUpdated - sortMethod:', sortMethod);
-        console.log('// [Shuffle Debug] lastSortMethod:', this.lastSortMethod);
-        console.log('// [Shuffle Debug] isShuffled:', this.isShuffled);
-        console.log('// [Shuffle Debug] shuffledOrder.length:', this.shuffledOrder.length);
 
         // Reset shuffle if sort method changed
         if (this.lastSortMethod !== null && this.lastSortMethod !== sortMethod) {
-            console.log('// [Shuffle Debug] Sort method changed, resetting shuffle');
             this.isShuffled = false;
             this.shuffledOrder = [];
         }
@@ -143,16 +138,13 @@ export class DynamicViewsCardView extends BasesView {
         // Apply shuffled order if enabled
         let orderedEntries = entries;
         if (this.isShuffled && this.shuffledOrder.length > 0) {
-            console.log('// [Shuffle Debug] Applying shuffled order to', entries.length, 'entries');
             // Sort by shuffled order
             orderedEntries = [...entries].sort((a, b) => {
                 const indexA = this.shuffledOrder.indexOf(a.file.path);
                 const indexB = this.shuffledOrder.indexOf(b.file.path);
                 return indexA - indexB;
             });
-            console.log('// [Shuffle Debug] First 3 ordered paths:', orderedEntries.slice(0, 3).map(e => e.file.path));
         } else {
-            console.log('// [Shuffle Debug] NOT applying shuffle - isShuffled:', this.isShuffled, 'shuffledOrder.length:', this.shuffledOrder.length);
         }
 
         // Slice to displayed count for rendering
@@ -175,7 +167,6 @@ export class DynamicViewsCardView extends BasesView {
         this.containerEl.empty();
 
         // Disconnect old property observers before re-rendering
-        console.log('// [PropertyLayout] Cleaning up', this.propertyObservers.length, 'observers before re-render');
         this.propertyObservers.forEach(obs => obs.disconnect());
         this.propertyObservers = [];
 
@@ -232,14 +223,9 @@ export class DynamicViewsCardView extends BasesView {
         // Get sort configuration from Bases
         const sortConfigs = this.config.getSort();
 
-        // console.log('// [Bases Sort Debug - Card View] getSort() returned:', sortConfigs);
-        // console.log('// [Bases Sort Debug - Card View] Array length:', sortConfigs?.length);
 
         if (sortConfigs && sortConfigs.length > 0) {
             const firstSort = sortConfigs[0];
-            // console.log('// [Bases Sort Debug - Card View] First sort config:', firstSort);
-            // console.log('// [Bases Sort Debug - Card View] Property:', firstSort.property);
-            // console.log('// [Bases Sort Debug - Card View] Direction:', firstSort.direction);
 
             const property = firstSort.property;
             const direction = firstSort.direction.toLowerCase();
@@ -247,17 +233,13 @@ export class DynamicViewsCardView extends BasesView {
             // Check for ctime/mtime in property
             if (property.includes('ctime')) {
                 const result = `ctime-${direction}`;
-                // console.log('// [Bases Sort Debug - Card View] Detected:', result);
                 return result;
             }
             if (property.includes('mtime')) {
                 const result = `mtime-${direction}`;
-                // console.log('// [Bases Sort Debug - Card View] Detected:', result);
                 return result;
             }
-            // console.log('// [Bases Sort Debug - Card View] Custom property sort, falling back to mtime-desc');
         } else {
-            // console.log('// [Bases Sort Debug - Card View] No sort config, using default mtime-desc');
         }
         return 'mtime-desc';
     }
@@ -327,11 +309,9 @@ export class DynamicViewsCardView extends BasesView {
 
         // Skip if all items already displayed
         if (this.displayedCount >= totalEntries) {
-            // console.log('// [InfiniteScroll] All items displayed, skipping setup');
             return;
         }
 
-        // console.log(`// [InfiniteScroll] Setting up scroll listener (${this.displayedCount}/${totalEntries} items)`);
 
         // Create scroll handler with throttling
         this.scrollListener = () => {
@@ -358,13 +338,11 @@ export class DynamicViewsCardView extends BasesView {
 
             // Check if should load more
             if (distanceFromBottom < threshold && this.displayedCount < totalEntries) {
-                // console.log(`// [InfiniteScroll] Loading more items (distance: ${distanceFromBottom.toFixed(0)}px, threshold: ${threshold.toFixed(0)}px)`);
                 this.isLoading = true;
 
                 // Dynamic batch size: 50 items (simple for card view)
                 const batchSize = 50;
                 this.displayedCount = Math.min(this.displayedCount + batchSize, totalEntries);
-                // console.log(`// [InfiniteScroll] New displayedCount: ${this.displayedCount}/${totalEntries}`);
 
                 // Re-render (this will call setupInfiniteScroll again)
                 this.onDataUpdated();
