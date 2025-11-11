@@ -11,7 +11,7 @@ import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../u
 import { getMinCardWidth, getMinGridColumns } from '../utils/style-settings';
 import { loadSnippetsForEntries, loadImagesForEntries } from '../shared/content-loader';
 import { SharedCardRenderer } from './shared-renderer';
-import { BATCH_SIZE, GAP_SIZE } from '../shared/constants';
+import { BATCH_SIZE } from '../shared/constants';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
 
@@ -225,7 +225,112 @@ export class DynamicViewsCardView extends BasesView {
         index: number,
         settings: Settings
     ): void {
-        this.cardRenderer.renderCard(container, card, entry, settings, this);
+        const { app } = this;
+
+        // Create card element
+        const cardEl = container.createDiv('writing-card');
+        if (settings.imageFormat === 'cover') {
+            cardEl.classList.add('image-format-cover');
+        }
+        cardEl.setAttribute('data-path', card.path);
+        cardEl.setAttribute('data-href', card.path);
+        cardEl.style.cursor = 'pointer';
+
+        // Handle card click to open file
+        cardEl.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            // Don't open if clicking on tags or other interactive elements
+            const isTag = target.tagName === 'A' && target.classList.contains('tag');
+            const isInsideTag = target.closest('.tag');
+            const isImage = target.tagName === 'IMG';
+            const expandOnClick = document.body.classList.contains('dynamic-views-thumbnail-expand-click');
+            const shouldBlockImageClick = isImage && expandOnClick;
+
+            if (!isTag && !isInsideTag && !shouldBlockImageClick) {
+                const openOnCard = settings.openFileAction === 'card';
+                const clickedOnTitle = target.closest('.writing-title');
+
+                if (openOnCard || clickedOnTitle) {
+                    const newLeaf = e.metaKey || e.ctrlKey;
+                    void app.workspace.openLinkText(card.path, '', newLeaf);
+                }
+            }
+        });
+
+        // Handle hover for page preview
+        cardEl.addEventListener('mouseover', (e) => {
+            app.workspace.trigger('hover-link', {
+                event: e,
+                source: 'dynamic-views',
+                hoverParent: this,
+                targetEl: cardEl,
+                linktext: card.path,
+            });
+        });
+
+        // Handle right-click for context menu
+        cardEl.addEventListener('contextmenu', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const menu = new Menu();
+
+            // @ts-ignore - Trigger file-menu to add standard items
+            app.workspace.trigger('file-menu', menu, entry.file, 'file-explorer');
+
+            menu.showAtMouseEvent(e);
+        });
+
+        // Title - plain text, not a link (matching vanilla Bases)
+        if (settings.showTitle) {
+            const titleEl = cardEl.createDiv('writing-title');
+            titleEl.createSpan({ cls: 'title-text', text: card.title });
+        }
+
+        // Snippet and thumbnail container
+        // Create container if: text preview exists, OR thumbnails enabled with image, OR cover format (for placeholders)
+        if ((settings.showTextPreview && card.snippet) ||
+            (settings.imageFormat !== 'none' && (card.imageUrl || card.hasImageAvailable)) ||
+            (settings.imageFormat === 'cover')) {
+            const snippetContainer = cardEl.createDiv('snippet-container');
+
+            // Text preview
+            if (settings.showTextPreview && card.snippet) {
+                snippetContainer.createDiv({ cls: 'writing-snippet', text: card.snippet });
+            }
+
+            // Thumbnail
+            if (settings.imageFormat !== 'none' && card.imageUrl) {
+                const imageUrls = Array.isArray(card.imageUrl) ? card.imageUrl : [card.imageUrl];
+                const thumbEl = snippetContainer.createDiv('card-thumbnail');
+
+                if (imageUrls.length > 0) {
+                    const imageEmbedContainer = thumbEl.createDiv('image-embed');
+                    const imgEl = imageEmbedContainer.createEl('img', {
+                        attr: { src: imageUrls[0], alt: '' }
+                    });
+                    // Set CSS variable for letterbox blur background
+                    imageEmbedContainer.style.setProperty('--cover-image-url', `url("${imageUrls[0]}")`);
+
+                    // Handle image load for masonry layout and color extraction
+                    // Setup image load handler
+                    const cardEl = thumbEl.closest('.writing-card') as HTMLElement;
+                    if (cardEl) {
+                        setupImageLoadHandler(
+                            imgEl,
+                            imageEmbedContainer,
+                            cardEl,
+                            this.updateLayoutRef.current || undefined
+                        );
+                    }
+                }
+            } else if (settings.imageFormat !== 'none') {
+                // Always render placeholder when no image - CSS controls visibility
+                snippetContainer.createDiv('card-thumbnail-placeholder');
+            }
+        }
+
+        // Properties - 4-field rendering with 2-row layout
+        this.renderProperties(cardEl, card, entry, settings);
     }
 
     private getSortMethod(): string {

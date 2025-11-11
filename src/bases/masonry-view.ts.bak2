@@ -1,31 +1,25 @@
 /**
- * Bases Card View
- * Primary implementation using Bases API
+ * Bases Masonry View
+ * Masonry layout view using Bases API
  */
 
 import { BasesView, BasesEntry, TFile, QueryController } from 'obsidian';
 import { CardData } from '../shared/card-renderer';
 import { transformBasesEntries } from '../shared/data-transform';
-import { readBasesSettings, getBasesViewOptions } from '../shared/settings-schema';
+import { readBasesSettings, getMasonryViewOptions } from '../shared/settings-schema';
 import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../utils/property';
-import { getMinCardWidth, getMinGridColumns } from '../utils/style-settings';
+import { getMinCardWidth, getMinMasonryColumns, getCardSpacing } from '../utils/style-settings';
+import { calculateMasonryLayout, applyMasonryLayout } from '../utils/masonry-layout';
 import { loadSnippetsForEntries, loadImagesForEntries } from '../shared/content-loader';
 import { SharedCardRenderer } from './shared-renderer';
-import { BATCH_SIZE, GAP_SIZE } from '../shared/constants';
+import { BATCH_SIZE } from '../shared/constants';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
 
-// Extend App type to include isMobile property
-declare module 'obsidian' {
-    interface App {
-        isMobile: boolean;
-    }
-}
+export const MASONRY_VIEW_TYPE = 'dynamic-views-masonry';
 
-export const GRID_VIEW_TYPE = 'dynamic-views-grid';
-
-export class DynamicViewsCardView extends BasesView {
-    readonly type = GRID_VIEW_TYPE;
+export class DynamicViewsMasonryView extends BasesView {
+    readonly type = MASONRY_VIEW_TYPE;
     private containerEl: HTMLElement;
     private plugin: DynamicViewsPlugin;
     private snippets: Record<string, string> = {};
@@ -33,6 +27,7 @@ export class DynamicViewsCardView extends BasesView {
     private hasImageAvailable: Record<string, boolean> = {};
     private updateLayoutRef: { current: (() => void) | null } = { current: null };
     private focusableCardIndex: number = 0;
+    private masonryContainer: HTMLElement | null = null;
     private displayedCount: number = 50;
     private isLoading: boolean = false;
     private scrollListener: (() => void) | null = null;
@@ -63,9 +58,8 @@ export class DynamicViewsCardView extends BasesView {
         // Add both classes - 'dynamic-views' for CSS styling, 'dynamic-views-bases-container' for identification
         this.containerEl.addClass('dynamic-views');
         this.containerEl.addClass('dynamic-views-bases-container');
-        // Make container scrollable vertically, hidden horizontally
+        // Make container scrollable
         this.containerEl.style.overflowY = 'auto';
-        this.containerEl.style.overflowX = 'hidden';
         this.containerEl.style.height = '100%';
         // Set initial batch size based on device
         this.displayedCount = this.app.isMobile ? 25 : BATCH_SIZE;
@@ -109,25 +103,27 @@ export class DynamicViewsCardView extends BasesView {
             this.plugin.persistenceManager.getDefaultViewSettings()
         );
 
-        // Calculate grid columns
-        const containerWidth = this.containerEl.clientWidth;
-        const cardMinWidth = getMinCardWidth();
-        const minColumns = getMinGridColumns();
-        const gap = GAP_SIZE;
-        const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardMinWidth + gap)));
-        const cardWidth = (containerWidth - (gap * (cols - 1))) / cols;
-
-        // Set CSS variables for grid layout
-        this.containerEl.style.setProperty('--card-min-width', `${cardWidth}px`);
-        this.containerEl.style.setProperty('--grid-columns', String(cols));
-
         // Save scroll position before re-rendering
         const savedScrollTop = this.containerEl.scrollTop;
+
+        // Try to find the first visible card to restore position more accurately
+        let anchorCardPath: string | null = null;
+        if (savedScrollTop > 0 && this.masonryContainer) {
+            const cards = this.masonryContainer.querySelectorAll('.writing-card');
+            const containerTop = this.containerEl.getBoundingClientRect().top;
+            for (const card of Array.from(cards)) {
+                const cardTop = (card as HTMLElement).getBoundingClientRect().top;
+                if (cardTop >= containerTop - 50) { // First card near or in viewport
+                    anchorCardPath = (card as HTMLElement).getAttribute('data-path');
+                    break;
+                }
+            }
+        }
 
         // Transform to CardData (only visible entries)
         const sortMethod = this.getSortMethod();
 
-        console.log('// [Shuffle Debug] card-view onDataUpdated - sortMethod:', sortMethod);
+        console.log('// [Shuffle Debug] masonry-view onDataUpdated - sortMethod:', sortMethod);
         console.log('// [Shuffle Debug] lastSortMethod:', this.lastSortMethod);
         console.log('// [Shuffle Debug] isShuffled:', this.isShuffled);
         console.log('// [Shuffle Debug] shuffledOrder.length:', this.shuffledOrder.length);
@@ -175,47 +171,107 @@ export class DynamicViewsCardView extends BasesView {
         this.containerEl.empty();
 
         // Disconnect old property observers before re-rendering
-        console.log('// [PropertyLayout] Cleaning up', this.propertyObservers.length, 'observers before re-render');
         this.propertyObservers.forEach(obs => obs.disconnect());
         this.propertyObservers = [];
 
-        // Create cards feed container
-        const feedEl = this.containerEl.createDiv('cards-feed');
+        // Create masonry container
+        this.masonryContainer = this.containerEl.createDiv('cards-masonry');
+
+        // Setup masonry layout
+        this.setupMasonryLayout(settings);
 
         // Render each card
         for (let i = 0; i < cards.length; i++) {
             const card = cards[i];
             const entry = visibleEntries[i];
-            this.renderCard(feedEl, card, entry, i, settings);
+            this.renderCard(this.masonryContainer, card, entry, i, settings);
         }
 
-        // Restore scroll position after rendering
-        if (savedScrollTop > 0) {
-            this.containerEl.scrollTop = savedScrollTop;
+        // Initial layout calculation
+        if (this.updateLayoutRef.current) {
+            // Delay to allow images to start loading
+            setTimeout(() => {
+                if (this.updateLayoutRef.current) {
+                    this.updateLayoutRef.current();
+                }
+
+                // Restore scroll position AFTER masonry layout completes
+                if (savedScrollTop > 0) {
+                    requestAnimationFrame(() => {
+                        // Try to scroll to anchor card if we found one
+                        if (anchorCardPath && this.masonryContainer) {
+                            const anchorCard = this.masonryContainer.querySelector(`.writing-card[data-path="${anchorCardPath}"]`) as HTMLElement;
+                            if (anchorCard) {
+                                // Scroll to anchor card's position
+                                const cardTop = anchorCard.offsetTop;
+                                this.containerEl.scrollTop = Math.max(0, cardTop - 100);
+                                return;
+                            }
+                        }
+                        // Fallback: restore saved scroll position
+                        this.containerEl.scrollTop = savedScrollTop;
+                    });
+                }
+            }, 50);
+        } else {
+            // No masonry layout, restore immediately
+            if (savedScrollTop > 0) {
+                this.containerEl.scrollTop = savedScrollTop;
+            }
         }
 
         // Setup infinite scroll
         this.setupInfiniteScroll(entries.length);
 
-        // Setup ResizeObserver for dynamic grid updates
-        if (!this.resizeObserver) {
-            this.resizeObserver = new ResizeObserver(() => {
-                const containerWidth = this.containerEl.clientWidth;
-                const cardMinWidth = getMinCardWidth();
-                const minColumns = getMinGridColumns();
-                const gap = GAP_SIZE;
-                const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardMinWidth + gap)));
-                const cardWidth = (containerWidth - (gap * (cols - 1))) / cols;
-
-                this.containerEl.style.setProperty('--card-min-width', `${cardWidth}px`);
-                this.containerEl.style.setProperty('--grid-columns', String(cols));
-            });
-            this.resizeObserver.observe(this.containerEl);
-        }
-
         // Clear loading flag after async work completes
         this.isLoading = false;
         })();
+    }
+
+    private setupMasonryLayout(settings: Settings): void {
+        if (!this.masonryContainer) return;
+
+        const minColumns = getMinMasonryColumns();
+
+        // Setup update function using shared masonry logic
+        this.updateLayoutRef.current = () => {
+            if (!this.masonryContainer) return;
+
+            const cards = Array.from(this.masonryContainer.querySelectorAll<HTMLElement>('.writing-card'));
+            if (cards.length === 0) return;
+
+            const containerWidth = this.masonryContainer.clientWidth;
+
+            // Calculate layout using shared logic
+            const result = calculateMasonryLayout({
+                cards,
+                containerWidth,
+                cardMinWidth: getMinCardWidth(),
+                minColumns,
+                gap: getCardSpacing()
+            });
+
+            // Apply layout to DOM
+            applyMasonryLayout(this.masonryContainer, cards, result);
+        };
+
+        // Setup resize observer
+        const resizeObserver = new ResizeObserver(() => {
+            if (this.updateLayoutRef.current) {
+                this.updateLayoutRef.current();
+            }
+        });
+        resizeObserver.observe(this.masonryContainer);
+        this.register(() => resizeObserver.disconnect());
+
+        // Setup window resize listener
+        const handleResize = () => {
+            if (this.updateLayoutRef.current) {
+                this.updateLayoutRef.current();
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        this.register(() => window.removeEventListener('resize', handleResize));
     }
 
     private renderCard(
@@ -225,21 +281,125 @@ export class DynamicViewsCardView extends BasesView {
         index: number,
         settings: Settings
     ): void {
-        this.cardRenderer.renderCard(container, card, entry, settings, this);
+        const { app } = this;
+
+        // Create card element
+        const cardEl = container.createDiv('writing-card');
+        if (settings.imageFormat === 'cover') {
+            cardEl.classList.add('image-format-cover');
+        }
+        cardEl.setAttribute('data-path', card.path);
+        cardEl.setAttribute('data-href', card.path);
+        cardEl.style.cursor = 'pointer';
+
+        // Handle card click to open file
+        cardEl.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            // Don't open if clicking on tags or other interactive elements
+            const isTag = target.tagName === 'A' && target.classList.contains('tag');
+            const isInsideTag = target.closest('.tag');
+            const isImage = target.tagName === 'IMG';
+            const expandOnClick = document.body.classList.contains('dynamic-views-thumbnail-expand-click');
+            const shouldBlockImageClick = isImage && expandOnClick;
+
+            if (!isTag && !isInsideTag && !shouldBlockImageClick) {
+                const openOnCard = settings.openFileAction === 'card';
+                const clickedOnTitle = target.closest('.writing-title');
+
+                if (openOnCard || clickedOnTitle) {
+                    const newLeaf = e.metaKey || e.ctrlKey;
+                    void app.workspace.openLinkText(card.path, '', newLeaf);
+                }
+            }
+        });
+
+        // Handle hover for page preview
+        cardEl.addEventListener('mouseover', (e) => {
+            app.workspace.trigger('hover-link', {
+                event: e,
+                source: 'dynamic-views',
+                hoverParent: this,
+                targetEl: cardEl,
+                linktext: card.path,
+            });
+        });
+
+        // Handle right-click for context menu
+        cardEl.addEventListener('contextmenu', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const menu = new Menu();
+
+            // @ts-ignore - Trigger file-menu to add standard items
+            app.workspace.trigger('file-menu', menu, entry.file, 'file-explorer');
+
+            menu.showAtMouseEvent(e);
+        });
+
+        // Title - plain text, not a link (matching vanilla Bases)
+        if (settings.showTitle) {
+            const titleEl = cardEl.createDiv('writing-title');
+            titleEl.createSpan({ cls: 'title-text', text: card.title });
+        }
+
+        // Snippet and thumbnail container
+        // Create container if: text preview exists, OR thumbnails enabled with image, OR cover format (for placeholders)
+        if ((settings.showTextPreview && card.snippet) ||
+            (settings.imageFormat !== 'none' && (card.imageUrl || card.hasImageAvailable)) ||
+            (settings.imageFormat === 'cover')) {
+            const snippetContainer = cardEl.createDiv('snippet-container');
+
+            // Text preview
+            if (settings.showTextPreview && card.snippet) {
+                snippetContainer.createDiv({ cls: 'writing-snippet', text: card.snippet });
+            }
+
+            // Thumbnail
+            if (settings.imageFormat !== 'none' && card.imageUrl) {
+                const imageUrls = Array.isArray(card.imageUrl) ? card.imageUrl : [card.imageUrl];
+                const thumbEl = snippetContainer.createDiv('card-thumbnail');
+
+                if (imageUrls.length > 0) {
+                    const imageEmbedContainer = thumbEl.createDiv('image-embed');
+                    const imgEl = imageEmbedContainer.createEl('img', {
+                        attr: { src: imageUrls[0], alt: '' }
+                    });
+                    // Set CSS variable for letterbox blur background
+                    imageEmbedContainer.style.setProperty('--cover-image-url', `url("${imageUrls[0]}")`);
+
+                    // Handle image load for masonry layout and color extraction
+                    const cardEl = thumbEl.closest('.writing-card') as HTMLElement;
+                    if (cardEl) {
+                        setupImageLoadHandler(
+                            imgEl,
+                            imageEmbedContainer,
+                            cardEl,
+                            this.updateLayoutRef.current || undefined
+                        );
+                    }
+                }
+            } else if (settings.imageFormat !== 'none') {
+                // Always render placeholder when no image - CSS controls visibility
+                snippetContainer.createDiv('card-thumbnail-placeholder');
+            }
+        }
+
+        // Properties - 4-field rendering with 2-row layout
+        this.renderProperties(cardEl, card, entry, settings);
     }
 
-    private getSortMethod(): string {
+    private getSortMethod(): string{
         // Get sort configuration from Bases
         const sortConfigs = this.config.getSort();
 
-        // console.log('// [Bases Sort Debug - Card View] getSort() returned:', sortConfigs);
-        // console.log('// [Bases Sort Debug - Card View] Array length:', sortConfigs?.length);
+        // console.log('// [Bases Sort Debug - Masonry View] getSort() returned:', sortConfigs);
+        // console.log('// [Bases Sort Debug - Masonry View] Array length:', sortConfigs?.length);
 
         if (sortConfigs && sortConfigs.length > 0) {
             const firstSort = sortConfigs[0];
-            // console.log('// [Bases Sort Debug - Card View] First sort config:', firstSort);
-            // console.log('// [Bases Sort Debug - Card View] Property:', firstSort.property);
-            // console.log('// [Bases Sort Debug - Card View] Direction:', firstSort.direction);
+            // console.log('// [Bases Sort Debug - Masonry View] First sort config:', firstSort);
+            // console.log('// [Bases Sort Debug - Masonry View] Property:', firstSort.property);
+            // console.log('// [Bases Sort Debug - Masonry View] Direction:', firstSort.direction);
 
             const property = firstSort.property;
             const direction = firstSort.direction.toLowerCase();
@@ -247,17 +407,17 @@ export class DynamicViewsCardView extends BasesView {
             // Check for ctime/mtime in property
             if (property.includes('ctime')) {
                 const result = `ctime-${direction}`;
-                // console.log('// [Bases Sort Debug - Card View] Detected:', result);
+                // console.log('// [Bases Sort Debug - Masonry View] Detected:', result);
                 return result;
             }
             if (property.includes('mtime')) {
                 const result = `mtime-${direction}`;
-                // console.log('// [Bases Sort Debug - Card View] Detected:', result);
+                // console.log('// [Bases Sort Debug - Masonry View] Detected:', result);
                 return result;
             }
-            // console.log('// [Bases Sort Debug - Card View] Custom property sort, falling back to mtime-desc');
+            // console.log('// [Bases Sort Debug - Masonry View] Custom property sort, falling back to mtime-desc');
         } else {
-            // console.log('// [Bases Sort Debug - Card View] No sort config, using default mtime-desc');
+            // console.log('// [Bases Sort Debug - Masonry View] No sort config, using default mtime-desc');
         }
         return 'mtime-desc';
     }
@@ -319,10 +479,14 @@ export class DynamicViewsCardView extends BasesView {
     }
 
     private setupInfiniteScroll(totalEntries: number): void {
-        // Clean up existing listener
+        // Clean up existing listeners
         if (this.scrollListener) {
             this.containerEl.removeEventListener('scroll', this.scrollListener);
             this.scrollListener = null;
+        }
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
         }
 
         // Skip if all items already displayed
@@ -333,13 +497,8 @@ export class DynamicViewsCardView extends BasesView {
 
         // console.log(`// [InfiniteScroll] Setting up scroll listener (${this.displayedCount}/${totalEntries} items)`);
 
-        // Create scroll handler with throttling
-        this.scrollListener = () => {
-            // Throttle: skip if cooldown active
-            if (this.scrollThrottleTimeout !== null) {
-                return;
-            }
-
+        // Shared load check function
+        const checkAndLoad = (trigger: string) => {
             // Skip if already loading
             if (this.isLoading) {
                 return;
@@ -358,17 +517,27 @@ export class DynamicViewsCardView extends BasesView {
 
             // Check if should load more
             if (distanceFromBottom < threshold && this.displayedCount < totalEntries) {
-                // console.log(`// [InfiniteScroll] Loading more items (distance: ${distanceFromBottom.toFixed(0)}px, threshold: ${threshold.toFixed(0)}px)`);
+                // console.log(`// [InfiniteScroll] Loading more items [${trigger}] (distance: ${distanceFromBottom.toFixed(0)}px, threshold: ${threshold.toFixed(0)}px)`);
                 this.isLoading = true;
 
-                // Dynamic batch size: 50 items (simple for card view)
-                const batchSize = 50;
+                // Dynamic batch size based on masonry columns (estimate 3 columns avg, 10 rows per column)
+                const batchSize = Math.min(30, 70);
                 this.displayedCount = Math.min(this.displayedCount + batchSize, totalEntries);
                 // console.log(`// [InfiniteScroll] New displayedCount: ${this.displayedCount}/${totalEntries}`);
 
                 // Re-render (this will call setupInfiniteScroll again)
                 this.onDataUpdated();
             }
+        };
+
+        // Create scroll handler with throttling
+        this.scrollListener = () => {
+            // Throttle: skip if cooldown active
+            if (this.scrollThrottleTimeout !== null) {
+                return;
+            }
+
+            checkAndLoad('scroll');
 
             // Start throttle cooldown
             this.scrollThrottleTimeout = window.setTimeout(() => {
@@ -376,8 +545,17 @@ export class DynamicViewsCardView extends BasesView {
             }, 100);
         };
 
-        // Attach listener
+        // Attach scroll listener
         this.containerEl.addEventListener('scroll', this.scrollListener);
+
+        // Setup ResizeObserver on masonry container to detect layout changes
+        if (this.masonryContainer) {
+            this.resizeObserver = new ResizeObserver(() => {
+                // Masonry layout completed, check if need more items
+                checkAndLoad('resize');
+            });
+            this.resizeObserver.observe(this.masonryContainer);
+        }
 
         // Register cleanup
         this.register(() => {
@@ -387,17 +565,17 @@ export class DynamicViewsCardView extends BasesView {
             if (this.scrollThrottleTimeout !== null) {
                 window.clearTimeout(this.scrollThrottleTimeout);
             }
+            if (this.resizeObserver) {
+                this.resizeObserver.disconnect();
+            }
         });
     }
 
     onClose(): void {
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-        }
         this.propertyObservers.forEach(obs => obs.disconnect());
         this.propertyObservers = [];
     }
 }
 
 /** Export options for registration */
-export const cardViewOptions = getBasesViewOptions;
+export const masonryViewOptions = getMasonryViewOptions;
