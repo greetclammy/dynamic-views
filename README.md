@@ -78,4 +78,5 @@ In a Datacore view:
 - [Request features](https://github.com/greetclammy/dynamic-views/issues)
 - [Contribute improvements](https://github.com/greetclammy/dynamic-views/pulls)
 - Discuss on:
+  - [r/ObsidianMD](https://www.reddit.com/r/ObsidianMD/comments/1ordkkf/working_on_an_alternative_card_view_for_bases_and/)
   - [GitHub discussions](https://github.com/greetclammy/dynamic-views/discussions)
