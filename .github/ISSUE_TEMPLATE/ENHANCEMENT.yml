@@ -10,6 +10,10 @@ body:
     options:
       - label: I have searched existing issues and this is not a duplicate
         required: true
+      - label: I have updated to the latest version of Dynamic Views
+        required: true
+      - label: I have updated to the latest version of Obsidian
+        required: true
 - type: textarea
   id: use-case
   attributes:
