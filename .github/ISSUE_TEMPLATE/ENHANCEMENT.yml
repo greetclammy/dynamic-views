@@ -1,0 +1,44 @@
+name: Enhancement
+description: I want to suggest an improvement or new feature for Dynamic Views.
+labels:
+  - enhancement
+body:
+- type: checkboxes
+  id: checklist
+  attributes:
+    label: Enhancement checklist
+    options:
+      - label: I have searched existing issues and this is not a duplicate
+        required: true
+- type: textarea
+  id: use-case
+  attributes:
+    label: Use case or problem
+    description: What's your use case for this feature? In other words, what are you trying to accomplish when you realize you need this feature?
+    placeholder: Describe use case or problem here...
+  validations:
+    required: true
+- type: textarea
+  id: proposed-solution
+  attributes:
+    label: Proposed solution
+    description: The meat of the feature request. How do you think we should implement this feature and how would this solve your problem?
+    placeholder: Describe solution here...
+  validations:
+    required: true
+- type: textarea
+  id: workaround
+  attributes:
+    label: Current workaround (optional)
+    description: If you're using any workarounds, it might be helpful to us to get some inspiration.
+    placeholder: Describe workaround here...
+  validations:
+    required: false
+- type: textarea
+  id: additional-info
+  attributes:
+    label: Additional information (optional)
+    description: Please provide any additional information that you think would be helpful to understand your suggestion. You can include screenshots, mockups, or any other relevant information.
+    placeholder: Provide additional information here...
+  validations:
+    required: false

@@ -19,7 +19,7 @@ body:
 - type: checkboxes
   id: affected-views
   attributes:
-    label: What view does the issue affect? (if applicable)
+    label: What views does the issue affect? (If applicable)
     options:
       - label: Bases view
       - label: Datacore view
@@ -65,7 +65,7 @@ body:
       3. Press "Copy to clipboard".
       4. Paste the copied text here.
     placeholder: Paste the debug info here...
-    render: shell
+    render: text
   validations:
     required: true
 - type: textarea
