@@ -28,20 +28,6 @@ function hasBodyClass(className: string): boolean {
 }
 
 /**
- * Get minimum card width for Grid view from CSS variable
- */
-export function getMinCardWidthGrid(): number {
-	return getCSSVariableAsNumber('--dynamic-views-min-card-width-grid', 400);
-}
-
-/**
- * Get minimum card width for Masonry view from CSS variable
- */
-export function getMinCardWidthMasonry(): number {
-	return getCSSVariableAsNumber('--dynamic-views-min-card-width-masonry', 400);
-}
-
-/**
  * Get minimum masonry columns from CSS variable
  */
 export function getMinMasonryColumns(): number {
@@ -60,13 +46,6 @@ export function getMinGridColumns(): number {
  */
 export function hasCardBackground(): boolean {
 	return hasBodyClass('dynamic-views-card-background');
-}
-
-/**
- * Get thumbnail position from body class
- */
-export function getThumbnailPosition(): 'left' | 'right' {
-	return hasBodyClass('dynamic-views-thumbnail-left') ? 'left' : 'right';
 }
 
 /**
@@ -91,7 +70,7 @@ export function getTagStyle(): 'plain' | 'theme' | 'minimal' {
  * Get card spacing from CSS variable
  */
 export function getCardSpacing(): number {
-	return getCSSVariableAsNumber('--dynamic-views-card-spacing', 8);
+	return getCSSVariableAsNumber('--dynamic-views-card-spacing', 12);
 }
 
 /**
@@ -106,6 +85,34 @@ export function shouldShowRecentTimeOnly(): boolean {
  */
 export function shouldShowOlderDateOnly(): boolean {
 	return hasBodyClass('dynamic-views-timestamp-older-date-only');
+}
+
+/**
+ * Get empty value marker from body class
+ * Returns the appropriate symbol for empty property values
+ * Note: Dash option returns empty string - CSS handles the em dash via ::before
+ */
+export function getEmptyValueMarker(): string {
+	if (hasBodyClass('dynamic-views-empty-ellipsis')) return '…';
+	if (hasBodyClass('dynamic-views-empty-word')) return 'Empty';
+	if (hasBodyClass('dynamic-views-empty-blank')) return '';
+	return ''; // Default: dash - CSS adds em dash via ::before on empty span
+}
+
+/**
+ * Check if missing properties should be hidden
+ * Returns true if properties that don't exist on a file should not be displayed
+ */
+export function shouldHideMissingProperties(): boolean {
+	return hasBodyClass('dynamic-views-hide-missing-properties');
+}
+
+/**
+ * Check if empty properties should be hidden
+ * Returns true if properties with empty values should not be displayed
+ */
+export function shouldHideEmptyProperties(): boolean {
+	return hasBodyClass('dynamic-views-hide-empty-properties');
 }
 
 /**

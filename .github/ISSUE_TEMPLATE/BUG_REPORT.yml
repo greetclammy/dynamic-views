@@ -16,9 +16,6 @@ body:
         required: true
       - label: I can reproduce the issue in the sandbox vault, or after disabling all other third-party plugins and CSS snippets, switching to default theme, then restarting Obsidian
         required: false
-- type: markdown
-  attributes:
-    value: "**Note:** If English is not your first language, please consider using AI tools like ChatGPT to translate your text."
 - type: checkboxes
   id: affected-views
   attributes:
@@ -26,6 +23,9 @@ body:
     options:
       - label: Bases view
       - label: Datacore view
+- type: markdown
+  attributes:
+    value: "\n**Note:** If English is not your first language, please consider using AI tools like ChatGPT to translate your text."
 - type: textarea
   id: steps-to-reproduce
   attributes:

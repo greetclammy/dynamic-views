@@ -10,7 +10,7 @@ import { getCurrentFile, getFileCtime, getAvailablePath } from '../utils/file';
 import { ensurePageSelector, updateQueryInBlock, findQueryInBlock } from '../utils/query-sync';
 import { loadSnippetsForEntries, loadImagesForEntries } from '../shared/content-loader';
 import { getFirstDatacorePropertyValue, getAllDatacoreImagePropertyValues } from '../utils/property';
-import { getMinCardWidthGrid, getMinCardWidthMasonry, getMinMasonryColumns, getMinGridColumns, getCardSpacing } from '../utils/style-settings';
+import { getMinMasonryColumns, getMinGridColumns, getCardSpacing } from '../utils/style-settings';
 import { calculateMasonryLayout, applyMasonryLayout } from '../utils/masonry-layout';
 import type { DatacoreAPI, DatacoreFile } from '../types/datacore';
 
@@ -584,7 +584,7 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
             const result = calculateMasonryLayout({
                 cards,
                 containerWidth,
-                cardMinWidth: getMinCardWidthMasonry(),
+                cardSize: plugin.persistenceManager.getGlobalSettings().cardSize,
                 minColumns: getMinMasonryColumns(),
                 gap: getCardSpacing()
             });
@@ -636,14 +636,16 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
 
         const updateGrid = () => {
             const containerWidth = container.clientWidth;
-            const cardMinWidth = getMinCardWidthGrid();
+            // Card size represents minimum width; actual width may be larger to fill space
+            const cardSize = plugin.persistenceManager.getGlobalSettings().cardSize;
             const minColumns = getMinGridColumns();
             const gap = 8;
-            const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardMinWidth + gap)));
-            const cardWidth = (containerWidth - (gap * (cols - 1))) / cols;
+            const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardSize + gap)));
 
-            container.style.setProperty('--card-min-width', `${cardWidth}px`);
             container.style.setProperty('--grid-columns', String(cols));
+            // Set CSS variable for image aspect ratio
+            const imageAspectRatio = plugin.persistenceManager.getGlobalSettings().imageAspectRatio;
+            container.style.setProperty('--dynamic-views-image-aspect-ratio', String(imageAspectRatio));
         };
 
         updateGrid();
@@ -658,7 +660,7 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
 
     // Sync refs for callback access in infinite scroll
     dc.useEffect(() => {
-        console.log('[InfiniteScroll:RefSync] displayedCountRef updated:', displayedCountRef.current, '→', displayedCount);
+        // console.log('[InfiniteScroll:RefSync] displayedCountRef updated:', displayedCountRef.current, '→', displayedCount);
         displayedCountRef.current = displayedCount;
     }, [displayedCount, dc]);
 

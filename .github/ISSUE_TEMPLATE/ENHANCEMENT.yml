@@ -14,9 +14,6 @@ body:
         required: true
       - label: I have updated to the latest version of Obsidian
         required: true
-- type: markdown
-  attributes:
-    value: "**Note:** If English is not your first language, please consider using AI tools like ChatGPT to translate your text."
 - type: checkboxes
   id: affected-views
   attributes:
@@ -24,6 +21,9 @@ body:
     options:
       - label: Bases view
       - label: Datacore view
+- type: markdown
+  attributes:
+    value: "\n**Note:** If English is not your first language, please consider using AI tools like ChatGPT to translate your text."
 - type: textarea
   id: use-case
   attributes:
@@ -46,6 +46,14 @@ body:
     label: Current workaround (optional)
     description: If you're using any workarounds, it might be helpful to us to get some inspiration.
     placeholder: Describe workaround here...
+  validations:
+    required: false
+- type: textarea
+  id: additional-info
+  attributes:
+    label: Additional information (optional)
+    description: Provide any additional information that you think would be helpful to understand your suggestion.
+    placeholder: Provide additional information here...
   validations:
     required: false
 - type: textarea
@@ -90,13 +98,5 @@ body:
       3. Paste the copied text here.
     placeholder: If you want, you can paste your Style Settings configuration here...
     render: json
-  validations:
-    required: false
-- type: textarea
-  id: additional-info
-  attributes:
-    label: Additional information (optional)
-    description: Provide any additional information that you think would be helpful to understand your suggestion.
-    placeholder: Provide additional information here...
   validations:
     required: false

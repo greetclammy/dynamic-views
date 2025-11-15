@@ -12,7 +12,7 @@ export interface MasonryPosition {
 export interface MasonryLayoutParams {
     cards: HTMLElement[];
     containerWidth: number;
-    cardMinWidth: number;
+    cardSize: number; // Represents minimum width; actual width may be larger to fill space
     minColumns: number;
     gap: number;
 }
@@ -30,12 +30,12 @@ export interface MasonryLayoutResult {
  * Pure function - no side effects
  */
 export function calculateMasonryLayout(params: MasonryLayoutParams): MasonryLayoutResult {
-    const { cards, containerWidth, cardMinWidth, minColumns, gap } = params;
+    const { cards, containerWidth, cardSize, minColumns, gap } = params;
 
     // Calculate number of columns
     const columns = Math.max(
         minColumns,
-        Math.floor((containerWidth + gap) / (cardMinWidth + gap))
+        Math.floor((containerWidth + gap) / (cardSize + gap))
     );
 
     // Calculate card width based on columns
@@ -122,7 +122,7 @@ export function applyMasonryLayout(
         card.style.width = `${result.cardWidth}px`;
         card.style.left = `${pos.left}px`;
         card.style.top = `${pos.top}px`;
-        card.style.transition = 'none';
+        card.style.transition = 'box-shadow var(--anim-duration-fast) ease-in-out, border-color 0.2s';
 
         // Add data attribute for row-based styling (odd/even)
         const rowParity = pos.visualRow % 2 === 1 ? 'odd' : 'even';

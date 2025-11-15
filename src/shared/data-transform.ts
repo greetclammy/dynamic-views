@@ -3,7 +3,7 @@
  * Converts various data sources (Datacore, Bases) into normalized CardData format
  */
 
-import type { BasesEntry } from 'obsidian';
+import type { App, BasesEntry } from 'obsidian';
 import type { CardData } from './card-renderer';
 import type { Settings } from '../types';
 import type { DatacoreAPI, DatacoreFile } from '../types/datacore';
@@ -181,6 +181,7 @@ export function datacoreResultToCardData(
  * Handles Bases-specific API (entry.getValue(), entry.file.path, etc.)
  */
 export function basesEntryToCardData(
+    app: App,
     entry: BasesEntry,
     settings: Settings,
     sortMethod: string,
@@ -193,7 +194,7 @@ export function basesEntryToCardData(
     const fileName = entry.file.basename || entry.file.name;
 
     // Get title from property (first available from comma-separated list) or fallback to filename
-    const titleValue = getFirstBasesPropertyValue(entry, settings.titleProperty) as { data?: unknown } | null;
+    const titleValue = getFirstBasesPropertyValue(app, entry, settings.titleProperty) as { data?: unknown } | null;
     const titleData = titleValue?.data;
     const title = (titleData != null && titleData !== '' && (typeof titleData === 'string' || typeof titleData === 'number'))
         ? String(titleData)
@@ -291,10 +292,10 @@ export function basesEntryToCardData(
     cardData.propertyName4 = effectiveProps[3] || undefined;
 
     // Resolve property values
-    cardData.property1 = effectiveProps[0] ? resolveBasesProperty(effectiveProps[0], entry, cardData, settings) : null;
-    cardData.property2 = effectiveProps[1] ? resolveBasesProperty(effectiveProps[1], entry, cardData, settings) : null;
-    cardData.property3 = effectiveProps[2] ? resolveBasesProperty(effectiveProps[2], entry, cardData, settings) : null;
-    cardData.property4 = effectiveProps[3] ? resolveBasesProperty(effectiveProps[3], entry, cardData, settings) : null;
+    cardData.property1 = effectiveProps[0] ? resolveBasesProperty(app, effectiveProps[0], entry, cardData, settings) : null;
+    cardData.property2 = effectiveProps[1] ? resolveBasesProperty(app, effectiveProps[1], entry, cardData, settings) : null;
+    cardData.property3 = effectiveProps[2] ? resolveBasesProperty(app, effectiveProps[2], entry, cardData, settings) : null;
+    cardData.property4 = effectiveProps[3] ? resolveBasesProperty(app, effectiveProps[3], entry, cardData, settings) : null;
 
     return cardData;
 }
@@ -330,6 +331,7 @@ export function transformDatacoreResults(
  * Batch transform Bases entries to CardData array
  */
 export function transformBasesEntries(
+    app: App,
     entries: BasesEntry[],
     settings: Settings,
     sortMethod: string,
@@ -339,6 +341,7 @@ export function transformBasesEntries(
     hasImageAvailable: Record<string, boolean>
 ): CardData[] {
     return entries.map(entry => basesEntryToCardData(
+        app,
         entry,
         settings,
         sortMethod,
@@ -354,6 +357,7 @@ export function transformBasesEntries(
  * Returns null for missing/empty properties
  */
 export function resolveBasesProperty(
+    app: App,
     propertyName: string,
     entry: BasesEntry,
     cardData: CardData,
@@ -395,7 +399,7 @@ export function resolveBasesProperty(
     }
 
     // Generic property: read from frontmatter
-    const value = getFirstBasesPropertyValue(entry, propertyName);
+    const value = getFirstBasesPropertyValue(app, entry, propertyName);
 
     // Handle fallback for custom timestamp properties
     if (!value) {
@@ -443,12 +447,18 @@ export function resolveBasesProperty(
                 return '...';
             }
         }
-        return null;
+        // Return empty string for empty property (property exists but empty)
+        // This distinguishes from null (missing property)
+        return '';
     }
 
     // Convert to string
     if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
         const result = String(data);
+        // Treat whitespace-only strings as empty
+        if (typeof data === 'string' && result.trim() === '') {
+            return '';
+        }
         return result;
     }
 
@@ -507,11 +517,8 @@ export function resolveDatacoreProperty(
         return formatTimestamp(timestampData.timestamp, settings, timestampData.isDateOnly);
     }
 
-    // Coerce to string for non-date values
-    const value = dc.coerce.string(rawValue || '');
-
-    // Handle empty values for custom timestamp properties
-    if (!value || value === '') {
+    // Handle missing property (null/undefined)
+    if (rawValue === null || rawValue === undefined) {
         // Check if this is a custom timestamp property
         const isCustomCreatedTime = settings.createdTimeProperty && propertyName === settings.createdTimeProperty;
         const isCustomModifiedTime = settings.modifiedTimeProperty && propertyName === settings.modifiedTimeProperty;
@@ -526,7 +533,32 @@ export function resolveDatacoreProperty(
                 return '...';
             }
         }
+        // Return null for missing property
         return null;
+    }
+
+    // Coerce to string for non-date values
+    const value = dc.coerce.string(rawValue);
+
+    // Handle empty values (property exists but empty)
+    if (value === '' || (typeof value === 'string' && value.trim() === '')) {
+        // Check if this is a custom timestamp property
+        const isCustomCreatedTime = settings.createdTimeProperty && propertyName === settings.createdTimeProperty;
+        const isCustomModifiedTime = settings.modifiedTimeProperty && propertyName === settings.modifiedTimeProperty;
+
+        if (isCustomCreatedTime || isCustomModifiedTime) {
+            if (settings.fallbackToFileMetadata) {
+                // Fall back to file metadata
+                const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
+                return formatTimestamp(timestamp, settings);
+            } else {
+                // Show placeholder but still render as timestamp (for icon)
+                return '...';
+            }
+        }
+        // Return empty string for empty property (property exists but empty)
+        // This distinguishes from null (missing property)
+        return '';
     }
 
     return value;

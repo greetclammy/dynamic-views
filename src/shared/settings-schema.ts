@@ -34,6 +34,15 @@ export function setPluginInstance(plugin: PluginInstance): void {
 export function getBasesViewOptions(): any[] {
     return [
         {
+            type: 'slider',
+            displayName: 'Card size',
+            key: 'cardSize',
+            min: 50,
+            max: 800,
+            step: 10,
+            default: DEFAULT_VIEW_SETTINGS.cardSize
+        },
+        {
             type: 'toggle',
             displayName: 'Show title',
             key: 'showTitle',
@@ -61,7 +70,7 @@ export function getBasesViewOptions(): any[] {
         },
         {
             type: 'toggle',
-            displayName: 'Use note content if text preview property unavailable',
+            displayName: 'Use note content if text preview property missing or empty',
             key: 'fallbackToContent',
             default: DEFAULT_VIEW_SETTINGS.fallbackToContent
         },
@@ -70,11 +79,23 @@ export function getBasesViewOptions(): any[] {
             displayName: 'Card image',
             key: 'imageFormat',
             options: {
-                'none': 'No image',
                 'thumbnail': 'Thumbnail',
-                'cover': 'Cover'
+                'cover': 'Cover',
+                'none': 'None'
             },
             default: 'thumbnail'
+        },
+        {
+            type: 'dropdown',
+            displayName: 'Image position',
+            key: 'imagePosition',
+            options: {
+                'left': 'Left',
+                'right': 'Right',
+                'top': 'Top',
+                'bottom': 'Bottom'
+            },
+            default: 'right'
         },
         {
             type: 'text',
@@ -84,10 +105,34 @@ export function getBasesViewOptions(): any[] {
             default: DEFAULT_VIEW_SETTINGS.imageProperty
         },
         {
-            type: 'toggle',
-            displayName: 'Use in-note images if image property unavailable',
+            type: 'dropdown',
+            displayName: 'Show image embeds',
             key: 'fallbackToEmbeds',
-            default: DEFAULT_VIEW_SETTINGS.fallbackToEmbeds
+            options: {
+                'always': 'Always',
+                'if-empty': 'If image property missing or empty',
+                'never': 'Never'
+            },
+            default: 'always'
+        },
+        {
+            type: 'dropdown',
+            displayName: 'Image fit',
+            key: 'coverFitMode',
+            options: {
+                'crop': 'Crop',
+                'contain': 'Contain'
+            },
+            default: 'crop'
+        },
+        {
+            type: 'slider',
+            displayName: 'Image ratio',
+            key: 'imageAspectRatio',
+            min: 0.25,
+            max: 2.5,
+            step: 0.05,
+            default: DEFAULT_VIEW_SETTINGS.imageAspectRatio
         },
         {
             type: 'property',
@@ -105,7 +150,7 @@ export function getBasesViewOptions(): any[] {
         },
         {
             type: 'toggle',
-            displayName: 'Show first and second properties side-by-side',
+            displayName: 'Pair first and second properties',
             key: 'propertyLayout12SideBySide',
             default: DEFAULT_VIEW_SETTINGS.propertyLayout12SideBySide
         },
@@ -125,7 +170,7 @@ export function getBasesViewOptions(): any[] {
         },
         {
             type: 'toggle',
-            displayName: 'Show third and fourth properties side-by-side',
+            displayName: 'Pair third and fourth properties',
             key: 'propertyLayout34SideBySide',
             default: DEFAULT_VIEW_SETTINGS.propertyLayout34SideBySide
         },
@@ -139,7 +184,7 @@ export function getBasesViewOptions(): any[] {
                 'above': 'On top'
             },
             default: DEFAULT_VIEW_SETTINGS.propertyLabels
-        },
+        }
     ];
 }
 
@@ -168,7 +213,10 @@ export function readBasesSettings(config: BasesConfig, globalSettings: Settings,
         showTitle: Boolean(config.get('showTitle') ?? defaultViewSettings.showTitle),
         showTextPreview: Boolean(config.get('showTextPreview') ?? defaultViewSettings.showTextPreview),
         fallbackToContent: Boolean(config.get('fallbackToContent') ?? defaultViewSettings.fallbackToContent),
-        fallbackToEmbeds: Boolean(config.get('fallbackToEmbeds') ?? defaultViewSettings.fallbackToEmbeds),
+        fallbackToEmbeds: (() => {
+            const value = config.get('fallbackToEmbeds');
+            return (value === 'always' || value === 'if-empty' || value === 'never') ? value : defaultViewSettings.fallbackToEmbeds;
+        })(),
         propertyDisplay1: (() => {
             const value = config.get('propertyDisplay1');
             // If value is explicitly set (including empty string), use it
@@ -206,8 +254,40 @@ export function readBasesSettings(config: BasesConfig, globalSettings: Settings,
             return (value === 'hide' || value === 'inline' || value === 'above') ? value : defaultViewSettings.propertyLabels;
         })(),
         imageFormat: (() => {
-            const value = config.get('imageFormat');
-            return (value === 'none' || value === 'thumbnail' || value === 'cover') ? value : defaultViewSettings.imageFormat;
+            const rawFormat = config.get('imageFormat');
+            const rawPosition = config.get('imagePosition');
+
+            // Handle migration from old compound format (e.g., 'thumbnail-top') to new split format
+            let format: 'thumbnail' | 'cover' | 'none' = 'thumbnail';
+            let position: 'left' | 'right' | 'top' | 'bottom' = 'right';
+
+            if (rawFormat === 'thumbnail' || rawFormat === 'cover' || rawFormat === 'none') {
+                // New format: imageFormat is just the format part
+                format = rawFormat;
+            } else if (typeof rawFormat === 'string' && rawFormat.includes('-')) {
+                // Old compound format: extract both parts from imageFormat
+                const parts = rawFormat.split('-');
+                const formatPart = parts[0];
+                format = (formatPart === 'thumbnail' || formatPart === 'cover' || formatPart === 'none') ? formatPart : 'thumbnail';
+                // If we have an old compound format, extract position from it (unless overridden by new imagePosition setting)
+                const oldPosition = parts[1];
+                position = (rawPosition === 'left' || rawPosition === 'right' || rawPosition === 'top' || rawPosition === 'bottom')
+                    ? rawPosition
+                    : ((oldPosition === 'left' || oldPosition === 'right' || oldPosition === 'top' || oldPosition === 'bottom') ? oldPosition : 'right');
+            }
+
+            if (format === 'none') return 'none';
+
+            // Use rawPosition if it exists, otherwise keep the position extracted above (or default)
+            if (rawPosition === 'left' || rawPosition === 'right' || rawPosition === 'top' || rawPosition === 'bottom') {
+                position = rawPosition;
+            }
+
+            return `${format}-${position}` as typeof defaultViewSettings.imageFormat;
+        })(),
+        coverFitMode: (() => {
+            const value = config.get('coverFitMode');
+            return (value === 'crop' || value === 'contain') ? value : defaultViewSettings.coverFitMode;
         })(),
         timestampFormat: globalSettings.timestampFormat, // From global settings
         listMarker: (() => {
@@ -228,6 +308,15 @@ export function readBasesSettings(config: BasesConfig, globalSettings: Settings,
         createdTimeProperty: globalSettings.createdTimeProperty, // From global settings
         modifiedTimeProperty: globalSettings.modifiedTimeProperty, // From global settings
         fallbackToFileMetadata: globalSettings.fallbackToFileMetadata, // From global settings
-        expandImagesOnClick: globalSettings.expandImagesOnClick // From global settings
+        expandImagesOnClick: globalSettings.expandImagesOnClick, // From global settings
+        enableCoverCarousel: globalSettings.enableCoverCarousel, // From global settings
+        cardSize: (() => {
+            const value = config.get('cardSize');
+            return (typeof value === 'number') ? value : defaultViewSettings.cardSize;
+        })(),
+        imageAspectRatio: (() => {
+            const value = config.get('imageAspectRatio');
+            return (typeof value === 'number') ? value : defaultViewSettings.imageAspectRatio;
+        })()
     };
 }

@@ -14,10 +14,13 @@ export const DEFAULT_VIEW_SETTINGS: DefaultViewSettings = {
     showTitle: true,
     showTextPreview: true,
     fallbackToContent: true,
-    fallbackToEmbeds: true,
-    imageFormat: "thumbnail",
+    fallbackToEmbeds: 'always',
+    imageFormat: "thumbnail-right",
+    coverFitMode: 'crop',
+    imageAspectRatio: 1.00,
     queryHeight: 0,
-    listMarker: "bullet"
+    listMarker: "bullet",
+    cardSize: 400
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,7 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
     showTitle: true,
     showTextPreview: true,
     fallbackToContent: true,
-    fallbackToEmbeds: true,
+    fallbackToEmbeds: 'always',
     propertyDisplay1: "file.tags",
     propertyDisplay2: "",
     propertyDisplay3: "file.path",
@@ -36,7 +39,10 @@ export const DEFAULT_SETTINGS: Settings = {
     propertyLayout12SideBySide: false,
     propertyLayout34SideBySide: true,
     propertyLabels: "hide",
-    imageFormat: "thumbnail",
+    imageFormat: "thumbnail-right",
+    coverFitMode: 'crop',
+    imageAspectRatio: 1.00,
+    enableCoverCarousel: true,
     timestampFormat: "",
     listMarker: "bullet",
     randomizeAction: "shuffle",
@@ -46,11 +52,12 @@ export const DEFAULT_SETTINGS: Settings = {
     openRandomInNewPane: true,
     showShuffleInRibbon: true,
     showRandomInRibbon: true,
-    expandImagesOnClick: true,
+    expandImagesOnClick: 'hold',
     smartTimestamp: true,
     createdTimeProperty: "",
     modifiedTimeProperty: "",
-    fallbackToFileMetadata: true
+    fallbackToFileMetadata: true,
+    cardSize: 400
 };
 
 export const DEFAULT_UI_STATE = {

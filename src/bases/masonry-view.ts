@@ -8,7 +8,7 @@ import { CardData } from '../shared/card-renderer';
 import { transformBasesEntries } from '../shared/data-transform';
 import { readBasesSettings, getMasonryViewOptions } from '../shared/settings-schema';
 import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../utils/property';
-import { getMinCardWidthMasonry, getMinMasonryColumns, getCardSpacing } from '../utils/style-settings';
+import { getMinMasonryColumns, getCardSpacing } from '../utils/style-settings';
 import { calculateMasonryLayout, applyMasonryLayout } from '../utils/masonry-layout';
 import { loadSnippetsForEntries, loadImagesForEntries } from '../shared/content-loader';
 import { SharedCardRenderer } from './shared-renderer';
@@ -44,10 +44,15 @@ export class DynamicViewsMasonryView extends BasesView {
         // No-op: MutationObserver handles updates
     };
 
-    constructor(controller: QueryController, containerEl: HTMLElement, plugin: DynamicViewsPlugin) {
+    constructor(controller: QueryController, scrollEl: HTMLElement) {
         super(controller);
-        this.containerEl = containerEl;
-        this.plugin = plugin;
+        // Create container inside scroll parent (critical for embedded views)
+        this.containerEl = scrollEl.createDiv({
+            cls: 'dynamic-views dynamic-views-bases-container'
+        });
+        // Access plugin from controller's app
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+        this.plugin = (this.app as any).plugins.plugins['dynamic-views'] as DynamicViewsPlugin;
         // Initialize shared card renderer
         this.cardRenderer = new SharedCardRenderer(
             this.app,
@@ -55,12 +60,6 @@ export class DynamicViewsMasonryView extends BasesView {
             this.propertyObservers,
             this.updateLayoutRef
         );
-        // Add both classes - 'dynamic-views' for CSS styling, 'dynamic-views-bases-container' for identification
-        this.containerEl.addClass('dynamic-views');
-        this.containerEl.addClass('dynamic-views-bases-container');
-        // Make container scrollable
-        this.containerEl.style.overflowY = 'auto';
-        this.containerEl.style.height = '100%';
         // Set initial batch size based on device
         this.displayedCount = this.app.isMobile ? 25 : BATCH_SIZE;
 
@@ -92,8 +91,19 @@ export class DynamicViewsMasonryView extends BasesView {
         this.register(() => observer.disconnect());
     }
 
+    onload(): void {
+        // Ensure view is fully initialized before Obsidian renders it
+        // This prevents race conditions when view is embedded in notes
+        super.onload();
+    }
+
     onDataUpdated(): void {
         void (async () => {
+            // Guard: return early if data not yet initialized (race condition with MutationObserver)
+            if (!this.data) {
+                return;
+            }
+
             const groupedData = this.data.groupedData;
             const allEntries = this.data.data;
 
@@ -103,6 +113,9 @@ export class DynamicViewsMasonryView extends BasesView {
             this.plugin.persistenceManager.getGlobalSettings(),
             this.plugin.persistenceManager.getDefaultViewSettings()
         );
+
+        // Set CSS variable for image aspect ratio
+        this.containerEl.style.setProperty('--dynamic-views-image-aspect-ratio', String(settings.imageAspectRatio));
 
         // Save scroll position before re-rendering
         const savedScrollTop = this.containerEl.scrollTop;
@@ -211,6 +224,7 @@ export class DynamicViewsMasonryView extends BasesView {
 
             // Render cards in this group
             const cards = transformBasesEntries(
+                this.app,
                 groupEntries,
                 settings,
                 sortMethod,
@@ -288,7 +302,7 @@ export class DynamicViewsMasonryView extends BasesView {
             const result = calculateMasonryLayout({
                 cards,
                 containerWidth,
-                cardMinWidth: getMinCardWidthMasonry(),
+                cardSize: settings.cardSize,
                 minColumns,
                 gap: getCardSpacing()
             });
@@ -360,7 +374,7 @@ export class DynamicViewsMasonryView extends BasesView {
                     const file = this.app.vault.getAbstractFileByPath(entry.file.path);
                     if (!(file instanceof TFile)) return null;
 
-                    const descValue = getFirstBasesPropertyValue(entry, settings.descriptionProperty) as { data?: unknown } | null;
+                    const descValue = getFirstBasesPropertyValue(this.app, entry, settings.descriptionProperty) as { data?: unknown } | null;
                     return {
                         path: entry.file.path,
                         file,
@@ -387,7 +401,7 @@ export class DynamicViewsMasonryView extends BasesView {
                     const file = this.app.vault.getAbstractFileByPath(entry.file.path);
                     if (!(file instanceof TFile)) return null;
 
-                    const imagePropertyValues = getAllBasesImagePropertyValues(entry, settings.imageProperty);
+                    const imagePropertyValues = getAllBasesImagePropertyValues(this.app, entry, settings.imageProperty);
                     return {
                         path: entry.file.path,
                         file,
@@ -495,9 +509,13 @@ export class DynamicViewsMasonryView extends BasesView {
         });
     }
 
-    onClose(): void {
+    onunload(): void {
         this.propertyObservers.forEach(obs => obs.disconnect());
         this.propertyObservers = [];
+    }
+
+    focus(): void {
+        this.containerEl.focus({ preventScroll: true });
     }
 }
 

@@ -4,46 +4,59 @@ import { SCROLL_TOLERANCE } from './constants';
  * Updates scroll gradient classes based on scroll position
  * Adds visual indicators when content extends beyond visible area
  *
- * @param element - The scrollable element
+ * @param element - The property field element (parent container)
  */
 export function updateScrollGradient(element: HTMLElement): void {
-    // Check if content is wider than field (not element.scrollWidth which doesn't reflect content width with flexbox)
+    // With wrapper structure: wrapper always scrolls and receives gradients
+    const wrapper = element.querySelector('.property-content-wrapper') as HTMLElement;
     const content = element.querySelector('.property-content') as HTMLElement;
-    const isScrollable = content ? content.scrollWidth > element.clientWidth : element.scrollWidth > element.clientWidth;
+
+    if (!wrapper || !content) {
+        return;
+    }
+
+    // Wrapper is both the scrolling element and gradient target
+    const scrollingElement = wrapper;
+    const gradientTarget = wrapper;
+
+    // Check if content exceeds wrapper space
+    // More reliable than wrapper.scrollWidth: checks actual content width vs wrapper visible space
+    const isScrollable = content.scrollWidth > wrapper.clientWidth;
 
     if (!isScrollable) {
-        // Not scrollable - remove all gradient classes and mark as not scrollable
-        element.removeClass('scroll-gradient-left');
-        element.removeClass('scroll-gradient-right');
-        element.removeClass('scroll-gradient-both');
+        // Not scrollable - remove all gradient classes
+        gradientTarget.removeClass('scroll-gradient-left');
+        gradientTarget.removeClass('scroll-gradient-right');
+        gradientTarget.removeClass('scroll-gradient-both');
         element.removeClass('is-scrollable');
         return;
     }
 
-    // Mark as scrollable for conditional alignment
+    // Mark field as scrollable for conditional alignment
     element.addClass('is-scrollable');
 
-    const scrollLeft = element.scrollLeft;
-    const scrollWidth = element.scrollWidth;
-    const clientWidth = element.clientWidth;
+    // Read scroll position from wrapper
+    const scrollLeft = scrollingElement.scrollLeft;
+    const scrollWidth = scrollingElement.scrollWidth;
+    const clientWidth = scrollingElement.clientWidth;
     const atStart = scrollLeft <= SCROLL_TOLERANCE;
     const atEnd = scrollLeft + clientWidth >= scrollWidth - SCROLL_TOLERANCE;
 
     // Remove all gradient classes first
-    element.removeClass('scroll-gradient-left');
-    element.removeClass('scroll-gradient-right');
-    element.removeClass('scroll-gradient-both');
+    gradientTarget.removeClass('scroll-gradient-left');
+    gradientTarget.removeClass('scroll-gradient-right');
+    gradientTarget.removeClass('scroll-gradient-both');
 
     // Apply appropriate gradient based on position
     if (atStart && !atEnd) {
         // At start, content extends right
-        element.addClass('scroll-gradient-right');
+        gradientTarget.addClass('scroll-gradient-right');
     } else if (atEnd && !atStart) {
         // At end, content extends left
-        element.addClass('scroll-gradient-left');
+        gradientTarget.addClass('scroll-gradient-left');
     } else if (!atStart && !atEnd) {
         // In middle, content extends both directions
-        element.addClass('scroll-gradient-both');
+        gradientTarget.addClass('scroll-gradient-both');
     }
     // If atStart && atEnd, content fits fully - no gradient
 }
@@ -66,18 +79,22 @@ export function setupScrollGradients(
 
     scrollables.forEach((el) => {
         const element = el as HTMLElement;
+        const wrapper = element.querySelector('.property-content-wrapper') as HTMLElement;
+
+        if (!wrapper) return;
 
         // Initial gradient update after layout settles
         requestAnimationFrame(() => {
             updateGradientFn(element);
         });
 
-        // Update on scroll
-        element.addEventListener('scroll', () => {
+        // Attach scroll listener to wrapper
+        wrapper.addEventListener('scroll', () => {
             updateGradientFn(element);
         });
 
         // Update on resize (for when layout dimensions change)
+        // Observe the field element (parent) as its size changes affect scrollability
         const observer = new ResizeObserver(() => {
             updateGradientFn(element);
         });

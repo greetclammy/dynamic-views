@@ -6,7 +6,7 @@ export interface Settings {
     showTitle: boolean;
     showTextPreview: boolean;
     fallbackToContent: boolean;
-    fallbackToEmbeds: boolean;
+    fallbackToEmbeds: 'always' | 'if-empty' | 'never';
     propertyDisplay1: string;
     propertyDisplay2: string;
     propertyDisplay3: string;
@@ -14,7 +14,10 @@ export interface Settings {
     propertyLayout12SideBySide: boolean;
     propertyLayout34SideBySide: boolean;
     propertyLabels: 'hide' | 'inline' | 'above';
-    imageFormat: 'none' | 'thumbnail' | 'cover';
+    imageFormat: 'none' | 'thumbnail-left' | 'thumbnail-right' | 'thumbnail-top' | 'thumbnail-bottom' | 'cover-top' | 'cover-bottom' | 'cover-left' | 'cover-right';
+    coverFitMode: 'crop' | 'contain';
+    imageAspectRatio: number;
+    enableCoverCarousel: boolean;
     timestampFormat: string;
     listMarker: string;
     randomizeAction: string;
@@ -24,11 +27,12 @@ export interface Settings {
     openRandomInNewPane: boolean;
     showShuffleInRibbon: boolean;
     showRandomInRibbon: boolean;
-    expandImagesOnClick: boolean;
+    expandImagesOnClick: 'off' | 'hold' | 'toggle';
     smartTimestamp: boolean;
     createdTimeProperty: string;
     modifiedTimeProperty: string;
     fallbackToFileMetadata: boolean;
+    cardSize: number;
 }
 
 export interface UIState {
@@ -53,10 +57,13 @@ export interface DefaultViewSettings {
     showTitle: boolean;
     showTextPreview: boolean;
     fallbackToContent: boolean;
-    fallbackToEmbeds: boolean;
-    imageFormat: 'none' | 'thumbnail' | 'cover';
+    fallbackToEmbeds: 'always' | 'if-empty' | 'never';
+    imageFormat: 'none' | 'thumbnail-left' | 'thumbnail-right' | 'thumbnail-top' | 'thumbnail-bottom' | 'cover-top' | 'cover-bottom' | 'cover-left' | 'cover-right';
+    coverFitMode: 'crop' | 'contain';
+    imageAspectRatio: number;
     queryHeight: number;
     listMarker: string;
+    cardSize: number;
 }
 
 export interface PluginData {

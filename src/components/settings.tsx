@@ -21,7 +21,266 @@ export function Settings({
 
     return (
         <div className="settings-dropdown-menu">
-            {/* Property Field 1 */}
+            {/* 1. Card Size Slider */}
+            <div className="setting-item">
+                <div className="setting-item-info">
+                    <label>Card size</label>
+                    <div className="setting-desc">Minimum width of cards in pixels</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                        type="range"
+                        min="50"
+                        max="800"
+                        step="10"
+                        value={settings.cardSize}
+                        onChange={(e: unknown) => {
+                            const evt = e as Event & { target: HTMLInputElement };
+                            onSettingsChange({ cardSize: parseInt(evt.target.value) });
+                        }}
+                        style={{ flex: 1 }}
+                    />
+                    <span style={{ minWidth: '40px' }}>{settings.cardSize}</span>
+                </div>
+            </div>
+
+            {/* 2. Show Title Toggle */}
+            <div className="setting-item setting-item-toggle">
+                <div className="setting-item-info">
+                    <label>Show title</label>
+                    <div className="setting-desc">Display note title on cards</div>
+                </div>
+                <div
+                    className={`checkbox-container ${settings.showTitle ? 'is-enabled' : ''}`}
+                    onClick={() => onSettingsChange({ showTitle: !settings.showTitle })}
+                    onKeyDown={(e: unknown) => {
+                        const evt = e as KeyboardEvent;
+                        if (evt.key === 'Enter' || evt.key === ' ') {
+                            evt.preventDefault();
+                            onSettingsChange({ showTitle: !settings.showTitle });
+                        }
+                    }}
+                    tabIndex={0}
+                    role="checkbox"
+                    aria-checked={settings.showTitle}
+                />
+            </div>
+
+            {/* 3. Title Property */}
+            <div className="setting-item setting-item-text">
+                <div className="setting-item-info">
+                    <label>Title property</label>
+                    <div className="setting-desc">Property to show as card title</div>
+                </div>
+                <input
+                    type="text"
+                    value={settings.titleProperty}
+                    onChange={(e: unknown) => {
+                        const evt = e as Event & { target: HTMLInputElement };
+                        onSettingsChange({ titleProperty: evt.target.value });
+                    }}
+                    placeholder="Comma-separated if multiple"
+                    className="setting-text-input"
+                />
+            </div>
+
+            {/* 4. Show Text Preview Toggle */}
+            <div className="setting-item setting-item-toggle">
+                <div className="setting-item-info">
+                    <label>Show text preview</label>
+                    <div className="setting-desc">Display note excerpts</div>
+                </div>
+                <div
+                    className={`checkbox-container ${settings.showTextPreview ? 'is-enabled' : ''}`}
+                    onClick={() => onSettingsChange({ showTextPreview: !settings.showTextPreview })}
+                    onKeyDown={(e: unknown) => {
+                        const evt = e as KeyboardEvent;
+                        if (evt.key === 'Enter' || evt.key === ' ') {
+                            evt.preventDefault();
+                            onSettingsChange({ showTextPreview: !settings.showTextPreview });
+                        }
+                    }}
+                    tabIndex={0}
+                    role="checkbox"
+                    aria-checked={settings.showTextPreview}
+                />
+            </div>
+
+            {/* 5. Text Preview Property */}
+            <div className="setting-item setting-item-text">
+                <div className="setting-item-info">
+                    <label>Text preview property</label>
+                    <div className="setting-desc">Property to show as text preview</div>
+                </div>
+                <input
+                    type="text"
+                    value={settings.descriptionProperty}
+                    onChange={(e: unknown) => {
+                        const evt = e as Event & { target: HTMLInputElement };
+                        onSettingsChange({ descriptionProperty: evt.target.value });
+                    }}
+                    placeholder="Comma-separated if multiple"
+                    className="setting-text-input"
+                />
+            </div>
+
+            {/* 6. Use Note Content if Text Preview Property Missing or Empty */}
+            <div className="setting-item setting-item-toggle">
+                <div className="setting-item-info">
+                    <label>Use note content if text preview property missing or empty</label>
+                    <div className="setting-desc">Fall back to note content when text preview property is not set or empty</div>
+                </div>
+                <div
+                    className={`checkbox-container ${settings.fallbackToContent ? 'is-enabled' : ''}`}
+                    onClick={() => onSettingsChange({ fallbackToContent: !settings.fallbackToContent })}
+                    onKeyDown={(e: unknown) => {
+                        const evt = e as KeyboardEvent;
+                        if (evt.key === 'Enter' || evt.key === ' ') {
+                            evt.preventDefault();
+                            onSettingsChange({ fallbackToContent: !settings.fallbackToContent });
+                        }
+                    }}
+                    tabIndex={0}
+                    role="checkbox"
+                    aria-checked={settings.fallbackToContent}
+                />
+            </div>
+
+            {/* 7. Card Image Dropdown */}
+            <div className="setting-item setting-item-dropdown">
+                <div className="setting-item-info">
+                    <label>Card image</label>
+                    <div className="setting-desc">Display first image embed in note (wikilink or markdown format), or first value of image property</div>
+                </div>
+                <select
+                    value={(() => {
+                        const imageFormatParts = settings.imageFormat.split('-');
+                        return settings.imageFormat === 'none' ? 'none' : imageFormatParts[0] as 'thumbnail' | 'cover';
+                    })()}
+                    onChange={(e: unknown) => {
+                        const evt = e as Event & { target: HTMLSelectElement };
+                        const newFormat = evt.target.value;
+                        if (newFormat === 'none') {
+                            onSettingsChange({ imageFormat: 'none' });
+                        } else {
+                            const currentPosition = settings.imageFormat === 'none' ? 'right' : (settings.imageFormat.split('-')[1] || 'right');
+                            onSettingsChange({ imageFormat: `${newFormat}-${currentPosition}` as typeof settings.imageFormat });
+                        }
+                    }}
+                    className="dropdown"
+                >
+                    <option value="thumbnail">Thumbnail</option>
+                    <option value="cover">Cover</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+
+            {/* 8. Image Position Dropdown */}
+            <div className="setting-item setting-item-dropdown">
+                <div className="setting-item-info">
+                    <label>Image position</label>
+                    <div className="setting-desc">Position of the image within the card</div>
+                </div>
+                <select
+                    value={(() => {
+                        const position = settings.imageFormat.split('-')[1] as 'left' | 'right' | 'top' | 'bottom' | undefined;
+                        return position || 'right';
+                    })()}
+                    onChange={(e: unknown) => {
+                        const evt = e as Event & { target: HTMLSelectElement };
+                        const currentFormat = settings.imageFormat.split('-')[0] as 'thumbnail' | 'cover';
+                        onSettingsChange({ imageFormat: `${currentFormat}-${evt.target.value}` as typeof settings.imageFormat });
+                    }}
+                    className="dropdown"
+                >
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                    <option value="top">Top</option>
+                    <option value="bottom">Bottom</option>
+                </select>
+            </div>
+
+            {/* 9. Image Property */}
+            <div className="setting-item setting-item-text">
+                <div className="setting-item-info">
+                    <label>Image property</label>
+                    <div className="setting-desc">Property to show as image</div>
+                </div>
+                <input
+                    type="text"
+                    value={settings.imageProperty}
+                    onChange={(e: unknown) => {
+                        const evt = e as Event & { target: HTMLInputElement };
+                        onSettingsChange({ imageProperty: evt.target.value });
+                    }}
+                    placeholder="Comma-separated if multiple"
+                    className="setting-text-input"
+                />
+            </div>
+
+            {/* 10. Show Image Embeds Dropdown */}
+            <div className="setting-item setting-item-dropdown">
+                <div className="setting-item-info">
+                    <label>Show image embeds</label>
+                    <div className="setting-desc">Control when in-note image embeds are shown alongside image property values</div>
+                </div>
+                <select
+                    value={settings.fallbackToEmbeds}
+                    onChange={(e: unknown) => {
+                        const evt = e as Event & { target: HTMLSelectElement };
+                        onSettingsChange({ fallbackToEmbeds: evt.target.value as 'always' | 'if-empty' | 'never' });
+                    }}
+                    className="dropdown"
+                >
+                    <option value="always">Always</option>
+                    <option value="if-empty">If property missing or empty</option>
+                    <option value="never">Never</option>
+                </select>
+            </div>
+
+            {/* 11. Image Fit Dropdown */}
+            <div className="setting-item setting-item-dropdown">
+                <div className="setting-item-info">
+                    <label>Image fit</label>
+                    <div className="setting-desc">How cover images are displayed (crop fills container, contain shows full image)</div>
+                </div>
+                <select
+                    value={settings.coverFitMode}
+                    onChange={(e: unknown) => {
+                        const evt = e as Event & { target: HTMLSelectElement };
+                        onSettingsChange({ coverFitMode: evt.target.value as 'crop' | 'contain' });
+                    }}
+                    className="dropdown"
+                >
+                    <option value="crop">Crop</option>
+                    <option value="contain">Contain</option>
+                </select>
+            </div>
+
+            {/* 12. Image Ratio Slider */}
+            <div className="setting-item">
+                <div className="setting-item-info">
+                    <label>Image ratio</label>
+                    <div className="setting-desc">Aspect ratio of images</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                        type="range"
+                        min="0.25"
+                        max="2.5"
+                        step="0.05"
+                        value={settings.imageAspectRatio}
+                        onChange={(e: unknown) => {
+                            const evt = e as Event & { target: HTMLInputElement };
+                            onSettingsChange({ imageAspectRatio: parseFloat(evt.target.value) });
+                        }}
+                        style={{ flex: 1 }}
+                    />
+                    <span style={{ minWidth: '40px' }}>{settings.imageAspectRatio.toFixed(2)}</span>
+                </div>
+            </div>
+
+            {/* 13. First Property */}
             <div className="setting-item setting-item-text">
                 <div className="setting-item-info">
                     <label>First property</label>
@@ -42,7 +301,7 @@ export function Settings({
                 </select>
             </div>
 
-            {/* Property Field 2 */}
+            {/* 14. Second Property */}
             <div className="setting-item setting-item-text">
                 <div className="setting-item-info">
                     <label>Second property</label>
@@ -63,10 +322,10 @@ export function Settings({
                 </select>
             </div>
 
-            {/* Layout Toggle (1 & 2) */}
+            {/* 15. Pair First and Second Properties */}
             <div className="setting-item setting-item-toggle">
                 <div className="setting-item-info">
-                    <label>Show first and second properties side-by-side</label>
+                    <label>Pair first and second properties</label>
                     <div className="setting-desc">Display first two properties horizontally</div>
                 </div>
                 <div
@@ -85,7 +344,7 @@ export function Settings({
                 />
             </div>
 
-            {/* Property Field 3 */}
+            {/* 16. Third Property */}
             <div className="setting-item setting-item-text">
                 <div className="setting-item-info">
                     <label>Third property</label>
@@ -106,7 +365,7 @@ export function Settings({
                 </select>
             </div>
 
-            {/* Property Field 4 */}
+            {/* 17. Fourth Property */}
             <div className="setting-item setting-item-text">
                 <div className="setting-item-info">
                     <label>Fourth property</label>
@@ -127,10 +386,10 @@ export function Settings({
                 </select>
             </div>
 
-            {/* Layout Toggle (3 & 4) */}
+            {/* 18. Pair Third and Fourth Properties */}
             <div className="setting-item setting-item-toggle">
                 <div className="setting-item-info">
-                    <label>Show third and fourth properties side-by-side</label>
+                    <label>Pair third and fourth properties</label>
                     <div className="setting-desc">Display third and fourth properties horizontally</div>
                 </div>
                 <div
@@ -149,159 +408,31 @@ export function Settings({
                 />
             </div>
 
-            {/* Title Property */}
-            <div className="setting-item setting-item-text">
-                <div className="setting-item-info">
-                    <label>Title property</label>
-                    <div className="setting-desc">Set property to show as file title. Will use filename if unavailable.</div>
-                </div>
-                <input
-                    type="text"
-                    value={settings.titleProperty}
-                    onChange={(e: unknown) => {
-                        const evt = e as Event & { target: HTMLInputElement };
-                        onSettingsChange({ titleProperty: evt.target.value });
-                    }}
-                    placeholder="Comma-separated if multiple"
-                    className="setting-text-input"
-                />
-            </div>
-
-            {/* Show Text Preview Toggle */}
-            <div className="setting-item setting-item-toggle">
-                <div className="setting-item-info">
-                    <label>Show text preview</label>
-                    <div className="setting-desc">Display note excerpts.</div>
-                </div>
-                <div
-                    className={`checkbox-container ${settings.showTextPreview ? 'is-enabled' : ''}`}
-                    onClick={() => onSettingsChange({ showTextPreview: !settings.showTextPreview })}
-                    onKeyDown={(e: unknown) => {
-                        const evt = e as KeyboardEvent;
-                        if (evt.key === 'Enter' || evt.key === ' ') {
-                            evt.preventDefault();
-                            onSettingsChange({ showTextPreview: !settings.showTextPreview });
-                        }
-                    }}
-                    tabIndex={0}
-                    role="checkbox"
-                    aria-checked={settings.showTextPreview}
-                />
-            </div>
-
-            {/* Text Preview Property (conditional) */}
-            {settings.showTextPreview && (
-                <div className="setting-item setting-item-text">
-                    <div className="setting-item-info">
-                        <label>Text preview property</label>
-                        <div className="setting-desc">Set property to show as text preview. Will use first few lines in note if unavailable.</div>
-                    </div>
-                    <input
-                        type="text"
-                        value={settings.descriptionProperty}
-                        onChange={(e: unknown) => {
-                            const evt = e as Event & { target: HTMLInputElement };
-                            onSettingsChange({ descriptionProperty: evt.target.value });
-                        }}
-                        placeholder="Comma-separated if multiple"
-                        className="setting-text-input"
-                    />
-                </div>
-            )}
-
-            {/* Fall back to note content Toggle */}
-            {settings.showTextPreview && (
-                <div className="setting-item setting-item-toggle">
-                    <div className="setting-item-info">
-                        <label>Use note content if text preview property unavailable</label>
-                        <div className="setting-desc">Fall back to note content when text preview property is not set or empty.</div>
-                    </div>
-                    <div
-                        className={`checkbox-container ${settings.fallbackToContent ? 'is-enabled' : ''}`}
-                        onClick={() => onSettingsChange({ fallbackToContent: !settings.fallbackToContent })}
-                        onKeyDown={(e: unknown) => {
-                            const evt = e as KeyboardEvent;
-                            if (evt.key === 'Enter' || evt.key === ' ') {
-                                evt.preventDefault();
-                                onSettingsChange({ fallbackToContent: !settings.fallbackToContent });
-                            }
-                        }}
-                        tabIndex={0}
-                        role="checkbox"
-                        aria-checked={settings.fallbackToContent}
-                    />
-                </div>
-            )}
-
-            {/* Card Image Dropdown */}
+            {/* 19. Show Property Labels */}
             <div className="setting-item setting-item-dropdown">
                 <div className="setting-item-info">
-                    <label>Card image</label>
-                    <div className="setting-desc">Display first image embed in note (wikilink or markdown format), or first value of image property.</div>
+                    <label>Show property labels</label>
+                    <div className="setting-desc">Display labels for property values</div>
                 </div>
                 <select
-                    value={settings.imageFormat}
+                    value={settings.propertyLabels}
                     onChange={(e: unknown) => {
                         const evt = e as Event & { target: HTMLSelectElement };
-                        onSettingsChange({ imageFormat: evt.target.value as 'none' | 'thumbnail' | 'cover' });
+                        onSettingsChange({ propertyLabels: evt.target.value as 'hide' | 'inline' | 'above' });
                     }}
                     className="dropdown"
                 >
-                    <option value="none">No image</option>
-                    <option value="thumbnail">Thumbnail</option>
-                    <option value="cover">Cover</option>
+                    <option value="hide">Hide</option>
+                    <option value="inline">Inline</option>
+                    <option value="above">On top</option>
                 </select>
             </div>
 
-            {/* Image Property (conditional) */}
-            {settings.imageFormat !== 'none' && (
-                <div className="setting-item setting-item-text">
-                    <div className="setting-item-info">
-                        <label>Image property</label>
-                        <div className="setting-desc">Set property to show as thumbnail. Will use first image embed in note if unavailable. Supports: .avif, .bmp, .gif, .jpeg, .jpg, .png, .svg, .webp</div>
-                    </div>
-                    <input
-                        type="text"
-                        value={settings.imageProperty}
-                        onChange={(e: unknown) => {
-                            const evt = e as Event & { target: HTMLInputElement };
-                            onSettingsChange({ imageProperty: evt.target.value });
-                        }}
-                        placeholder="Comma-separated if multiple"
-                        className="setting-text-input"
-                    />
-                </div>
-            )}
-
-            {/* Fall back to image embeds Toggle */}
-            {settings.imageFormat !== 'none' && (
-                <div className="setting-item setting-item-toggle">
-                    <div className="setting-item-info">
-                        <label>Use in-note images if image property unavailable</label>
-                        <div className="setting-desc">Fall back to image embeds from note content when image property is not set or empty.</div>
-                    </div>
-                    <div
-                        className={`checkbox-container ${settings.fallbackToEmbeds ? 'is-enabled' : ''}`}
-                        onClick={() => onSettingsChange({ fallbackToEmbeds: !settings.fallbackToEmbeds })}
-                        onKeyDown={(e: unknown) => {
-                            const evt = e as KeyboardEvent;
-                            if (evt.key === 'Enter' || evt.key === ' ') {
-                                evt.preventDefault();
-                                onSettingsChange({ fallbackToEmbeds: !settings.fallbackToEmbeds });
-                            }
-                        }}
-                        tabIndex={0}
-                        role="checkbox"
-                        aria-checked={settings.fallbackToEmbeds}
-                    />
-                </div>
-            )}
-
-            {/* List Marker */}
+            {/* 20. List Marker */}
             <div className="setting-item setting-item-text">
                 <div className="setting-item-info">
                     <label>List marker</label>
-                    <div className="setting-desc">Set marker style for list view.</div>
+                    <div className="setting-desc">Marker style for list view</div>
                 </div>
                 <select
                     value={settings.listMarker}
@@ -317,11 +448,11 @@ export function Settings({
                 </select>
             </div>
 
-            {/* View Height */}
+            {/* 21. View Height */}
             <div className="setting-item setting-item-text">
                 <div className="setting-item-info">
                     <label>View height</label>
-                    <div className="setting-desc">Set maximum height of results area in pixels. Set to 0 for unlimited.</div>
+                    <div className="setting-desc">Maximum height of results area in pixels (0 for unlimited)</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button

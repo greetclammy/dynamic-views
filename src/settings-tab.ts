@@ -1,6 +1,9 @@
-import { App, PluginSettingTab, Setting, AbstractInputSuggest } from 'obsidian';
+import { App, PluginSettingTab, Setting, AbstractInputSuggest, Notice } from 'obsidian';
 import type DynamicViewsPlugin from '../main';
 import { getAllVaultProperties } from './utils/property';
+import { ClearSettingsModal } from './modals';
+import { DEFAULT_SETTINGS, DEFAULT_VIEW_SETTINGS } from './constants';
+import type { Settings, DefaultViewSettings } from './types';
 
 /**
  * Property suggester for searchable property dropdowns
@@ -152,18 +155,33 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Expand images on click')
-			.setDesc('Click and hold on images (thumbnails and covers) to view full-screen. Desktop only.')
-			.addToggle((toggle) =>
-				toggle
+			.setDesc('How images (thumbnails and covers) expand to full-screen. Desktop only.')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('off', 'Off')
+					.addOption('hold', 'Hold to zoom')
+					.addOption('toggle', 'Click to toggle')
 					.setValue(settings.expandImagesOnClick)
-					.onChange(async (value) => {
+					.onChange(async (value: 'off' | 'hold' | 'toggle') => {
 						await this.plugin.persistenceManager.setGlobalSettings({ expandImagesOnClick: value });
 						// Update body class for CSS
-						if (value) {
-							document.body.classList.add('dynamic-views-thumbnail-expand-click');
-						} else {
-							document.body.classList.remove('dynamic-views-thumbnail-expand-click');
+						document.body.classList.remove('dynamic-views-thumbnail-expand-click-hold', 'dynamic-views-thumbnail-expand-click-toggle');
+						if (value === 'hold') {
+							document.body.classList.add('dynamic-views-thumbnail-expand-click-hold');
+						} else if (value === 'toggle') {
+							document.body.classList.add('dynamic-views-thumbnail-expand-click-toggle');
 						}
+					})
+			);
+
+		new Setting(containerEl)
+			.setName('Cover slideshow')
+			.setDesc('Enable slideshow for cards with multiple images. Only works for Top and Bottom cover positions.')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(settings.enableCoverCarousel)
+					.onChange(async (value) => {
+						await this.plugin.persistenceManager.setGlobalSettings({ enableCoverCarousel: value });
 					})
 			);
 
@@ -364,7 +382,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName('Show first and second properties side-by-side')
+			.setName('Pair first and second properties')
 			.setDesc('Display first two properties horizontally')
 			.addToggle((toggle) =>
 				toggle
@@ -401,7 +419,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName('Show third and fourth properties side-by-side')
+			.setName('Pair third and fourth properties')
 			.setDesc('Display third and fourth properties horizontally')
 			.addToggle((toggle) =>
 				toggle
@@ -462,12 +480,29 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 			.setDesc('Default image format for cards')
 			.addDropdown((dropdown) =>
 				dropdown
-					.addOption('none', 'No image')
-					.addOption('thumbnail', 'Thumbnail')
-					.addOption('cover', 'Cover')
+					.addOption('thumbnail-left', 'Thumbnail left')
+					.addOption('thumbnail-right', 'Thumbnail right')
+					.addOption('cover-top', 'Cover top')
+					.addOption('cover-bottom', 'Cover bottom')
+					.addOption('cover-left', 'Cover left')
+					.addOption('cover-right', 'Cover right')
+					.addOption('none', 'None')
 					.setValue(defaultViewSettings.imageFormat)
-					.onChange(async (value: 'none' | 'thumbnail' | 'cover') => {
+					.onChange(async (value: 'none' | 'thumbnail-left' | 'thumbnail-right' | 'cover-top' | 'cover-bottom' | 'cover-left' | 'cover-right') => {
 						await this.plugin.persistenceManager.setDefaultViewSettings({ imageFormat: value });
+					})
+			);
+
+		new Setting(containerEl)
+			.setName('Cover fit mode')
+			.setDesc('Default fit mode for cover images')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('crop', 'Crop')
+					.addOption('contain', 'Contain')
+					.setValue(defaultViewSettings.coverFitMode)
+					.onChange(async (value: 'crop' | 'contain') => {
+						await this.plugin.persistenceManager.setDefaultViewSettings({ coverFitMode: value });
 					})
 			);
 
@@ -484,13 +519,16 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('Use in-note images if image property unavailable')
-			.setDesc('Fall back to image embeds from note content')
-			.addToggle((toggle) =>
-				toggle
+			.setName('Show image embeds')
+			.setDesc('Control when in-note image embeds are shown alongside image property values')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('always', 'Always')
+					.addOption('if-empty', 'If property missing or empty')
+					.addOption('never', 'Never')
 					.setValue(defaultViewSettings.fallbackToEmbeds)
 					.onChange(async (value) => {
-						await this.plugin.persistenceManager.setDefaultViewSettings({ fallbackToEmbeds: value });
+						await this.plugin.persistenceManager.setDefaultViewSettings({ fallbackToEmbeds: value as 'always' | 'if-empty' | 'never' });
 					})
 			);
 
@@ -522,6 +560,150 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 						}
 					})
 			);
+
+		// Configuration section
+		new Setting(containerEl)
+			.setName('Configuration')
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName('Manage settings')
+			.setDesc('Back up plugin settings to a file or restore from backup.')
+			.addButton((button) =>
+				button.setButtonText('Import').onClick(() => {
+					const input = document.createElement('input');
+					input.setAttrs({
+						type: "file",
+						accept: ".json"
+					});
+
+					input.onchange = () => {
+						const selectedFile = input.files?.[0];
+
+						if (selectedFile) {
+							const reader = new FileReader();
+							reader.readAsText(selectedFile, 'UTF-8');
+							reader.onload = async (readerEvent) => {
+								let importedJson: { globalSettings?: Partial<Settings>; defaultViewSettings?: Partial<DefaultViewSettings> } | undefined;
+								const content = readerEvent.target?.result;
+								if (typeof content === "string") {
+									try {
+										importedJson = JSON.parse(content) as { globalSettings?: Partial<Settings>; defaultViewSettings?: Partial<DefaultViewSettings> };
+									} catch {
+										new Notice('Invalid import file');
+										console.error('Invalid import file');
+										return;
+									}
+								}
+
+								if (importedJson) {
+									// Merge imported settings with DEFAULT_SETTINGS structure
+									const newGlobalSettings: Settings = Object.assign({}, DEFAULT_SETTINGS);
+									const newDefaultViewSettings: DefaultViewSettings = Object.assign({}, DEFAULT_VIEW_SETTINGS);
+
+									// Import global settings
+									if (importedJson.globalSettings) {
+										for (const setting in importedJson.globalSettings) {
+											if (setting in newGlobalSettings) {
+												(newGlobalSettings as unknown as Record<string, unknown>)[setting] = (importedJson.globalSettings as Record<string, unknown>)[setting];
+											}
+										}
+									}
+
+									// Import default view settings
+									if (importedJson.defaultViewSettings) {
+										for (const setting in importedJson.defaultViewSettings) {
+											if (setting in newDefaultViewSettings) {
+												(newDefaultViewSettings as unknown as Record<string, unknown>)[setting] = (importedJson.defaultViewSettings as Record<string, unknown>)[setting];
+											}
+										}
+									}
+
+									// Save both settings - need to set the full objects
+									await this.plugin.persistenceManager.setGlobalSettings(newGlobalSettings);
+									await this.plugin.persistenceManager.setDefaultViewSettings(newDefaultViewSettings);
+
+									// Show notification
+									new Notice('Settings imported');
+
+									// Re-render settings tab
+									this.display();
+								}
+
+								input.remove();
+							};
+						}
+					};
+
+					input.click();
+				})
+			)
+			.addButton((button) =>
+				button.setButtonText('Export').onClick(async () => {
+					const globalSettings = this.plugin.persistenceManager.getGlobalSettings();
+					const defaultViewSettings = this.plugin.persistenceManager.getDefaultViewSettings();
+
+					const settingsText = JSON.stringify({
+						globalSettings,
+						defaultViewSettings
+					}, null, 2);
+					const fileName = "dynamic-views-settings.json";
+
+					// Try navigator.share() for mobile (iOS/Android)
+					if (navigator.share && navigator.canShare) {
+						try {
+							const blob = new Blob([settingsText], { type: 'application/json' });
+							const file = new File([blob], fileName, { type: 'application/json' });
+
+							if (navigator.canShare({ files: [file] })) {
+								await navigator.share({
+									files: [file],
+									title: 'Dynamic Views Settings'
+								});
+								return;
+							}
+						} catch (error) {
+							console.error('Share failed:', error);
+							// Fall through to download link
+						}
+					}
+
+					// Fallback for desktop: download link
+					const exportLink = document.createElement("a");
+					exportLink.setAttrs({
+						download: fileName,
+						href: `data:application/json;charset=utf-8,${encodeURIComponent(settingsText)}`,
+					});
+					exportLink.click();
+					exportLink.remove();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName('Clear settings')
+			.setDesc('Reset all plugin settings to their default values.')
+			.addButton((button) => {
+				button
+					.setButtonText('Clear')
+					.setWarning()
+					.onClick(() => {
+						new ClearSettingsModal(this.app, this.plugin, async () => {
+							// Reset all settings to defaults with deep copy
+							const newGlobalSettings: Settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
+							const newDefaultViewSettings: DefaultViewSettings = JSON.parse(JSON.stringify(DEFAULT_VIEW_SETTINGS)) as DefaultViewSettings;
+
+							// Save the cleared settings
+							await this.plugin.persistenceManager.setGlobalSettings(newGlobalSettings);
+							await this.plugin.persistenceManager.setDefaultViewSettings(newDefaultViewSettings);
+
+							// Show notification
+							new Notice('Settings cleared');
+
+							// Re-render settings tab
+							this.display();
+						}).open();
+					});
+			});
 	}
 
 	hide(): void {

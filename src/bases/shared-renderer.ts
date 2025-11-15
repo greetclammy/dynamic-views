@@ -9,11 +9,20 @@ import { resolveBasesProperty } from '../shared/data-transform';
 import { setupImageLoadHandler } from '../shared/image-loader';
 import { updateScrollGradient, setupScrollGradients } from '../shared/scroll-gradient-manager';
 import { getTimestampIcon } from '../shared/render-utils';
-import { getTagStyle, showTimestampIcon } from '../utils/style-settings';
+import { getTagStyle, showTimestampIcon, getEmptyValueMarker, shouldHideMissingProperties, shouldHideEmptyProperties, getCardSpacing } from '../utils/style-settings';
 import { getPropertyLabel } from '../utils/property';
-import { GAP_SIZE } from '../shared/constants';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
+
+// Extend App type to include dragManager
+declare module 'obsidian' {
+    interface App {
+        dragManager: {
+            dragFile(evt: DragEvent, file: TFile): unknown;
+            onDragStart(evt: DragEvent, dragData: unknown): void;
+        };
+    }
+}
 
 export class SharedCardRenderer {
     constructor(
@@ -40,12 +49,47 @@ export class SharedCardRenderer {
     ): void {
         // Create card element
         const cardEl = container.createDiv('card');
-        if (settings.imageFormat === 'cover') {
-            cardEl.classList.add('image-format-cover');
+
+        // Parse imageFormat to extract format and position
+        const imageFormat = settings.imageFormat;
+        let format: 'none' | 'thumbnail' | 'cover' = 'none';
+        let position: 'left' | 'right' | 'top' | 'bottom' = 'right';
+
+        if (imageFormat.startsWith('thumbnail-')) {
+            format = 'thumbnail';
+            position = imageFormat.split('-')[1] as 'left' | 'right';
+        } else if (imageFormat.startsWith('cover-')) {
+            format = 'cover';
+            position = imageFormat.split('-')[1] as 'left' | 'right' | 'top' | 'bottom';
         }
+
+        // Add format class
+        if (format === 'cover') {
+            cardEl.classList.add('image-format-cover');
+        } else if (format === 'thumbnail') {
+            cardEl.classList.add('image-format-thumbnail');
+        }
+
+        // Add position class
+        if (format === 'thumbnail') {
+            cardEl.classList.add(`card-thumbnail-${position}`);
+        } else if (format === 'cover') {
+            cardEl.classList.add(`card-cover-${position}`);
+        }
+
+        // Add cover fit mode class
+        if (format === 'cover') {
+            cardEl.classList.add(`card-cover-${settings.coverFitMode}`);
+        }
+
         cardEl.setAttribute('data-path', card.path);
-        cardEl.setAttribute('data-href', card.path);
-        cardEl.style.cursor = 'pointer';
+
+        // Only make card draggable when openFileAction is 'card'
+        if (settings.openFileAction === 'card') {
+            cardEl.setAttribute('draggable', 'true');
+        }
+        // Only show pointer cursor when entire card is clickable
+        cardEl.style.cursor = settings.openFileAction === 'card' ? 'pointer' : 'default';
 
         // Handle card click to open file
         cardEl.addEventListener('click', (e) => {
@@ -57,12 +101,16 @@ export class SharedCardRenderer {
                 const isLink = target.tagName === 'A' || target.closest('a');
                 const isTag = target.classList.contains('tag') || target.closest('.tag');
                 const isImage = target.tagName === 'IMG';
-                const expandOnClick = document.body.classList.contains('dynamic-views-thumbnail-expand-click');
+                const expandOnClick = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold') ||
+                                     document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
                 const shouldBlockImageClick = isImage && expandOnClick;
 
                 if (!isLink && !isTag && !shouldBlockImageClick) {
                     const newLeaf = e.metaKey || e.ctrlKey;
-                    void this.app.workspace.openLinkText(card.path, '', newLeaf);
+                    const file = this.app.vault.getAbstractFileByPath(card.path);
+                    if (file instanceof TFile) {
+                        void this.app.workspace.getLeaf(newLeaf).openFile(file);
+                    }
                 }
             }
         });
@@ -90,16 +138,25 @@ export class SharedCardRenderer {
             menu.showAtMouseEvent(e);
         });
 
+        // Drag handler function
+        const handleDrag = (e: DragEvent) => {
+            const file = this.app.vault.getAbstractFileByPath(card.path);
+            if (!(file instanceof TFile)) return;
+
+            const dragData = this.app.dragManager.dragFile(e, file);
+            this.app.dragManager.onDragStart(e, dragData);
+        };
+
         // Title - render as link when openFileAction is 'title', otherwise plain text
         if (settings.showTitle) {
             const titleEl = cardEl.createDiv('card-title');
 
             if (settings.openFileAction === 'title') {
-                // Render as clickable link
+                // Render as clickable, draggable link
                 const link = titleEl.createEl('a', {
                     cls: 'internal-link',
                     text: card.title,
-                    attr: { 'data-href': card.path, href: card.path }
+                    attr: { 'data-href': card.path, href: card.path, draggable: 'true' }
                 });
 
                 link.addEventListener('click', (e) => {
@@ -108,17 +165,25 @@ export class SharedCardRenderer {
                     const newLeaf = e.metaKey || e.ctrlKey;
                     void this.app.workspace.openLinkText(card.path, '', newLeaf);
                 });
+
+                // Make title draggable when openFileAction is 'title'
+                link.addEventListener('dragstart', handleDrag);
             } else {
                 // Render as plain text
                 titleEl.appendText(card.title);
             }
         }
 
+        // Make card draggable when openFileAction is 'card'
+        if (settings.openFileAction === 'card') {
+            cardEl.addEventListener('dragstart', handleDrag);
+        }
+
         // Content container (for text preview and thumbnail/cover)
         // Create container if: text preview exists, OR thumbnails enabled with image, OR cover format (for placeholders)
         if ((settings.showTextPreview && card.snippet) ||
-            (settings.imageFormat !== 'none' && (card.imageUrl || card.hasImageAvailable)) ||
-            (settings.imageFormat === 'cover')) {
+            (format !== 'none' && (card.imageUrl || card.hasImageAvailable)) ||
+            (format === 'cover')) {
             const contentContainer = cardEl.createDiv('card-content');
 
             // Text preview
@@ -127,23 +192,75 @@ export class SharedCardRenderer {
             }
 
             // Thumbnail or cover
-            if (settings.imageFormat !== 'none' && card.imageUrl) {
+            if (format !== 'none' && card.imageUrl) {
                 const rawUrls = Array.isArray(card.imageUrl) ? card.imageUrl : [card.imageUrl];
                 // Filter out empty/invalid URLs
                 const imageUrls = rawUrls.filter(url => url && typeof url === 'string' && url.trim().length > 0);
 
-                const imageClassName = settings.imageFormat === 'cover' ? 'card-cover' : 'card-thumbnail';
+                const imageClassName = format === 'cover' ? 'card-cover' : 'card-thumbnail';
                 const imageEl = contentContainer.createDiv(imageClassName);
 
                 if (imageUrls.length > 0) {
                     // Multi-image carousel (covers only, not thumbnails)
-                    if (imageUrls.length > 1 && settings.imageFormat === 'cover') {
+                    if (imageUrls.length > 1 && format === 'cover' && settings.enableCoverCarousel && (position === 'top' || position === 'bottom')) {
                         const carouselContainer = imageEl.createDiv('image-carousel-container');
                         carouselContainer.dataset.carouselIndex = '0';
                         carouselContainer.dataset.carouselCount = String(imageUrls.length);
 
                         // Image embed with dual images
                         const imageEmbedContainer = carouselContainer.createDiv('image-embed');
+
+                        // Add zoom handler
+                        imageEmbedContainer.addEventListener('click', (e) => {
+                            const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
+                            const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
+
+                            if (isToggleMode || isHoldMode) {
+                                e.stopPropagation();
+
+                                if (isToggleMode) {
+                                    const embedEl = e.currentTarget as HTMLElement;
+                                    const isZoomed = embedEl.classList.contains('is-zoomed');
+
+                                    if (isZoomed) {
+                                        // Close zoom
+                                        embedEl.classList.remove('is-zoomed');
+                                    } else {
+                                        // Close all other zoomed images first
+                                        document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
+                                            el.classList.remove('is-zoomed');
+                                        });
+                                        // Open this one
+                                        embedEl.classList.add('is-zoomed');
+
+                                        // Add listeners for closing
+                                        const closeZoom = (evt: Event) => {
+                                            const target = evt.target as HTMLElement;
+                                            // Don't close if clicking on the zoomed image itself
+                                            if (!embedEl.contains(target)) {
+                                                embedEl.classList.remove('is-zoomed');
+                                                document.removeEventListener('click', closeZoom);
+                                                document.removeEventListener('keydown', handleEscape);
+                                            }
+                                        };
+
+                                        const handleEscape = (evt: KeyboardEvent) => {
+                                            if (evt.key === 'Escape') {
+                                                embedEl.classList.remove('is-zoomed');
+                                                document.removeEventListener('click', closeZoom);
+                                                document.removeEventListener('keydown', handleEscape);
+                                            }
+                                        };
+
+                                        // Delay adding listeners to avoid immediate trigger
+                                        setTimeout(() => {
+                                            document.addEventListener('click', closeZoom);
+                                            document.addEventListener('keydown', handleEscape);
+                                        }, 0);
+                                    }
+                                }
+                            }
+                        });
 
                         // Current image (initially visible, showing first image)
                         const currentImg = imageEmbedContainer.createEl('img', {
@@ -159,16 +276,54 @@ export class SharedCardRenderer {
 
                         imageEmbedContainer.style.setProperty('--cover-image-url', `url("${imageUrls[0]}")`);
 
+                        // Calculate indicator position based on actual rendered image dimensions
+                        const updateIndicatorPosition = () => {
+                            const containerWidth = imageEmbedContainer.offsetWidth;
+                            const containerHeight = imageEmbedContainer.offsetHeight;
+
+                            if (currentImg.naturalWidth && currentImg.naturalHeight && containerWidth && containerHeight) {
+                                const imageRatio = currentImg.naturalWidth / currentImg.naturalHeight;
+                                const containerRatio = containerWidth / containerHeight;
+
+                                // Check if image is using contain mode (via card class)
+                                const cardElement = imageEmbedContainer.closest('.card') as HTMLElement;
+                                const isContainMode = cardElement?.classList.contains('card-cover-contain');
+                                // Check if flexible cover height is enabled (masonry only)
+                                const isFlexibleHeight = document.body.classList.contains('dynamic-views-masonry-flexible-cover-height');
+
+                                let imageOffsetBottom = 0;
+
+                                // Skip calculation for flexible height mode - container adapts to image
+                                if (isContainMode && !isFlexibleHeight) {
+                                    // In contain mode, image is letterboxed to fit
+                                    if (imageRatio > containerRatio) {
+                                        // Image wider than container - letterbox top/bottom
+                                        const renderedHeight = containerWidth / imageRatio;
+                                        imageOffsetBottom = (containerHeight - renderedHeight) / 2;
+                                    }
+                                    // If image taller than container, no bottom offset needed
+                                }
+
+                                imageEmbedContainer.style.setProperty('--image-offset-bottom', `${imageOffsetBottom}px`);
+                            }
+                        };
+
+                        currentImg.addEventListener('load', updateIndicatorPosition);
+                        // Also update on resize (container might change)
+                        if (currentImg.complete) {
+                            updateIndicatorPosition();
+                        }
+
+                        // Multi-image indicator (positioned on image itself)
+                        const indicator = imageEmbedContainer.createDiv('carousel-indicator');
+                        setIcon(indicator, 'lucide-images');
+
                         // Navigation arrows
                         const leftArrow = carouselContainer.createDiv('carousel-nav-left');
                         setIcon(leftArrow, 'lucide-chevron-left');
 
                         const rightArrow = carouselContainer.createDiv('carousel-nav-right');
                         setIcon(rightArrow, 'lucide-chevron-right');
-
-                        // Multi-image indicator
-                        const indicator = carouselContainer.createDiv('carousel-indicator');
-                        setIcon(indicator, 'lucide-images');
 
                         // Setup navigation
                         this.setupCarouselNavigation(
@@ -193,6 +348,59 @@ export class SharedCardRenderer {
                     // Single image (existing code path)
                     else {
                         const imageEmbedContainer = imageEl.createDiv('image-embed');
+
+                        // Add zoom handler
+                        imageEmbedContainer.addEventListener('click', (e) => {
+                            const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
+                            const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
+
+                            if (isToggleMode || isHoldMode) {
+                                e.stopPropagation();
+
+                                if (isToggleMode) {
+                                    const embedEl = e.currentTarget as HTMLElement;
+                                    const isZoomed = embedEl.classList.contains('is-zoomed');
+
+                                    if (isZoomed) {
+                                        // Close zoom
+                                        embedEl.classList.remove('is-zoomed');
+                                    } else {
+                                        // Close all other zoomed images first
+                                        document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
+                                            el.classList.remove('is-zoomed');
+                                        });
+                                        // Open this one
+                                        embedEl.classList.add('is-zoomed');
+
+                                        // Add listeners for closing
+                                        const closeZoom = (evt: Event) => {
+                                            const target = evt.target as HTMLElement;
+                                            // Don't close if clicking on the zoomed image itself
+                                            if (!embedEl.contains(target)) {
+                                                embedEl.classList.remove('is-zoomed');
+                                                document.removeEventListener('click', closeZoom);
+                                                document.removeEventListener('keydown', handleEscape);
+                                            }
+                                        };
+
+                                        const handleEscape = (evt: KeyboardEvent) => {
+                                            if (evt.key === 'Escape') {
+                                                embedEl.classList.remove('is-zoomed');
+                                                document.removeEventListener('click', closeZoom);
+                                                document.removeEventListener('keydown', handleEscape);
+                                            }
+                                        };
+
+                                        // Delay adding listeners to avoid immediate trigger
+                                        setTimeout(() => {
+                                            document.addEventListener('click', closeZoom);
+                                            document.addEventListener('keydown', handleEscape);
+                                        }, 0);
+                                    }
+                                }
+                            }
+                        });
+
                         const imgEl = imageEmbedContainer.createEl('img', {
                             attr: { src: imageUrls[0], alt: '' }
                         });
@@ -211,9 +419,9 @@ export class SharedCardRenderer {
                         }
                     }
                 }
-            } else if (settings.imageFormat !== 'none') {
+            } else if (format !== 'none') {
                 // Always render placeholder when no image - CSS controls visibility
-                const placeholderClassName = settings.imageFormat === 'cover' ? 'card-cover-placeholder' : 'card-thumbnail-placeholder';
+                const placeholderClassName = format === 'cover' ? 'card-cover-placeholder' : 'card-thumbnail-placeholder';
                 contentContainer.createDiv(placeholderClassName);
             }
         }
@@ -250,7 +458,7 @@ export class SharedCardRenderer {
 
         // Resolve property values
         const values = effectiveProps.map(prop =>
-            prop ? resolveBasesProperty(prop, entry, card, settings) : null
+            prop ? resolveBasesProperty(this.app, prop, entry, card, settings) : null
         );
 
         // Check if any row has content
@@ -291,16 +499,28 @@ export class SharedCardRenderer {
             if (!has1 && !has2) {
                 row1El.remove();
             } else if (has1 && !has2) {
-                // Field 1 has content, field 2 empty - add placeholder ONLY if prop2 is set
+                // Field 1 has content, field 2 empty
+                // Add placeholder ONLY if prop2 is set AND not hidden by toggles
                 if (prop2Set) {
-                    const placeholderContent = field2El.createDiv('property-content');
-                    placeholderContent.textContent = '…';
+                    const shouldHide = (values[1] === null && shouldHideMissingProperties()) ||
+                                      (values[1] === '' && shouldHideEmptyProperties());
+                    if (!shouldHide) {
+                        const placeholderContent = field2El.createDiv('property-content');
+                        const markerSpan = placeholderContent.createSpan('empty-value-marker');
+                        markerSpan.textContent = getEmptyValueMarker();
+                    }
                 }
             } else if (!has1 && has2) {
-                // Field 2 has content, field 1 empty - add placeholder ONLY if prop1 is set
+                // Field 2 has content, field 1 empty
+                // Add placeholder ONLY if prop1 is set AND not hidden by toggles
                 if (prop1Set) {
-                    const placeholderContent = field1El.createDiv('property-content');
-                    placeholderContent.textContent = '…';
+                    const shouldHide = (values[0] === null && shouldHideMissingProperties()) ||
+                                      (values[0] === '' && shouldHideEmptyProperties());
+                    if (!shouldHide) {
+                        const placeholderContent = field1El.createDiv('property-content');
+                        const markerSpan = placeholderContent.createSpan('empty-value-marker');
+                        markerSpan.textContent = getEmptyValueMarker();
+                    }
                 }
             }
             // Keep both fields in DOM for proper positioning (field 2 stays right-aligned)
@@ -330,16 +550,28 @@ export class SharedCardRenderer {
             if (!has3 && !has4) {
                 row2El.remove();
             } else if (has3 && !has4) {
-                // Field 3 has content, field 4 empty - add placeholder ONLY if prop4 is set
+                // Field 3 has content, field 4 empty
+                // Add placeholder ONLY if prop4 is set AND not hidden by toggles
                 if (prop4Set) {
-                    const placeholderContent = field4El.createDiv('property-content');
-                    placeholderContent.textContent = '…';
+                    const shouldHide = (values[3] === null && shouldHideMissingProperties()) ||
+                                      (values[3] === '' && shouldHideEmptyProperties());
+                    if (!shouldHide) {
+                        const placeholderContent = field4El.createDiv('property-content');
+                        const markerSpan = placeholderContent.createSpan('empty-value-marker');
+                        markerSpan.textContent = getEmptyValueMarker();
+                    }
                 }
             } else if (!has3 && has4) {
-                // Field 4 has content, field 3 empty - add placeholder ONLY if prop3 is set
+                // Field 4 has content, field 3 empty
+                // Add placeholder ONLY if prop3 is set AND not hidden by toggles
                 if (prop3Set) {
-                    const placeholderContent = field3El.createDiv('property-content');
-                    placeholderContent.textContent = '…';
+                    const shouldHide = (values[2] === null && shouldHideMissingProperties()) ||
+                                      (values[2] === '' && shouldHideEmptyProperties());
+                    if (!shouldHide) {
+                        const placeholderContent = field3El.createDiv('property-content');
+                        const markerSpan = placeholderContent.createSpan('empty-value-marker');
+                        markerSpan.textContent = getEmptyValueMarker();
+                    }
                 }
             }
             // Keep both fields in DOM for proper positioning (field 4 stays right-aligned)
@@ -376,6 +608,16 @@ export class SharedCardRenderer {
             return;
         }
 
+        // Hide missing properties if toggle enabled (resolvedValue is null for missing properties)
+        if (resolvedValue === null && shouldHideMissingProperties()) {
+            return;
+        }
+
+        // Hide empty properties if toggle enabled (resolvedValue is '' for empty properties)
+        if (resolvedValue === '' && shouldHideEmptyProperties()) {
+            return;
+        }
+
         // Early return for empty special properties when labels are hidden
         if (settings.propertyLabels === 'hide') {
             if ((propertyName === 'tags' || propertyName === 'note.tags') && card.yamlTags.length === 0) {
@@ -401,12 +643,16 @@ export class SharedCardRenderer {
             labelSpan.textContent = getPropertyLabel(propertyName) + ' ';
         }
 
-        // Universal wrapper for all content types
-        const metaContent = container.createDiv('property-content');
+        // Wrapper for scrolling content (gradients applied here)
+        const contentWrapper = container.createDiv('property-content-wrapper');
 
-        // If no value but labels are enabled, show placeholder
+        // Content container (actual property value)
+        const metaContent = contentWrapper.createDiv('property-content');
+
+        // If no value, show placeholder
         if (!resolvedValue) {
-            metaContent.appendText('…');
+            const markerSpan = metaContent.createSpan('empty-value-marker');
+            markerSpan.textContent = getEmptyValueMarker();
             return;
         }
 
@@ -597,17 +843,18 @@ export class SharedCardRenderer {
         // Force reflow
         void row.offsetWidth;
 
-        // Measure property-content wrapper
-        const content1 = field1.querySelector('.property-content') as HTMLElement;
-        const content2 = field2.querySelector('.property-content') as HTMLElement;
+        // Measure property-content-wrapper (expands to content width in measuring mode)
+        const wrapper1 = field1.querySelector('.property-content-wrapper') as HTMLElement;
+        const wrapper2 = field2.querySelector('.property-content-wrapper') as HTMLElement;
 
         // Measure inline labels if present
         const label1 = field1.querySelector('.property-label-inline') as HTMLElement;
         const label2 = field2.querySelector('.property-label-inline') as HTMLElement;
 
-        // Total width = content width + label width (if inline label exists)
-        let width1 = content1 ? content1.scrollWidth : 0;
-        let width2 = content2 ? content2.scrollWidth : 0;
+        // Total width = wrapper width + label width (if inline label exists)
+        // During measuring mode, wrapper has overflow-x: visible and expands to content width
+        let width1 = wrapper1 ? wrapper1.scrollWidth : 0;
+        let width2 = wrapper2 ? wrapper2.scrollWidth : 0;
 
         if (label1) {
             width1 += label1.scrollWidth;
@@ -617,7 +864,7 @@ export class SharedCardRenderer {
         }
 
         const containerWidth = row.clientWidth;
-        const gap = GAP_SIZE;
+        const gap = getCardSpacing();
         const availableWidth = containerWidth - gap;
 
         const percent1 = (width1 / availableWidth) * 100;
@@ -652,14 +899,17 @@ export class SharedCardRenderer {
         row.style.setProperty('--field2-width', field2Width);
         row.addClass('property-measured');
 
-        // Reset scroll position to 0 for both fields
-        field1.scrollLeft = 0;
-        field2.scrollLeft = 0;
+        // Reset scroll position to 0 for both wrappers (reuse variables from measurement)
+        if (wrapper1) wrapper1.scrollLeft = 0;
+        if (wrapper2) wrapper2.scrollLeft = 0;
 
         // Update scroll gradients after layout settles
+        // Use double RAF to ensure CSS variables are fully applied before checking scrollability
         requestAnimationFrame(() => {
-            updateScrollGradient(field1);
-            updateScrollGradient(field2);
+            requestAnimationFrame(() => {
+                updateScrollGradient(field1);
+                updateScrollGradient(field2);
+            });
         });
     }
 
@@ -733,9 +983,6 @@ export class SharedCardRenderer {
 
                 // Update index
                 carouselContainer.dataset.carouselIndex = String(newIndex);
-
-                // Clear the now-next (old current) image to save memory
-                currentImgEl.src = '';
 
                 // Trigger layout update for masonry (new image may have different dimensions)
                 if (this.updateLayoutRef.current) {

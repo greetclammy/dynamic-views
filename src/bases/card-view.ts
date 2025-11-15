@@ -8,10 +8,10 @@ import { CardData } from '../shared/card-renderer';
 import { transformBasesEntries } from '../shared/data-transform';
 import { readBasesSettings, getBasesViewOptions } from '../shared/settings-schema';
 import { getFirstBasesPropertyValue, getAllBasesImagePropertyValues } from '../utils/property';
-import { getMinCardWidthGrid, getMinGridColumns } from '../utils/style-settings';
+import { getMinGridColumns, getCardSpacing } from '../utils/style-settings';
 import { loadSnippetsForEntries, loadImagesForEntries } from '../shared/content-loader';
 import { SharedCardRenderer } from './shared-renderer';
-import { BATCH_SIZE, GAP_SIZE } from '../shared/constants';
+import { BATCH_SIZE } from '../shared/constants';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
 
@@ -49,10 +49,15 @@ export class DynamicViewsCardView extends BasesView {
         // No-op: MutationObserver handles updates
     };
 
-    constructor(controller: QueryController, containerEl: HTMLElement, plugin: DynamicViewsPlugin) {
+    constructor(controller: QueryController, scrollEl: HTMLElement) {
         super(controller);
-        this.containerEl = containerEl;
-        this.plugin = plugin;
+        // Create container inside scroll parent (critical for embedded views)
+        this.containerEl = scrollEl.createDiv({
+            cls: 'dynamic-views dynamic-views-bases-container'
+        });
+        // Access plugin from controller's app
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+        this.plugin = (this.app as any).plugins.plugins['dynamic-views'] as DynamicViewsPlugin;
         // Initialize shared card renderer
         this.cardRenderer = new SharedCardRenderer(
             this.app,
@@ -60,13 +65,6 @@ export class DynamicViewsCardView extends BasesView {
             this.propertyObservers,
             this.updateLayoutRef
         );
-        // Add both classes - 'dynamic-views' for CSS styling, 'dynamic-views-bases-container' for identification
-        this.containerEl.addClass('dynamic-views');
-        this.containerEl.addClass('dynamic-views-bases-container');
-        // Make container scrollable vertically, hidden horizontally
-        this.containerEl.style.overflowY = 'auto';
-        this.containerEl.style.overflowX = 'hidden';
-        this.containerEl.style.height = '100%';
         // Set initial batch size based on device
         this.displayedCount = this.app.isMobile ? 25 : BATCH_SIZE;
 
@@ -98,8 +96,19 @@ export class DynamicViewsCardView extends BasesView {
         this.register(() => observer.disconnect());
     }
 
+    onload(): void {
+        // Ensure view is fully initialized before Obsidian renders it
+        // This prevents race conditions when view is embedded in notes
+        super.onload();
+    }
+
     onDataUpdated(): void {
         void (async () => {
+            // Guard: return early if data not yet initialized (race condition with MutationObserver)
+            if (!this.data) {
+                return;
+            }
+
             const groupedData = this.data.groupedData;
             const allEntries = this.data.data;
 
@@ -112,15 +121,15 @@ export class DynamicViewsCardView extends BasesView {
 
         // Calculate grid columns
         const containerWidth = this.containerEl.clientWidth;
-        const cardMinWidth = getMinCardWidthGrid();
+        // Card size represents minimum width; actual width may be larger to fill space
+        const cardSize = settings.cardSize;
         const minColumns = getMinGridColumns();
-        const gap = GAP_SIZE;
-        const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardMinWidth + gap)));
-        const cardWidth = (containerWidth - (gap * (cols - 1))) / cols;
+        const gap = getCardSpacing();
+        const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardSize + gap)));
 
         // Set CSS variables for grid layout
-        this.containerEl.style.setProperty('--card-min-width', `${cardWidth}px`);
         this.containerEl.style.setProperty('--grid-columns', String(cols));
+        this.containerEl.style.setProperty('--dynamic-views-image-aspect-ratio', String(settings.imageAspectRatio));
 
         // Save scroll position before re-rendering
         const savedScrollTop = this.containerEl.scrollTop;
@@ -212,6 +221,7 @@ export class DynamicViewsCardView extends BasesView {
 
             // Render cards in this group
             const cards = transformBasesEntries(
+                this.app,
                 groupEntries,
                 settings,
                 sortMethod,
@@ -242,13 +252,12 @@ export class DynamicViewsCardView extends BasesView {
         if (!this.resizeObserver) {
             this.resizeObserver = new ResizeObserver(() => {
                 const containerWidth = this.containerEl.clientWidth;
-                const cardMinWidth = getMinCardWidthGrid();
+                // Card size represents minimum width; actual width may be larger to fill space
+                const cardSize = settings.cardSize;
                 const minColumns = getMinGridColumns();
-                const gap = GAP_SIZE;
-                const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardMinWidth + gap)));
-                const cardWidth = (containerWidth - (gap * (cols - 1))) / cols;
+                const gap = getCardSpacing();
+                const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardSize + gap)));
 
-                this.containerEl.style.setProperty('--card-min-width', `${cardWidth}px`);
                 this.containerEl.style.setProperty('--grid-columns', String(cols));
             });
             this.resizeObserver.observe(this.containerEl);
@@ -303,7 +312,7 @@ export class DynamicViewsCardView extends BasesView {
                     const file = this.app.vault.getAbstractFileByPath(entry.file.path);
                     if (!(file instanceof TFile)) return null;
 
-                    const descValue = getFirstBasesPropertyValue(entry, settings.descriptionProperty) as { data?: unknown } | null;
+                    const descValue = getFirstBasesPropertyValue(this.app, entry, settings.descriptionProperty) as { data?: unknown } | null;
                     return {
                         path: entry.file.path,
                         file,
@@ -330,7 +339,7 @@ export class DynamicViewsCardView extends BasesView {
                     const file = this.app.vault.getAbstractFileByPath(entry.file.path);
                     if (!(file instanceof TFile)) return null;
 
-                    const imagePropertyValues = getAllBasesImagePropertyValues(entry, settings.imageProperty);
+                    const imagePropertyValues = getAllBasesImagePropertyValues(this.app, entry, settings.imageProperty);
                     return {
                         path: entry.file.path,
                         file,
@@ -417,12 +426,16 @@ export class DynamicViewsCardView extends BasesView {
         });
     }
 
-    onClose(): void {
+    onunload(): void {
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
         }
         this.propertyObservers.forEach(obs => obs.disconnect());
         this.propertyObservers = [];
+    }
+
+    focus(): void {
+        this.containerEl.focus({ preventScroll: true });
     }
 }
 

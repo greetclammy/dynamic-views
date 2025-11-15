@@ -9,22 +9,24 @@ import type { DatacoreFile, DatacoreDate } from '../types/datacore';
  * Get first non-empty property value from comma-separated list (Bases)
  * Accepts any property type (text, number, checkbox, date, datetime, list)
  */
-export function getFirstBasesPropertyValue(entry: BasesEntry, propertyString: string): unknown {
+export function getFirstBasesPropertyValue(app: App, entry: BasesEntry, propertyString: string): unknown {
     if (!propertyString || !propertyString.trim()) return null;
 
     const properties = propertyString.split(',').map(p => p.trim()).filter(p => p);
 
     for (const prop of properties) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Bases API lacks proper TypeScript types for getValue
-        const value = entry.getValue(prop as any);
+        // Try property as-is first, then with formula. prefix if not found
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+        let value = entry.getValue(prop as any);
 
-        // Check if property exists and has a value
-        const propertyExists = value && (
-            ('date' in value && value.date instanceof Date) ||
-            ('data' in value)
-        );
+        // If property not found (error object with icon), try as formula property
+        if (value && typeof value === 'object' && 'icon' in value && !('data' in value)) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+            value = entry.getValue(`formula.${prop}` as any);
+        }
 
-        if (propertyExists) {
+        // Return first valid value found (both regular and formula properties use {data: value} structure)
+        if (value && typeof value === 'object' && 'data' in value) {
             return value;
         }
     }
@@ -57,20 +59,26 @@ export function getFirstDatacorePropertyValue(page: DatacoreFile, propertyString
  * Get first valid date/datetime property value from comma-separated list (Bases)
  * Only accepts date and datetime property types
  */
-export function getFirstBasesDatePropertyValue(entry: BasesEntry, propertyString: string): unknown {
+export function getFirstBasesDatePropertyValue(app: App, entry: BasesEntry, propertyString: string): unknown {
     if (!propertyString || !propertyString.trim()) return null;
 
     const properties = propertyString.split(',').map(p => p.trim()).filter(p => p);
 
     for (const prop of properties) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Bases API lacks proper TypeScript types for getValue
-        const value = entry.getValue(prop as any);
+        // Try property as-is first, then with formula. prefix if not found
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+        let value = entry.getValue(prop as any);
 
-        // Only accept date/datetime values
-        if (value && 'date' in value && value.date instanceof Date) {
+        // If property not found (error object with icon), try as formula property
+        if (value && typeof value === 'object' && 'icon' in value && !('data' in value) && !('date' in value)) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+            value = entry.getValue(`formula.${prop}` as any);
+        }
+
+        // Return first valid date value found
+        if (value && typeof value === 'object' && 'date' in value && value.date instanceof Date) {
             return value;
         }
-        // Skip properties with wrong type
     }
 
     return null;
@@ -103,40 +111,39 @@ export function getFirstDatacoreDatePropertyValue(page: DatacoreFile, propertySt
  * Only accepts text and list property types containing image paths/URLs
  * Returns array of all image paths/URLs found across all properties
  */
-export function getAllBasesImagePropertyValues(entry: BasesEntry, propertyString: string): string[] {
+export function getAllBasesImagePropertyValues(app: App, entry: BasesEntry, propertyString: string): string[] {
     if (!propertyString || !propertyString.trim()) return [];
 
     const properties = propertyString.split(',').map(p => p.trim()).filter(p => p);
     const allImages: string[] = [];
 
     for (const prop of properties) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Bases API lacks proper TypeScript types for getValue
-        const value = entry.getValue(prop as any);
+        // Try property as-is first, then with formula. prefix if not found
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+        let value = entry.getValue(prop as any);
 
-        // Skip if property doesn't exist or is not text/list type
-        if (!value || !('data' in value)) continue;
+        // If property not found (error object with icon), try as formula property
+        if (value && typeof value === 'object' && 'icon' in value && !('data' in value)) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+            value = entry.getValue(`formula.${prop}` as any);
+        }
 
-        // Handle the value
+        // Extract data from {data: value} structure (both regular and formula properties use this)
+        if (!value || !(typeof value === 'object' && 'data' in value)) continue;
         const data = value.data;
+        if (data == null || data === '') continue;
 
+        // Process data (array or single value)
         if (Array.isArray(data)) {
-            // List property - collect all values
             for (const item of data) {
                 if (typeof item === 'string' || typeof item === 'number') {
                     const str = String(item);
-                    if (str && str.trim()) {
-                        allImages.push(str);
-                    }
+                    if (str.trim()) allImages.push(str);
                 }
             }
-        } else if (data != null && data !== '') {
-            // Text property - single value
-            if (typeof data === 'string' || typeof data === 'number') {
-                const str = String(data);
-                if (str.trim()) {
-                    allImages.push(str);
-                }
-            }
+        } else if (typeof data === 'string' || typeof data === 'number') {
+            const str = String(data);
+            if (str.trim()) allImages.push(str);
         }
     }
 
@@ -240,6 +247,11 @@ export function getPropertyLabel(propertyName: string): string {
     // Check if we have a mapped label
     const mappedLabel = labelMap[propertyName.toLowerCase()];
     if (mappedLabel) return mappedLabel;
+
+    // Strip note. prefix from YAML properties
+    if (propertyName.startsWith('note.')) {
+        return propertyName.slice(5); // Remove "note."
+    }
 
     // For custom properties, use exact capitalization as-is
     return propertyName;

@@ -5,8 +5,8 @@
 /** Default batch size for infinite scroll */
 export const BATCH_SIZE = 50;
 
-/** Gap size between elements (must match CSS --dynamic-views-element-spacing) */
-export const GAP_SIZE = 8;
+/** Gap size between cards - default fallback (reads from CSS --dynamic-views-card-spacing via getCardSpacing()) */
+export const GAP_SIZE = 12;
 
 /** Scroll position tolerance in pixels */
 export const SCROLL_TOLERANCE = 1;

@@ -4,20 +4,24 @@
  */
 
 import type { App } from 'obsidian';
-import { TFolder, Menu } from 'obsidian';
+import { TFile, TFolder, Menu } from 'obsidian';
 import type { Settings } from '../types';
 import type { RefObject } from '../types/datacore';
-import { getTagStyle, showTimestampIcon } from '../utils/style-settings';
+import { getTagStyle, showTimestampIcon, getEmptyValueMarker, shouldHideMissingProperties, shouldHideEmptyProperties } from '../utils/style-settings';
 import { getPropertyLabel } from '../utils/property';
 import { handleImageLoad } from './image-loader';
 
-// Extend App type to include isMobile property
+// Extend App type to include isMobile property and dragManager
 declare module 'obsidian' {
     interface App {
         isMobile: boolean;
         internalPlugins: {
             plugins: Record<string, { enabled: boolean; instance?: { openGlobalSearch?: (query: string) => void; revealInFolder?: (file: unknown) => void } }>;
             getPluginById(id: string): { instance?: unknown } | null;
+        };
+        dragManager: {
+            dragFile(evt: DragEvent, file: TFile): unknown;
+            onDragStart(evt: DragEvent, dragData: unknown): void;
         };
     }
 }
@@ -81,6 +85,16 @@ function renderPropertyContent(
         return null;
     }
 
+    // Hide missing properties if toggle enabled (resolvedValue is null for missing properties)
+    if (resolvedValue === null && shouldHideMissingProperties()) {
+        return null;
+    }
+
+    // Hide empty properties if toggle enabled (resolvedValue is '' for empty properties)
+    if (resolvedValue === '' && shouldHideEmptyProperties()) {
+        return null;
+    }
+
     // Render label above if enabled
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
     const labelAbove = settings.propertyLabels === 'above' ? (
@@ -93,14 +107,16 @@ function renderPropertyContent(
         <span className="property-label-inline">{getPropertyLabel(propertyName)} </span>
     ) : null;
 
-    // If no value but labels are enabled, show placeholder
+    // If no value, show placeholder
     if (!resolvedValue) {
         return (
             <>
                 {labelAbove}
                 {labelInline}
-                <div className="property-content">
-                    <span>…</span>
+                <div className="property-content-wrapper">
+                    <div className="property-content">
+                        <span className="empty-value-marker">{getEmptyValueMarker()}</span>
+                    </div>
                 </div>
             </>
         );
@@ -114,27 +130,29 @@ function renderPropertyContent(
             <>
                 {labelAbove}
                 {labelInline}
-                <div className="property-content">
-                    <span>
-                        {showTimestampIcon() && settings.propertyLabels === 'hide' && (
-                            <svg className="timestamp-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                {timeIcon === "calendar" ? (
-                                    <>
-                                        <path d="M8 2v4"/>
-                                        <path d="M16 2v4"/>
-                                        <rect width="18" height="18" x="3" y="4" rx="2"/>
-                                        <path d="M3 10h18"/>
-                                    </>
-                                ) : (
-                                    <>
-                                        <circle cx="12" cy="12" r="10"/>
-                                        <polyline points="12 6 12 12 16 14"/>
-                                    </>
-                                )}
-                            </svg>
-                        )}
-                        <span>{resolvedValue}</span>
-                    </span>
+                <div className="property-content-wrapper">
+                    <div className="property-content">
+                        <span>
+                            {showTimestampIcon() && settings.propertyLabels === 'hide' && (
+                                <svg className="timestamp-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    {timeIcon === "calendar" ? (
+                                        <>
+                                            <path d="M8 2v4"/>
+                                            <path d="M16 2v4"/>
+                                            <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                            <path d="M3 10h18"/>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polyline points="12 6 12 12 16 14"/>
+                                        </>
+                                    )}
+                                </svg>
+                            )}
+                            <span>{resolvedValue}</span>
+                        </span>
+                    </div>
                 </div>
             </>
         );
@@ -147,24 +165,26 @@ function renderPropertyContent(
             <>
                 {labelAbove}
                 {labelInline}
-                <div className="property-content">
-                    <div className="tags-wrapper">
-                        {card.yamlTags.map((tag): JSX.Element => (
-                            <a
-                                key={tag}
-                                href="#"
-                                className="tag"
-                                onClick={(e: MouseEvent) => {
-                                    e.preventDefault();
-                                    const searchPlugin = app.internalPlugins.plugins["global-search"];
-                                    if (searchPlugin?.instance?.openGlobalSearch) {
-                                        searchPlugin.instance.openGlobalSearch("tag:" + tag);
-                                    }
-                                }}
-                            >
-                                {showHashPrefix ? '#' + tag : tag}
-                            </a>
-                        ))}
+                <div className="property-content-wrapper">
+                    <div className="property-content">
+                        <div className="tags-wrapper">
+                            {card.yamlTags.map((tag): JSX.Element => (
+                                <a
+                                    key={tag}
+                                    href="#"
+                                    className="tag"
+                                    onClick={(e: MouseEvent) => {
+                                        e.preventDefault();
+                                        const searchPlugin = app.internalPlugins.plugins["global-search"];
+                                        if (searchPlugin?.instance?.openGlobalSearch) {
+                                            searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                                        }
+                                    }}
+                                >
+                                    {showHashPrefix ? '#' + tag : tag}
+                                </a>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </>
@@ -178,24 +198,26 @@ function renderPropertyContent(
             <>
                 {labelAbove}
                 {labelInline}
-                <div className="property-content">
-                    <div className="tags-wrapper">
-                        {card.tags.map((tag): JSX.Element => (
-                            <a
-                                key={tag}
-                                href="#"
-                                className="tag"
-                                onClick={(e: MouseEvent) => {
-                                    e.preventDefault();
-                                    const searchPlugin = app.internalPlugins.plugins["global-search"];
-                                    if (searchPlugin?.instance?.openGlobalSearch) {
-                                        searchPlugin.instance.openGlobalSearch("tag:" + tag);
-                                    }
-                                }}
-                            >
-                                {showHashPrefix ? '#' + tag : tag}
-                            </a>
-                        ))}
+                <div className="property-content-wrapper">
+                    <div className="property-content">
+                        <div className="tags-wrapper">
+                            {card.tags.map((tag): JSX.Element => (
+                                <a
+                                    key={tag}
+                                    href="#"
+                                    className="tag"
+                                    onClick={(e: MouseEvent) => {
+                                        e.preventDefault();
+                                        const searchPlugin = app.internalPlugins.plugins["global-search"];
+                                        if (searchPlugin?.instance?.openGlobalSearch) {
+                                            searchPlugin.instance.openGlobalSearch("tag:" + tag);
+                                        }
+                                    }}
+                                >
+                                    {showHashPrefix ? '#' + tag : tag}
+                                </a>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </>
@@ -205,44 +227,46 @@ function renderPropertyContent(
             <>
                 {labelAbove}
                 {labelInline}
-                <div className="property-content">
-                    <div className="path-wrapper">
-                        {resolvedValue.split('/').filter(f => f).map((segment, idx, array): JSX.Element => {
-                            const allParts = resolvedValue.split('/').filter(f => f);
-                            const cumulativePath = allParts.slice(0, idx + 1).join('/');
-                            const isLastSegment = idx === array.length - 1;
-                            const segmentClass = isLastSegment ? 'path-segment filename-segment' : 'path-segment file-path-segment';
-                            return (
-                                <span key={idx} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                    <span
-                                        className={segmentClass}
-                                        onClick={(e: MouseEvent) => {
-                                            e.stopPropagation();
-                                            const fileExplorer = app.internalPlugins?.plugins?.["file-explorer"];
-                                            if (fileExplorer?.instance?.revealInFolder) {
-                                                const folder = app.vault.getAbstractFileByPath(cumulativePath);
-                                                if (folder) {
-                                                    fileExplorer.instance.revealInFolder(folder);
+                <div className="property-content-wrapper">
+                    <div className="property-content">
+                        <div className="path-wrapper">
+                            {resolvedValue.split('/').filter(f => f).map((segment, idx, array): JSX.Element => {
+                                const allParts = resolvedValue.split('/').filter(f => f);
+                                const cumulativePath = allParts.slice(0, idx + 1).join('/');
+                                const isLastSegment = idx === array.length - 1;
+                                const segmentClass = isLastSegment ? 'path-segment filename-segment' : 'path-segment file-path-segment';
+                                return (
+                                    <span key={idx} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                        <span
+                                            className={segmentClass}
+                                            onClick={(e: MouseEvent) => {
+                                                e.stopPropagation();
+                                                const fileExplorer = app.internalPlugins?.plugins?.["file-explorer"];
+                                                if (fileExplorer?.instance?.revealInFolder) {
+                                                    const folder = app.vault.getAbstractFileByPath(cumulativePath);
+                                                    if (folder) {
+                                                        fileExplorer.instance.revealInFolder(folder);
+                                                    }
                                                 }
-                                            }
-                                        }}
-                                        onContextMenu={!isLastSegment ? (e: MouseEvent) => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            const folderFile = app.vault.getAbstractFileByPath(cumulativePath);
-                                            if (folderFile instanceof TFolder) {
-                                                const menu = new Menu();
-                                                app.workspace.trigger('file-menu', menu, folderFile, 'file-explorer');
-                                                menu.showAtMouseEvent(e as unknown as MouseEvent);
-                                            }
-                                        } : undefined}
-                                    >
-                                        {segment}
+                                            }}
+                                            onContextMenu={!isLastSegment ? (e: MouseEvent) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                const folderFile = app.vault.getAbstractFileByPath(cumulativePath);
+                                                if (folderFile instanceof TFolder) {
+                                                    const menu = new Menu();
+                                                    app.workspace.trigger('file-menu', menu, folderFile, 'file-explorer');
+                                                    menu.showAtMouseEvent(e as unknown as MouseEvent);
+                                                }
+                                            } : undefined}
+                                        >
+                                            {segment}
+                                        </span>
+                                        {idx < array.length - 1 && <span className="path-separator">/</span>}
                                     </span>
-                                    {idx < array.length - 1 && <span className="path-separator">/</span>}
-                                </span>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </>
@@ -254,8 +278,10 @@ function renderPropertyContent(
         <>
             {labelAbove}
             {labelInline}
-            <div className="property-content">
-                <span>{resolvedValue}</span>
+            <div className="property-content-wrapper">
+                <div className="property-content">
+                    <span>{resolvedValue}</span>
+                </div>
             </div>
         </>
     );
@@ -348,10 +374,47 @@ function Card({
     // TODO: Implement image cycling on hover
     // const hoveredImageIndex = 0;
 
+    // Parse imageFormat to extract format and position
+    const imageFormat = settings.imageFormat;
+    let format: 'none' | 'thumbnail' | 'cover' = 'none';
+    let position: 'left' | 'right' | 'top' | 'bottom' = 'right';
+
+    if (imageFormat === 'none') {
+        format = 'none';
+    } else if (imageFormat.startsWith('thumbnail-')) {
+        format = 'thumbnail';
+        position = imageFormat.split('-')[1] as 'left' | 'right' | 'top' | 'bottom';
+    } else if (imageFormat.startsWith('cover-')) {
+        format = 'cover';
+        position = imageFormat.split('-')[1] as 'left' | 'right' | 'top' | 'bottom';
+    }
+
+    // Build card classes
+    const cardClasses = ['card'];
+    if (format === 'cover') {
+        cardClasses.push('image-format-cover');
+        cardClasses.push(`card-cover-${position}`);
+        cardClasses.push(`card-cover-${settings.coverFitMode}`);
+    } else if (format === 'thumbnail') {
+        cardClasses.push('image-format-thumbnail');
+        cardClasses.push(`card-thumbnail-${position}`);
+    }
+
+    // Drag handler function
+    const handleDrag = (e: DragEvent) => {
+        const file = app.vault.getAbstractFileByPath(card.path);
+        if (!(file instanceof TFile)) return;
+
+        const dragData = app.dragManager.dragFile(e, file);
+        app.dragManager.onDragStart(e, dragData);
+    };
+
     return (
         <div
-            className={`card ${settings.imageFormat === 'cover' ? 'image-format-cover' : ''}`}
+            className={cardClasses.join(' ')}
             data-path={card.path}
+            draggable={settings.openFileAction === 'card'}
+            onDragStart={settings.openFileAction === 'card' ? handleDrag : undefined}
             tabIndex={index === focusableCardIndex ? 0 : -1}
             onClick={(e: MouseEvent) => {
                 // Only handle card-level clicks when openFileAction is 'card'
@@ -362,7 +425,8 @@ function Card({
                     const isLink = target.tagName === 'A' || target.closest('a');
                     const isTag = target.classList.contains('tag') || target.closest('.tag');
                     const isImage = target.tagName === 'IMG';
-                    const expandOnClick = document.body.classList.contains('dynamic-views-thumbnail-expand-click');
+                    const expandOnClick = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold') ||
+                                         document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
                     const shouldBlockImageClick = isImage && expandOnClick;
 
                     if (!isLink && !isTag && !shouldBlockImageClick) {
@@ -409,14 +473,14 @@ function Card({
                     sourcePath: card.path
                 });
                 // Reset hover index to 0
-                const imageSelector = settings.imageFormat === 'cover' ? '.card-cover img' : '.card-thumbnail img';
+                const imageSelector = format === 'cover' ? '.card-cover img' : '.card-thumbnail img';
                 const imgEl = (e.currentTarget as HTMLElement).querySelector(imageSelector);
                 const firstImage = imageArray[0];
                 if (imgEl && firstImage) {
                     (imgEl as HTMLImageElement).src = firstImage;
                 }
             }}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: settings.openFileAction === 'card' ? 'pointer' : 'default' }}
         >
             {/* Title */}
             {settings.showTitle && (
@@ -426,6 +490,8 @@ function Card({
                             href={card.path}
                             className="internal-link"
                             data-href={card.path}
+                            draggable={true}
+                            onDragStart={handleDrag}
                             onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -441,17 +507,198 @@ function Card({
                 </div>
             )}
 
-            {/* Content: Text Preview and Thumbnail/Cover */}
-            {((settings.showTextPreview && card.snippet) || (settings.imageFormat !== 'none' && (imageArray.length > 0 || card.hasImageAvailable))) && (
+            {/* Cover-top: after title */}
+            {format === 'cover' && position === 'top' && (imageArray.length > 0 || card.hasImageAvailable) && (
+                imageArray.length > 0 ? (
+                    <div className="card-cover">
+                        <div
+                            className="image-embed"
+                            style={{ '--cover-image-url': `url("${imageArray[0] || ''}")` }}
+                            onClick={(e: MouseEvent) => {
+                                const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
+                                const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
+
+                                if (isToggleMode || isHoldMode) {
+                                    e.stopPropagation();
+
+                                    if (isToggleMode) {
+                                        const embedEl = e.currentTarget as HTMLElement;
+                                        const isZoomed = embedEl.classList.contains('is-zoomed');
+
+                                        if (isZoomed) {
+                                            embedEl.classList.remove('is-zoomed');
+                                        } else {
+                                            document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
+                                                el.classList.remove('is-zoomed');
+                                            });
+                                            embedEl.classList.add('is-zoomed');
+
+                                            const closeZoom = (evt: Event) => {
+                                                const target = evt.target as HTMLElement;
+                                                if (!embedEl.contains(target)) {
+                                                    embedEl.classList.remove('is-zoomed');
+                                                    document.removeEventListener('click', closeZoom);
+                                                    document.removeEventListener('keydown', handleEscape);
+                                                }
+                                            };
+
+                                            const handleEscape = (evt: KeyboardEvent) => {
+                                                if (evt.key === 'Escape') {
+                                                    embedEl.classList.remove('is-zoomed');
+                                                    document.removeEventListener('click', closeZoom);
+                                                    document.removeEventListener('keydown', handleEscape);
+                                                }
+                                            };
+
+                                            setTimeout(() => {
+                                                document.addEventListener('click', closeZoom);
+                                                document.addEventListener('keydown', handleEscape);
+                                            }, 0);
+                                        }
+                                    }
+                                }
+                            }}
+                        >
+                            <img
+                                src={imageArray[0] || ''}
+                                alt=""
+                                onLoad={(e: Event) => {
+                                    const imgEl = e.currentTarget as HTMLImageElement;
+                                    const imageEmbedEl = imgEl.parentElement;
+                                    if (imageEmbedEl) {
+                                        const imageEl = imageEmbedEl.parentElement;
+                                        if (imageEl) {
+                                            const cardEl = imageEl.closest('.card') as HTMLElement;
+                                            if (cardEl) {
+                                                handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
+                                            }
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="card-cover-placeholder"></div>
+                )
+            )}
+
+            {/* Thumbnail-top: between title and text preview */}
+            {format === 'thumbnail' && position === 'top' && (imageArray.length > 0 || card.hasImageAvailable) && (
+                imageArray.length > 0 ? (
+                    <div
+                        className={`card-thumbnail ${isArray && imageArray.length > 1 ? 'multi-image' : ''}`}
+                        onMouseMove={!app.isMobile && isArray && imageArray.length > 1 ? ((e: MouseEvent) => {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const x = e.clientX - rect.left;
+                            const section = Math.floor((x / rect.width) * imageArray.length);
+                            const newIndex = Math.min(section, imageArray.length - 1);
+                            const imgEl = (e.currentTarget as HTMLElement).querySelector('img');
+                            const newSrc = imageArray[newIndex];
+                            if (imgEl && newSrc) {
+                                const currentSrc = imgEl.src;
+                                if (currentSrc !== newSrc) {
+                                    imgEl.src = newSrc;
+                                }
+                            }
+                        }) : undefined}
+                        onMouseLeave={!app.isMobile && isArray && imageArray.length > 1 ? ((e: MouseEvent) => {
+                            const imgEl = (e.currentTarget as HTMLElement).querySelector('img');
+                            const firstSrc = imageArray[0];
+                            if (imgEl && firstSrc) {
+                                imgEl.src = firstSrc;
+                            }
+                        }) : undefined}
+                    >
+                        <div
+                            className="image-embed"
+                            style={{ '--cover-image-url': `url("${imageArray[0] || ''}")` }}
+                            onClick={(e: MouseEvent) => {
+                                const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
+                                const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
+
+                                if (isToggleMode || isHoldMode) {
+                                    e.stopPropagation();
+
+                                    if (isToggleMode) {
+                                        const embedEl = e.currentTarget as HTMLElement;
+                                        const isZoomed = embedEl.classList.contains('is-zoomed');
+
+                                        if (isZoomed) {
+                                            // Close zoom
+                                            embedEl.classList.remove('is-zoomed');
+                                        } else {
+                                            // Close all other zoomed images first
+                                            document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
+                                                el.classList.remove('is-zoomed');
+                                            });
+                                            // Open this one
+                                            embedEl.classList.add('is-zoomed');
+
+                                            // Add listeners for closing
+                                            const closeZoom = (evt: Event) => {
+                                                const target = evt.target as HTMLElement;
+                                                // Don't close if clicking on the zoomed image itself
+                                                if (!embedEl.contains(target)) {
+                                                    embedEl.classList.remove('is-zoomed');
+                                                    document.removeEventListener('click', closeZoom);
+                                                    document.removeEventListener('keydown', handleEscape);
+                                                }
+                                            };
+
+                                            const handleEscape = (evt: KeyboardEvent) => {
+                                                if (evt.key === 'Escape') {
+                                                    embedEl.classList.remove('is-zoomed');
+                                                    document.removeEventListener('click', closeZoom);
+                                                    document.removeEventListener('keydown', handleEscape);
+                                                }
+                                            };
+
+                                            // Delay adding listeners to avoid immediate trigger
+                                            setTimeout(() => {
+                                                document.addEventListener('click', closeZoom);
+                                                document.addEventListener('keydown', handleEscape);
+                                            }, 0);
+                                        }
+                                    }
+                                }
+                            }}
+                        >
+                            <img
+                                src={imageArray[0] || ''}
+                                alt=""
+                                onLoad={(e: Event) => {
+                                    const imgEl = e.currentTarget as HTMLImageElement;
+                                    const imageEmbedEl = imgEl.parentElement;
+                                    if (imageEmbedEl) {
+                                        const imageEl = imageEmbedEl.parentElement;
+                                        if (imageEl) {
+                                            const cardEl = imageEl.closest('.card') as HTMLElement;
+                                            if (cardEl) {
+                                                handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
+                                            }
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="card-thumbnail-placeholder"></div>
+                )
+            )}
+
+            {/* Content: Text Preview and Thumbnail left/right or Cover left/right */}
+            {((settings.showTextPreview && card.snippet) || (format !== 'none' && (position === 'left' || position === 'right') && (imageArray.length > 0 || card.hasImageAvailable))) && (
                 <div className="card-content">
                     {settings.showTextPreview && card.snippet && (
                         <div className="card-text-preview">{card.snippet}</div>
                     )}
-                    {settings.imageFormat !== 'none' && (
+                    {format !== 'none' && (position === 'left' || position === 'right') && (
                         imageArray.length > 0 ? (
                             <div
-                                className={`${settings.imageFormat === 'cover' ? 'card-cover' : 'card-thumbnail'} ${isArray && imageArray.length > 1 && settings.imageFormat === 'thumbnail' ? 'multi-image' : ''}`}
-                                onMouseMove={!app.isMobile && isArray && imageArray.length > 1 && settings.imageFormat === 'thumbnail' ? ((e: MouseEvent) => {
+                                className={`${format === 'cover' ? 'card-cover' : 'card-thumbnail'} ${isArray && imageArray.length > 1 && format === 'thumbnail' ? 'multi-image' : ''}`}
+                                onMouseMove={!app.isMobile && isArray && imageArray.length > 1 && format === 'thumbnail' ? ((e: MouseEvent) => {
                                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                     const x = e.clientX - rect.left;
                                     const section = Math.floor((x / rect.width) * imageArray.length);
@@ -465,7 +712,7 @@ function Card({
                                         }
                                     }
                                 }) : undefined}
-                                onMouseLeave={!app.isMobile && isArray && imageArray.length > 1 && settings.imageFormat === 'thumbnail' ? ((e: MouseEvent) => {
+                                onMouseLeave={!app.isMobile && isArray && imageArray.length > 1 && format === 'thumbnail' ? ((e: MouseEvent) => {
                                     const imgEl = (e.currentTarget as HTMLElement).querySelector('img');
                                     const firstSrc = imageArray[0];
                                     if (imgEl && firstSrc) {
@@ -476,6 +723,56 @@ function Card({
                                 <div
                                     className="image-embed"
                                     style={{ '--cover-image-url': `url("${imageArray[0] || ''}")` }}
+                                    onClick={(e: MouseEvent) => {
+                                        const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
+                                        const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
+
+                                        if (isToggleMode || isHoldMode) {
+                                            e.stopPropagation();
+
+                                            if (isToggleMode) {
+                                                const embedEl = e.currentTarget as HTMLElement;
+                                                const isZoomed = embedEl.classList.contains('is-zoomed');
+
+                                                if (isZoomed) {
+                                                    // Close zoom
+                                                    embedEl.classList.remove('is-zoomed');
+                                                } else {
+                                                    // Close all other zoomed images first
+                                                    document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
+                                                        el.classList.remove('is-zoomed');
+                                                    });
+                                                    // Open this one
+                                                    embedEl.classList.add('is-zoomed');
+
+                                                    // Add listeners for closing
+                                                    const closeZoom = (evt: Event) => {
+                                                        const target = evt.target as HTMLElement;
+                                                        // Don't close if clicking on the zoomed image itself
+                                                        if (!embedEl.contains(target)) {
+                                                            embedEl.classList.remove('is-zoomed');
+                                                            document.removeEventListener('click', closeZoom);
+                                                            document.removeEventListener('keydown', handleEscape);
+                                                        }
+                                                    };
+
+                                                    const handleEscape = (evt: KeyboardEvent) => {
+                                                        if (evt.key === 'Escape') {
+                                                            embedEl.classList.remove('is-zoomed');
+                                                            document.removeEventListener('click', closeZoom);
+                                                            document.removeEventListener('keydown', handleEscape);
+                                                        }
+                                                    };
+
+                                                    // Delay adding listeners to avoid immediate trigger
+                                                    setTimeout(() => {
+                                                        document.addEventListener('click', closeZoom);
+                                                        document.addEventListener('keydown', handleEscape);
+                                                    }, 0);
+                                                }
+                                            }
+                                        }
+                                    }}
                                 >
                                     <img
                                         src={imageArray[0] || ''}
@@ -498,10 +795,191 @@ function Card({
                             </div>
                         ) : (
                             // Always render placeholder when no image - CSS controls visibility
-                            <div className={settings.imageFormat === 'cover' ? 'card-cover-placeholder' : 'card-thumbnail-placeholder'}></div>
+                            <div className={format === 'cover' ? 'card-cover-placeholder' : 'card-thumbnail-placeholder'}></div>
                         )
                     )}
                 </div>
+            )}
+
+            {/* Thumbnail-bottom: after text preview */}
+            {format === 'thumbnail' && position === 'bottom' && (imageArray.length > 0 || card.hasImageAvailable) && (
+                imageArray.length > 0 ? (
+                    <div
+                        className={`card-thumbnail ${isArray && imageArray.length > 1 ? 'multi-image' : ''}`}
+                        onMouseMove={!app.isMobile && isArray && imageArray.length > 1 ? ((e: MouseEvent) => {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const x = e.clientX - rect.left;
+                            const section = Math.floor((x / rect.width) * imageArray.length);
+                            const newIndex = Math.min(section, imageArray.length - 1);
+                            const imgEl = (e.currentTarget as HTMLElement).querySelector('img');
+                            const newSrc = imageArray[newIndex];
+                            if (imgEl && newSrc) {
+                                const currentSrc = imgEl.src;
+                                if (currentSrc !== newSrc) {
+                                    imgEl.src = newSrc;
+                                }
+                            }
+                        }) : undefined}
+                        onMouseLeave={!app.isMobile && isArray && imageArray.length > 1 ? ((e: MouseEvent) => {
+                            const imgEl = (e.currentTarget as HTMLElement).querySelector('img');
+                            const firstSrc = imageArray[0];
+                            if (imgEl && firstSrc) {
+                                imgEl.src = firstSrc;
+                            }
+                        }) : undefined}
+                    >
+                        <div
+                            className="image-embed"
+                            style={{ '--cover-image-url': `url("${imageArray[0] || ''}")` }}
+                            onClick={(e: MouseEvent) => {
+                                const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
+                                const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
+
+                                if (isToggleMode || isHoldMode) {
+                                    e.stopPropagation();
+
+                                    if (isToggleMode) {
+                                        const embedEl = e.currentTarget as HTMLElement;
+                                        const isZoomed = embedEl.classList.contains('is-zoomed');
+
+                                        if (isZoomed) {
+                                            // Close zoom
+                                            embedEl.classList.remove('is-zoomed');
+                                        } else {
+                                            // Close all other zoomed images first
+                                            document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
+                                                el.classList.remove('is-zoomed');
+                                            });
+                                            // Open this one
+                                            embedEl.classList.add('is-zoomed');
+
+                                            // Add listeners for closing
+                                            const closeZoom = (evt: Event) => {
+                                                const target = evt.target as HTMLElement;
+                                                // Don't close if clicking on the zoomed image itself
+                                                if (!embedEl.contains(target)) {
+                                                    embedEl.classList.remove('is-zoomed');
+                                                    document.removeEventListener('click', closeZoom);
+                                                    document.removeEventListener('keydown', handleEscape);
+                                                }
+                                            };
+
+                                            const handleEscape = (evt: KeyboardEvent) => {
+                                                if (evt.key === 'Escape') {
+                                                    embedEl.classList.remove('is-zoomed');
+                                                    document.removeEventListener('click', closeZoom);
+                                                    document.removeEventListener('keydown', handleEscape);
+                                                }
+                                            };
+
+                                            // Delay adding listeners to avoid immediate trigger
+                                            setTimeout(() => {
+                                                document.addEventListener('click', closeZoom);
+                                                document.addEventListener('keydown', handleEscape);
+                                            }, 0);
+                                        }
+                                    }
+                                }
+                            }}
+                        >
+                            <img
+                                src={imageArray[0] || ''}
+                                alt=""
+                                onLoad={(e: Event) => {
+                                    const imgEl = e.currentTarget as HTMLImageElement;
+                                    const imageEmbedEl = imgEl.parentElement;
+                                    if (imageEmbedEl) {
+                                        const imageEl = imageEmbedEl.parentElement;
+                                        if (imageEl) {
+                                            const cardEl = imageEl.closest('.card') as HTMLElement;
+                                            if (cardEl) {
+                                                handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
+                                            }
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="card-thumbnail-placeholder"></div>
+                )
+            )}
+
+            {/* Cover-bottom: after text preview */}
+            {format === 'cover' && position === 'bottom' && (imageArray.length > 0 || card.hasImageAvailable) && (
+                imageArray.length > 0 ? (
+                    <div className="card-cover">
+                        <div
+                            className="image-embed"
+                            style={{ '--cover-image-url': `url("${imageArray[0] || ''}")` }}
+                            onClick={(e: MouseEvent) => {
+                                const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
+                                const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
+
+                                if (isToggleMode || isHoldMode) {
+                                    e.stopPropagation();
+
+                                    if (isToggleMode) {
+                                        const embedEl = e.currentTarget as HTMLElement;
+                                        const isZoomed = embedEl.classList.contains('is-zoomed');
+
+                                        if (isZoomed) {
+                                            embedEl.classList.remove('is-zoomed');
+                                        } else {
+                                            document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
+                                                el.classList.remove('is-zoomed');
+                                            });
+                                            embedEl.classList.add('is-zoomed');
+
+                                            const closeZoom = (evt: Event) => {
+                                                const target = evt.target as HTMLElement;
+                                                if (!embedEl.contains(target)) {
+                                                    embedEl.classList.remove('is-zoomed');
+                                                    document.removeEventListener('click', closeZoom);
+                                                    document.removeEventListener('keydown', handleEscape);
+                                                }
+                                            };
+
+                                            const handleEscape = (evt: KeyboardEvent) => {
+                                                if (evt.key === 'Escape') {
+                                                    embedEl.classList.remove('is-zoomed');
+                                                    document.removeEventListener('click', closeZoom);
+                                                    document.removeEventListener('keydown', handleEscape);
+                                                }
+                                            };
+
+                                            setTimeout(() => {
+                                                document.addEventListener('click', closeZoom);
+                                                document.addEventListener('keydown', handleEscape);
+                                            }, 0);
+                                        }
+                                    }
+                                }
+                            }}
+                        >
+                            <img
+                                src={imageArray[0] || ''}
+                                alt=""
+                                onLoad={(e: Event) => {
+                                    const imgEl = e.currentTarget as HTMLImageElement;
+                                    const imageEmbedEl = imgEl.parentElement;
+                                    if (imageEmbedEl) {
+                                        const imageEl = imageEmbedEl.parentElement;
+                                        if (imageEl) {
+                                            const cardEl = imageEl.closest('.card') as HTMLElement;
+                                            if (cardEl) {
+                                                handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
+                                            }
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="card-cover-placeholder"></div>
+                )
             )}
 
             {/* Properties - 4-field rendering with 2-row layout */}

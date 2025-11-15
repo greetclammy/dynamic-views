@@ -19,7 +19,7 @@ export async function loadImageForEntry(
     file: TFile,
     app: App,
     imagePropertyValues: unknown[],
-    fallbackToEmbeds: boolean,
+    fallbackToEmbeds: 'always' | 'if-empty' | 'never',
     imageCache: Record<string, string | string[]>,
     hasImageCache: Record<string, boolean>
 ): Promise<void> {
@@ -38,9 +38,19 @@ export async function loadImageForEntry(
             ...externalUrls  // External URLs already validated by processImagePaths
         ];
 
-        // If no property images and fallback enabled, extract embed images
-        if (validImages.length === 0 && fallbackToEmbeds) {
-            validImages = await extractEmbedImages(file, app);
+        // Handle embed images based on fallbackToEmbeds mode
+        if (fallbackToEmbeds === 'always') {
+            // Pull from properties first, then append in-note embeds
+            const embedImages = await extractEmbedImages(file, app);
+            validImages = [...validImages, ...embedImages];
+        } else if (fallbackToEmbeds === 'if-empty') {
+            // Only use embeds if property missing/empty
+            if (validImages.length === 0) {
+                validImages = await extractEmbedImages(file, app);
+            }
+        } else if (fallbackToEmbeds === 'never') {
+            // Only use property images, never use embeds
+            // No action needed - validImages already contains only property images
         }
 
         if (validImages.length > 0) {
@@ -68,7 +78,7 @@ export async function loadImagesForEntries(
         file: TFile;
         imagePropertyValues: unknown[];
     }>,
-    fallbackToEmbeds: boolean,
+    fallbackToEmbeds: 'always' | 'if-empty' | 'never',
     app: App,
     imageCache: Record<string, string | string[]>,
     hasImageCache: Record<string, boolean>
