@@ -9,7 +9,7 @@ import { resolveBasesProperty } from '../shared/data-transform';
 import { setupImageLoadHandler } from '../shared/image-loader';
 import { updateScrollGradient, setupScrollGradients } from '../shared/scroll-gradient-manager';
 import { getTimestampIcon } from '../shared/render-utils';
-import { getTagStyle, showTimestampIcon, getEmptyValueMarker, shouldHideMissingProperties, shouldHideEmptyProperties, getCardSpacing } from '../utils/style-settings';
+import { getTagStyle, showTimestampIcon, getEmptyValueMarker, shouldHideMissingProperties, shouldHideEmptyProperties, getCardSpacing, getListSeparator } from '../utils/style-settings';
 import { getPropertyLabel } from '../utils/property';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
@@ -89,7 +89,7 @@ export class SharedCardRenderer {
             cardEl.setAttribute('draggable', 'true');
         }
         // Only show pointer cursor when entire card is clickable
-        cardEl.style.cursor = settings.openFileAction === 'card' ? 'pointer' : 'default';
+        cardEl.classList.toggle('clickable-card', settings.openFileAction === 'card');
 
         // Handle card click to open file
         cardEl.addEventListener('click', (e) => {
@@ -179,39 +179,103 @@ export class SharedCardRenderer {
             cardEl.addEventListener('dragstart', handleDrag);
         }
 
-        // Content container (for text preview and thumbnail/cover)
-        // Create container if: text preview exists, OR thumbnails enabled with image, OR cover format (for placeholders)
-        if ((settings.showTextPreview && card.snippet) ||
-            (format !== 'none' && (card.imageUrl || card.hasImageAvailable)) ||
-            (format === 'cover')) {
-            const contentContainer = cardEl.createDiv('card-content');
+        // Prepare image URLs if applicable
+        const rawUrls = card.imageUrl ? (Array.isArray(card.imageUrl) ? card.imageUrl : [card.imageUrl]) : [];
 
-            // Text preview
-            if (settings.showTextPreview && card.snippet) {
-                contentContainer.createDiv({ cls: 'card-text-preview', text: card.snippet });
+        // Debug: Check for duplicates in raw URLs
+        if (rawUrls.length > 1) {
+            console.log('// [Debug] Raw URLs from card.imageUrl:', rawUrls.length, 'items');
+            rawUrls.forEach((url, i) => {
+                console.log(`//   [${i}]:`, url);
+            });
+        }
+
+        // Filter and deduplicate URLs
+        const imageUrls = Array.from(new Set(
+            rawUrls.filter(url => url && typeof url === 'string' && url.trim().length > 0)
+        ));
+        const hasImage = format !== 'none' && imageUrls.length > 0;
+        const hasImageAvailable = format !== 'none' && card.hasImageAvailable;
+
+        // ALL COVERS: direct children of card (regardless of position)
+        if (format === 'cover' && (hasImage || hasImageAvailable)) {
+            if (hasImage) {
+                const imageEl = cardEl.createDiv('card-cover');
+                this.renderImage(imageEl, imageUrls, format, position, settings);
+            } else {
+                cardEl.createDiv('card-cover-placeholder');
             }
+        }
 
-            // Thumbnail or cover
-            if (format !== 'none' && card.imageUrl) {
-                const rawUrls = Array.isArray(card.imageUrl) ? card.imageUrl : [card.imageUrl];
-                // Filter out empty/invalid URLs
-                const imageUrls = rawUrls.filter(url => url && typeof url === 'string' && url.trim().length > 0);
+        // Thumbnail-top: direct child of card
+        if (format === 'thumbnail' && position === 'top' && (hasImage || hasImageAvailable)) {
+            if (hasImage) {
+                const imageEl = cardEl.createDiv('card-thumbnail');
+                this.renderImage(imageEl, imageUrls, format, position, settings);
+            } else {
+                cardEl.createDiv('card-thumbnail-placeholder');
+            }
+        }
 
-                const imageClassName = format === 'cover' ? 'card-cover' : 'card-thumbnail';
-                const imageEl = contentContainer.createDiv(imageClassName);
+        // ALWAYS create content container for proper flex layout
+        // This ensures properties get pushed to bottom via margin-top: auto
+        const contentContainer = cardEl.createDiv('card-content');
 
-                if (imageUrls.length > 0) {
-                    // Multi-image carousel (covers only, not thumbnails)
-                    if (imageUrls.length > 1 && format === 'cover' && settings.enableCoverCarousel && (position === 'top' || position === 'bottom')) {
-                        const carouselContainer = imageEl.createDiv('image-carousel-container');
-                        carouselContainer.dataset.carouselIndex = '0';
-                        carouselContainer.dataset.carouselCount = String(imageUrls.length);
+        // Add text preview if enabled
+        if (settings.showTextPreview && card.snippet) {
+            contentContainer.createDiv({ cls: 'card-text-preview', text: card.snippet });
+        }
 
-                        // Image embed with dual images
-                        const imageEmbedContainer = carouselContainer.createDiv('image-embed');
+        // Add left/right thumbnails to content container
+        if (format === 'thumbnail' && (position === 'left' || position === 'right') && (hasImage || hasImageAvailable)) {
+            if (hasImage) {
+                const imageEl = contentContainer.createDiv('card-thumbnail');
+                this.renderImage(imageEl, imageUrls, format, position, settings);
+            } else {
+                contentContainer.createDiv('card-thumbnail-placeholder');
+            }
+        }
 
-                        // Add zoom handler
-                        imageEmbedContainer.addEventListener('click', (e) => {
+        // Thumbnail-bottom: direct child of card
+        if (format === 'thumbnail' && position === 'bottom' && (hasImage || hasImageAvailable)) {
+            if (hasImage) {
+                const imageEl = cardEl.createDiv('card-thumbnail');
+                this.renderImage(imageEl, imageUrls, format, position, settings);
+            } else {
+                cardEl.createDiv('card-thumbnail-placeholder');
+            }
+        }
+
+        // Properties - 4-field rendering with 2-row layout
+        this.renderProperties(cardEl, card, entry, settings);
+    }
+
+    /**
+     * Renders image (cover or thumbnail) with all necessary handlers
+     */
+    private renderImage(
+        imageEl: HTMLElement,
+        imageUrls: string[],
+        format: 'thumbnail' | 'cover',
+        position: 'left' | 'right' | 'top' | 'bottom',
+        settings: Settings
+    ): void {
+        // Multi-image carousel (covers only, not thumbnails)
+        if (imageUrls.length > 1 && format === 'cover' && settings.enableCoverCarousel && (position === 'top' || position === 'bottom')) {
+            console.log('// [Carousel] Creating carousel with', imageUrls.length, 'images:');
+            imageUrls.forEach((url, i) => {
+                console.log(`//   [${i}]:`, url);
+            });
+
+            const carouselContainer = imageEl.createDiv('image-carousel-container');
+            carouselContainer.dataset.carouselIndex = '0';
+            carouselContainer.dataset.carouselCount = String(imageUrls.length);
+
+            // Image embed with dual images
+            const imageEmbedContainer = carouselContainer.createDiv('image-embed');
+
+            // Add zoom handler
+            imageEmbedContainer.addEventListener('click', (e) => {
                             const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
                             const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
 
@@ -268,11 +332,17 @@ export class SharedCardRenderer {
                             attr: { src: imageUrls[0], alt: '', 'data-img-slot': '0' }
                         });
 
-                        // Next image (initially hidden, empty)
+                        // Next image (initially hidden, preload second image if available)
                         const nextImg = imageEmbedContainer.createEl('img', {
                             cls: 'carousel-img carousel-img-next',
                             attr: { alt: '', 'data-img-slot': '1' }
                         });
+
+                        // Preload the second image to ensure smooth first transition
+                        if (imageUrls.length > 1) {
+                            const preloadImg = new Image();
+                            preloadImg.src = imageUrls[1];
+                        }
 
                         imageEmbedContainer.style.setProperty('--cover-image-url', `url("${imageUrls[0]}")`);
 
@@ -344,90 +414,80 @@ export class SharedCardRenderer {
                                 this.updateLayoutRef.current || undefined
                             );
                         }
-                    }
-                    // Single image (existing code path)
-                    else {
-                        const imageEmbedContainer = imageEl.createDiv('image-embed');
+        }
+        // Single image (existing code path)
+        else {
+            const imageEmbedContainer = imageEl.createDiv('image-embed');
 
-                        // Add zoom handler
-                        imageEmbedContainer.addEventListener('click', (e) => {
-                            const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
-                            const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
+            // Add zoom handler
+            imageEmbedContainer.addEventListener('click', (e) => {
+                const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
+                const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
 
-                            if (isToggleMode || isHoldMode) {
-                                e.stopPropagation();
+                if (isToggleMode || isHoldMode) {
+                    e.stopPropagation();
 
-                                if (isToggleMode) {
-                                    const embedEl = e.currentTarget as HTMLElement;
-                                    const isZoomed = embedEl.classList.contains('is-zoomed');
+                    if (isToggleMode) {
+                        const embedEl = e.currentTarget as HTMLElement;
+                        const isZoomed = embedEl.classList.contains('is-zoomed');
 
-                                    if (isZoomed) {
-                                        // Close zoom
-                                        embedEl.classList.remove('is-zoomed');
-                                    } else {
-                                        // Close all other zoomed images first
-                                        document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
-                                            el.classList.remove('is-zoomed');
-                                        });
-                                        // Open this one
-                                        embedEl.classList.add('is-zoomed');
+                        if (isZoomed) {
+                            // Close zoom
+                            embedEl.classList.remove('is-zoomed');
+                        } else {
+                            // Close all other zoomed images first
+                            document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
+                                el.classList.remove('is-zoomed');
+                            });
+                            // Open this one
+                            embedEl.classList.add('is-zoomed');
 
-                                        // Add listeners for closing
-                                        const closeZoom = (evt: Event) => {
-                                            const target = evt.target as HTMLElement;
-                                            // Don't close if clicking on the zoomed image itself
-                                            if (!embedEl.contains(target)) {
-                                                embedEl.classList.remove('is-zoomed');
-                                                document.removeEventListener('click', closeZoom);
-                                                document.removeEventListener('keydown', handleEscape);
-                                            }
-                                        };
-
-                                        const handleEscape = (evt: KeyboardEvent) => {
-                                            if (evt.key === 'Escape') {
-                                                embedEl.classList.remove('is-zoomed');
-                                                document.removeEventListener('click', closeZoom);
-                                                document.removeEventListener('keydown', handleEscape);
-                                            }
-                                        };
-
-                                        // Delay adding listeners to avoid immediate trigger
-                                        setTimeout(() => {
-                                            document.addEventListener('click', closeZoom);
-                                            document.addEventListener('keydown', handleEscape);
-                                        }, 0);
-                                    }
+                            // Add listeners for closing
+                            const closeZoom = (evt: Event) => {
+                                const target = evt.target as HTMLElement;
+                                // Don't close if clicking on the zoomed image itself
+                                if (!embedEl.contains(target)) {
+                                    embedEl.classList.remove('is-zoomed');
+                                    document.removeEventListener('click', closeZoom);
+                                    document.removeEventListener('keydown', handleEscape);
                                 }
-                            }
-                        });
+                            };
 
-                        const imgEl = imageEmbedContainer.createEl('img', {
-                            attr: { src: imageUrls[0], alt: '' }
-                        });
-                        // Set CSS variable for letterbox blur background
-                        imageEmbedContainer.style.setProperty('--cover-image-url', `url("${imageUrls[0]}")`);
+                            const handleEscape = (evt: KeyboardEvent) => {
+                                if (evt.key === 'Escape') {
+                                    embedEl.classList.remove('is-zoomed');
+                                    document.removeEventListener('click', closeZoom);
+                                    document.removeEventListener('keydown', handleEscape);
+                                }
+                            };
 
-                        // Handle image load for masonry layout and color extraction
-                        const cardEl = imageEl.closest('.card') as HTMLElement;
-                        if (cardEl) {
-                            setupImageLoadHandler(
-                                imgEl,
-                                imageEmbedContainer,
-                                cardEl,
-                                this.updateLayoutRef.current || undefined
-                            );
+                            // Delay adding listeners to avoid immediate trigger
+                            setTimeout(() => {
+                                document.addEventListener('click', closeZoom);
+                                document.addEventListener('keydown', handleEscape);
+                            }, 0);
                         }
                     }
                 }
-            } else if (format !== 'none') {
-                // Always render placeholder when no image - CSS controls visibility
-                const placeholderClassName = format === 'cover' ? 'card-cover-placeholder' : 'card-thumbnail-placeholder';
-                contentContainer.createDiv(placeholderClassName);
+            });
+
+            const imgEl = imageEmbedContainer.createEl('img', {
+                attr: { src: imageUrls[0], alt: '' }
+            });
+            // Set CSS variable for letterbox blur background
+            imageEmbedContainer.style.setProperty('--cover-image-url', `url("${imageUrls[0]}")`);
+
+            // Handle image load for masonry layout and color extraction
+            const cardEl = imageEl.closest('.card') as HTMLElement;
+            if (cardEl) {
+                setupImageLoadHandler(
+                    imgEl,
+                    imageEmbedContainer,
+                    cardEl,
+                    this.updateLayoutRef.current || undefined
+                );
             }
         }
-
-        // Properties - 4-field rendering with 2-row layout
-        this.renderProperties(cardEl, card, entry, settings);
     }
 
     /**
@@ -654,6 +714,27 @@ export class SharedCardRenderer {
             const markerSpan = metaContent.createSpan('empty-value-marker');
             markerSpan.textContent = getEmptyValueMarker();
             return;
+        }
+
+        // Handle array properties - render as individual spans with separators
+        if (resolvedValue.startsWith('{"type":"array","items":[')) {
+            try {
+                const arrayData = JSON.parse(resolvedValue) as { type: string; items: string[] };
+                if (arrayData.type === 'array' && Array.isArray(arrayData.items)) {
+                    const listWrapper = metaContent.createSpan('list-wrapper');
+                    const separator = getListSeparator();
+                    arrayData.items.forEach((item, idx) => {
+                        const span = listWrapper.createSpan();
+                        span.createSpan({ cls: 'list-item', text: item });
+                        if (idx < arrayData.items.length - 1) {
+                            span.createSpan({ cls: 'list-separator', text: separator });
+                        }
+                    });
+                    return;
+                }
+            } catch {
+                // Fall through to regular text rendering if JSON parse fails
+            }
         }
 
         // Handle timestamp properties - only show icons for known timestamp properties
@@ -950,16 +1031,26 @@ export class SharedCardRenderer {
             if (newIndex >= count) newIndex = 0;
 
             const newUrl = imageUrls[newIndex];
+            console.log('// [Carousel] Navigate to index', newIndex, 'URL:', newUrl);
 
             // Query DOM for current images (handles swapping correctly)
             const currentImgEl = imageEmbedContainer.querySelector('.carousel-img-current') as HTMLImageElement;
             const nextImgEl = imageEmbedContainer.querySelector('.carousel-img-next') as HTMLImageElement;
 
-            if (!currentImgEl || !nextImgEl) return;
+            if (!currentImgEl || !nextImgEl) {
+                console.log('// [Carousel] ERROR: Missing carousel images');
+                return;
+            }
+
+            console.log('// [Carousel] Before navigation:');
+            console.log('//   Current img src:', currentImgEl.src);
+            console.log('//   Next img src:', nextImgEl.src);
 
             // Set next image src (loads instantly from cache)
             nextImgEl.src = newUrl;
             imageEmbedContainer.style.setProperty('--cover-image-url', `url("${newUrl}")`);
+
+            console.log('// [Carousel] After setting next img src:', nextImgEl.src);
 
             // Determine animation classes based on direction
             const exitClass = direction === 1 ? 'carousel-exit-left' : 'carousel-exit-right';
@@ -971,6 +1062,9 @@ export class SharedCardRenderer {
 
             // After animation completes, clean up and swap roles
             setTimeout(() => {
+                console.log('// [Carousel] Animation complete, swapping roles');
+                console.log('//   Current img (becoming next) src before clear:', currentImgEl.src);
+
                 // Remove animation classes
                 currentImgEl.classList.remove(exitClass);
                 nextImgEl.classList.remove(enterClass);
@@ -983,6 +1077,10 @@ export class SharedCardRenderer {
 
                 // Update index
                 carouselContainer.dataset.carouselIndex = String(newIndex);
+
+                console.log('// [Carousel] After role swap:');
+                console.log('//   New current (was next):', nextImgEl.src);
+                console.log('//   New next (was current):', currentImgEl.src);
 
                 // Trigger layout update for masonry (new image may have different dimensions)
                 if (this.updateLayoutRef.current) {

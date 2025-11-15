@@ -257,11 +257,17 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
                     propertyDisplay4: settings.propertyDisplay4,
                     propertyLayout12SideBySide: settings.propertyLayout12SideBySide,
                     propertyLayout34SideBySide: settings.propertyLayout34SideBySide,
+                    propertyLabels: settings.propertyLabels,
+                    showTitle: settings.showTitle,
                     showTextPreview: settings.showTextPreview,
                     fallbackToContent: settings.fallbackToContent,
                     fallbackToEmbeds: settings.fallbackToEmbeds,
+                    imageFormat: settings.imageFormat,
+                    coverFitMode: settings.coverFitMode,
+                    imageAspectRatio: settings.imageAspectRatio,
                     queryHeight: settings.queryHeight,
-                    listMarker: settings.listMarker
+                    listMarker: settings.listMarker,
+                    cardSize: settings.cardSize
                 };
                 void persistenceManager.setViewSettings(ctime, viewSettings);
             }
@@ -557,13 +563,13 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
             if (container) {
                 const cards = container.querySelectorAll<HTMLElement>('.card');
                 cards.forEach((card) => {
-                    card.style.position = '';
-                    card.style.left = '';
-                    card.style.top = '';
-                    card.style.width = '';
-                    card.style.transition = '';
+                    card.classList.remove('masonry-positioned');
+                    card.style.removeProperty('--masonry-width');
+                    card.style.removeProperty('--masonry-left');
+                    card.style.removeProperty('--masonry-top');
                 });
-                container.style.height = '';
+                container.classList.remove('masonry-container');
+                container.style.removeProperty('--masonry-height');
             }
             updateLayoutRef.current = null;
             return;
@@ -580,13 +586,17 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
             const containerWidth = container.clientWidth;
             if (containerWidth < 100) return;
 
+            const cardSize = settings.cardSize;
+            const minColumns = getMinMasonryColumns();
+            const gap = getCardSpacing();
+
             // Calculate and apply layout using shared masonry logic
             const result = calculateMasonryLayout({
                 cards,
                 containerWidth,
-                cardSize: plugin.persistenceManager.getGlobalSettings().cardSize,
-                minColumns: getMinMasonryColumns(),
-                gap: getCardSpacing()
+                cardSize,
+                minColumns,
+                gap
             });
 
             applyMasonryLayout(container, cards, result);
@@ -625,7 +635,7 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
             mutationObserver.disconnect();
             window.removeEventListener('resize', handleResize);
         };
-    }, [viewMode, dc]);
+    }, [viewMode, settings.cardSize, dc]);
 
     // Apply dynamic grid layout (all width modes)
     dc.useEffect(() => {
@@ -637,9 +647,9 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
         const updateGrid = () => {
             const containerWidth = container.clientWidth;
             // Card size represents minimum width; actual width may be larger to fill space
-            const cardSize = plugin.persistenceManager.getGlobalSettings().cardSize;
+            const cardSize = settings.cardSize;
             const minColumns = getMinGridColumns();
-            const gap = 8;
+            const gap = getCardSpacing();
             const cols = Math.max(minColumns, Math.floor((containerWidth + gap) / (cardSize + gap)));
 
             container.style.setProperty('--grid-columns', String(cols));
@@ -656,7 +666,7 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
         return () => {
             resizeObserver.disconnect();
         };
-    }, [viewMode, dc]);
+    }, [viewMode, settings.cardSize, dc]);
 
     // Sync refs for callback access in infinite scroll
     dc.useEffect(() => {
@@ -898,29 +908,45 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
 
     const handleToggleSettings = dc.useCallback(() => {
         setShowSettings(prev => !prev);
-    }, []);
+        // Close all other dropdowns
+        if (!showSettings) {
+            setShowViewDropdown(false);
+            setShowSortDropdown(false);
+            setShowLimitDropdown(false);
+            setShowQueryEditor(false);
+        }
+    }, [showSettings]);
 
     const handleToggleViewDropdown = dc.useCallback(() => {
         setShowViewDropdown(!showViewDropdown);
+        // Close all other dropdowns
         if (!showViewDropdown) {
             setShowSortDropdown(false);
             setShowLimitDropdown(false);
+            setShowQueryEditor(false);
+            setShowSettings(false);
         }
     }, [showViewDropdown]);
 
     const handleToggleSortDropdown = dc.useCallback(() => {
         setShowSortDropdown(!showSortDropdown);
+        // Close all other dropdowns
         if (!showSortDropdown) {
             setShowViewDropdown(false);
             setShowLimitDropdown(false);
+            setShowQueryEditor(false);
+            setShowSettings(false);
         }
     }, [showSortDropdown]);
 
     const handleToggleLimitDropdown = dc.useCallback(() => {
         setShowLimitDropdown(!showLimitDropdown);
+        // Close all other dropdowns
         if (!showLimitDropdown) {
             setShowViewDropdown(false);
             setShowSortDropdown(false);
+            setShowQueryEditor(false);
+            setShowSettings(false);
         }
     }, [showLimitDropdown]);
 
@@ -1003,6 +1029,13 @@ export function View({ plugin, app, dc, USER_QUERY = '' }: ViewProps): JSX.Eleme
 
     const handleToggleCode = dc.useCallback(() => {
         setShowQueryEditor(!showQueryEditor);
+        // Close all other dropdowns
+        if (!showQueryEditor) {
+            setShowViewDropdown(false);
+            setShowSortDropdown(false);
+            setShowLimitDropdown(false);
+            setShowSettings(false);
+        }
     }, [showQueryEditor]);
 
     const handleDraftQueryChange = dc.useCallback((query: string) => {

@@ -462,6 +462,34 @@ export function resolveBasesProperty(
         return result;
     }
 
+    // Handle arrays - join elements
+    if (Array.isArray(data)) {
+        const stringElements = data
+            .map((item: unknown) => {
+                // Handle nested Bases objects with .data
+                if (item && typeof item === 'object' && 'data' in item) {
+                    const nestedData = (item as { data: unknown }).data;
+                    if (nestedData == null || nestedData === '') return null;
+                    if (typeof nestedData === 'string' || typeof nestedData === 'number' || typeof nestedData === 'boolean') {
+                        return String(nestedData);
+                    }
+                    return null; // Can't stringify complex nested objects
+                }
+                if (item == null || item === '') return null;
+                if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                    return String(item);
+                }
+                return null; // Can't stringify complex objects
+            })
+            .filter((s): s is string => s !== null);
+
+        if (stringElements.length === 0) {
+            return ''; // All elements were empty
+        }
+        // Return array marker for special rendering
+        return JSON.stringify({ type: 'array', items: stringElements });
+    }
+
     // For complex types, return null (can't display)
     return null;
 }
@@ -509,7 +537,32 @@ export function resolveDatacoreProperty(
 
     // Generic property: read from frontmatter
     let rawValue = getFirstDatacorePropertyValue(result, propertyName);
-    if (Array.isArray(rawValue)) rawValue = rawValue[0];
+
+    // Handle arrays - join elements
+    if (Array.isArray(rawValue)) {
+        // Check if all elements are dates - if so, format first one
+        const firstElement = rawValue[0] as unknown;
+        const timestampData = extractDatacoreTimestamp(firstElement);
+        if (timestampData) {
+            return formatTimestamp(timestampData.timestamp, settings, timestampData.isDateOnly);
+        }
+
+        // Otherwise join all elements as strings
+        const stringElements = rawValue
+            .map((item: unknown) => {
+                const str = dc.coerce.string(item);
+                return str && str.trim() !== '' ? str : null;
+            })
+            .filter((s): s is string => s !== null);
+
+        if (stringElements.length === 0) {
+            // Treat as missing property
+            rawValue = null;
+        } else {
+            // Return array marker for special rendering
+            return JSON.stringify({ type: 'array', items: stringElements });
+        }
+    }
 
     // Check if it's a date/datetime value - format with custom format
     const timestampData = extractDatacoreTimestamp(rawValue);

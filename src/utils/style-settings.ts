@@ -88,15 +88,37 @@ export function shouldShowOlderDateOnly(): boolean {
 }
 
 /**
- * Get empty value marker from body class
- * Returns the appropriate symbol for empty property values
- * Note: Dash option returns empty string - CSS handles the em dash via ::before
+ * Get list separator from CSS variable
+ * Returns the separator for list-type properties
+ */
+export function getListSeparator(): string {
+	// Read without trim to preserve whitespace
+	let value = getComputedStyle(document.body).getPropertyValue('--dynamic-views-list-separator');
+
+	// Strip surrounding quotes if present (Style Settings or CSS default adds them)
+	if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+		value = value.slice(1, -1);
+	}
+
+	// Fallback to default if empty (Style Settings shows placeholder but doesn't set variable)
+	return value || ', ';
+}
+
+/**
+ * Get empty value marker from CSS variable
+ * Returns the symbol for empty property values
  */
 export function getEmptyValueMarker(): string {
-	if (hasBodyClass('dynamic-views-empty-ellipsis')) return '…';
-	if (hasBodyClass('dynamic-views-empty-word')) return 'Empty';
-	if (hasBodyClass('dynamic-views-empty-blank')) return '';
-	return ''; // Default: dash - CSS adds em dash via ::before on empty span
+	// Read without trim to preserve whitespace
+	let value = getComputedStyle(document.body).getPropertyValue('--dynamic-views-empty-value-marker');
+
+	// Strip surrounding quotes if present (Style Settings or CSS default adds them)
+	if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+		value = value.slice(1, -1);
+	}
+
+	// Fallback to default if empty (Style Settings shows placeholder but doesn't set variable)
+	return value || '—';
 }
 
 /**

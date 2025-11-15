@@ -2,6 +2,7 @@ import { ViewMode, Settings, WidthMode } from '../types';
 import { Settings as SettingsPanel } from './settings';
 import type { DatacoreAPI } from '../types/datacore';
 import type { App } from 'obsidian';
+import { positionDropdown, setupClickOutside } from '../utils/dropdown-position';
 
 interface ToolbarProps {
     dc: DatacoreAPI;
@@ -121,6 +122,83 @@ export function Toolbar({
     showSettings,
     onSettingsChange,
 }: ToolbarProps): unknown {
+    // Refs for positioning
+    const viewButtonRef = dc.useRef<HTMLButtonElement | null>(null);
+    const viewMenuRef = dc.useRef<HTMLDivElement | null>(null);
+    const sortButtonRef = dc.useRef<HTMLButtonElement | null>(null);
+    const sortMenuRef = dc.useRef<HTMLDivElement | null>(null);
+    const limitWrapperRef = dc.useRef<HTMLDivElement | null>(null);
+    const limitMenuRef = dc.useRef<HTMLDivElement | null>(null);
+    const queryButtonRef = dc.useRef<HTMLButtonElement | null>(null);
+    const queryMenuRef = dc.useRef<HTMLDivElement | null>(null);
+    const settingsButtonRef = dc.useRef<HTMLButtonElement | null>(null);
+    const settingsMenuRef = dc.useRef<HTMLDivElement | null>(null);
+    const settingsWrapperRef = dc.useRef<HTMLDivElement | null>(null);
+
+    // Position and setup click-outside for each dropdown
+    dc.useEffect(() => {
+        if (showViewDropdown && viewButtonRef.current && viewMenuRef.current) {
+            positionDropdown(viewButtonRef.current, viewMenuRef.current);
+            return setupClickOutside(viewMenuRef.current, onToggleViewDropdown);
+        }
+    }, [showViewDropdown, onToggleViewDropdown]);
+
+    dc.useEffect(() => {
+        if (showSortDropdown && sortButtonRef.current && sortMenuRef.current) {
+            positionDropdown(sortButtonRef.current, sortMenuRef.current);
+            return setupClickOutside(sortMenuRef.current, onToggleSortDropdown);
+        }
+    }, [showSortDropdown, onToggleSortDropdown]);
+
+    dc.useEffect(() => {
+        if (showLimitDropdown && limitWrapperRef.current && limitMenuRef.current) {
+            positionDropdown(limitWrapperRef.current, limitMenuRef.current);
+            return setupClickOutside(limitMenuRef.current, onToggleLimitDropdown);
+        }
+    }, [showLimitDropdown, onToggleLimitDropdown]);
+
+    dc.useEffect(() => {
+        if (showQueryEditor && queryButtonRef.current && queryMenuRef.current) {
+            positionDropdown(queryButtonRef.current, queryMenuRef.current);
+            return setupClickOutside(queryMenuRef.current, onToggleCode);
+        }
+    }, [showQueryEditor, onToggleCode]);
+
+    dc.useEffect(() => {
+        if (showSettings && settingsButtonRef.current && settingsMenuRef.current) {
+            positionDropdown(settingsButtonRef.current, settingsMenuRef.current);
+            // Settings click-outside needs special handling - check wrapper
+            const settingsWrapper = settingsButtonRef.current.closest('.settings-dropdown-wrapper');
+            if (settingsWrapper) {
+                return setupClickOutside(settingsWrapper as HTMLElement, onToggleSettings);
+            }
+        }
+    }, [showSettings, onToggleSettings]);
+
+    // Reposition dropdowns on window resize
+    dc.useEffect(() => {
+        const handleResize = () => {
+            if (showViewDropdown && viewButtonRef.current && viewMenuRef.current) {
+                positionDropdown(viewButtonRef.current, viewMenuRef.current);
+            }
+            if (showSortDropdown && sortButtonRef.current && sortMenuRef.current) {
+                positionDropdown(sortButtonRef.current, sortMenuRef.current);
+            }
+            if (showLimitDropdown && limitWrapperRef.current && limitMenuRef.current) {
+                positionDropdown(limitWrapperRef.current, limitMenuRef.current);
+            }
+            if (showQueryEditor && queryButtonRef.current && queryMenuRef.current) {
+                positionDropdown(queryButtonRef.current, queryMenuRef.current);
+            }
+            if (showSettings && settingsButtonRef.current && settingsMenuRef.current) {
+                positionDropdown(settingsButtonRef.current, settingsMenuRef.current);
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [showViewDropdown, showSortDropdown, showLimitDropdown, showQueryEditor, showSettings]);
+
     return (
         <>
         <div className="bottom-controls">
@@ -128,6 +206,7 @@ export function Toolbar({
             <div className="view-controls-wrapper">
                 <div className="view-dropdown-wrapper">
                     <button
+                        ref={viewButtonRef}
                         className="view-dropdown-btn"
                         onClick={onToggleViewDropdown}
                         aria-label="Switch view"
@@ -162,7 +241,7 @@ export function Toolbar({
                         </svg>
                     </button>
                     {showViewDropdown ? (
-                        <div className="view-dropdown-menu">
+                        <div ref={viewMenuRef} className="view-dropdown-menu">
                             <div className="view-option" onClick={onSetViewCard} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetViewCard(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12 3v18"/>
@@ -197,6 +276,7 @@ export function Toolbar({
                 {/* Sort Dropdown */}
                 <div className="sort-dropdown-wrapper">
                     <button
+                        ref={sortButtonRef}
                         className="sort-dropdown-btn"
                         onClick={onToggleSortDropdown}
                         aria-label="Change sort order"
@@ -244,7 +324,7 @@ export function Toolbar({
                         </svg>
                     </button>
                     {showSortDropdown ? (
-                        <div className="sort-dropdown-menu">
+                        <div ref={sortMenuRef} className="sort-dropdown-menu">
                             <div className="sort-option" onClick={onSetSortNameAsc} onKeyDown={(e: unknown) => { const evt = e as KeyboardEvent; if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); onSetSortNameAsc(); }}} tabIndex={0} role="menuitem">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/>
@@ -337,6 +417,7 @@ export function Toolbar({
 
             {/* Results Count Wrapper */}
             <div
+                ref={limitWrapperRef}
                 className={`results-count-wrapper${showLimitDropdown ? ' active' : ''}`}
                 onClick={onToggleLimitDropdown}
                 onKeyDown={(e: unknown) => {
@@ -377,7 +458,7 @@ export function Toolbar({
                     <polyline points="6 9 12 15 18 9"/>
                 </svg>
                 {showLimitDropdown ? (
-                    <div className="limit-dropdown-menu" onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}>
+                    <div ref={limitMenuRef} className="limit-dropdown-menu">
                         <div className="limit-dropdown-label" onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}>Limit number of results</div>
                         <input
                             type="text"
@@ -408,8 +489,7 @@ export function Toolbar({
                                     onResultLimitChange(val);
                                 }
                             }}
-                            onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}
-                        />
+                                                    />
                         <div
                             className={`limit-reset-button${!(resultLimit.trim() && parseInt(resultLimit) > 0) ? ' disabled' : ''}`}
                             onClick={(e: unknown) => {
@@ -497,6 +577,7 @@ export function Toolbar({
                 </button>
                 <div className="query-dropdown-wrapper">
                     <button
+                        ref={queryButtonRef}
                         className="query-toggle-btn"
                         onClick={onToggleCode}
                         aria-label={showQueryEditor ? "Hide query" : "Edit query"}
@@ -507,7 +588,7 @@ export function Toolbar({
                         </svg>
                     </button>
                     {showQueryEditor ? (
-                        <div className="query-dropdown-menu">
+                        <div ref={queryMenuRef} className="query-dropdown-menu">
                             <textarea
                                 value={draftQuery}
                                 onChange={(e: unknown) => {
@@ -575,8 +656,9 @@ export function Toolbar({
                 ) : null}
 
                 {/* Settings Button */}
-                <div className="settings-dropdown-wrapper">
+                <div ref={settingsWrapperRef} className="settings-dropdown-wrapper">
                     <button
+                        ref={settingsButtonRef}
                         className="settings-btn"
                         onClick={onToggleSettings}
                         aria-label="Settings"
@@ -603,6 +685,7 @@ export function Toolbar({
                             app={app}
                             settings={settings}
                             onSettingsChange={onSettingsChange}
+                            menuRef={settingsMenuRef}
                         />
                     ) : null}
                 </div>
@@ -723,7 +806,7 @@ export function Toolbar({
                         <polyline points="6 9 12 15 18 9"/>
                     </svg>
                     {showLimitDropdown ? (
-                        <div className="limit-dropdown-menu" onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}>
+                        <div className="limit-dropdown-menu">
                             <div className="limit-dropdown-label" onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}>Limit number of results</div>
                             <input
                                 type="text"
@@ -754,8 +837,7 @@ export function Toolbar({
                                         onResultLimitChange(val);
                                     }
                                 }}
-                                onClick={(e: unknown) => { const evt = e as MouseEvent; evt.stopPropagation(); }}
-                            />
+                                                            />
                             <div
                                 className={`limit-reset-button${!(resultLimit.trim() && parseInt(resultLimit) > 0) ? ' disabled' : ''}`}
                                 onClick={(e: unknown) => {

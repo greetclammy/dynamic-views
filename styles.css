@@ -422,25 +422,31 @@ settings:
                 label: Minimal
                 value: dynamic-views-tag-style-minimal
     -
+        id: dynamic-views-list-separator
+        title: List item separator
+        description: Separator between items in list-type properties. Whitespace preserved.
+        type: variable-text
+        default: ", "
+        quotes: true
+    -
+        id: dynamic-views-fade-list-separator
+        title: Fade list separator
+        description: Dim the separator color
+        type: class-toggle
+        default: true
+    -
         id: dynamic-views-empty-value-marker
         title: Empty value marker
-        description: Symbol shown for empty property values
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-empty-dash
-        options:
-            -
-                label: Dash
-                value: dynamic-views-empty-dash
-            -
-                label: Ellipsis
-                value: dynamic-views-empty-ellipsis
-            -
-                label: Empty
-                value: dynamic-views-empty-word
-            -
-                label: Blank
-                value: dynamic-views-empty-blank
+        description: What to show for empty property values. Whitespace preserved.
+        type: variable-text
+        default: "—"
+        quotes: true
+    -
+        id: dynamic-views-fade-empty-marker
+        title: Fade empty marker
+        description: Dim the empty value marker color
+        type: class-toggle
+        default: true
     -
         id: dynamic-views-fade-trimmed-content
         title: Fade trimmed content
@@ -544,6 +550,8 @@ settings:
 /* Derived CSS variable: clamp thumbnail aspect ratio to 0.5-2.0 range */
 body {
     --dynamic-views-thumbnail-aspect-ratio: clamp(0.5, var(--dynamic-views-image-aspect-ratio, 1.00), 2.0);
+    --dynamic-views-list-separator: ", ";
+    --dynamic-views-empty-value-marker: "—";
 }
 
 
@@ -720,17 +728,15 @@ body {
 .markdown-source-view.dc-wide .cm-preview-code-block:has(.block-language-datacorejsx) {
     width: min(calc(1.75 * var(--file-line-width)), 96vw) !important;
     max-width: min(calc(1.75 * var(--file-line-width)), 96vw) !important;
-    position: relative !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
 
 .markdown-source-view.dc-max .cm-preview-code-block:has(.block-language-datacorejsx) {
     width: 96vw !important;
     max-width: 96vw !important;
-    position: relative !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
 
 /* Expand datacore block when wide/max active */
@@ -787,8 +793,6 @@ body {
     box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
     box-sizing: border-box;
     padding: 3px 0;
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
 }
 
 .dynamic-views .controls-wrapper.scrolled::after {
@@ -858,9 +862,7 @@ body {
 }
 
 .dynamic-views .view-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
+    position: fixed;
     background-color: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
@@ -927,9 +929,7 @@ body {
 }
 
 .dynamic-views .sort-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
+    position: fixed;
     background-color: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
@@ -1003,9 +1003,7 @@ body {
 }
 
 .dynamic-views .limit-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
+    position: fixed;
     background-color: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
@@ -1348,16 +1346,14 @@ body:not(.dynamic-views-show-expand-width) .dynamic-views .width-toggle-btn {
 }
 
 .dynamic-views .query-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
+    position: fixed;
     background-color: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
     box-shadow: 0 4px 12px var(--background-modifier-box-shadow);
     z-index: 1000;
-    width: 675px;
-    max-width: calc(100vw - 16px);
+    min-width: 400px;
+    max-width: min(675px, calc(100vw - 16px));
     padding: 12px;
     display: flex;
     flex-direction: column;
@@ -1464,23 +1460,18 @@ body:not(.dynamic-views-show-expand-width) .dynamic-views .width-toggle-btn {
 }
 
 .dynamic-views .settings-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
+    position: fixed;
     background-color: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
     box-shadow: 0 4px 12px var(--background-modifier-box-shadow);
     z-index: 1000;
-    width: 500px;
-    max-width: calc(100vw - 16px);
+    min-width: 300px;
+    max-width: min(500px, calc(100vw - 16px));
     max-height: min(500px, calc(100vh - 100px));
     overflow-y: auto;
     padding: 16px;
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    box-sizing: border-box;
 }
 
 .dynamic-views .settings-panel {
@@ -1807,6 +1798,26 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     transition: border-color 0.2s, box-shadow var(--anim-duration-fast) ease-in-out;
 }
 
+/* Clickable card cursor */
+.dynamic-views .card.clickable-card {
+    cursor: pointer;
+}
+
+/* Masonry container */
+.dynamic-views .masonry-container {
+    position: relative;
+    height: var(--masonry-height);
+}
+
+/* Masonry positioned cards */
+.dynamic-views .card.masonry-positioned {
+    position: absolute;
+    width: var(--masonry-width);
+    left: var(--masonry-left);
+    top: var(--masonry-top);
+    transition: box-shadow var(--anim-duration-fast) ease-in-out, border-color 0.2s;
+}
+
 /* Global spacing between card elements */
 .dynamic-views .card > * + * {
     margin-top: var(--dynamic-views-element-spacing, 8px);
@@ -1910,6 +1921,12 @@ body:not(.dynamic-views-card-border) .dynamic-views .card {
     display: flex;
     flex-direction: row;
     gap: var(--dynamic-views-element-spacing, 8px);
+}
+
+/* Ensure empty card-content doesn't collapse and maintains flex layout */
+.dynamic-views .card-content:empty {
+    min-height: 1px;
+    flex-grow: 1;
 }
 
 /* Thumbnail positioning (controlled by body class from Style Settings) */
@@ -2912,6 +2929,9 @@ body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-gri
     min-height: var(--dynamic-views-side-cover-min-height, 175px);
 }
 
+.dynamic-views .card.card-cover-right.image-format-cover:has(.card-cover) .card-title,
+.dynamic-views .card.card-cover-right.image-format-cover:has(.card-cover) .card-content,
+.dynamic-views .card.card-cover-right.image-format-cover:has(.card-cover) .card-properties,
 body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-title,
 body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-content,
 body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-properties {
@@ -2934,6 +2954,19 @@ body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-gri
     padding-top: 0 !important;
     margin: 0;
     border-radius: 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0 !important;
+}
+
+/* Height constraints for covers to prevent them from affecting card height */
+.dynamic-views .card.card-cover-left.image-format-cover .card-cover,
+.dynamic-views .card.card-cover-right.image-format-cover .card-cover {
+    max-height: 100%;
+}
+
+.dynamic-views .card.card-cover-left.image-format-cover .card-cover img,
+.dynamic-views .card.card-cover-right.image-format-cover .card-cover img {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
 }
 
 /* Base properties container styles */
@@ -3435,23 +3468,40 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
     color: var(--text-muted);
 }
 
-/* Empty value marker: Dash (default) - CSS-based using ::before */
-body.dynamic-views-empty-dash .dynamic-views .property-content > span.empty-value-marker:empty:before {
-    content: "\2014";
+/* Empty value marker styling */
+body.dynamic-views-fade-empty-marker .dynamic-views .property-content > span.empty-value-marker {
     color: var(--text-faint);
 }
 
-/* Empty value marker: Ellipsis */
-body.dynamic-views-empty-ellipsis .dynamic-views .property-content > span.empty-value-marker {
+body:not(.dynamic-views-fade-empty-marker) .dynamic-views .property-content > span.empty-value-marker {
+    color: inherit;
+}
+
+/* Array list wrapper - ensure items display inline */
+.dynamic-views .property-content .list-wrapper {
+    display: inline;
+}
+
+.dynamic-views .property-content .list-wrapper > span {
+    display: inline;
+}
+
+.dynamic-views .property-content .list-item {
+    display: inline;
+}
+
+.dynamic-views .property-content .list-separator {
+    display: inline;
+}
+
+/* List separator styling */
+body.dynamic-views-fade-list-separator .dynamic-views .list-separator {
     color: var(--text-faint);
 }
 
-/* Empty value marker: Word "Empty" */
-body.dynamic-views-empty-word .dynamic-views .property-content > span.empty-value-marker {
-    color: var(--text-faint);
+body:not(.dynamic-views-fade-list-separator) .dynamic-views .list-separator {
+    color: inherit;
 }
-
-/* Empty value marker: Blank - no styling needed, truly empty */
 
 /* Content inside wrapper - uses natural width */
 .dynamic-views .property-content {
@@ -3723,10 +3773,6 @@ body.dynamic-views-fade-trimmed-content .dynamic-views .property-content-wrapper
         transition: background-color 0.2s, opacity 0.2s;
     }
 
-    .results-count-wrapper-compact .limit-dropdown-menu {
-        left: 0;
-        right: auto;
-    }
 
     .create-note-button-compact {
         display: flex;

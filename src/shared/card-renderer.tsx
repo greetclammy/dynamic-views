@@ -7,7 +7,7 @@ import type { App } from 'obsidian';
 import { TFile, TFolder, Menu } from 'obsidian';
 import type { Settings } from '../types';
 import type { RefObject } from '../types/datacore';
-import { getTagStyle, showTimestampIcon, getEmptyValueMarker, shouldHideMissingProperties, shouldHideEmptyProperties } from '../utils/style-settings';
+import { getTagStyle, showTimestampIcon, getEmptyValueMarker, shouldHideMissingProperties, shouldHideEmptyProperties, getListSeparator } from '../utils/style-settings';
 import { getPropertyLabel } from '../utils/property';
 import { handleImageLoad } from './image-loader';
 
@@ -120,6 +120,38 @@ function renderPropertyContent(
                 </div>
             </>
         );
+    }
+
+    // Handle array properties - render as individual spans with separators
+    if (resolvedValue.startsWith('{"type":"array","items":[')) {
+        try {
+            const arrayData = JSON.parse(resolvedValue) as { type: string; items: string[] };
+            if (arrayData.type === 'array' && Array.isArray(arrayData.items)) {
+                const separator = getListSeparator();
+                return (
+                    <>
+                        {labelAbove}
+                        {labelInline}
+                        <div className="property-content-wrapper">
+                            <div className="property-content">
+                                <span className="list-wrapper">
+                                    {arrayData.items.map((item, idx): JSX.Element => (
+                                        <span key={idx}>
+                                            <span className="list-item">{item}</span>
+                                            {idx < arrayData.items.length - 1 && (
+                                                <span className="list-separator">{separator}</span>
+                                            )}
+                                        </span>
+                                    ))}
+                                </span>
+                            </div>
+                        </div>
+                    </>
+                );
+            }
+        } catch {
+            // Fall through to regular text rendering if JSON parse fails
+        }
     }
 
     // Handle special properties by property name
@@ -507,8 +539,8 @@ function Card({
                 </div>
             )}
 
-            {/* Cover-top: after title */}
-            {format === 'cover' && position === 'top' && (imageArray.length > 0 || card.hasImageAvailable) && (
+            {/* Covers: ALL positions render as direct children of card */}
+            {format === 'cover' && (imageArray.length > 0 || card.hasImageAvailable) && (
                 imageArray.length > 0 ? (
                     <div className="card-cover">
                         <div
@@ -688,17 +720,16 @@ function Card({
                 )
             )}
 
-            {/* Content: Text Preview and Thumbnail left/right or Cover left/right */}
-            {((settings.showTextPreview && card.snippet) || (format !== 'none' && (position === 'left' || position === 'right') && (imageArray.length > 0 || card.hasImageAvailable))) && (
-                <div className="card-content">
-                    {settings.showTextPreview && card.snippet && (
-                        <div className="card-text-preview">{card.snippet}</div>
-                    )}
-                    {format !== 'none' && (position === 'left' || position === 'right') && (
+            {/* Content container - ALWAYS render for proper flex layout */}
+            <div className="card-content">
+                {settings.showTextPreview && card.snippet && (
+                    <div className="card-text-preview">{card.snippet}</div>
+                )}
+                {format === 'thumbnail' && (position === 'left' || position === 'right') && (
                         imageArray.length > 0 ? (
                             <div
-                                className={`${format === 'cover' ? 'card-cover' : 'card-thumbnail'} ${isArray && imageArray.length > 1 && format === 'thumbnail' ? 'multi-image' : ''}`}
-                                onMouseMove={!app.isMobile && isArray && imageArray.length > 1 && format === 'thumbnail' ? ((e: MouseEvent) => {
+                                className={`card-thumbnail ${isArray && imageArray.length > 1 ? 'multi-image' : ''}`}
+                                onMouseMove={!app.isMobile && isArray && imageArray.length > 1 ? ((e: MouseEvent) => {
                                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                     const x = e.clientX - rect.left;
                                     const section = Math.floor((x / rect.width) * imageArray.length);
@@ -795,11 +826,10 @@ function Card({
                             </div>
                         ) : (
                             // Always render placeholder when no image - CSS controls visibility
-                            <div className={format === 'cover' ? 'card-cover-placeholder' : 'card-thumbnail-placeholder'}></div>
+                            <div className="card-thumbnail-placeholder"></div>
                         )
                     )}
-                </div>
-            )}
+            </div>
 
             {/* Thumbnail-bottom: after text preview */}
             {format === 'thumbnail' && position === 'bottom' && (imageArray.length > 0 || card.hasImageAvailable) && (
@@ -906,81 +936,6 @@ function Card({
                 )
             )}
 
-            {/* Cover-bottom: after text preview */}
-            {format === 'cover' && position === 'bottom' && (imageArray.length > 0 || card.hasImageAvailable) && (
-                imageArray.length > 0 ? (
-                    <div className="card-cover">
-                        <div
-                            className="image-embed"
-                            style={{ '--cover-image-url': `url("${imageArray[0] || ''}")` }}
-                            onClick={(e: MouseEvent) => {
-                                const isToggleMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-toggle');
-                                const isHoldMode = document.body.classList.contains('dynamic-views-thumbnail-expand-click-hold');
-
-                                if (isToggleMode || isHoldMode) {
-                                    e.stopPropagation();
-
-                                    if (isToggleMode) {
-                                        const embedEl = e.currentTarget as HTMLElement;
-                                        const isZoomed = embedEl.classList.contains('is-zoomed');
-
-                                        if (isZoomed) {
-                                            embedEl.classList.remove('is-zoomed');
-                                        } else {
-                                            document.querySelectorAll('.image-embed.is-zoomed').forEach(el => {
-                                                el.classList.remove('is-zoomed');
-                                            });
-                                            embedEl.classList.add('is-zoomed');
-
-                                            const closeZoom = (evt: Event) => {
-                                                const target = evt.target as HTMLElement;
-                                                if (!embedEl.contains(target)) {
-                                                    embedEl.classList.remove('is-zoomed');
-                                                    document.removeEventListener('click', closeZoom);
-                                                    document.removeEventListener('keydown', handleEscape);
-                                                }
-                                            };
-
-                                            const handleEscape = (evt: KeyboardEvent) => {
-                                                if (evt.key === 'Escape') {
-                                                    embedEl.classList.remove('is-zoomed');
-                                                    document.removeEventListener('click', closeZoom);
-                                                    document.removeEventListener('keydown', handleEscape);
-                                                }
-                                            };
-
-                                            setTimeout(() => {
-                                                document.addEventListener('click', closeZoom);
-                                                document.addEventListener('keydown', handleEscape);
-                                            }, 0);
-                                        }
-                                    }
-                                }
-                            }}
-                        >
-                            <img
-                                src={imageArray[0] || ''}
-                                alt=""
-                                onLoad={(e: Event) => {
-                                    const imgEl = e.currentTarget as HTMLImageElement;
-                                    const imageEmbedEl = imgEl.parentElement;
-                                    if (imageEmbedEl) {
-                                        const imageEl = imageEmbedEl.parentElement;
-                                        if (imageEl) {
-                                            const cardEl = imageEl.closest('.card') as HTMLElement;
-                                            if (cardEl) {
-                                                handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
-                                            }
-                                        }
-                                    }
-                                }}
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <div className="card-cover-placeholder"></div>
-                )
-            )}
 
             {/* Properties - 4-field rendering with 2-row layout */}
             {(() => {

@@ -8,6 +8,7 @@ interface SettingsProps {
     app: App;
     settings: SettingsType;
     onSettingsChange: (settings: Partial<SettingsType>) => void;
+    menuRef?: { current: HTMLDivElement | null };
 }
 
 export function Settings({
@@ -15,12 +16,13 @@ export function Settings({
     app,
     settings,
     onSettingsChange,
+    menuRef,
 }: SettingsProps): JSX.Element {
     // Get all vault properties for dropdowns
     const allProperties = getAllVaultProperties(app);
 
     return (
-        <div className="settings-dropdown-menu">
+        <div ref={menuRef} className="settings-dropdown-menu">
             {/* 1. Card Size Slider */}
             <div className="setting-item">
                 <div className="setting-item-info">
@@ -34,13 +36,13 @@ export function Settings({
                         max="800"
                         step="10"
                         value={settings.cardSize}
+                        aria-label={String(settings.cardSize)}
                         onChange={(e: unknown) => {
                             const evt = e as Event & { target: HTMLInputElement };
                             onSettingsChange({ cardSize: parseInt(evt.target.value) });
                         }}
                         style={{ flex: 1 }}
                     />
-                    <span style={{ minWidth: '40px' }}>{settings.cardSize}</span>
                 </div>
             </div>
 
