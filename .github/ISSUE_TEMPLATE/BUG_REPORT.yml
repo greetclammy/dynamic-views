@@ -47,9 +47,7 @@ body:
   attributes:
     label: Actual result
     description: |-
-      Instead of the expected result, what happened?
-
-      You can attach screenshots or screen recordings that demonstrate the bug.
+      Instead of the expected result, what happened? You can attach screenshots or screen recordings that demonstrate the bug.
     placeholder: Write actual result here...
   validations:
     required: true
