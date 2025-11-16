@@ -3,6 +3,9 @@ description: Report something that is not working as expected in the Dynamic Vie
 labels:
   - bug
 body:
+- type: markdown
+  attributes:
+    value: "**Note:** If English is not your first language, please consider using AI tools like ChatGPT to translate your responses."
 - type: checkboxes
   id: checklist
   attributes:
@@ -23,12 +26,6 @@ body:
     options:
       - label: Bases view
       - label: Datacore view
-- type: markdown
-  attributes:
-    value: "​"
-- type: markdown
-  attributes:
-    value: "**Note:** If English is not your first language, please consider using AI tools like ChatGPT to translate your responses."
 - type: textarea
   id: steps-to-reproduce
   attributes:
