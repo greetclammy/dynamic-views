@@ -63,10 +63,11 @@ export function updateScrollGradient(element: HTMLElement): void {
 
 /**
  * Sets up scroll gradients for all property fields in a container
- * Attaches scroll listeners and resize observers
+ * Attaches scroll listeners for user interaction
+ * Note: ResizeObserver not needed - card-level observer triggers gradient updates via measurement
  *
  * @param container - The container element with property fields
- * @param propertyObservers - Array to track ResizeObservers for cleanup
+ * @param propertyObservers - Array to track ResizeObservers for cleanup (unused, kept for compatibility)
  * @param updateGradientFn - Function to call for gradient updates (bound to view instance)
  */
 export function setupScrollGradients(
@@ -88,17 +89,9 @@ export function setupScrollGradients(
             updateGradientFn(element);
         });
 
-        // Attach scroll listener to wrapper
+        // Attach scroll listener to wrapper for user scroll interaction
         wrapper.addEventListener('scroll', () => {
             updateGradientFn(element);
         });
-
-        // Update on resize (for when layout dimensions change)
-        // Observe the field element (parent) as its size changes affect scrollability
-        const observer = new ResizeObserver(() => {
-            updateGradientFn(element);
-        });
-        observer.observe(element);
-        propertyObservers.push(observer);
     });
 }

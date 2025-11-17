@@ -40,11 +40,29 @@ settings:
         title: Card spacing
         description: Spacing between cards
         type: variable-number-slider
+        default: 8
+        min: 0
+        max: 32
+        step: 1
+        format: px
+    -
+        id: dynamic-views-card-padding-container
+        title: Card padding
+        description: Padding between cards and container borders
+        type: variable-number-slider
         default: 12
         min: 0
         max: 32
         step: 1
         format: px
+    -
+        id: dynamic-views-view-background
+        title: View background
+        description: Background color for card views
+        type: variable-themed-color
+        format: hex
+        default-light: '#'
+        default-dark: '#'
     -
         id: cards-heading
         title: Cards
@@ -61,6 +79,30 @@ settings:
         max: 16
         step: 1
         format: px
+    -
+        id: dynamic-views-card-padding
+        title: Card padding
+        description: Padding from card edges to content
+        type: variable-number-slider
+        default: 12
+        min: 0
+        max: 24
+        step: 1
+        format: px
+    -
+        id: dynamic-views-cover-gap-setting
+        title: Cover gap setting
+        description: Which setting controls the gap between covers and card elements
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-cover-gap-element-spacing
+        options:
+            -
+                label: Card element spacing
+                value: dynamic-views-cover-gap-element-spacing
+            -
+                label: Card padding
+                value: dynamic-views-cover-gap-card-padding
     -
         id: dynamic-views-card-border-radius
         title: Card border radius
@@ -363,6 +405,23 @@ settings:
         step: 1
         format: ''
     -
+        id: dynamic-views-title-alignment
+        title: Title alignment
+        description: Horizontal alignment of card titles
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-title-align-left
+        options:
+            -
+                label: Left
+                value: dynamic-views-title-align-left
+            -
+                label: Center
+                value: dynamic-views-title-align-center
+            -
+                label: Right
+                value: dynamic-views-title-align-right
+    -
         id: text-preview-heading
         title: Text preview
         type: heading
@@ -634,6 +693,19 @@ body {
 /* ============================================
    CONTAINER & LAYOUT STYLES
    ============================================ */
+
+/* Title alignment */
+body.dynamic-views-title-align-left .dynamic-views .card-title {
+    text-align: left;
+}
+
+body.dynamic-views-title-align-center .dynamic-views .card-title {
+    text-align: center;
+}
+
+body.dynamic-views-title-align-right .dynamic-views .card-title {
+    text-align: right;
+}
 
 /* Results container with fade effect */
 .dynamic-views .results-container {
@@ -1726,7 +1798,8 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    padding: var(--size-4-3);
+    padding: var(--dynamic-views-card-padding-container, 12px);
+    background-color: var(--dynamic-views-view-background);
 }
 
 /* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
@@ -1738,6 +1811,14 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     height: 100%;
     min-width: 0;
     overflow: hidden;
+}
+
+/* Grid mode: side covers use overflow visible, rely on wrapper positioning */
+.bases-view[data-view-type="dynamic-views-card"] .dynamic-views-grid .card.card-cover-left.image-format-cover,
+.bases-view[data-view-type="dynamic-views-card"] .dynamic-views-grid .card.card-cover-right.image-format-cover,
+.dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover,
+.dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover {
+    overflow: visible;
 }
 
 /* Grid mode: push properties to bottom of card */
@@ -1788,9 +1869,12 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 
 .dynamic-views .card {
+    position: relative;
+    container-type: inline-size;
+    box-sizing: border-box;
     border: 1px solid var(--dynamic-views-card-border-color, var(--background-modifier-border));
     border-radius: var(--dynamic-views-card-border-radius, 8px);
-    padding: 12px;
+    padding: var(--dynamic-views-card-padding, 12px);
     margin: var(--dynamic-views-card-spacing, 12px) 0;
     background-color: var(--background-primary-alt);
     break-inside: avoid;
@@ -1826,8 +1910,8 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
     transition: box-shadow var(--anim-duration-fast) ease-in-out, border-color 0.2s;
 }
 
-/* Global spacing between card elements */
-.dynamic-views .card > * + * {
+/* Global spacing between card elements (exclude cover-format cards which use flexbox gap) */
+.dynamic-views .card:not(.image-format-cover) > * + * {
     margin-top: var(--dynamic-views-element-spacing, 8px);
 }
 
@@ -1981,7 +2065,7 @@ body.dynamic-views-open-on-title .dynamic-views .card-text-preview {
 .dynamic-views .card-thumbnail {
     flex-shrink: 0;
     width: var(--dynamic-views-thumbnail-size, 80px);
-    height: calc(var(--dynamic-views-thumbnail-size, 80px) / var(--dynamic-views-thumbnail-aspect-ratio, 1.00));
+    height: calc(var(--dynamic-views-thumbnail-size, 80px) / var(--dynamic-views-image-aspect-ratio, 1.00));
     overflow: hidden;
     border-radius: var(--dynamic-views-thumbnail-border-radius, 4px);
     pointer-events: none;
@@ -1997,7 +2081,7 @@ body.dynamic-views-show-thumbnail-placeholder .dynamic-views .card-thumbnail-pla
     display: block;
     flex-shrink: 0;
     width: var(--dynamic-views-thumbnail-size, 80px);
-    height: calc(var(--dynamic-views-thumbnail-size, 80px) / var(--dynamic-views-thumbnail-aspect-ratio, 1.00));
+    height: calc(var(--dynamic-views-thumbnail-size, 80px) / var(--dynamic-views-image-aspect-ratio, 1.00));
     border-radius: var(--dynamic-views-thumbnail-border-radius, 4px);
     background-color: var(--background-modifier-border);
 }
@@ -2438,176 +2522,301 @@ body.dynamic-views-cover-bg-custom .dynamic-views .card.card-cover-contain.image
     background-color: var(--dynamic-views-cover-background-custom-color, var(--background-secondary));
 }
 
-/* Flexible cover height for masonry (remove letterbox for wide images) - top/bottom contain mode only */
+/* Flexible cover height for masonry (use actual image aspect ratio) - top/bottom only */
 body.dynamic-views-masonry-flexible-cover-height [data-view-type="dynamic-views-masonry"] .card.card-cover-top.image-format-cover .card-cover,
 body.dynamic-views-masonry-flexible-cover-height [data-view-type="dynamic-views-masonry"] .card.card-cover-bottom.image-format-cover .card-cover {
-    padding-top: calc(var(--actual-aspect-ratio, var(--dynamic-views-image-aspect-ratio, 0.55)) * (100% + 2px)) !important;
+    padding-top: calc(var(--actual-aspect-ratio, var(--dynamic-views-image-aspect-ratio, 0.55)) * 100%) !important;
 }
 
-/* Only apply flexible height margin-top to TOP covers with thumbnails */
-body.dynamic-views-masonry-flexible-cover-height [data-view-type="dynamic-views-masonry"] .card.card-cover-top.image-format-cover:has(.card-cover) .card-title {
-    margin-top: calc(var(--actual-aspect-ratio, var(--dynamic-views-image-aspect-ratio, 0.55)) * (100% + 2px) - 1px) !important;
-}
+/* ==================== CARD COVER FORMAT - FLEXBOX SYSTEM ==================== */
 
-/* Apply flexible height margin-bottom to BOTTOM covers with thumbnails */
-body.dynamic-views-masonry-flexible-cover-height [data-view-type="dynamic-views-masonry"] .card.card-cover-bottom.image-format-cover:has(.card-cover) .card-properties {
-    margin-bottom: calc(var(--actual-aspect-ratio, var(--dynamic-views-image-aspect-ratio, 0.55)) * (100% + 2px) - 1px) !important;
-}
-
-/* Cover image format */
+/* Base card setup: flexbox with gap for element spacing */
 .dynamic-views .card.image-format-cover {
     position: relative;
     overflow: hidden;
-    padding: 0;
+    padding: var(--dynamic-views-card-padding, 12px); /* Card edge padding */
+    display: flex;
+    flex-direction: column;
+    gap: var(--dynamic-views-element-spacing, 8px); /* Element spacing - default */
 }
 
-/* Add padding to content elements since card has padding: 0 */
-.dynamic-views .card.image-format-cover .card-title,
-.dynamic-views .card.image-format-cover .card-content,
-.dynamic-views .card.image-format-cover .card-properties {
-    padding-left: 12px;
-    padding-right: 12px;
+/* Cover gap setting: Use card padding for gap between cover and content */
+body.dynamic-views-cover-gap-card-padding .dynamic-views .card.image-format-cover .card-cover-wrapper {
+    margin-bottom: calc(var(--dynamic-views-card-padding, 12px) - var(--dynamic-views-element-spacing, 8px));
 }
 
-/* Add top padding to first visible element */
-.dynamic-views .card.image-format-cover > .card-title:first-child,
-.dynamic-views .card.image-format-cover > .card-content:first-child,
-.dynamic-views .card.image-format-cover > .card-properties:first-child {
-    padding-top: 12px;
+body.dynamic-views-cover-gap-card-padding .dynamic-views .card.card-cover-bottom.image-format-cover .card-cover-wrapper {
+    margin-bottom: 0;
+    margin-top: calc(var(--dynamic-views-card-padding, 12px) - var(--dynamic-views-element-spacing, 8px));
 }
 
-/* Add bottom padding to last visible element */
-.dynamic-views .card.image-format-cover > .card-title:last-child,
-.dynamic-views .card.image-format-cover > .card-content:last-child,
-.dynamic-views .card.image-format-cover > .card-properties:last-child {
-    padding-bottom: 12px;
-}
-
-/* Cover-top: add bottom padding to title when it's the last visible element (no content, no properties) */
-.dynamic-views .card.card-cover-top.image-format-cover:has(.card-cover):not(:has(.card-content)):not(:has(.card-properties)) .card-title {
-    padding-bottom: 12px;
-}
-
+/* Card content flex setup */
 .dynamic-views .card.image-format-cover .card-content {
     flex-direction: row;
     gap: var(--dynamic-views-element-spacing, 8px);
 }
 
-.dynamic-views .card.image-format-cover:has(.card-cover) .card-title,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.image-format-cover:has(.card-cover-placeholder) .card-title,
-body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.image-format-cover:has(.card-cover-placeholder) .card-title,
-body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.image-format-cover:has(.card-cover-placeholder) .card-title,
-body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.image-format-cover:has(.card-cover-placeholder) .card-title {
-    margin-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * (100% + 2px) - 1px);
+/* ==================== COVER WRAPPER POSITIONING ==================== */
+
+/* Cover-top: wrapper at start with negative margins to bleed to edges */
+.dynamic-views .card.card-cover-top.image-format-cover .card-cover-wrapper {
+    order: -999; /* First */
+    margin: calc(var(--dynamic-views-card-padding, 12px) * -1) calc(var(--dynamic-views-card-padding, 12px) * -1) 0 calc(var(--dynamic-views-card-padding, 12px) * -1); /* Bleed to top/left/right edges */
 }
 
-/* When title is hidden with cover-top, apply same margin to card-content (NOT cover-bottom) */
-.dynamic-views .card.card-cover-top.image-format-cover:has(.card-cover):not(:has(.card-title)) .card-content,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-top.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)) .card-content,
-body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-top.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)) .card-content,
-body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-top.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)) .card-content,
-body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-top.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)) .card-content {
-    margin-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * (100% + 2px) - 1px);
+/* Cover-bottom: wrapper at end with negative margins to bleed to edges */
+.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover-wrapper {
+    order: 999; /* Last */
+    margin: 0 calc(var(--dynamic-views-card-padding, 12px) * -1) calc(var(--dynamic-views-card-padding, 12px) * -1) calc(var(--dynamic-views-card-padding, 12px) * -1); /* Bleed to bottom/left/right edges */
 }
 
-/* Add internal padding to card-content when title is hidden with cover-top (only when card-content has children) */
-.dynamic-views .card.card-cover-top.image-format-cover:has(.card-cover):not(:has(.card-title)) .card-content:not(:empty),
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-top.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)) .card-content:not(:empty),
-body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-top.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)) .card-content:not(:empty) {
-    padding-top: 12px;
-}
-
-/* Cover-bottom: add top padding to first visible element (content or title) */
-.dynamic-views .card.card-cover-bottom.image-format-cover .card-content:first-child,
-.dynamic-views .card.card-cover-bottom.image-format-cover .card-title:first-child {
-    padding-top: 12px;
-}
-
-.dynamic-views .card.card-cover-top.image-format-cover .card-cover {
+/* Cover-left: wrapper positioned at padding-box edges */
+.dynamic-views .card.card-cover-left.image-format-cover .card-cover-wrapper {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100% !important;
-    height: 0;
-    padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%) !important;
-    border-radius: var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0 0;
-    margin: 0;
-    overflow: hidden;
-}
-
-.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover {
-    position: absolute;
     bottom: 0;
-    left: 0;
-    width: 100% !important;
+    right: auto !important;
+    width: var(--dynamic-views-side-cover-width, 200px);
+}
+
+/* Cover-right: wrapper positioned at padding-box edges */
+.dynamic-views .card.card-cover-right.image-format-cover .card-cover-wrapper {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: auto !important;
+    width: var(--dynamic-views-side-cover-width, 200px);
+}
+
+
+
+/* ==================== COVER ELEMENT STYLING ==================== */
+
+/* Cover-top/bottom: aspect ratio using padding-top hack */
+.dynamic-views .card.card-cover-top.image-format-cover .card-cover,
+.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover {
+    width: 100%;
     height: 0;
-    padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%) !important;
-    border-radius: 0 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px);
-    margin: 0;
+    padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
+    position: relative;
     overflow: hidden;
 }
 
-/* Hide placeholder by default, reset thumbnail mode styles for cover format */
+/* Cover-top: top border radius */
+.dynamic-views .card.card-cover-top.image-format-cover .card-cover {
+    border-radius: var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0 0;
+}
+
+/* Cover-bottom: bottom border radius */
+.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover {
+    border-radius: 0 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px);
+}
+
+/* Cover-left/right: full height */
+.dynamic-views .card.card-cover-left.image-format-cover .card-cover,
+.dynamic-views .card.card-cover-right.image-format-cover .card-cover {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Cover-left: left border radius */
+.dynamic-views .card.card-cover-left.image-format-cover .card-cover {
+    border-radius: var(--dynamic-views-card-border-radius, 8px) 0 0 var(--dynamic-views-card-border-radius, 8px);
+}
+
+/* Cover-right: right border radius */
+.dynamic-views .card.card-cover-right.image-format-cover .card-cover {
+    border-radius: 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0;
+}
+
+/* Image element inside cover */
+.dynamic-views .card.image-format-cover .card-cover .image-embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.dynamic-views .card.image-format-cover .card-cover img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ==================== COVER PLACEHOLDERS ==================== */
+
+/* Hide placeholder by default */
 .dynamic-views .card.image-format-cover .card-cover-placeholder {
     display: none;
-    width: auto;
-    height: auto;
-    background-color: transparent;
-}
-
-/* Prevent card collapse when ONLY cover exists (no title, content, or properties) */
-/* Use ::after pseudo-element with padding-top to create height (percentage in min-height doesn't work without parent height) */
-.dynamic-views .card.card-cover-top.image-format-cover:has(.card-cover):not(:has(.card-title)):not(:has(.card-content)):not(:has(.card-properties))::after,
-.dynamic-views .card.card-cover-bottom.image-format-cover:has(.card-cover):not(:has(.card-title)):not(:has(.card-content)):not(:has(.card-properties))::after,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-top.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)):not(:has(.card-content)):not(:has(.card-properties))::after,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-bottom.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)):not(:has(.card-content)):not(:has(.card-properties))::after,
-body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-top.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)):not(:has(.card-content)):not(:has(.card-properties))::after,
-body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-bottom.image-format-cover:has(.card-cover-placeholder):not(:has(.card-title)):not(:has(.card-content)):not(:has(.card-properties))::after {
-    content: '';
-    display: block;
-    padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
 }
 
 /* Show placeholder for top/bottom covers in grid view */
 body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-top.image-format-cover .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-bottom.image-format-cover .card-cover-placeholder {
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-bottom.image-format-cover .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-top.image-format-cover .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-bottom.image-format-cover .card-cover-placeholder {
     display: block;
-    position: absolute;
-    top: -13px;
-    left: -1px;
-    width: calc(100% + 2px) !important;
-    height: 0 !important;
-    padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * (100% + 2px)) !important;
-    border-radius: var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0 0;
-    margin: 0;
-    overflow: hidden;
+    width: 100%;
+    height: 0;
+    padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
 }
 
 /* Show placeholder for top/bottom covers in masonry view */
 body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-top.image-format-cover .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-bottom.image-format-cover .card-cover-placeholder {
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-bottom.image-format-cover .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-top.image-format-cover .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-bottom.image-format-cover .card-cover-placeholder {
     display: block;
-    position: absolute;
-    top: -13px;
-    left: -1px;
-    width: calc(100% + 2px) !important;
-    height: 0 !important;
-    padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * (100% + 2px)) !important;
-    border-radius: var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0 0;
-    margin: 0;
-    overflow: hidden;
+    width: 100%;
+    height: 0;
+    padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
 }
 
 /* Show placeholder for left/right covers in grid view */
 body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover .card-cover-placeholder {
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover .card-cover-placeholder {
     display: block;
+    width: 100%;
+    height: 100%;
 }
 
 /* Show placeholder for left/right covers in masonry view */
 body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover .card-cover-placeholder {
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover .card-cover-placeholder {
     display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Placeholder border radius matching card position */
+.dynamic-views .card.card-cover-top.image-format-cover .card-cover-placeholder {
+    border-radius: var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0 0;
+}
+
+.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover-placeholder {
+    border-radius: 0 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px);
+}
+
+.dynamic-views .card.card-cover-left.image-format-cover .card-cover-placeholder {
+    border-radius: var(--dynamic-views-card-border-radius, 8px) 0 0 var(--dynamic-views-card-border-radius, 8px);
+}
+
+.dynamic-views .card.card-cover-right.image-format-cover .card-cover-placeholder {
+    border-radius: 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0;
+}
+
+/* Hide placeholder-only wrappers when placeholder shouldn't show */
+
+/* Grid view: hide when setting is "In Masonry view" or "Don't show" */
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-grid .card-cover-wrapper.card-cover-wrapper-placeholder,
+body.dynamic-views-show-cover-placeholder-none .dynamic-views .dynamic-views-grid .card-cover-wrapper.card-cover-wrapper-placeholder {
+    display: none;
+}
+
+/* Masonry view: hide when setting is "In Grid view" or "Don't show" */
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-masonry .card-cover-wrapper.card-cover-wrapper-placeholder,
+body.dynamic-views-show-cover-placeholder-none .dynamic-views .dynamic-views-masonry .card-cover-wrapper.card-cover-wrapper-placeholder {
+    display: none;
+}
+
+/* ==================== CONDITIONAL SIDE COVER SPACING ==================== */
+
+/* Grid view: spacing for cards with actual covers OR when placeholder should show */
+
+/* Cover-left: content padding */
+.dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover) .card-title,
+.dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover) .card-content,
+.dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover) .card-properties,
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-title,
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-content,
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-properties,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-title,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-content,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-properties {
+    max-width: calc(100% - var(--dynamic-views-side-cover-content-padding));
+    margin-left: var(--dynamic-views-side-cover-content-padding);
+}
+
+/* Cover-left: minimum card height */
+.dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover),
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder),
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) {
+    min-height: var(--dynamic-views-side-cover-min-height, 175px);
+}
+
+/* Cover-right: content padding */
+.dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover) .card-title,
+.dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover) .card-content,
+.dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover) .card-properties,
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-title,
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-content,
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-properties,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-title,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-content,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-properties {
+    max-width: calc(100% - var(--dynamic-views-side-cover-content-padding));
+}
+
+/* Cover-right: minimum card height */
+.dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover),
+body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder),
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) {
+    min-height: var(--dynamic-views-side-cover-min-height, 175px);
+}
+
+/* Masonry view: spacing for cards with actual covers OR when placeholder should show */
+
+/* Cover-left: content padding */
+.dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover) .card-title,
+.dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover) .card-content,
+.dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover) .card-properties,
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-title,
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-content,
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-properties,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-title,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-content,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-properties {
+    max-width: calc(100% - var(--dynamic-views-side-cover-content-padding));
+    margin-left: var(--dynamic-views-side-cover-content-padding);
+}
+
+/* Cover-left: minimum card height */
+.dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover),
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover-placeholder),
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) {
+    min-height: var(--dynamic-views-side-cover-min-height, 175px);
+}
+
+/* Cover-right: content padding */
+.dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover) .card-title,
+.dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover) .card-content,
+.dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover) .card-properties,
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-title,
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-content,
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-properties,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-title,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-content,
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-properties {
+    max-width: calc(100% - var(--dynamic-views-side-cover-content-padding));
+}
+
+/* Cover-right: minimum card height */
+.dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover),
+body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover-placeholder),
+body.dynamic-views-show-cover-placeholder-both .dynamic-views .dynamic-views-masonry .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) {
+    min-height: var(--dynamic-views-side-cover-min-height, 175px);
 }
 
 /* Placeholder color mappings - organized by cover background type */
@@ -2668,58 +2877,6 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
     background-color: transparent;
 }
 
-.dynamic-views .card.image-format-cover .card-cover .image-embed {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.dynamic-views .card.image-format-cover .card-cover img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* Cover position: bottom */
-.dynamic-views .card.card-cover-bottom.image-format-cover .card-title {
-    margin-top: 0;
-}
-
-/* Override placeholder title margin-top for bottom covers to match image cards in grid */
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-bottom.image-format-cover:has(.card-cover-placeholder) .card-title {
-    margin-top: 0;
-}
-
-.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-bottom.image-format-cover .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry .dynamic-views .dynamic-views-masonry .card.card-cover-bottom.image-format-cover .card-cover-placeholder {
-    top: auto;
-    bottom: -13px;
-    border-radius: 0 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px);
-}
-
-/* Bottom covers: margin-bottom on properties to reserve space for cover/placeholder in grid */
-/* Account for bottom: -13px offset by adding 13px to margin */
-.dynamic-views .card.card-cover-bottom.image-format-cover:has(.card-cover) .card-properties,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-bottom.image-format-cover:has(.card-cover-placeholder) .card-properties {
-    margin-bottom: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * (100% + 2px) - 1px + 13px);
-}
-
-/* Bottom covers: margin-bottom on content when properties absent to reserve space for cover */
-.dynamic-views .card.card-cover-bottom.image-format-cover:has(.card-cover):not(:has(.card-properties)) .card-content {
-    margin-bottom: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * (100% + 2px) - 1px + 13px);
-}
-
-/* Bottom covers: margin-bottom on title when only title visible (no content, no properties) */
-.dynamic-views .card.card-cover-bottom.image-format-cover:has(.card-cover):not(:has(.card-content)):not(:has(.card-properties)) .card-title {
-    margin-bottom: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * (100% + 2px) - 1px + 13px);
-}
-
 /* ==================== CAROUSEL STYLES ==================== */
 
 /* Slides container - inherits positioning from .card-cover */
@@ -2761,175 +2918,122 @@ body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-gri
     transform: translateX(0);
 }
 
-/* Navigation buttons */
-.dynamic-views .carousel-nav-button {
+/* Navigation arrows */
+.dynamic-views .carousel-nav-left,
+.dynamic-views .carousel-nav-right {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 10;
-    background: rgba(0, 0, 0, 0.5);
-    border: none;
-    border-radius: 4px;
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: white;
+    z-index: 3;
     opacity: 0;
-    transition: opacity 0.2s, background 0.2s;
+    transition: opacity 0.2s ease;
 }
 
-.dynamic-views .card-cover-carousel:hover .carousel-nav-button {
+.dynamic-views .carousel-nav-left {
+    left: 4px;
+}
+
+.dynamic-views .carousel-nav-right {
+    right: 4px;
+}
+
+/* Show arrows on hover */
+.dynamic-views .card-cover-carousel:hover .carousel-nav-left,
+.dynamic-views .card-cover-carousel:hover .carousel-nav-right {
     opacity: 1;
 }
 
-.dynamic-views .carousel-nav-button:hover {
-    background: rgba(0, 0, 0, 0.7);
+/* Arrow icons */
+.dynamic-views .carousel-nav-left svg,
+.dynamic-views .carousel-nav-right svg {
+    width: 20px;
+    height: 20px;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
 }
 
-.dynamic-views .carousel-nav-button svg {
+.theme-light .dynamic-views .carousel-nav-left svg,
+.theme-light .dynamic-views .carousel-nav-right svg {
+    color: white;
+}
+
+.theme-dark .dynamic-views .carousel-nav-left svg,
+.theme-dark .dynamic-views .carousel-nav-right svg {
+    color: rgb(209, 209, 209);
+}
+
+/* Mobile: Always show arrows and larger touch targets */
+.is-mobile .dynamic-views .carousel-nav-left,
+.is-mobile .dynamic-views .carousel-nav-right {
+    opacity: 1;
+}
+
+.is-mobile .dynamic-views .carousel-nav-left svg,
+.is-mobile .dynamic-views .carousel-nav-right svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Slideshow indicator */
+.dynamic-views .carousel-indicator {
+    position: absolute;
+    right: 8px;
+    bottom: calc(8px + var(--image-offset-bottom, 0px));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    z-index: 3;
+}
+
+.dynamic-views .carousel-indicator svg {
+    width: 16px;
+    height: 16px;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+}
+
+.theme-light .dynamic-views .carousel-indicator svg {
+    color: white;
+}
+
+.theme-dark .dynamic-views .carousel-indicator svg {
+    color: rgb(209, 209, 209);
+}
+
+/* Hide indicator when zoomed */
+.dynamic-views .image-embed.is-zoomed .carousel-indicator {
+    display: none;
+}
+
+/* Mobile: Larger indicator */
+.is-mobile .dynamic-views .carousel-indicator {
+    width: 24px;
+    height: 24px;
+    right: 6px;
+    bottom: calc(6px + var(--image-offset-bottom, 0px));
+}
+
+.is-mobile .dynamic-views .carousel-indicator svg {
     width: 20px;
     height: 20px;
 }
 
-.dynamic-views .carousel-nav-prev {
-    left: 8px;
+/* Cover bottom position: move indicator to top */
+.dynamic-views .card.card-cover-bottom .carousel-indicator {
+    top: 8px;
+    bottom: auto;
 }
 
-.dynamic-views .carousel-nav-next {
-    right: 8px;
+.is-mobile .dynamic-views .card.card-cover-bottom .carousel-indicator {
+    top: 6px;
 }
 
-/* Dark theme adjustments */
-.theme-dark .dynamic-views .carousel-nav-button {
-    background: rgba(255, 255, 255, 0.15);
-}
-
-.theme-dark .dynamic-views .carousel-nav-button:hover {
-    background: rgba(255, 255, 255, 0.25);
-}
-
-/* Mobile: always show buttons */
-.is-mobile .dynamic-views .carousel-nav-button {
-    opacity: 0.7;
-}
-
-.is-mobile .dynamic-views .carousel-nav-button:active {
-    opacity: 1;
-}
-
-/* Cover position: left */
-.dynamic-views .card.card-cover-left.image-format-cover:has(.card-cover),
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) {
-    min-height: var(--dynamic-views-side-cover-min-height, 175px);
-}
-
-.dynamic-views .card.card-cover-left.image-format-cover:has(.card-cover) .card-title,
-.dynamic-views .card.card-cover-left.image-format-cover:has(.card-cover) .card-content,
-.dynamic-views .card.card-cover-left.image-format-cover:has(.card-cover) .card-properties,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-title,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-content,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-properties {
-    margin-left: calc((var(--dynamic-views-image-aspect-ratio, 1.00) / (var(--dynamic-views-image-aspect-ratio, 1.00) + 1) * 100%) + var(--dynamic-views-element-spacing, 8px));
-}
-
-.dynamic-views .card.card-cover-left.image-format-cover .card-title {
-    margin-top: 0;
-}
-
-/* Override placeholder title margin-top for left covers to match image cards */
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover:has(.card-cover-placeholder) .card-title {
-    margin-top: 0;
-}
-
-.dynamic-views .card.card-cover-left.image-format-cover .card-properties {
-    margin-bottom: 0;
-}
-
-.dynamic-views .card.card-cover-left.image-format-cover .card-cover,
-.dynamic-views .card.card-cover-left.image-format-cover .card-cover-placeholder {
-    position: absolute;
-    top: 0 !important;
-    left: 0 !important;
-    width: calc(var(--dynamic-views-image-aspect-ratio, 1.00) / (var(--dynamic-views-image-aspect-ratio, 1.00) + 1) * 100%) !important;
-    height: 100% !important;
-    padding: 0 !important;
-    padding-top: 0 !important;
-    margin: 0;
-    border-radius: var(--dynamic-views-card-border-radius, 8px) 0 0 var(--dynamic-views-card-border-radius, 8px) !important;
-    overflow: hidden;
-}
-
-.dynamic-views .card.card-cover-right.image-format-cover .card-cover {
-    position: absolute;
-    top: 0 !important;
-    right: 0 !important;
-    left: auto !important;
-    width: calc(var(--dynamic-views-image-aspect-ratio, 1.00) / (var(--dynamic-views-image-aspect-ratio, 1.00) + 1) * 100%) !important;
-    height: 100% !important;
-    padding: 0 !important;
-    padding-top: 0 !important;
-    margin: 0;
-    border-radius: 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0 !important;
-    overflow: hidden;
-}
-
-/* Cover position: right */
-.dynamic-views .card.card-cover-right.image-format-cover:has(.card-cover),
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) {
-    min-height: var(--dynamic-views-side-cover-min-height, 175px);
-}
-
-.dynamic-views .card.card-cover-right.image-format-cover:has(.card-cover) .card-title,
-.dynamic-views .card.card-cover-right.image-format-cover:has(.card-cover) .card-content,
-.dynamic-views .card.card-cover-right.image-format-cover:has(.card-cover) .card-properties,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-title,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-content,
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-properties {
-    margin-right: calc((var(--dynamic-views-image-aspect-ratio, 1.00) / (var(--dynamic-views-image-aspect-ratio, 1.00) + 1) * 100%) + var(--dynamic-views-element-spacing, 8px));
-}
-
-/* Override placeholder title margin-top for right covers to match image cards */
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover:has(.card-cover-placeholder) .card-title {
-    margin-top: 0;
-}
-
-body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover .card-cover-placeholder {
-    position: absolute;
-    top: 0 !important;
-    left: auto !important;
-    right: 0 !important;
-    width: calc(var(--dynamic-views-image-aspect-ratio, 1.00) / (var(--dynamic-views-image-aspect-ratio, 1.00) + 1) * 100%) !important;
-    height: 100% !important;
-    padding: 0 !important;
-    padding-top: 0 !important;
-    margin: 0;
-    border-radius: 0 var(--dynamic-views-card-border-radius, 8px) var(--dynamic-views-card-border-radius, 8px) 0 !important;
-}
-
-/* Height constraints for covers to prevent them from affecting card height */
-.dynamic-views .card.card-cover-left.image-format-cover .card-cover,
-.dynamic-views .card.card-cover-right.image-format-cover .card-cover {
-    max-height: 100%;
-}
-
-.dynamic-views .card.card-cover-left.image-format-cover .card-cover img,
-.dynamic-views .card.card-cover-right.image-format-cover .card-cover img {
-    object-fit: cover;
-    width: 100%;
-    height: 100%;
-}
-
-/* Match cover-left margin resets for cover-right */
-.dynamic-views .card.card-cover-right.image-format-cover .card-title {
-    margin-top: 0;
-}
-
-.dynamic-views .card.card-cover-right.image-format-cover .card-properties {
-    margin-bottom: 0;
-}
 
 /* Base properties container styles */
 .dynamic-views .card-properties {
@@ -2938,6 +3042,8 @@ body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-gri
     min-height: 24px;
     line-height: 1.4;
     white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
 }
 
 /* Individual property field styles - selectors kept for custom CSS targeting */
@@ -2953,18 +3059,31 @@ body.dynamic-views-show-cover-placeholder-grid .dynamic-views .dynamic-views-gri
 .dynamic-views .property-content > span:has(.timestamp-icon) {
     display: inline-flex;
     align-items: center;
-    gap: 0.3em;
+    gap: 0;
 }
 
 .dynamic-views .timestamp-icon {
     display: none; /* Hidden by default */
-    align-items: center;
-    justify-content: center;
     flex-shrink: 0;
     opacity: 0.7;
-    width: 1.4em;
-    height: 1.4em;
-    vertical-align: middle;
+    width: 1em;
+    height: 1em;
+}
+
+/* Add spacing between icon and text based on icon position */
+/* When icon is on left (order: 0 or default), add right margin */
+.dynamic-views .timestamp-icon {
+    margin-right: 0.3em;
+}
+
+/* When icon is on right (order: 2), use left margin instead */
+body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon,
+body.dynamic-views-timestamp-icon-inner .dynamic-views .property-field-1 .timestamp-icon,
+body.dynamic-views-timestamp-icon-inner .dynamic-views .property-field-3 .timestamp-icon,
+body.dynamic-views-timestamp-icon-outer .dynamic-views .property-field-2 .timestamp-icon,
+body.dynamic-views-timestamp-icon-outer .dynamic-views .property-field-4 .timestamp-icon {
+    margin-right: 0;
+    margin-left: 0.3em;
 }
 
 /* Show icon when left, right, inner, or outer position is selected */
@@ -3006,8 +3125,8 @@ body.dynamic-views-timestamp-icon-outer .dynamic-views .property-field-4 .timest
 }
 
 .dynamic-views .timestamp-icon svg {
-    width: 1em !important;
-    height: 1em !important;
+    width: 100% !important;
+    height: 100% !important;
     display: block;
 }
 
@@ -3235,7 +3354,7 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
 .dynamic-views .property-row {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--size-4-1);
 }
 
 .dynamic-views .property-row.property-row-sidebyside {
@@ -3253,6 +3372,7 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
     position: relative;
     direction: ltr;
 }
+
 
 /* Gap between inline label and content */
 .dynamic-views .property-field:has(.property-label-inline) {
@@ -3310,27 +3430,17 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
     max-width: none;
 }
 
+/* During measurement: fields shouldn't constrain content */
+.dynamic-views .property-row.property-row-sidebyside.property-measuring .property-field {
+    width: auto !important;
+    max-width: none !important;
+}
+
 /* Default state: fields split space equally with 50% max */
 .dynamic-views .property-row.property-row-sidebyside .property-field {
     flex: 1 1 0;
     max-width: 50%;
 }
-
-/* Solo field: leave 50px gap where vacant field would be (alignment indicates identity) */
-/* EXPERIMENT: Commented out - using "…" placeholder instead
-.dynamic-views .property-row.property-row-sidebyside .property-field.property-field-solo {
-    flex: 0 0 calc(100% - 50px);
-    max-width: calc(100% - 50px);
-}
-*/
-
-/* Push solo right fields (2, 4) to the right side when left field is empty/hidden */
-/* EXPERIMENT: Commented out - using "…" placeholder instead
-.dynamic-views .property-row.property-row-sidebyside .property-field-2.property-field-solo,
-.dynamic-views .property-row.property-row-sidebyside .property-field-4.property-field-solo {
-    margin-left: auto;
-}
-*/
 
 /* Measured state: use calculated widths from CSS variables, remove 50% cap */
 .dynamic-views .property-row.property-row-sidebyside.property-measured .property-field-1,
@@ -3347,9 +3457,10 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
     max-width: none;
 }
 
-/* Constrain property-content width when labels are on top to prevent overflow */
-.dynamic-views .property-row.property-row-sidebyside.property-measured .property-field:has(.property-label) .property-content {
-    max-width: 100%;
+/* Measured state: wrapper fills calculated field width */
+.dynamic-views .property-row.property-row-sidebyside.property-measured .property-content-wrapper {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 /* Property label (above mode) */
@@ -3357,7 +3468,7 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
     font-size: var(--dynamic-views-property-label-font-size, var(--font-ui-smaller));
     font-family: var(--dynamic-views-property-label-font, inherit);
     color: var(--dynamic-views-property-label-color, var(--text-faint));
-    margin-bottom: 2px;
+    margin-bottom: var(--size-2-1);
     white-space: nowrap;
     text-overflow: ellipsis;
 }
@@ -3371,7 +3482,7 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
     flex-shrink: 0;
     z-index: 2;
     background: inherit;
-    height: 20px;
+    height: var(--dynamic-views-property-content-height, 20px);
     display: flex;
     align-items: center;
 }
@@ -3379,13 +3490,13 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
 /* Left fields (1, 3) - label on left side */
 .dynamic-views .property-row-sidebyside .property-field-1 .property-label-inline,
 .dynamic-views .property-row-sidebyside .property-field-3 .property-label-inline {
-    padding-right: 4px;
+    padding-right: var(--size-4-1);
 }
 
 /* Right fields (2, 4) - label on right side */
 .dynamic-views .property-row-sidebyside .property-field-2 .property-label-inline,
 .dynamic-views .property-row-sidebyside .property-field-4 .property-label-inline {
-    padding-left: 4px;
+    padding-left: var(--size-4-1);
 }
 
 /* Right fields (2, 4) - visual order: content before label */
@@ -3412,22 +3523,18 @@ body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag:hover
     text-align: right;
 }
 
-/* Right fields with above labels - align children to right */
-.dynamic-views .property-row-sidebyside .property-field-2:has(.property-label),
-.dynamic-views .property-row-sidebyside .property-field-4:has(.property-label) {
-    align-items: flex-end;
-}
-
 /* Universal meta-content wrapper */
 .dynamic-views .property-content {
     display: flex;
     align-items: center;
-    gap: 4px;
-    min-width: 100%; /* Fills field, triggers scroll when content > field */
+    gap: var(--size-4-1);
     flex-shrink: 0;
     white-space: nowrap;
-    height: 20px;
+    height: var(--dynamic-views-property-content-height, 20px);
     color: var(--text-muted);
+    min-width: 0;
+    flex: 0 0 auto;
+    width: max-content;
 }
 
 /* Empty value marker styling */
@@ -3437,6 +3544,14 @@ body.dynamic-views-fade-empty-marker .dynamic-views .property-content > span.emp
 
 body:not(.dynamic-views-fade-empty-marker) .dynamic-views .property-content > span.empty-value-marker {
     color: inherit;
+}
+
+/* Right fields - content should fill wrapper width to enable proper alignment, but expand when needed for scrolling */
+.dynamic-views .property-row-sidebyside .property-field-2 .property-content,
+.dynamic-views .property-row-sidebyside .property-field-4 .property-content {
+    min-width: 100%;
+    width: max-content;
+    justify-content: flex-end;
 }
 
 /* Array list wrapper - ensure items display inline */
@@ -3465,13 +3580,6 @@ body:not(.dynamic-views-fade-list-separator) .dynamic-views .list-separator {
     color: inherit;
 }
 
-/* Content inside wrapper - uses natural width */
-.dynamic-views .property-content {
-    min-width: 0;
-    flex: 0 0 auto;
-    width: max-content; /* Use natural width - wrapper constrains scrolling */
-}
-
 /* Measurement state: remove min-width to allow natural sizing */
 .dynamic-views .property-row.property-row-sidebyside.property-measuring .property-content {
     min-width: 0 !important;
@@ -3484,25 +3592,27 @@ body:not(.dynamic-views-fade-list-separator) .dynamic-views .list-separator {
     justify-content: flex-start;
 }
 
-/* Right fields (2, 4) - align right when not scrollable */
-.dynamic-views .property-row-sidebyside .property-field-2:not(.is-scrollable),
-.dynamic-views .property-row-sidebyside .property-field-4:not(.is-scrollable) {
+/* Right fields (2, 4) - align content right when not scrollable AND using inline labels */
+.dynamic-views .property-row-sidebyside .property-field-2:not(.is-scrollable):has(.property-label-inline) .property-content-wrapper,
+.dynamic-views .property-row-sidebyside .property-field-4:not(.is-scrollable):has(.property-label-inline) .property-content-wrapper {
     justify-content: flex-end;
 }
 
-.dynamic-views .property-row-sidebyside .property-field-2:not(.is-scrollable) .property-content,
-.dynamic-views .property-row-sidebyside .property-field-4:not(.is-scrollable) .property-content {
+/* Right fields (2, 4) - align content right when not scrollable AND using labels-on-top */
+.dynamic-views .property-row-sidebyside .property-field-2:not(.is-scrollable):has(.property-label) .property-content-wrapper,
+.dynamic-views .property-row-sidebyside .property-field-4:not(.is-scrollable):has(.property-label) .property-content-wrapper {
     justify-content: flex-end;
 }
 
-/* Left alignment for scrollable fields */
-.dynamic-views .property-row-sidebyside .property-field-2.is-scrollable,
-.dynamic-views .property-row-sidebyside .property-field-4.is-scrollable {
-    justify-content: flex-start;
+/* Right fields (2, 4) - align content right when not scrollable AND no labels */
+.dynamic-views .property-row-sidebyside .property-field-2:not(.is-scrollable):not(:has(.property-label)):not(:has(.property-label-inline)) .property-content-wrapper,
+.dynamic-views .property-row-sidebyside .property-field-4:not(.is-scrollable):not(:has(.property-label)):not(:has(.property-label-inline)) .property-content-wrapper {
+    justify-content: flex-end;
 }
 
-.dynamic-views .property-row-sidebyside .property-field-2.is-scrollable .property-content,
-.dynamic-views .property-row-sidebyside .property-field-4.is-scrollable .property-content {
+/* Right fields (2, 4) - align content left when scrollable */
+.dynamic-views .property-row-sidebyside .property-field-2.is-scrollable .property-content-wrapper,
+.dynamic-views .property-row-sidebyside .property-field-4.is-scrollable .property-content-wrapper {
     justify-content: flex-start;
 }
 

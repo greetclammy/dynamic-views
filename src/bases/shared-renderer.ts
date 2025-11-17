@@ -9,7 +9,7 @@ import { resolveBasesProperty } from '../shared/data-transform';
 import { setupImageLoadHandler } from '../shared/image-loader';
 import { updateScrollGradient, setupScrollGradients } from '../shared/scroll-gradient-manager';
 import { getTimestampIcon } from '../shared/render-utils';
-import { getTagStyle, showTimestampIcon, getEmptyValueMarker, shouldHideMissingProperties, shouldHideEmptyProperties, getCardSpacing, getListSeparator } from '../utils/style-settings';
+import { getTagStyle, showTimestampIcon, getEmptyValueMarker, shouldHideMissingProperties, shouldHideEmptyProperties, getListSeparator } from '../utils/style-settings';
 import { getPropertyLabel } from '../utils/property';
 import type DynamicViewsPlugin from '../../main';
 import type { Settings } from '../types';
@@ -197,22 +197,132 @@ export class SharedCardRenderer {
         const hasImage = format !== 'none' && imageUrls.length > 0;
         const hasImageAvailable = format !== 'none' && card.hasImageAvailable;
 
-        // ALL COVERS: direct children of card (regardless of position)
-        if (format === 'cover' && (hasImage || hasImageAvailable)) {
+        // ALL COVERS: wrapped in card-cover-wrapper for flexbox positioning
+        if (format === 'cover') {
+            const coverWrapper = cardEl.createDiv(hasImage ? 'card-cover-wrapper' : 'card-cover-wrapper card-cover-wrapper-placeholder');
+
             if (hasImage) {
                 const shouldShowCarousel =
                     (position === 'top' || position === 'bottom') &&
                     imageUrls.length >= 2;
 
                 if (shouldShowCarousel) {
-                    const carouselEl = cardEl.createDiv('card-cover card-cover-carousel');
+                    const carouselEl = coverWrapper.createDiv('card-cover card-cover-carousel');
                     this.renderCarousel(carouselEl, imageUrls, format, position, settings);
                 } else {
-                    const imageEl = cardEl.createDiv('card-cover');
+                    const imageEl = coverWrapper.createDiv('card-cover');
                     this.renderImage(imageEl, imageUrls, format, position, settings);
                 }
             } else {
-                cardEl.createDiv('card-cover-placeholder');
+                coverWrapper.createDiv('card-cover-placeholder');
+            }
+
+            // Set CSS custom properties for side cover dimensions
+            if (format === 'cover' && (position === 'left' || position === 'right')) {
+                // Get aspect ratio from settings
+                const aspectRatio = typeof settings.imageAspectRatio === 'string'
+                    ? parseFloat(settings.imageAspectRatio)
+                    : (settings.imageAspectRatio || 1.0);
+                const wrapperRatio = aspectRatio / (aspectRatio + 1);
+                const elementSpacing = 8; // Use CSS default value
+
+                // Set wrapper ratio for potential CSS calc usage
+                cardEl.style.setProperty('--dynamic-views-wrapper-ratio', wrapperRatio.toString());
+
+                // Function to calculate and set wrapper dimensions
+                const updateWrapperDimensions = () => {
+                    const cardWidth = cardEl.offsetWidth; // Border box width (includes padding)
+                    const targetWidth = Math.floor(wrapperRatio * cardWidth);
+                    const paddingValue = targetWidth + elementSpacing;
+
+                    // Set CSS custom properties on the card element
+                    cardEl.style.setProperty('--dynamic-views-side-cover-width', `${targetWidth}px`);
+                    cardEl.style.setProperty('--dynamic-views-side-cover-content-padding', `${paddingValue}px`);
+
+                    return { cardWidth, targetWidth, paddingValue };
+                };
+
+                // Initial calculation
+                requestAnimationFrame(() => {
+                    const { cardWidth: _cardWidth, targetWidth, paddingValue } = updateWrapperDimensions();
+
+                    // Debug: Check if variable is actually set
+                    const cardComputed = getComputedStyle(cardEl);
+                    console.log('[CSS Variable Check]',
+                        'cardEl classes:', cardEl.className,
+                        '--side-cover-width on card style:', cardEl.style.getPropertyValue('--dynamic-views-side-cover-width'),
+                        'card computed --side-cover-width:', cardComputed.getPropertyValue('--dynamic-views-side-cover-width')
+                    );
+
+                    // Debug logging
+                    const computedStyle = cardComputed;
+                    console.log('[Side Cover Debug - shared-renderer]',
+                        'position:', position,
+                        'aspectRatio:', aspectRatio,
+                        'wrapperRatio:', wrapperRatio,
+                        'cardOffsetWidth:', cardEl.offsetWidth,
+                        'cardClientWidth:', cardEl.clientWidth,
+                        'padding:', computedStyle.padding,
+                        'targetWidth:', targetWidth,
+                        'paddingValue:', paddingValue
+                    );
+
+                    // Check rendered dimensions after DOM updates
+                    setTimeout(() => {
+                        const wrapper = cardEl.querySelector('.card-cover-wrapper') as HTMLElement;
+                        const cover = cardEl.querySelector('.card-cover') as HTMLElement;
+                        const img = cardEl.querySelector('.card-cover img') as HTMLElement;
+                        if (wrapper && cover && img) {
+                            const wrapperComputed = getComputedStyle(wrapper);
+                            console.log('[Wrapper CSS Debug]',
+                                'wrapper classes:', wrapper.className,
+                                'wrapper.style.width:', wrapper.style.width,
+                                'wrapper parent is card:', wrapper.parentElement === cardEl,
+                                'wrapper CSS width value:', wrapperComputed.getPropertyValue('width'),
+                                'wrapper resolves variable:', wrapperComputed.getPropertyValue('--dynamic-views-side-cover-width')
+                            );
+
+                            console.log('[Side Cover Rendered]',
+                                'position:', position,
+                                'wrapperWidth:', wrapper.offsetWidth,
+                                'wrapperComputedWidth:', wrapperComputed.width,
+                                'coverWidth:', cover.offsetWidth,
+                                'coverComputedWidth:', getComputedStyle(cover).width,
+                                'imgWidth:', img.offsetWidth,
+                                'imgComputedWidth:', getComputedStyle(img).width
+                            );
+                        }
+                    }, 200);
+
+                    // Create ResizeObserver to update wrapper width when card resizes
+                    const resizeObserver = new ResizeObserver((entries) => {
+                        for (const entry of entries) {
+                            const target = entry.target as HTMLElement;
+                            const newCardWidth = target.offsetWidth;
+
+                            // Skip if card not yet rendered (width = 0)
+                            if (newCardWidth === 0) {
+                                console.log('[Side Cover Resize] Skipped - cardWidth is 0');
+                                continue;
+                            }
+
+                            const newTargetWidth = Math.floor(wrapperRatio * newCardWidth);
+                            const newPaddingValue = newTargetWidth + elementSpacing;
+
+                            cardEl.style.setProperty('--dynamic-views-side-cover-width', `${newTargetWidth}px`);
+                            cardEl.style.setProperty('--dynamic-views-side-cover-content-padding', `${newPaddingValue}px`);
+
+                            console.log('[Side Cover Resize]',
+                                'newCardWidth:', newCardWidth,
+                                'newTargetWidth:', newTargetWidth,
+                                'newPaddingValue:', newPaddingValue
+                            );
+                        }
+                    });
+
+                    // Observe the card element for size changes
+                    resizeObserver.observe(cardEl);
+                });
             }
         }
 
@@ -288,6 +398,13 @@ export class SharedCardRenderer {
             // Don't add position classes to non-active slides - let transition logic handle it
 
             const imageEmbedContainer = slideEl.createDiv('image-embed');
+
+            // Multi-image indicator (positioned on image itself)
+            if (index === 0) {
+                const indicator = imageEmbedContainer.createDiv('carousel-indicator');
+                setIcon(indicator, 'lucide-images');
+            }
+
             const imgEl = imageEmbedContainer.createEl('img', {
                 attr: { src: url, alt: '' }
             });
@@ -336,6 +453,11 @@ export class SharedCardRenderer {
             // Add is-active class (keep positioning class, CSS will handle the transition)
             newSlide.addClass('is-active');
 
+            // Clean up position class after transition completes
+            setTimeout(() => {
+                newSlide.removeClass('slide-left', 'slide-right');
+            }, 310);
+
             console.log('// After transition:', {
                 oldClasses: oldSlide.className,
                 newClasses: newSlide.className
@@ -344,13 +466,14 @@ export class SharedCardRenderer {
             currentSlide = newIndex;
         };
 
-        // Navigation buttons
-        const prevBtn = carouselEl.createEl('button', {
-            cls: 'carousel-nav-button carousel-nav-prev',
-            attr: { 'aria-label': 'Previous slide' }
-        });
-        prevBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
-        prevBtn.addEventListener('click', (e) => {
+        // Navigation arrows
+        const leftArrow = carouselEl.createDiv('carousel-nav-left');
+        setIcon(leftArrow, 'lucide-chevron-left');
+
+        const rightArrow = carouselEl.createDiv('carousel-nav-right');
+        setIcon(rightArrow, 'lucide-chevron-right');
+
+        leftArrow.addEventListener('click', (e) => {
             e.stopPropagation();
             const newIndex = currentSlide === 0 ? imageUrls.length - 1 : currentSlide - 1;
             // Direction based on visual progression: wrapping forward (last->first) should look like going forward
@@ -358,12 +481,7 @@ export class SharedCardRenderer {
             updateSlide(newIndex, direction);
         });
 
-        const nextBtn = carouselEl.createEl('button', {
-            cls: 'carousel-nav-button carousel-nav-next',
-            attr: { 'aria-label': 'Next slide' }
-        });
-        nextBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-        nextBtn.addEventListener('click', (e) => {
+        rightArrow.addEventListener('click', (e) => {
             e.stopPropagation();
             const newIndex = currentSlide === imageUrls.length - 1 ? 0 : currentSlide + 1;
             // Direction based on visual progression: wrapping back (last->first) should look like going backward
@@ -868,11 +986,12 @@ export class SharedCardRenderer {
                     this.measureSideBySideRow(rowEl, field1, field2);
                 });
 
-                // Re-measure on resize
+                // Re-measure on card resize
+                const card = rowEl.closest('.card') as HTMLElement;
                 const observer = new ResizeObserver(() => {
                     this.measureSideBySideRow(rowEl, field1, field2);
                 });
-                observer.observe(rowEl);
+                observer.observe(card);
                 this.propertyObservers.push(observer);
             }
         });
@@ -882,80 +1001,112 @@ export class SharedCardRenderer {
      * Measures and applies widths for side-by-side row
      */
     private measureSideBySideRow(row: HTMLElement, field1: HTMLElement, field2: HTMLElement): void {
-        // Enter measuring state to remove constraints
-        row.addClass('property-measuring');
+        try {
+            const card = row.closest('.card') as HTMLElement;
+            const cardProperties = row.closest('.card-properties') as HTMLElement;
 
-        // Force reflow
-        void row.offsetWidth;
+            // Remove measured state and enter measuring state to remove constraints
+            row.removeClass('property-measured');
+            row.addClass('property-measuring');
 
-        // Measure property-content-wrapper (expands to content width in measuring mode)
-        const wrapper1 = field1.querySelector('.property-content-wrapper') as HTMLElement;
-        const wrapper2 = field2.querySelector('.property-content-wrapper') as HTMLElement;
+            // Force reflow
+            void row.offsetWidth;
 
-        // Measure inline labels if present
-        const label1 = field1.querySelector('.property-label-inline') as HTMLElement;
-        const label2 = field2.querySelector('.property-label-inline') as HTMLElement;
+            // Measure property-content-wrapper (expands to content width in measuring mode)
+            const wrapper1 = field1.querySelector('.property-content-wrapper') as HTMLElement;
+            const wrapper2 = field2.querySelector('.property-content-wrapper') as HTMLElement;
 
-        // Total width = wrapper width + label width (if inline label exists)
-        // During measuring mode, wrapper has overflow-x: visible and expands to content width
-        let width1 = wrapper1 ? wrapper1.scrollWidth : 0;
-        let width2 = wrapper2 ? wrapper2.scrollWidth : 0;
+            // Measure inline labels if present
+            const label1 = field1.querySelector('.property-label-inline') as HTMLElement;
+            const label2 = field2.querySelector('.property-label-inline') as HTMLElement;
 
-        if (label1) {
-            width1 += label1.scrollWidth;
-        }
-        if (label2) {
-            width2 += label2.scrollWidth;
-        }
+            // Total width = wrapper width + label width + gap (if inline label exists)
+            // During measuring mode, wrapper has overflow-x: visible and expands to content width
+            let width1 = wrapper1 ? wrapper1.scrollWidth : 0;
+            let width2 = wrapper2 ? wrapper2.scrollWidth : 0;
 
-        const containerWidth = row.clientWidth;
-        const gap = getCardSpacing();
-        const availableWidth = containerWidth - gap;
+            // Add inline label width + gap between label and wrapper
+            // Read gap from CSS variable (var(--size-4-1), typically 4px)
+            const inlineLabelGap = parseFloat(getComputedStyle(field1).gap) || 4;
+            if (label1) {
+                width1 += label1.scrollWidth + inlineLabelGap;
+            }
+            if (label2) {
+                width2 += label2.scrollWidth + inlineLabelGap;
+            }
 
-        const percent1 = (width1 / availableWidth) * 100;
-        const percent2 = (width2 / availableWidth) * 100;
+            // Calculate available width from card dimensions
+            // Can't use row.clientWidth because it lags behind when CSS variables update
 
-        // Calculate optimal widths using smart strategy
-        let field1Width: string;
-        let field2Width: string;
+            // Get side cover padding from CSS variable (freshly updated by side cover observer)
+            const sideCoverPadding = parseFloat(getComputedStyle(card).getPropertyValue('--dynamic-views-side-cover-content-padding')) || 0;
 
-        if (percent1 <= 50 && percent2 <= 50) {
-            // Both fit: field1 gets exact width, field2 fills remainder (maximizes field2 content space)
-            field1Width = `${width1}px`;
-            field2Width = `${availableWidth - width1}px`;
-        } else if (percent1 <= 50 && percent2 > 50) {
-            // Field1 small, field2 needs more: field1 exact, field2 fills
-            field1Width = `${width1}px`;
-            field2Width = `${availableWidth - width1}px`;
-        } else if (percent1 > 50 && percent2 <= 50) {
-            // Field2 small, field1 needs more: field2 exact, field1 fills
-            field1Width = `${availableWidth - width2}px`;
-            field2Width = `${width2}px`;
-        } else {
-            // Both > 50%: split 50-50
-            const half = availableWidth / 2;
-            field1Width = `${half}px`;
-            field2Width = `${half}px`;
-        }
+            // Calculate available width: cardProperties width = card content width minus side cover
+            // For cards with side covers: cardProperties has max-width constraint
+            // For cards without: cardProperties spans full card content area
+            let containerWidth: number;
+            if (sideCoverPadding > 0) {
+                // Card has side cover: cardProperties max-width = 100% - sideCoverPadding
+                // cardProperties content width = card content width - sideCoverPadding
+                const cardContentWidth = card.clientWidth; // Content width (excludes border)
+                containerWidth = cardContentWidth - sideCoverPadding;
+            } else {
+                // No side cover: use cardProperties full width
+                containerWidth = cardProperties.clientWidth;
+            }
 
-        // Exit measuring state, apply calculated values
-        row.removeClass('property-measuring');
-        row.style.setProperty('--field1-width', field1Width);
-        row.style.setProperty('--field2-width', field2Width);
-        row.addClass('property-measured');
+            // Guard against negative or zero width (edge case: very narrow cards or misconfiguration)
+            if (containerWidth <= 0) {
+                return;
+            }
 
-        // Reset scroll position to 0 for both wrappers (reuse variables from measurement)
-        if (wrapper1) wrapper1.scrollLeft = 0;
-        if (wrapper2) wrapper2.scrollLeft = 0;
+            // Read field gap from CSS variable (var(--dynamic-views-element-spacing, 8px))
+            const fieldGap = parseFloat(getComputedStyle(row).gap) || 8;
+            const availableWidth = containerWidth - fieldGap;
 
-        // Update scroll gradients after layout settles
-        // Use double RAF to ensure CSS variables are fully applied before checking scrollability
-        requestAnimationFrame(() => {
+            const percent1 = (width1 / availableWidth) * 100;
+            const percent2 = (width2 / availableWidth) * 100;
+
+            // Calculate optimal widths using smart strategy
+            let field1Width: string;
+            let field2Width: string;
+
+            if (percent1 <= 50) {
+                // Field1 fits: field1 exact, field2 fills remainder
+                field1Width = `${width1}px`;
+                field2Width = `${availableWidth - width1}px`;
+            } else if (percent2 <= 50) {
+                // Field2 fits: field2 exact, field1 fills remainder
+                field1Width = `${availableWidth - width2}px`;
+                field2Width = `${width2}px`;
+            } else {
+                // Both > 50%: split 50-50
+                const half = availableWidth / 2;
+                field1Width = `${half}px`;
+                field2Width = `${half}px`;
+            }
+
+            // Apply calculated values
+            row.style.setProperty('--field1-width', field1Width);
+            row.style.setProperty('--field2-width', field2Width);
+            row.addClass('property-measured');
+
+            // Reset scroll position to 0 for both wrappers (reuse variables from measurement)
+            if (wrapper1) wrapper1.scrollLeft = 0;
+            if (wrapper2) wrapper2.scrollLeft = 0;
+
+            // Update scroll gradients after layout settles
+            // Use double RAF to ensure CSS variables are fully applied before checking scrollability
             requestAnimationFrame(() => {
-                updateScrollGradient(field1);
-                updateScrollGradient(field2);
+                requestAnimationFrame(() => {
+                    updateScrollGradient(field1);
+                    updateScrollGradient(field2);
+                });
             });
-        });
+        } finally {
+            // Always exit measuring state, even if error occurs
+            row.removeClass('property-measuring');
+        }
     }
 
 }

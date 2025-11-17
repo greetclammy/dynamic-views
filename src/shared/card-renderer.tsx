@@ -120,6 +120,11 @@ function CoverCarousel({ imageArray, updateLayoutRef }: { imageArray: string[]; 
             // Add is-active class (keep positioning class, CSS will handle the transition)
             newSlide.classList.add('is-active');
 
+            // Clean up position class after transition completes
+            setTimeout(() => {
+                newSlide.classList.remove('slide-left', 'slide-right');
+            }, 310);
+
             console.log('// After transition:', {
                 oldClasses: oldSlide.className,
                 newClasses: newSlide.className
@@ -128,10 +133,10 @@ function CoverCarousel({ imageArray, updateLayoutRef }: { imageArray: string[]; 
             currentSlide = newIndex;
         };
 
-        const prevBtn = carouselEl.querySelector('.carousel-nav-prev');
-        const nextBtn = carouselEl.querySelector('.carousel-nav-next');
+        const leftArrow = carouselEl.querySelector('.carousel-nav-left');
+        const rightArrow = carouselEl.querySelector('.carousel-nav-right');
 
-        prevBtn?.addEventListener('click', (e) => {
+        leftArrow?.addEventListener('click', (e) => {
             e.stopPropagation();
             const newIndex = currentSlide === 0 ? imageArray.length - 1 : currentSlide - 1;
             // Direction based on visual progression: wrapping forward (last->first) should look like going forward
@@ -139,7 +144,7 @@ function CoverCarousel({ imageArray, updateLayoutRef }: { imageArray: string[]; 
             updateSlide(newIndex, direction);
         });
 
-        nextBtn?.addEventListener('click', (e) => {
+        rightArrow?.addEventListener('click', (e) => {
             e.stopPropagation();
             const newIndex = currentSlide === imageArray.length - 1 ? 0 : currentSlide + 1;
             // Direction based on visual progression: wrapping back (last->first) should look like going backward
@@ -160,6 +165,11 @@ function CoverCarousel({ imageArray, updateLayoutRef }: { imageArray: string[]; 
                             className="image-embed"
                             style={{ '--cover-image-url': `url("${url}")` }}
                         >
+                            {index === 0 && (
+                                <div className="carousel-indicator">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="13" height="10" rx="1"></rect><polyline points="4 2,8 2,8 7"></polyline><polyline points="8 2,16 2,16 7"></polyline><polyline points="16 2,20 2,20 7"></polyline></svg>
+                                </div>
+                            )}
                             <img
                                 src={url}
                                 alt=""
@@ -186,22 +196,12 @@ function CoverCarousel({ imageArray, updateLayoutRef }: { imageArray: string[]; 
                     </div>
                 ))}
             </div>
-            <button
-                className="carousel-nav-button carousel-nav-prev"
-                aria-label="Previous slide"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-            </button>
-            <button
-                className="carousel-nav-button carousel-nav-next"
-                aria-label="Next slide"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-            </button>
+            <div className="carousel-nav-left">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </div>
+            <div className="carousel-nav-right">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
         </div>
     );
 }
@@ -674,22 +674,23 @@ function Card({
                 </div>
             )}
 
-            {/* Covers: ALL positions render as direct children of card */}
-            {format === 'cover' && (imageArray.length > 0 || card.hasImageAvailable) && (
-                imageArray.length > 0 ? (
-                    (() => {
-                        const shouldShowCarousel =
-                            (position === 'top' || position === 'bottom') &&
-                            imageArray.length >= 2;
+            {/* Covers: wrapped in card-cover-wrapper for flexbox positioning */}
+            {format === 'cover' && (
+                <div className={imageArray.length > 0 ? "card-cover-wrapper" : "card-cover-wrapper card-cover-wrapper-placeholder"}>
+                    {imageArray.length > 0 ? (
+                        (() => {
+                            const shouldShowCarousel =
+                                (position === 'top' || position === 'bottom') &&
+                                imageArray.length >= 2;
 
-                        if (shouldShowCarousel) {
+                            if (shouldShowCarousel) {
+                                // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
+                                return <CoverCarousel imageArray={imageArray} updateLayoutRef={updateLayoutRef} />;
+                            }
+
                             // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
-                            return <CoverCarousel imageArray={imageArray} updateLayoutRef={updateLayoutRef} />;
-                        }
-
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
-                        return (
-                            <div className="card-cover">
+                            return (
+                                <div className="card-cover">
                                 <div
                                     className="image-embed"
                                     style={{ '--cover-image-url': `url("${imageArray[0] || ''}")` }}
@@ -758,11 +759,127 @@ function Card({
                                 </div>
                             </div>
                         );
-                    })()
-                ) : (
-                    <div className="card-cover-placeholder"></div>
-                )
+                        })()
+                    ) : (
+                        <div className="card-cover-placeholder"></div>
+                    )}
+                </div>
             )}
+
+            {/* Set CSS custom properties for side cover dimensions */}
+            {format === 'cover' && (position === 'left' || position === 'right') && (() => {
+                setTimeout(() => {
+                    const cardEl = document.querySelector(`[data-path="${card.path}"]`) as HTMLElement;
+                    if (!cardEl) return;
+
+                    // Get aspect ratio from settings
+                    const aspectRatio = typeof settings.imageAspectRatio === 'string'
+                        ? parseFloat(settings.imageAspectRatio)
+                        : (settings.imageAspectRatio || 1.0);
+                    const wrapperRatio = aspectRatio / (aspectRatio + 1);
+                    const elementSpacing = 8; // Use CSS default value
+
+                    // Set wrapper ratio for potential CSS calc usage
+                    cardEl.style.setProperty('--dynamic-views-wrapper-ratio', wrapperRatio.toString());
+
+                    // Function to calculate and set wrapper dimensions
+                    const updateWrapperDimensions = () => {
+                        const cardWidth = cardEl.offsetWidth; // Border box width (includes padding)
+                        const targetWidth = Math.floor(wrapperRatio * cardWidth);
+                        const paddingValue = targetWidth + elementSpacing;
+
+                        // Set CSS custom properties on the card element
+                        cardEl.style.setProperty('--dynamic-views-side-cover-width', `${targetWidth}px`);
+                        cardEl.style.setProperty('--dynamic-views-side-cover-content-padding', `${paddingValue}px`);
+
+                        return { cardWidth, targetWidth, paddingValue };
+                    };
+
+                    // Initial calculation
+                    const { cardWidth: _cardWidth, targetWidth, paddingValue } = updateWrapperDimensions();
+
+                    // Debug: Check if variable is actually set
+                    const cardComputed = getComputedStyle(cardEl);
+                    console.log('[CSS Variable Check]',
+                        'cardEl classes:', cardEl.className,
+                        '--side-cover-width on card style:', cardEl.style.getPropertyValue('--dynamic-views-side-cover-width'),
+                        'card computed --side-cover-width:', cardComputed.getPropertyValue('--dynamic-views-side-cover-width')
+                    );
+
+                    // Debug logging
+                    const computedStyle = cardComputed;
+                    console.log('[Side Cover Debug - card-renderer]',
+                        'cardPath:', card.path,
+                        'position:', position,
+                        'aspectRatio:', aspectRatio,
+                        'wrapperRatio:', wrapperRatio,
+                        'cardOffsetWidth:', cardEl.offsetWidth,
+                        'cardClientWidth:', cardEl.clientWidth,
+                        'padding:', computedStyle.padding,
+                        'targetWidth:', targetWidth,
+                        'paddingValue:', paddingValue
+                    );
+
+                    // Check rendered dimensions after DOM updates
+                    setTimeout(() => {
+                        const wrapper = cardEl.querySelector('.card-cover-wrapper') as HTMLElement;
+                        const cover = cardEl.querySelector('.card-cover') as HTMLElement;
+                        const img = cardEl.querySelector('.card-cover img') as HTMLElement;
+                        if (wrapper && cover && img) {
+                            const wrapperComputed = getComputedStyle(wrapper);
+                            console.log('[Wrapper CSS Debug - card-renderer]',
+                                'wrapper classes:', wrapper.className,
+                                'wrapper.style.width:', wrapper.style.width,
+                                'wrapper parent is card:', wrapper.parentElement === cardEl,
+                                'wrapper CSS width value:', wrapperComputed.getPropertyValue('width'),
+                                'wrapper resolves variable:', wrapperComputed.getPropertyValue('--dynamic-views-side-cover-width')
+                            );
+
+                            console.log('[Side Cover Rendered - card-renderer]',
+                                'cardPath:', card.path,
+                                'position:', position,
+                                'wrapperWidth:', wrapper.offsetWidth,
+                                'wrapperComputedWidth:', wrapperComputed.width,
+                                'coverWidth:', cover.offsetWidth,
+                                'coverComputedWidth:', getComputedStyle(cover).width,
+                                'imgWidth:', img.offsetWidth,
+                                'imgComputedWidth:', getComputedStyle(img).width
+                            );
+                        }
+                    }, 200);
+
+                    // Create ResizeObserver to update wrapper width when card resizes
+                    const resizeObserver = new ResizeObserver((entries) => {
+                        for (const entry of entries) {
+                            const target = entry.target as HTMLElement;
+                            const newCardWidth = target.offsetWidth;
+
+                            // Skip if card not yet rendered (width = 0)
+                            if (newCardWidth === 0) {
+                                console.log('[Side Cover Resize - card-renderer] Skipped - cardWidth is 0');
+                                continue;
+                            }
+
+                            const newTargetWidth = Math.floor(wrapperRatio * newCardWidth);
+                            const newPaddingValue = newTargetWidth + elementSpacing;
+
+                            cardEl.style.setProperty('--dynamic-views-side-cover-width', `${newTargetWidth}px`);
+                            cardEl.style.setProperty('--dynamic-views-side-cover-content-padding', `${newPaddingValue}px`);
+
+                            console.log('[Side Cover Resize - card-renderer]',
+                                'cardPath:', card.path,
+                                'newCardWidth:', newCardWidth,
+                                'newTargetWidth:', newTargetWidth,
+                                'newPaddingValue:', newPaddingValue
+                            );
+                        }
+                    });
+
+                    // Observe the card element for size changes
+                    resizeObserver.observe(cardEl);
+                }, 100);
+                return null;
+            })()}
 
             {/* Thumbnail-top: between title and text preview */}
             {format === 'thumbnail' && position === 'top' && (imageArray.length > 0 || card.hasImageAvailable) && (
