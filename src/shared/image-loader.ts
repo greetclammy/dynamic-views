@@ -1,5 +1,5 @@
-import { extractAverageColor, getColorTheme } from '../utils/image-color';
-import { IMAGE_ASPECT_RATIO } from './constants';
+import { extractAverageColor, getColorTheme } from "../utils/image-color";
+import { IMAGE_ASPECT_RATIO } from "./constants";
 
 /**
  * Core logic for handling image load
@@ -12,37 +12,39 @@ import { IMAGE_ASPECT_RATIO } from './constants';
  * @param onLayoutUpdate - Optional callback to trigger layout update (for masonry)
  */
 export function handleImageLoad(
-    imgEl: HTMLImageElement,
-    imageEmbedContainer: HTMLElement,
-    cardEl: HTMLElement,
-    onLayoutUpdate?: (() => void) | null
+  imgEl: HTMLImageElement,
+  imageEmbedContainer: HTMLElement,
+  cardEl: HTMLElement,
+  onLayoutUpdate?: (() => void) | null,
 ): void {
-    // Extract ambient color for Cover background: Ambient and Card background: Ambient options
-    const ambientColor = extractAverageColor(imgEl);
-    imageEmbedContainer.style.setProperty('--ambient-color', ambientColor); // For Cover background: Ambient
-    cardEl.style.setProperty('--ambient-color', ambientColor); // For Card background: Ambient
+  // Extract ambient color for Cover background: Ambient and Card background: Ambient options
+  const ambientColor = extractAverageColor(imgEl);
+  imageEmbedContainer.style.setProperty("--ambient-color", ambientColor); // For Cover background: Ambient
+  cardEl.style.setProperty("--ambient-color", ambientColor); // For Card background: Ambient
 
-    // Set ambient theme on card for text color adjustments
-    const colorTheme = getColorTheme(ambientColor);
-    cardEl.setAttribute('data-ambient-theme', colorTheme);
+  // Set ambient theme on card for text color adjustments
+  const colorTheme = getColorTheme(ambientColor);
+  cardEl.setAttribute("data-ambient-theme", colorTheme);
 
-    // Set aspect ratio for flexible cover height (masonry only)
-    if (imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0) {
-        const imgAspect = imgEl.naturalHeight / imgEl.naturalWidth;
-        const containerMaxAspect = parseFloat(
-            getComputedStyle(document.body).getPropertyValue('--dynamic-views-image-aspect-ratio') || String(IMAGE_ASPECT_RATIO)
-        );
+  // Set aspect ratio for flexible cover height (masonry only)
+  if (imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0) {
+    const imgAspect = imgEl.naturalHeight / imgEl.naturalWidth;
+    const containerMaxAspect = parseFloat(
+      getComputedStyle(document.body).getPropertyValue(
+        "--dynamic-views-image-aspect-ratio",
+      ) || String(IMAGE_ASPECT_RATIO),
+    );
 
-        // If image is wider (lower aspect ratio), use its ratio
-        if (imgAspect < containerMaxAspect) {
-            cardEl.style.setProperty('--actual-aspect-ratio', imgAspect.toString());
-        }
+    // If image is wider (lower aspect ratio), use its ratio
+    if (imgAspect < containerMaxAspect) {
+      cardEl.style.setProperty("--actual-aspect-ratio", imgAspect.toString());
     }
+  }
 
-    // Trigger layout update if callback provided (for masonry reflow)
-    if (onLayoutUpdate) {
-        onLayoutUpdate();
-    }
+  // Trigger layout update if callback provided (for masonry reflow)
+  if (onLayoutUpdate) {
+    onLayoutUpdate();
+  }
 }
 
 /**
@@ -55,12 +57,12 @@ export function handleImageLoad(
  * @param onLayoutUpdate - Optional callback to trigger layout update (for masonry)
  */
 export function setupImageLoadHandler(
-    imgEl: HTMLImageElement,
-    imageEmbedContainer: HTMLElement,
-    cardEl: HTMLElement,
-    onLayoutUpdate?: () => void
+  imgEl: HTMLImageElement,
+  imageEmbedContainer: HTMLElement,
+  cardEl: HTMLElement,
+  onLayoutUpdate?: () => void,
 ): void {
-    imgEl.addEventListener('load', () => {
-        handleImageLoad(imgEl, imageEmbedContainer, cardEl, onLayoutUpdate);
-    });
+  imgEl.addEventListener("load", () => {
+    handleImageLoad(imgEl, imageEmbedContainer, cardEl, onLayoutUpdate);
+  });
 }
