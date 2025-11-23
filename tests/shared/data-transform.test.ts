@@ -12,7 +12,7 @@ import { App } from 'obsidian';
 // Mock dependencies
 jest.mock('../../src/utils/property');
 jest.mock('../../src/shared/render-utils', () => ({
-  formatTimestamp: jest.fn((ts: number) => `formatted-${ts}`),
+  formatTimestamp: jest.fn((ts: number) => ts != null ? `formatted-${ts}` : null),
   extractBasesTimestamp: jest.fn(() => ({ display: 'timestamp', raw: 123456 })),
   extractDatacoreTimestamp: jest.fn(() => ({ display: 'timestamp', raw: 123456 })),
 }));
@@ -330,15 +330,20 @@ describe('data-transform', () => {
         coerce: { string: (val: any) => String(val) },
       };
 
-      const snippets = new Map([
-        ['file1.md', 'snippet 1'],
-        ['file2.md', 'snippet 2'],
-      ]);
+      const snippets = {
+        'file1.md': 'snippet 1',
+        'file2.md': 'snippet 2',
+      };
 
-      const images = new Map([
-        ['file1.md', 'img1.png'],
-        ['file2.md', 'img2.png'],
-      ]);
+      const images = {
+        'file1.md': 'img1.png',
+        'file2.md': 'img2.png',
+      };
+
+      const hasImageAvailable = {
+        'file1.md': true,
+        'file2.md': true,
+      };
 
       const result = transformDatacoreResults(
         mockResults,
@@ -347,7 +352,8 @@ describe('data-transform', () => {
         'alphabetical',
         false,
         snippets,
-        images
+        images,
+        hasImageAvailable
       );
 
       expect(result).toHaveLength(2);
@@ -396,7 +402,10 @@ describe('data-transform', () => {
         mockDC,
         mockSettings,
         'alphabetical',
-        false
+        false,
+        {},
+        {},
+        {}
       );
 
       expect(result).toHaveLength(1);
@@ -426,15 +435,20 @@ describe('data-transform', () => {
         },
       ];
 
-      const snippets = new Map([
-        ['file1.md', 'snippet 1'],
-        ['file2.md', 'snippet 2'],
-      ]);
+      const snippets = {
+        'file1.md': 'snippet 1',
+        'file2.md': 'snippet 2',
+      };
 
-      const images = new Map([
-        ['file1.md', 'img1.png'],
-        ['file2.md', 'img2.png'],
-      ]);
+      const images = {
+        'file1.md': 'img1.png',
+        'file2.md': 'img2.png',
+      };
+
+      const hasImageAvailable = {
+        'file1.md': true,
+        'file2.md': false,
+      };
 
       const result = transformBasesEntries(
         mockApp,
@@ -443,7 +457,8 @@ describe('data-transform', () => {
         'alphabetical',
         false,
         snippets,
-        images
+        images,
+        hasImageAvailable
       );
 
       expect(result).toHaveLength(2);
@@ -459,7 +474,10 @@ describe('data-transform', () => {
         [],
         mockSettings,
         'alphabetical',
-        false
+        false,
+        {},
+        {},
+        {}
       );
 
       expect(result).toEqual([]);
@@ -469,18 +487,26 @@ describe('data-transform', () => {
   describe('resolveBasesProperty', () => {
     it('should resolve file.path property', () => {
       const mockEntry: any = {
-        file: { path: 'test/file.md' },
+        file: { path: 'test/folder/file.md' },
+      };
+
+      const mockCardData: any = {
+        folderPath: 'test/folder',
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
       };
 
       const result = resolveBasesProperty(
         mockApp,
-        mockEntry,
         'file.path',
+        mockEntry,
+        mockCardData,
         mockSettings
       );
 
-      expect(result).toHaveProperty('display');
-      expect(result).toHaveProperty('raw');
+      expect(result).toBe('test/folder');
     });
 
     it('should resolve file.tags property', () => {
@@ -492,14 +518,23 @@ describe('data-transform', () => {
         file: { path: 'file.md' },
       };
 
+      const mockCardData: any = {
+        folderPath: '',
+        tags: ['tag1', 'tag2'],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
       const result = resolveBasesProperty(
         mockApp,
-        mockEntry,
         'file.tags',
+        mockEntry,
+        mockCardData,
         mockSettings
       );
 
-      expect(result).toBeTruthy();
+      expect(result).toBe('tags');
     });
 
     it('should handle null/undefined property values', () => {
@@ -508,22 +543,40 @@ describe('data-transform', () => {
         getValue: jest.fn().mockReturnValue(null),
       };
 
+      const mockCardData: any = {
+        folderPath: '',
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
       const result = resolveBasesProperty(
         mockApp,
-        mockEntry,
         'customProp',
+        mockEntry,
+        mockCardData,
         mockSettings
       );
 
-      // May return null or formatted string depending on implementation
-      expect(result === null || typeof result === 'string').toBe(true);
+      // Should return null for missing property
+      expect(result).toBeNull();
     });
   });
 
   describe('resolveDatacoreProperty', () => {
     it('should resolve file.path property', () => {
       const mockPage: any = {
-        $path: 'test/file.md',
+        $path: 'test/folder/file.md',
+        value: jest.fn(),
+      };
+
+      const mockCardData: any = {
+        folderPath: 'test/folder',
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
       };
 
       const mockDC: any = {
@@ -531,19 +584,28 @@ describe('data-transform', () => {
       };
 
       const result = resolveDatacoreProperty(
-        mockPage,
-        mockDC,
         'file.path',
-        mockSettings
+        mockPage,
+        mockCardData,
+        mockSettings,
+        mockDC
       );
 
-      expect(result).toHaveProperty('display');
-      expect(result).toHaveProperty('raw');
+      expect(result).toBe('test/folder');
     });
 
     it('should resolve tags property', () => {
       const mockPage: any = {
         $tags: ['tag1', 'tag2'],
+        value: jest.fn(),
+      };
+
+      const mockCardData: any = {
+        folderPath: '',
+        tags: [],
+        yamlTags: ['tag1', 'tag2'],
+        ctime: 1000000,
+        mtime: 2000000,
       };
 
       const mockDC: any = {
@@ -551,13 +613,14 @@ describe('data-transform', () => {
       };
 
       const result = resolveDatacoreProperty(
-        mockPage,
-        mockDC,
         'tags',
-        mockSettings
+        mockPage,
+        mockCardData,
+        mockSettings,
+        mockDC
       );
 
-      expect(result).toBeTruthy();
+      expect(result).toBe('tags');
     });
 
     it('should handle null/undefined property values', () => {
@@ -565,18 +628,27 @@ describe('data-transform', () => {
         value: jest.fn().mockReturnValue(null),
       };
 
+      const mockCardData: any = {
+        folderPath: '',
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
       const mockDC: any = {
         coerce: { string: (val: any) => String(val) },
       };
 
       const result = resolveDatacoreProperty(
-        mockPage,
-        mockDC,
         'customProp',
-        mockSettings
+        mockPage,
+        mockCardData,
+        mockSettings,
+        mockDC
       );
 
-      // May return null or formatted string depending on implementation
+      // Should return null or string for missing property (depends on custom timestamp settings)
       expect(result === null || typeof result === 'string').toBe(true);
     });
   });
