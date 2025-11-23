@@ -43,3 +43,19 @@ document.createElement = jest.fn((tagName: string) => {
   }
   return originalCreateElement(tagName);
 }) as any;
+
+// Mock Image class for image validation tests
+(global as any).Image = class {
+  src: string = '';
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+
+  constructor() {
+    // Store reference to this instance for test access
+    if (!(global as any).__lastImage) {
+      (global as any).__imageInstances = [];
+    }
+    (global as any).__imageInstances.push(this);
+    (global as any).__lastImage = this;
+  }
+};
