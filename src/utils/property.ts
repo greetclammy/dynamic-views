@@ -262,50 +262,52 @@ export function getAllDatacoreImagePropertyValues(
 }
 
 /**
+ * Map of technical property names to exact labels (no capitalization changes)
+ */
+const PROPERTY_LABEL_MAP: Record<string, string> = {
+  "file.file": "file",
+  file: "file",
+  "file.name": "file name",
+  "file name": "file name",
+  "file.basename": "file base name",
+  "file base name": "file base name",
+  "file.ext": "file extension",
+  "file.extension": "file extension",
+  "file extension": "file extension",
+  "file.backlinks": "file backlinks",
+  "file backlinks": "file backlinks",
+  "file.ctime": "created time",
+  "created time": "created time",
+  "file.embeds": "file embeds",
+  "file embeds": "file embeds",
+  "file.fullname": "file full name",
+  "file full name": "file full name",
+  "file.links": "file links",
+  "file links": "file links",
+  "file.path": "file path",
+  path: "file path",
+  "file path": "file path",
+  "file.size": "file size",
+  "file size": "file size",
+  "file.tags": "file tags",
+  "file tags": "file tags",
+  tags: "tags",
+  "note.tags": "tags",
+  "file.mtime": "modified time",
+  "modified time": "modified time",
+  "file.folder": "folder",
+  folder: "folder",
+};
+
+/**
  * Convert property name to readable label
  * Returns exact property names for special properties, or original name for custom properties
  */
 export function getPropertyLabel(propertyName: string): string {
   if (!propertyName || propertyName === "") return "";
 
-  // Map of technical names to exact labels (no capitalization changes)
-  const labelMap: Record<string, string> = {
-    "file.file": "file",
-    file: "file",
-    "file.name": "file name",
-    "file name": "file name",
-    "file.basename": "file base name",
-    "file base name": "file base name",
-    "file.ext": "file extension",
-    "file.extension": "file extension",
-    "file extension": "file extension",
-    "file.backlinks": "file backlinks",
-    "file backlinks": "file backlinks",
-    "file.ctime": "created time",
-    "created time": "created time",
-    "file.embeds": "file embeds",
-    "file embeds": "file embeds",
-    "file.fullname": "file full name",
-    "file full name": "file full name",
-    "file.links": "file links",
-    "file links": "file links",
-    "file.path": "file path",
-    path: "file path",
-    "file path": "file path",
-    "file.size": "file size",
-    "file size": "file size",
-    "file.tags": "file tags",
-    "file tags": "file tags",
-    tags: "tags",
-    "note.tags": "tags",
-    "file.mtime": "modified time",
-    "modified time": "modified time",
-    "file.folder": "folder",
-    folder: "folder",
-  };
-
   // Check if we have a mapped label
-  const mappedLabel = labelMap[propertyName.toLowerCase()];
+  const mappedLabel = PROPERTY_LABEL_MAP[propertyName.toLowerCase()];
   if (mappedLabel) return mappedLabel;
 
   // Strip note. prefix from YAML properties
@@ -375,4 +377,24 @@ export function getAllVaultProperties(app: App): string[] {
     // Alphabetical for rest
     return a.localeCompare(b);
   });
+}
+
+/**
+ * Validate if a string is a valid URI
+ * Accepts any URI scheme (http://, https://, obsidian://, file://, etc.)
+ */
+export function isValidUri(value: string): boolean {
+  if (!value || typeof value !== "string") return false;
+
+  const trimmed = value.trim();
+
+  // Basic length checks
+  if (trimmed.length < 5 || trimmed.length > 2048) return false;
+
+  // Must contain :// pattern for URI scheme
+  if (!trimmed.includes("://")) return false;
+
+  // Validate URI format: scheme + :// + path
+  const uriPattern = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.+$/;
+  return uriPattern.test(trimmed);
 }

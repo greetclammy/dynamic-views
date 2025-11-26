@@ -9,11 +9,12 @@ import { resolveBasesProperty } from "../shared/data-transform";
 import { setupImageLoadHandler } from "../shared/image-loader";
 import {
   updateScrollGradient,
+  updateElementScrollGradient,
   setupScrollGradients,
 } from "../shared/scroll-gradient-manager";
 import { getTimestampIcon } from "../shared/render-utils";
 import {
-  getTagStyle,
+  showTagHashPrefix,
   showTimestampIcon,
   getEmptyValueMarker,
   shouldHideMissingProperties,
@@ -21,6 +22,8 @@ import {
   getListSeparator,
 } from "../utils/style-settings";
 import { getPropertyLabel } from "../utils/property";
+import { findLinksInText, type ParsedLink } from "../utils/link-parser";
+import { setupImageZoomGestures } from "../shared/image-zoom-gestures";
 import type DynamicViewsPlugin from "../../main";
 import type { Settings } from "../types";
 
@@ -35,12 +38,129 @@ declare module "obsidian" {
 }
 
 export class SharedCardRenderer {
+  private propertyObservers: ResizeObserver[] = [];
+  private zoomCleanupFns: Map<HTMLElement, () => void> = new Map();
+  private zoomedOriginalParents: Map<HTMLElement, HTMLElement> = new Map();
+
   constructor(
     protected app: App,
     protected plugin: DynamicViewsPlugin,
-    protected propertyObservers: ResizeObserver[],
     protected updateLayoutRef: { current: (() => void) | null },
   ) {}
+
+  /**
+   * Cleanup observers and zoom state when renderer is destroyed
+   */
+  public cleanup(): void {
+    this.propertyObservers.forEach((obs) => obs.disconnect());
+    this.propertyObservers = [];
+
+    // Cleanup all zoom gestures and restore teleported images
+    this.zoomCleanupFns.forEach((cleanup, embedEl) => {
+      // Remove zoom class
+      embedEl.classList.remove("is-zoomed");
+      // Return to original parent if teleported
+      const originalParent = this.zoomedOriginalParents.get(embedEl);
+      if (originalParent && embedEl.parentElement !== originalParent) {
+        originalParent.appendChild(embedEl);
+      }
+      // Call cleanup function (removes event listeners)
+      cleanup();
+    });
+    this.zoomCleanupFns.clear();
+    this.zoomedOriginalParents.clear();
+  }
+
+  /**
+   * Render text with link detection
+   * Uses parseLink utility for comprehensive link detection
+   */
+  private renderTextWithLinks(container: HTMLElement, text: string): void {
+    const segments = findLinksInText(text);
+
+    for (const segment of segments) {
+      if (segment.type === "text") {
+        // Wrap text in span to preserve whitespace in flex containers
+        container.createSpan({ text: segment.content });
+      } else {
+        this.renderLink(container, segment.link);
+      }
+    }
+  }
+
+  private renderLink(container: HTMLElement, link: ParsedLink): void {
+    // Internal link (wikilink or markdown internal)
+    if (link.type === "internal") {
+      if (link.isEmbed) {
+        // Embedded internal link - render as embed container
+        const embed = container.createSpan({ cls: "internal-embed" });
+        embed.dataset.src = link.url;
+        embed.setText(link.caption);
+        embed.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const newLeaf = e.metaKey || e.ctrlKey;
+          void this.app.workspace.openLinkText(link.url, "", newLeaf);
+        });
+        return;
+      }
+      // Regular internal link
+      const el = container.createEl("a", {
+        cls: "internal-link",
+        text: link.caption,
+        href: link.url,
+      });
+      el.dataset.href = link.url;
+      el.draggable = true;
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const newLeaf = e.metaKey || e.ctrlKey;
+        void this.app.workspace.openLinkText(link.url, "", newLeaf);
+      });
+      el.addEventListener("dragstart", (e) => {
+        const file = this.app.metadataCache.getFirstLinkpathDest(link.url, "");
+        if (!(file instanceof TFile)) return;
+        const dragData = this.app.dragManager.dragFile(e, file);
+        this.app.dragManager.onDragStart(e, dragData);
+      });
+      return;
+    }
+
+    // External link
+    if (link.isEmbed) {
+      // Embedded external link (image)
+      const img = container.createEl("img", {
+        cls: "external-embed",
+        attr: { src: link.url, alt: link.caption },
+      });
+      img.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+      return;
+    }
+    // Regular external link
+    // Only open in new tab for web URLs, not custom URIs like obsidian://
+    const el = container.createEl("a", {
+      cls: "external-link",
+      text: link.caption,
+      href: link.url,
+    });
+    if (link.isWebUrl) {
+      el.target = "_blank";
+      el.rel = "noopener noreferrer";
+    }
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+    el.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.clearData();
+      // Bare link (caption === url) → plain URL; captioned → markdown link
+      const dragText =
+        link.caption === link.url ? link.url : `[${link.caption}](${link.url})`;
+      e.dataTransfer?.setData("text/plain", dragText);
+    });
+  }
 
   /**
    * Renders a complete card with all sub-components
@@ -114,21 +234,16 @@ export class SharedCardRenderer {
       // When openFileAction is 'title', the title link handles its own clicks
       if (settings.openFileAction === "card") {
         const target = e.target as HTMLElement;
-        // Don't open if clicking on links, tags, or other interactive elements
+        // Don't open if clicking on links, tags, path segments, or images
         const isLink = target.tagName === "A" || target.closest("a");
         const isTag =
           target.classList.contains("tag") || target.closest(".tag");
+        const isPathSegment =
+          target.classList.contains("path-segment") ||
+          target.closest(".path-segment");
         const isImage = target.tagName === "IMG";
-        const expandOnClick =
-          document.body.classList.contains(
-            "dynamic-views-thumbnail-expand-click-hold",
-          ) ||
-          document.body.classList.contains(
-            "dynamic-views-thumbnail-expand-click-toggle",
-          );
-        const shouldBlockImageClick = isImage && expandOnClick;
 
-        if (!isLink && !isTag && !shouldBlockImageClick) {
+        if (!isLink && !isTag && !isPathSegment && !isImage) {
           const newLeaf = e.metaKey || e.ctrlKey;
           const file = this.app.vault.getAbstractFileByPath(card.path);
           if (file instanceof TFile) {
@@ -176,29 +291,109 @@ export class SharedCardRenderer {
     };
 
     // Title - render as link when openFileAction is 'title', otherwise plain text
-    if (settings.showTitle) {
-      const titleEl = cardEl.createDiv("card-title");
+    if (settings.showTitle || card.hasValidUrl) {
+      const containerEl = cardEl.createDiv(
+        card.hasValidUrl ? "card-title-container" : "card-title",
+      );
 
-      if (settings.openFileAction === "title") {
-        // Render as clickable, draggable link
-        const link = titleEl.createEl("a", {
-          cls: "internal-link",
-          text: card.title,
-          attr: { "data-href": card.path, href: card.path, draggable: "true" },
-        });
+      if (settings.showTitle) {
+        const titleEl = card.hasValidUrl
+          ? containerEl.createDiv("card-title")
+          : containerEl;
 
-        link.addEventListener("click", (e) => {
+        if (settings.openFileAction === "title") {
+          // Render as clickable, draggable link
+          const link = titleEl.createEl("a", {
+            cls: "internal-link",
+            text: card.title,
+            attr: {
+              "data-href": card.path,
+              href: card.path,
+              draggable: "true",
+            },
+          });
+
+          link.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const newLeaf = e.metaKey || e.ctrlKey;
+            void this.app.workspace.openLinkText(card.path, "", newLeaf);
+          });
+
+          // Make title draggable when openFileAction is 'title'
+          link.addEventListener("dragstart", handleDrag);
+        } else {
+          // Render as plain text
+          titleEl.appendText(card.title);
+        }
+
+        // Setup scroll gradients for title if scroll mode is enabled
+        if (
+          document.body.classList.contains(
+            "dynamic-views-title-overflow-scroll",
+          )
+        ) {
+          requestAnimationFrame(() => {
+            updateElementScrollGradient(titleEl);
+          });
+          titleEl.addEventListener("scroll", () => {
+            updateElementScrollGradient(titleEl);
+          });
+        }
+      }
+
+      if (card.hasValidUrl && card.urlValue) {
+        const iconEl = containerEl.createDiv(
+          "card-title-url-icon text-icon-button svg-icon",
+        );
+        iconEl.setAttribute("title", "Open URL");
+        setIcon(iconEl, "square-arrow-out-up-right");
+
+        iconEl.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
-          const newLeaf = e.metaKey || e.ctrlKey;
-          void this.app.workspace.openLinkText(card.path, "", newLeaf);
+          window.open(card.urlValue!, "_blank", "noopener,noreferrer");
         });
+      }
+    }
 
-        // Make title draggable when openFileAction is 'title'
-        link.addEventListener("dragstart", handleDrag);
-      } else {
-        // Render as plain text
-        titleEl.appendText(card.title);
+    // Subtitle
+    if (settings.subtitleProperty && card.subtitle) {
+      const subtitleEl = cardEl.createDiv("card-subtitle");
+      this.renderPropertyContent(
+        subtitleEl,
+        settings.subtitleProperty,
+        card.subtitle,
+        card,
+        entry,
+        { ...settings, propertyLabels: "hide" },
+      );
+
+      // Setup scroll gradients if scroll mode is enabled
+      if (
+        document.body.classList.contains(
+          "dynamic-views-subtitle-overflow-scroll",
+        )
+      ) {
+        requestAnimationFrame(() => {
+          updateElementScrollGradient(subtitleEl);
+        });
+        subtitleEl.addEventListener("scroll", () => {
+          updateElementScrollGradient(subtitleEl);
+        });
+      }
+
+      // Setup scroll gradients for inner wrapper (works in wrap mode too)
+      const subtitleWrapper = subtitleEl.querySelector(
+        ".property-content-wrapper",
+      ) as HTMLElement;
+      if (subtitleWrapper) {
+        requestAnimationFrame(() => {
+          updateElementScrollGradient(subtitleWrapper);
+        });
+        subtitleWrapper.addEventListener("scroll", () => {
+          updateElementScrollGradient(subtitleWrapper);
+        });
       }
     }
 
@@ -263,7 +458,14 @@ export class SharedCardRenderer {
           );
         } else {
           const imageEl = coverWrapper.createDiv("card-cover");
-          this.renderImage(imageEl, imageUrls, format, position, settings);
+          this.renderImage(
+            imageEl,
+            imageUrls,
+            format,
+            position,
+            settings,
+            cardEl,
+          );
         }
       } else {
         coverWrapper.createDiv("card-cover-placeholder");
@@ -441,7 +643,14 @@ export class SharedCardRenderer {
     ) {
       if (hasImage) {
         const imageEl = cardEl.createDiv("card-thumbnail");
-        this.renderImage(imageEl, imageUrls, format, position, settings);
+        this.renderImage(
+          imageEl,
+          imageUrls,
+          format,
+          position,
+          settings,
+          cardEl,
+        );
       } else {
         cardEl.createDiv("card-thumbnail-placeholder");
       }
@@ -468,7 +677,14 @@ export class SharedCardRenderer {
       if (hasThumbnailInContent && format === "thumbnail") {
         if (hasImage) {
           const imageEl = contentContainer.createDiv("card-thumbnail");
-          this.renderImage(imageEl, imageUrls, format, position, settings);
+          this.renderImage(
+            imageEl,
+            imageUrls,
+            format,
+            position,
+            settings,
+            cardEl,
+          );
         } else {
           contentContainer.createDiv("card-thumbnail-placeholder");
         }
@@ -483,7 +699,14 @@ export class SharedCardRenderer {
     ) {
       if (hasImage) {
         const imageEl = cardEl.createDiv("card-thumbnail");
-        this.renderImage(imageEl, imageUrls, format, position, settings);
+        this.renderImage(
+          imageEl,
+          imageUrls,
+          format,
+          position,
+          settings,
+          cardEl,
+        );
       } else {
         cardEl.createDiv("card-thumbnail-placeholder");
       }
@@ -629,64 +852,135 @@ export class SharedCardRenderer {
     format: "thumbnail" | "cover",
     position: "left" | "right" | "top" | "bottom",
     settings: Settings,
+    cardEl: HTMLElement,
   ): void {
     const imageEmbedContainer = imageEl.createDiv("image-embed");
 
     // Add zoom handler
     imageEmbedContainer.addEventListener("click", (e) => {
-      const isToggleMode = document.body.classList.contains(
-        "dynamic-views-thumbnail-expand-click-toggle",
+      const isZoomEnabled = document.body.classList.contains(
+        "dynamic-views-image-zoom-enabled",
       );
-      const isHoldMode = document.body.classList.contains(
-        "dynamic-views-thumbnail-expand-click-hold",
-      );
+      if (!isZoomEnabled) return;
 
-      if (isToggleMode || isHoldMode) {
-        e.stopPropagation();
+      e.stopPropagation();
+      const embedEl = e.currentTarget as HTMLElement;
+      const isZoomed = embedEl.classList.contains("is-zoomed");
 
-        if (isToggleMode) {
-          const embedEl = e.currentTarget as HTMLElement;
-          const isZoomed = embedEl.classList.contains("is-zoomed");
-
-          if (isZoomed) {
-            // Close zoom
-            embedEl.classList.remove("is-zoomed");
-          } else {
-            // Close all other zoomed images first
-            document
-              .querySelectorAll(".image-embed.is-zoomed")
-              .forEach((el) => {
-                el.classList.remove("is-zoomed");
-              });
-            // Open this one
-            embedEl.classList.add("is-zoomed");
-
-            // Add listeners for closing
-            const closeZoom = (evt: Event) => {
-              const target = evt.target as HTMLElement;
-              // Don't close if clicking on the zoomed image itself
-              if (!embedEl.contains(target)) {
-                embedEl.classList.remove("is-zoomed");
-                document.removeEventListener("click", closeZoom);
-                document.removeEventListener("keydown", handleEscape);
-              }
-            };
-
-            const handleEscape = (evt: KeyboardEvent) => {
-              if (evt.key === "Escape") {
-                embedEl.classList.remove("is-zoomed");
-                document.removeEventListener("click", closeZoom);
-                document.removeEventListener("keydown", handleEscape);
-              }
-            };
-
-            // Delay adding listeners to avoid immediate trigger
-            setTimeout(() => {
-              document.addEventListener("click", closeZoom);
-              document.addEventListener("keydown", handleEscape);
-            }, 0);
-          }
+      if (isZoomed) {
+        // Close zoom
+        embedEl.classList.remove("is-zoomed");
+        // Return to original parent
+        const originalParent = this.zoomedOriginalParents.get(embedEl);
+        if (originalParent && embedEl.parentElement !== originalParent) {
+          originalParent.appendChild(embedEl);
+          this.zoomedOriginalParents.delete(embedEl);
         }
+        // Cleanup zoom gestures
+        const cleanup = this.zoomCleanupFns.get(embedEl);
+        if (cleanup) {
+          cleanup();
+          this.zoomCleanupFns.delete(embedEl);
+        }
+      } else {
+        // Close other zoomed images in this view/tab only (not globally)
+        const viewContainer = embedEl.closest(".workspace-leaf-content");
+        if (viewContainer) {
+          viewContainer
+            .querySelectorAll(".image-embed.is-zoomed")
+            .forEach((el) => {
+              el.classList.remove("is-zoomed");
+              // Return to original parent
+              const originalParent = this.zoomedOriginalParents.get(
+                el as HTMLElement,
+              );
+              if (originalParent && el.parentElement !== originalParent) {
+                originalParent.appendChild(el);
+                this.zoomedOriginalParents.delete(el as HTMLElement);
+              }
+              // Cleanup zoom gestures for other images
+              const cleanup = this.zoomCleanupFns.get(el as HTMLElement);
+              if (cleanup) {
+                cleanup();
+                this.zoomCleanupFns.delete(el as HTMLElement);
+              }
+            });
+        }
+        // Store original parent and teleport to body (only if NOT constrained to tab)
+        const isConstrained = document.body.classList.contains(
+          "dynamic-views-zoom-constrain-to-editor",
+        );
+        const originalParent = embedEl.parentElement;
+        if (originalParent && !isConstrained) {
+          this.zoomedOriginalParents.set(embedEl, originalParent);
+          document.body.appendChild(embedEl);
+        }
+        // Open this one
+        embedEl.classList.add("is-zoomed");
+
+        // Setup zoom gestures
+        const imgEl = embedEl.querySelector("img");
+        if (imgEl) {
+          const file = this.app.vault.getAbstractFileByPath(
+            cardEl.getAttribute("data-path") || "",
+          );
+          const cleanup = setupImageZoomGestures(
+            imgEl,
+            embedEl,
+            this.app,
+            file instanceof TFile ? file : undefined,
+          );
+          this.zoomCleanupFns.set(embedEl, cleanup);
+        }
+
+        // Add listeners for closing
+        const closeZoom = (evt: Event) => {
+          const target = evt.target as HTMLElement;
+          // Don't close if clicking on the zoomed image itself
+          if (!embedEl.contains(target)) {
+            embedEl.classList.remove("is-zoomed");
+            // Return to original parent
+            const originalParent = this.zoomedOriginalParents.get(embedEl);
+            if (originalParent && embedEl.parentElement !== originalParent) {
+              originalParent.appendChild(embedEl);
+              this.zoomedOriginalParents.delete(embedEl);
+            }
+            // Cleanup zoom gestures
+            const cleanup = this.zoomCleanupFns.get(embedEl);
+            if (cleanup) {
+              cleanup();
+              this.zoomCleanupFns.delete(embedEl);
+            }
+            document.removeEventListener("click", closeZoom);
+            document.removeEventListener("keydown", handleEscape);
+          }
+        };
+
+        const handleEscape = (evt: KeyboardEvent) => {
+          if (evt.key === "Escape") {
+            embedEl.classList.remove("is-zoomed");
+            // Return to original parent
+            const originalParent = this.zoomedOriginalParents.get(embedEl);
+            if (originalParent && embedEl.parentElement !== originalParent) {
+              originalParent.appendChild(embedEl);
+              this.zoomedOriginalParents.delete(embedEl);
+            }
+            // Cleanup zoom gestures
+            const cleanup = this.zoomCleanupFns.get(embedEl);
+            if (cleanup) {
+              cleanup();
+              this.zoomCleanupFns.delete(embedEl);
+            }
+            document.removeEventListener("click", closeZoom);
+            document.removeEventListener("keydown", handleEscape);
+          }
+        };
+
+        // Delay adding listeners to avoid immediate trigger
+        setTimeout(() => {
+          document.addEventListener("click", closeZoom);
+          document.addEventListener("keydown", handleEscape);
+        }, 0);
       }
     });
 
@@ -700,7 +994,6 @@ export class SharedCardRenderer {
     );
 
     // Handle image load for masonry layout and color extraction
-    const cardEl = imageEl.closest(".card") as HTMLElement;
     if (cardEl) {
       setupImageLoadHandler(
         imgEl,
@@ -720,15 +1013,25 @@ export class SharedCardRenderer {
     entry: BasesEntry,
     settings: Settings,
   ): void {
-    // Get all 4 property names
+    // Get all 14 property names
     const props = [
       settings.propertyDisplay1,
       settings.propertyDisplay2,
       settings.propertyDisplay3,
       settings.propertyDisplay4,
+      settings.propertyDisplay5,
+      settings.propertyDisplay6,
+      settings.propertyDisplay7,
+      settings.propertyDisplay8,
+      settings.propertyDisplay9,
+      settings.propertyDisplay10,
+      settings.propertyDisplay11,
+      settings.propertyDisplay12,
+      settings.propertyDisplay13,
+      settings.propertyDisplay14,
     ];
 
-    // Detect duplicates (priority: 1 > 2 > 3 > 4)
+    // Detect duplicates (priority: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14)
     const seen = new Set<string>();
     const effectiveProps = props.map((prop) => {
       if (!prop || prop === "") return "";
@@ -753,14 +1056,104 @@ export class SharedCardRenderer {
       settings.propertyLabels !== "hide"
         ? effectiveProps[2] !== "" || effectiveProps[3] !== ""
         : values[2] !== null || values[3] !== null;
+    const row3HasContent =
+      settings.propertyLabels !== "hide"
+        ? effectiveProps[4] !== "" || effectiveProps[5] !== ""
+        : values[4] !== null || values[5] !== null;
+    const row4HasContent =
+      settings.propertyLabels !== "hide"
+        ? effectiveProps[6] !== "" || effectiveProps[7] !== ""
+        : values[6] !== null || values[7] !== null;
+    const row5HasContent =
+      settings.propertyLabels !== "hide"
+        ? effectiveProps[8] !== "" || effectiveProps[9] !== ""
+        : values[8] !== null || values[9] !== null;
+    const row6HasContent =
+      settings.propertyLabels !== "hide"
+        ? effectiveProps[10] !== "" || effectiveProps[11] !== ""
+        : values[10] !== null || values[11] !== null;
+    const row7HasContent =
+      settings.propertyLabels !== "hide"
+        ? effectiveProps[12] !== "" || effectiveProps[13] !== ""
+        : values[12] !== null || values[13] !== null;
 
-    if (!row1HasContent && !row2HasContent) return;
+    if (
+      !row1HasContent &&
+      !row2HasContent &&
+      !row3HasContent &&
+      !row4HasContent &&
+      !row5HasContent &&
+      !row6HasContent &&
+      !row7HasContent
+    )
+      return;
 
-    const metaEl = cardEl.createDiv("card-properties properties-4field");
+    // Determine which rows go to top vs bottom based on position settings
+    const row1IsTop =
+      row1HasContent && settings.propertyGroup1Position === "top";
+    const row2IsTop =
+      row2HasContent && settings.propertyGroup2Position === "top";
+    const row3IsTop =
+      row3HasContent && settings.propertyGroup3Position === "top";
+    const row4IsTop =
+      row4HasContent && settings.propertyGroup4Position === "top";
+    const row5IsTop =
+      row5HasContent && settings.propertyGroup5Position === "top";
+    const row6IsTop =
+      row6HasContent && settings.propertyGroup6Position === "top";
+    const row7IsTop =
+      row7HasContent && settings.propertyGroup7Position === "top";
+
+    const hasTopRows =
+      row1IsTop ||
+      row2IsTop ||
+      row3IsTop ||
+      row4IsTop ||
+      row5IsTop ||
+      row6IsTop ||
+      row7IsTop;
+    const hasBottomRows =
+      (row1HasContent && !row1IsTop) ||
+      (row2HasContent && !row2IsTop) ||
+      (row3HasContent && !row3IsTop) ||
+      (row4HasContent && !row4IsTop) ||
+      (row5HasContent && !row5IsTop) ||
+      (row6HasContent && !row6IsTop) ||
+      (row7HasContent && !row7IsTop);
+
+    // Create containers as needed
+    const topPropertiesEl = hasTopRows
+      ? cardEl.createDiv(
+          "card-properties card-properties-top properties-4field",
+        )
+      : null;
+    const bottomPropertiesEl = hasBottomRows
+      ? cardEl.createDiv(
+          "card-properties card-properties-bottom properties-4field",
+        )
+      : null;
+
+    // Helper to get the right container for each row
+    const getContainer = (rowNum: number): HTMLElement | null => {
+      const positions = [
+        row1IsTop,
+        row2IsTop,
+        row3IsTop,
+        row4IsTop,
+        row5IsTop,
+        row6IsTop,
+        row7IsTop,
+      ];
+      const isTop = positions[rowNum - 1];
+      return isTop ? topPropertiesEl : bottomPropertiesEl;
+    };
+
+    // For backwards compatibility, metaEl references the container where rows are added
+    // Each row will use getContainer() to determine which container to use
 
     // Row 1
     if (row1HasContent) {
-      const row1El = metaEl.createDiv("property-row property-row-1");
+      const row1El = getContainer(1)!.createDiv("property-row property-row-1");
       if (settings.propertyLayout12SideBySide) {
         row1El.addClass("property-row-sidebyside");
       }
@@ -833,7 +1226,7 @@ export class SharedCardRenderer {
 
     // Row 2
     if (row2HasContent) {
-      const row2El = metaEl.createDiv("property-row property-row-2");
+      const row2El = getContainer(2)!.createDiv("property-row property-row-2");
       if (settings.propertyLayout34SideBySide) {
         row2El.addClass("property-row-sidebyside");
       }
@@ -904,18 +1297,358 @@ export class SharedCardRenderer {
       // Keep both fields in DOM for proper positioning (field 4 stays right-aligned)
     }
 
-    // Remove meta container if no rows remain
-    if (metaEl.children.length === 0) {
-      metaEl.remove();
-    } else {
+    // Row 3
+    if (row3HasContent) {
+      const row3El = getContainer(3)!.createDiv("property-row property-row-3");
+      if (settings.propertyLayout56SideBySide) {
+        row3El.addClass("property-row-sidebyside");
+      }
+
+      const field5El = row3El.createDiv("property-field property-field-5");
+      if (effectiveProps[4])
+        this.renderPropertyContent(
+          field5El,
+          effectiveProps[4],
+          values[4],
+          card,
+          entry,
+          settings,
+        );
+
+      const field6El = row3El.createDiv("property-field property-field-6");
+      if (effectiveProps[5])
+        this.renderPropertyContent(
+          field6El,
+          effectiveProps[5],
+          values[5],
+          card,
+          entry,
+          settings,
+        );
+
+      const has5 =
+        field5El.children.length > 0 || field5El.textContent?.trim().length > 0;
+      const has6 =
+        field6El.children.length > 0 || field6El.textContent?.trim().length > 0;
+
+      const prop5Set = effectiveProps[4] !== "";
+      const prop6Set = effectiveProps[5] !== "";
+
+      if (!has5 && !has6) {
+        row3El.remove();
+      } else if (has5 && !has6) {
+        if (prop6Set) {
+          const shouldHide =
+            (values[5] === null && shouldHideMissingProperties()) ||
+            (values[5] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field6El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      } else if (!has5 && has6) {
+        if (prop5Set) {
+          const shouldHide =
+            (values[4] === null && shouldHideMissingProperties()) ||
+            (values[4] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field5El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      }
+    }
+
+    // Row 4
+    if (row4HasContent) {
+      const row4El = getContainer(4)!.createDiv("property-row property-row-4");
+      if (settings.propertyLayout78SideBySide) {
+        row4El.addClass("property-row-sidebyside");
+      }
+
+      const field7El = row4El.createDiv("property-field property-field-7");
+      if (effectiveProps[6])
+        this.renderPropertyContent(
+          field7El,
+          effectiveProps[6],
+          values[6],
+          card,
+          entry,
+          settings,
+        );
+
+      const field8El = row4El.createDiv("property-field property-field-8");
+      if (effectiveProps[7])
+        this.renderPropertyContent(
+          field8El,
+          effectiveProps[7],
+          values[7],
+          card,
+          entry,
+          settings,
+        );
+
+      const has7 =
+        field7El.children.length > 0 || field7El.textContent?.trim().length > 0;
+      const has8 =
+        field8El.children.length > 0 || field8El.textContent?.trim().length > 0;
+
+      const prop7Set = effectiveProps[6] !== "";
+      const prop8Set = effectiveProps[7] !== "";
+
+      if (!has7 && !has8) {
+        row4El.remove();
+      } else if (has7 && !has8) {
+        if (prop8Set) {
+          const shouldHide =
+            (values[7] === null && shouldHideMissingProperties()) ||
+            (values[7] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field8El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      } else if (!has7 && has8) {
+        if (prop7Set) {
+          const shouldHide =
+            (values[6] === null && shouldHideMissingProperties()) ||
+            (values[6] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field7El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      }
+    }
+
+    // Row 5
+    if (row5HasContent) {
+      const row5El = getContainer(5)!.createDiv("property-row property-row-5");
+      if (settings.propertyLayout910SideBySide) {
+        row5El.addClass("property-row-sidebyside");
+      }
+
+      const field9El = row5El.createDiv("property-field property-field-9");
+      if (effectiveProps[8])
+        this.renderPropertyContent(
+          field9El,
+          effectiveProps[8],
+          values[8],
+          card,
+          entry,
+          settings,
+        );
+
+      const field10El = row5El.createDiv("property-field property-field-10");
+      if (effectiveProps[9])
+        this.renderPropertyContent(
+          field10El,
+          effectiveProps[9],
+          values[9],
+          card,
+          entry,
+          settings,
+        );
+
+      const has9 =
+        field9El.children.length > 0 || field9El.textContent?.trim().length > 0;
+      const has10 =
+        field10El.children.length > 0 ||
+        field10El.textContent?.trim().length > 0;
+
+      const prop9Set = effectiveProps[8] !== "";
+      const prop10Set = effectiveProps[9] !== "";
+
+      if (!has9 && !has10) {
+        row5El.remove();
+      } else if (has9 && !has10) {
+        if (prop10Set) {
+          const shouldHide =
+            (values[9] === null && shouldHideMissingProperties()) ||
+            (values[9] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field10El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      } else if (!has9 && has10) {
+        if (prop9Set) {
+          const shouldHide =
+            (values[8] === null && shouldHideMissingProperties()) ||
+            (values[8] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field9El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      }
+    }
+
+    // Row 6
+    if (row6HasContent) {
+      const row6El = getContainer(6)!.createDiv("property-row property-row-6");
+      if (settings.propertyLayout1112SideBySide) {
+        row6El.addClass("property-row-sidebyside");
+      }
+
+      const field11El = row6El.createDiv("property-field property-field-11");
+      if (effectiveProps[10])
+        this.renderPropertyContent(
+          field11El,
+          effectiveProps[10],
+          values[10],
+          card,
+          entry,
+          settings,
+        );
+
+      const field12El = row6El.createDiv("property-field property-field-12");
+      if (effectiveProps[11])
+        this.renderPropertyContent(
+          field12El,
+          effectiveProps[11],
+          values[11],
+          card,
+          entry,
+          settings,
+        );
+
+      const has11 =
+        field11El.children.length > 0 ||
+        field11El.textContent?.trim().length > 0;
+      const has12 =
+        field12El.children.length > 0 ||
+        field12El.textContent?.trim().length > 0;
+
+      const prop11Set = effectiveProps[10] !== "";
+      const prop12Set = effectiveProps[11] !== "";
+
+      if (!has11 && !has12) {
+        row6El.remove();
+      } else if (has11 && !has12) {
+        if (prop12Set) {
+          const shouldHide =
+            (values[11] === null && shouldHideMissingProperties()) ||
+            (values[11] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field12El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      } else if (!has11 && has12) {
+        if (prop11Set) {
+          const shouldHide =
+            (values[10] === null && shouldHideMissingProperties()) ||
+            (values[10] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field11El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      }
+    }
+
+    // Row 7
+    if (row7HasContent) {
+      const row7El = getContainer(7)!.createDiv("property-row property-row-7");
+      if (settings.propertyLayout1314SideBySide) {
+        row7El.addClass("property-row-sidebyside");
+      }
+
+      const field13El = row7El.createDiv("property-field property-field-13");
+      if (effectiveProps[12])
+        this.renderPropertyContent(
+          field13El,
+          effectiveProps[12],
+          values[12],
+          card,
+          entry,
+          settings,
+        );
+
+      const field14El = row7El.createDiv("property-field property-field-14");
+      if (effectiveProps[13])
+        this.renderPropertyContent(
+          field14El,
+          effectiveProps[13],
+          values[13],
+          card,
+          entry,
+          settings,
+        );
+
+      const has13 =
+        field13El.children.length > 0 ||
+        field13El.textContent?.trim().length > 0;
+      const has14 =
+        field14El.children.length > 0 ||
+        field14El.textContent?.trim().length > 0;
+
+      const prop13Set = effectiveProps[12] !== "";
+      const prop14Set = effectiveProps[13] !== "";
+
+      if (!has13 && !has14) {
+        row7El.remove();
+      } else if (has13 && !has14) {
+        if (prop14Set) {
+          const shouldHide =
+            (values[13] === null && shouldHideMissingProperties()) ||
+            (values[13] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field14El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      } else if (!has13 && has14) {
+        if (prop13Set) {
+          const shouldHide =
+            (values[12] === null && shouldHideMissingProperties()) ||
+            (values[12] === "" && shouldHideEmptyProperties());
+          if (!shouldHide) {
+            const placeholderContent = field13El.createDiv("property-content");
+            const markerSpan =
+              placeholderContent.createSpan("empty-value-marker");
+            markerSpan.textContent = getEmptyValueMarker();
+          }
+        }
+      }
+    }
+
+    // Remove empty property containers
+    if (topPropertiesEl && topPropertiesEl.children.length === 0) {
+      topPropertiesEl.remove();
+    }
+    if (bottomPropertiesEl && bottomPropertiesEl.children.length === 0) {
+      bottomPropertiesEl.remove();
+    }
+
+    // If any properties remain, setup measurements and gradients
+    if (
+      (topPropertiesEl && topPropertiesEl.children.length > 0) ||
+      (bottomPropertiesEl && bottomPropertiesEl.children.length > 0)
+    ) {
       // Measure side-by-side field widths
       this.measurePropertyFields(cardEl);
       // Setup scroll gradients for tags and paths
-      setupScrollGradients(
-        cardEl,
-        this.propertyObservers,
-        updateScrollGradient,
-      );
+      setupScrollGradients(cardEl, updateScrollGradient);
     }
   }
 
@@ -925,7 +1658,7 @@ export class SharedCardRenderer {
   private renderPropertyContent(
     container: HTMLElement,
     propertyName: string,
-    resolvedValue: string | null,
+    resolvedValue: unknown,
     card: CardData,
     entry: BasesEntry,
     settings: Settings,
@@ -934,18 +1667,22 @@ export class SharedCardRenderer {
       return;
     }
 
+    // Coerce unknown to string for rendering (handles Bases Value objects)
+    const stringValue =
+      typeof resolvedValue === "string" ? resolvedValue : null;
+
     // If no value and labels are hidden, render nothing
-    if (!resolvedValue && settings.propertyLabels === "hide") {
+    if (!stringValue && settings.propertyLabels === "hide") {
       return;
     }
 
-    // Hide missing properties if toggle enabled (resolvedValue is null for missing properties)
-    if (resolvedValue === null && shouldHideMissingProperties()) {
+    // Hide missing properties if toggle enabled (stringValue is null for missing properties)
+    if (stringValue === null && shouldHideMissingProperties()) {
       return;
     }
 
-    // Hide empty properties if toggle enabled (resolvedValue is '' for empty properties)
-    if (resolvedValue === "" && shouldHideEmptyProperties()) {
+    // Hide empty properties if toggle enabled (stringValue is '' for empty properties)
+    if (stringValue === "" && shouldHideEmptyProperties()) {
       return;
     }
 
@@ -992,16 +1729,16 @@ export class SharedCardRenderer {
     const metaContent = contentWrapper.createDiv("property-content");
 
     // If no value, show placeholder
-    if (!resolvedValue) {
+    if (!stringValue) {
       const markerSpan = metaContent.createSpan("empty-value-marker");
       markerSpan.textContent = getEmptyValueMarker();
       return;
     }
 
     // Handle array properties - render as individual spans with separators
-    if (resolvedValue.startsWith('{"type":"array","items":[')) {
+    if (stringValue.startsWith('{"type":"array","items":[')) {
       try {
-        const arrayData = JSON.parse(resolvedValue) as {
+        const arrayData = JSON.parse(stringValue) as {
           type: string;
           items: string[];
         };
@@ -1010,7 +1747,8 @@ export class SharedCardRenderer {
           const separator = getListSeparator();
           arrayData.items.forEach((item, idx) => {
             const span = listWrapper.createSpan();
-            span.createSpan({ cls: "list-item", text: item });
+            const listItem = span.createSpan({ cls: "list-item" });
+            this.renderTextWithLinks(listItem, item);
             if (idx < arrayData.items.length - 1) {
               span.createSpan({ cls: "list-separator", text: separator });
             }
@@ -1030,21 +1768,20 @@ export class SharedCardRenderer {
       propertyName === "created time";
 
     if (isKnownTimestampProperty) {
-      // resolvedValue is already formatted by data-transform
+      // stringValue is already formatted by data-transform
       const timestampWrapper = metaContent.createSpan();
       if (showTimestampIcon() && settings.propertyLabels === "hide") {
         const iconName = getTimestampIcon(propertyName, settings);
         const iconEl = timestampWrapper.createSpan("timestamp-icon");
         setIcon(iconEl, iconName);
       }
-      timestampWrapper.appendText(resolvedValue);
+      timestampWrapper.appendText(stringValue);
     } else if (
       (propertyName === "tags" || propertyName === "note.tags") &&
       card.yamlTags.length > 0
     ) {
       // YAML tags only
-      const tagStyle = getTagStyle();
-      const showHashPrefix = tagStyle === "minimal";
+      const showHashPrefix = showTagHashPrefix();
       const tagsWrapper = metaContent.createDiv("tags-wrapper");
       card.yamlTags.forEach((tag) => {
         const tagEl = tagsWrapper.createEl("a", {
@@ -1066,8 +1803,7 @@ export class SharedCardRenderer {
       card.tags.length > 0
     ) {
       // tags in YAML + note body
-      const tagStyle = getTagStyle();
-      const showHashPrefix = tagStyle === "minimal";
+      const showHashPrefix = showTagHashPrefix();
       const tagsWrapper = metaContent.createDiv("tags-wrapper");
       card.tags.forEach((tag) => {
         const tagEl = tagsWrapper.createEl("a", {
@@ -1203,7 +1939,7 @@ export class SharedCardRenderer {
     } else {
       // Generic property - wrap in div for proper scrolling (consistent with tags/paths)
       const textWrapper = metaContent.createDiv("text-wrapper");
-      textWrapper.appendText(resolvedValue);
+      this.renderTextWithLinks(textWrapper, stringValue);
     }
 
     // Remove metaContent wrapper if it ended up empty (e.g., tags with no values)

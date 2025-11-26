@@ -48,25 +48,23 @@ export function formatTimestamp(
 
   // For datetime properties, apply Style Settings toggles
   // Import at runtime to avoid circular dependencies
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-  const {
-    shouldShowRecentTimeOnly,
-    shouldShowOlderDateOnly,
-  } = require("../utils/style-settings");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const styleSettings = require("../utils/style-settings") as {
+    shouldShowRecentTimeOnly(): boolean;
+    shouldShowOlderDateOnly(): boolean;
+  };
 
   const now = Date.now();
   const isRecent = now - timestamp < 86400000;
 
   if (isRecent) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    if (shouldShowRecentTimeOnly()) {
+    if (styleSettings.shouldShowRecentTimeOnly()) {
       return `${HH}:${mm}`;
     }
     return `${yyyy}-${MM}-${dd} ${HH}:${mm}`;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  if (shouldShowOlderDateOnly()) {
+  if (styleSettings.shouldShowOlderDateOnly()) {
     return `${yyyy}-${MM}-${dd}`;
   }
   return `${yyyy}-${MM}-${dd} ${HH}:${mm}`;
@@ -105,10 +103,10 @@ export function getTimestampIcon(
 }
 
 /**
- * Check if a value is a valid Datacore date value
+ * Check if a value is a valid date value (works for both Bases and Datacore)
  * Must have 'time' property to distinguish from text properties that might contain date-like strings
  */
-export function isDatacoreDateValue(value: unknown): value is DateValue {
+export function isDateValue(value: unknown): value is DateValue {
   return (
     value !== null &&
     typeof value === "object" &&
@@ -120,42 +118,12 @@ export function isDatacoreDateValue(value: unknown): value is DateValue {
 }
 
 /**
- * Extract timestamp from Datacore date value
+ * Extract timestamp from date value (works for both Bases and Datacore)
  */
-export function extractDatacoreTimestamp(
+export function extractTimestamp(
   value: unknown,
 ): { timestamp: number; isDateOnly: boolean } | null {
-  if (isDatacoreDateValue(value)) {
-    return {
-      timestamp: value.date.getTime(),
-      isDateOnly: value.time === false,
-    };
-  }
-  return null;
-}
-
-/**
- * Check if a value is a valid Bases date value
- * Must have 'time' property to distinguish from text properties that might contain date-like strings
- */
-export function isBasesDateValue(value: unknown): value is DateValue {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "date" in value &&
-    value.date instanceof Date &&
-    "time" in value &&
-    typeof (value as DateValue).time === "boolean"
-  );
-}
-
-/**
- * Extract timestamp from Bases date value
- */
-export function extractBasesTimestamp(
-  value: unknown,
-): { timestamp: number; isDateOnly: boolean } | null {
-  if (isBasesDateValue(value)) {
+  if (isDateValue(value)) {
     return {
       timestamp: value.date.getTime(),
       isDateOnly: value.time === false,

@@ -47,7 +47,6 @@ export class DynamicViewsCardView extends BasesView {
   private scrollListener: (() => void) | null = null;
   private scrollThrottleTimeout: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private propertyObservers: ResizeObserver[] = [];
   private cardRenderer: SharedCardRenderer;
   isShuffled: boolean = false;
   shuffledOrder: string[] = [];
@@ -73,7 +72,6 @@ export class DynamicViewsCardView extends BasesView {
     this.cardRenderer = new SharedCardRenderer(
       this.app,
       this.plugin,
-      this.propertyObservers,
       this.updateLayoutRef,
     );
     // Set initial batch size based on device
@@ -206,9 +204,8 @@ export class DynamicViewsCardView extends BasesView {
       // Clear and re-render
       this.containerEl.empty();
 
-      // Disconnect old property observers before re-rendering
-      this.propertyObservers.forEach((obs) => obs.disconnect());
-      this.propertyObservers = [];
+      // Cleanup card renderer observers before re-rendering
+      this.cardRenderer.cleanup();
 
       // Create cards feed container
       const feedEl = this.containerEl.createDiv("dynamic-views-grid");
@@ -482,8 +479,7 @@ export class DynamicViewsCardView extends BasesView {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
-    this.propertyObservers.forEach((obs) => obs.disconnect());
-    this.propertyObservers = [];
+    this.cardRenderer.cleanup();
   }
 
   focus(): void {

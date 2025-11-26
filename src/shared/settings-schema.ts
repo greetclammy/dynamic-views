@@ -43,147 +43,398 @@ export function getBasesViewOptions(): any[] {
       default: DEFAULT_VIEW_SETTINGS.cardSize,
     },
     {
-      type: "toggle",
-      displayName: "Show title",
-      key: "showTitle",
-      default: DEFAULT_VIEW_SETTINGS.showTitle,
+      type: "group",
+      displayName: "Title",
+      items: [
+        {
+          type: "toggle",
+          displayName: "Show title",
+          key: "showTitle",
+          default: DEFAULT_VIEW_SETTINGS.showTitle,
+        },
+        {
+          type: "text",
+          displayName: "Title property",
+          key: "titleProperty",
+          placeholder: "Comma-separated if multiple",
+          default: DEFAULT_VIEW_SETTINGS.titleProperty,
+        },
+      ],
     },
     {
-      type: "text",
-      displayName: "Title property",
-      key: "titleProperty",
-      placeholder: "Comma-separated if multiple",
-      default: DEFAULT_VIEW_SETTINGS.titleProperty,
+      type: "group",
+      displayName: "Text preview",
+      items: [
+        {
+          type: "toggle",
+          displayName: "Show text preview",
+          key: "showTextPreview",
+          default: DEFAULT_VIEW_SETTINGS.showTextPreview,
+        },
+        {
+          type: "text",
+          displayName: "Text preview property",
+          key: "descriptionProperty",
+          placeholder: "Comma-separated if multiple",
+          default: DEFAULT_VIEW_SETTINGS.descriptionProperty,
+        },
+        {
+          type: "toggle",
+          displayName:
+            "Use note content if text preview property missing or empty",
+          key: "fallbackToContent",
+          default: DEFAULT_VIEW_SETTINGS.fallbackToContent,
+        },
+      ],
     },
     {
-      type: "toggle",
-      displayName: "Show text preview",
-      key: "showTextPreview",
-      default: DEFAULT_VIEW_SETTINGS.showTextPreview,
+      type: "group",
+      displayName: "Image",
+      items: [
+        {
+          type: "dropdown",
+          displayName: "Image format",
+          key: "imageFormat",
+          options: {
+            thumbnail: "Thumbnail",
+            cover: "Cover",
+            none: "No image",
+          },
+          default: "thumbnail",
+        },
+        {
+          type: "dropdown",
+          displayName: "Image position",
+          key: "imagePosition",
+          options: {
+            left: "Left",
+            right: "Right",
+            top: "Top",
+            bottom: "Bottom",
+          },
+          default: "right",
+        },
+        {
+          type: "text",
+          displayName: "Image property",
+          key: "imageProperty",
+          placeholder: "Comma-separated if multiple",
+          default: DEFAULT_VIEW_SETTINGS.imageProperty,
+        },
+        {
+          type: "dropdown",
+          displayName: "Show image embeds",
+          key: "fallbackToEmbeds",
+          options: {
+            always: "Always",
+            "if-empty": "If image property missing or empty",
+            never: "Never",
+          },
+          default: "always",
+        },
+        {
+          type: "dropdown",
+          displayName: "Image fit",
+          key: "coverFitMode",
+          options: {
+            crop: "Crop",
+            contain: "Contain",
+          },
+          default: "crop",
+        },
+        {
+          type: "slider",
+          displayName: "Image ratio",
+          key: "imageAspectRatio",
+          min: 0.25,
+          max: 2.5,
+          step: 0.05,
+          default: DEFAULT_VIEW_SETTINGS.imageAspectRatio,
+        },
+      ],
     },
     {
-      type: "text",
-      displayName: "Text preview property",
-      key: "descriptionProperty",
-      placeholder: "Comma-separated if multiple",
-      default: DEFAULT_VIEW_SETTINGS.descriptionProperty,
+      type: "group",
+      displayName: "Properties",
+      items: [
+        {
+          type: "text",
+          displayName: "Subtitle property",
+          key: "subtitleProperty",
+          placeholder: "Comma-separated if multiple",
+          default: "",
+        },
+        {
+          type: "text",
+          displayName: "URL property",
+          key: "urlProperty",
+          placeholder: "Comma-separated if multiple",
+          default: "",
+        },
+        {
+          type: "dropdown",
+          displayName: "Show property labels",
+          key: "propertyLabels",
+          options: {
+            inline: "Inline",
+            above: "On top",
+            hide: "Hide",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyLabels,
+        },
+      ],
     },
     {
-      type: "toggle",
-      displayName: "Use note content if text preview property missing or empty",
-      key: "fallbackToContent",
-      default: DEFAULT_VIEW_SETTINGS.fallbackToContent,
+      type: "group",
+      displayName: "Property group 1",
+      items: [
+        {
+          type: "property",
+          displayName: "First property",
+          key: "propertyDisplay1",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "property",
+          displayName: "Second property",
+          key: "propertyDisplay2",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertyLayout12SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyLayout12SideBySide,
+        },
+        {
+          type: "dropdown",
+          displayName: "Position",
+          key: "propertyGroup1Position",
+          options: {
+            top: "Top",
+            bottom: "Bottom",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup1Position,
+        },
+      ],
     },
     {
-      type: "dropdown",
-      displayName: "Image format",
-      key: "imageFormat",
-      options: {
-        thumbnail: "Thumbnail",
-        cover: "Cover",
-        none: "None",
-      },
-      default: "thumbnail",
+      type: "group",
+      displayName: "Property group 2",
+      items: [
+        {
+          type: "property",
+          displayName: "First property",
+          key: "propertyDisplay3",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "property",
+          displayName: "Second property",
+          key: "propertyDisplay4",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertyLayout34SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyLayout34SideBySide,
+        },
+        {
+          type: "dropdown",
+          displayName: "Position",
+          key: "propertyGroup2Position",
+          options: {
+            top: "Top",
+            bottom: "Bottom",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup2Position,
+        },
+      ],
     },
     {
-      type: "dropdown",
-      displayName: "Image position",
-      key: "imagePosition",
-      options: {
-        left: "Left",
-        right: "Right",
-        top: "Top",
-        bottom: "Bottom",
-      },
-      default: "right",
+      type: "group",
+      displayName: "Property group 3",
+      items: [
+        {
+          type: "property",
+          displayName: "First property",
+          key: "propertyDisplay5",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "property",
+          displayName: "Second property",
+          key: "propertyDisplay6",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertyLayout56SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyLayout56SideBySide,
+        },
+        {
+          type: "dropdown",
+          displayName: "Position",
+          key: "propertyGroup3Position",
+          options: {
+            top: "Top",
+            bottom: "Bottom",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup3Position,
+        },
+      ],
     },
     {
-      type: "text",
-      displayName: "Image property",
-      key: "imageProperty",
-      placeholder: "Comma-separated if multiple",
-      default: DEFAULT_VIEW_SETTINGS.imageProperty,
+      type: "group",
+      displayName: "Property group 4",
+      items: [
+        {
+          type: "property",
+          displayName: "First property",
+          key: "propertyDisplay7",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "property",
+          displayName: "Second property",
+          key: "propertyDisplay8",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertyLayout78SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyLayout78SideBySide,
+        },
+        {
+          type: "dropdown",
+          displayName: "Position",
+          key: "propertyGroup4Position",
+          options: {
+            top: "Top",
+            bottom: "Bottom",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup4Position,
+        },
+      ],
     },
     {
-      type: "dropdown",
-      displayName: "Show image embeds",
-      key: "fallbackToEmbeds",
-      options: {
-        always: "Always",
-        "if-empty": "If image property missing or empty",
-        never: "Never",
-      },
-      default: "always",
+      type: "group",
+      displayName: "Property group 5",
+      items: [
+        {
+          type: "property",
+          displayName: "First property",
+          key: "propertyDisplay9",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "property",
+          displayName: "Second property",
+          key: "propertyDisplay10",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertyLayout910SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyLayout910SideBySide,
+        },
+        {
+          type: "dropdown",
+          displayName: "Position",
+          key: "propertyGroup5Position",
+          options: {
+            top: "Top",
+            bottom: "Bottom",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup5Position,
+        },
+      ],
     },
     {
-      type: "dropdown",
-      displayName: "Image fit",
-      key: "coverFitMode",
-      options: {
-        crop: "Crop",
-        contain: "Contain",
-      },
-      default: "crop",
+      type: "group",
+      displayName: "Property group 6",
+      items: [
+        {
+          type: "property",
+          displayName: "First property",
+          key: "propertyDisplay11",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "property",
+          displayName: "Second property",
+          key: "propertyDisplay12",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertyLayout1112SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyLayout1112SideBySide,
+        },
+        {
+          type: "dropdown",
+          displayName: "Position",
+          key: "propertyGroup6Position",
+          options: {
+            top: "Top",
+            bottom: "Bottom",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup6Position,
+        },
+      ],
     },
     {
-      type: "slider",
-      displayName: "Image ratio",
-      key: "imageAspectRatio",
-      min: 0.25,
-      max: 2.5,
-      step: 0.05,
-      default: DEFAULT_VIEW_SETTINGS.imageAspectRatio,
-    },
-    {
-      type: "property",
-      displayName: "First property",
-      key: "propertyDisplay1",
-      placeholder: "Select property",
-      default: "",
-    },
-    {
-      type: "property",
-      displayName: "Second property",
-      key: "propertyDisplay2",
-      placeholder: "Select property",
-      default: "",
-    },
-    {
-      type: "toggle",
-      displayName: "Pair first and second properties",
-      key: "propertyLayout12SideBySide",
-      default: DEFAULT_VIEW_SETTINGS.propertyLayout12SideBySide,
-    },
-    {
-      type: "property",
-      displayName: "Third property",
-      key: "propertyDisplay3",
-      placeholder: "Select property",
-      default: "",
-    },
-    {
-      type: "property",
-      displayName: "Fourth property",
-      key: "propertyDisplay4",
-      placeholder: "Select property",
-      default: "",
-    },
-    {
-      type: "toggle",
-      displayName: "Pair third and fourth properties",
-      key: "propertyLayout34SideBySide",
-      default: DEFAULT_VIEW_SETTINGS.propertyLayout34SideBySide,
-    },
-    {
-      type: "dropdown",
-      displayName: "Show property labels",
-      key: "propertyLabels",
-      options: {
-        inline: "Inline",
-        above: "On top",
-        hide: "Hide",
-      },
-      default: DEFAULT_VIEW_SETTINGS.propertyLabels,
+      type: "group",
+      displayName: "Property group 7",
+      items: [
+        {
+          type: "property",
+          displayName: "First property",
+          key: "propertyDisplay13",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "property",
+          displayName: "Second property",
+          key: "propertyDisplay14",
+          placeholder: "Select property",
+          default: "",
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertyLayout1314SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyLayout1314SideBySide,
+        },
+        {
+          type: "dropdown",
+          displayName: "Position",
+          key: "propertyGroup7Position",
+          options: {
+            top: "Top",
+            bottom: "Bottom",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup7Position,
+        },
+      ],
     },
   ];
 }
@@ -208,6 +459,7 @@ export function readBasesSettings(
   const titlePropertyValue = config.get("titleProperty");
   const descriptionPropertyValue = config.get("descriptionProperty");
   const imagePropertyValue = config.get("imageProperty");
+  const urlPropertyValue = config.get("urlProperty");
 
   return {
     titleProperty:
@@ -222,10 +474,21 @@ export function readBasesSettings(
       typeof imagePropertyValue === "string"
         ? imagePropertyValue
         : defaultViewSettings.imageProperty,
+    urlProperty:
+      typeof urlPropertyValue === "string"
+        ? urlPropertyValue
+        : defaultViewSettings.urlProperty,
     omitFirstLine: globalSettings.omitFirstLine, // From global settings
     showTitle: Boolean(
       config.get("showTitle") ?? defaultViewSettings.showTitle,
     ),
+    subtitleProperty: (() => {
+      const value = config.get("subtitleProperty");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
     showTextPreview: Boolean(
       config.get("showTextPreview") ?? defaultViewSettings.showTextPreview,
     ),
@@ -276,6 +539,138 @@ export function readBasesSettings(
       config.get("propertyLayout34SideBySide") ??
         defaultViewSettings.propertyLayout34SideBySide,
     ),
+    propertyDisplay5: (() => {
+      const value = config.get("propertyDisplay5");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyDisplay6: (() => {
+      const value = config.get("propertyDisplay6");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyLayout56SideBySide: Boolean(
+      config.get("propertyLayout56SideBySide") ??
+        defaultViewSettings.propertyLayout56SideBySide,
+    ),
+    propertyDisplay7: (() => {
+      const value = config.get("propertyDisplay7");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyDisplay8: (() => {
+      const value = config.get("propertyDisplay8");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyLayout78SideBySide: Boolean(
+      config.get("propertyLayout78SideBySide") ??
+        defaultViewSettings.propertyLayout78SideBySide,
+    ),
+    propertyDisplay9: (() => {
+      const value = config.get("propertyDisplay9");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyDisplay10: (() => {
+      const value = config.get("propertyDisplay10");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyLayout910SideBySide: Boolean(
+      config.get("propertyLayout910SideBySide") ??
+        defaultViewSettings.propertyLayout910SideBySide,
+    ),
+    propertyDisplay11: (() => {
+      const value = config.get("propertyDisplay11");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyDisplay12: (() => {
+      const value = config.get("propertyDisplay12");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyLayout1112SideBySide: Boolean(
+      config.get("propertyLayout1112SideBySide") ??
+        defaultViewSettings.propertyLayout1112SideBySide,
+    ),
+    propertyDisplay13: (() => {
+      const value = config.get("propertyDisplay13");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyDisplay14: (() => {
+      const value = config.get("propertyDisplay14");
+      if (value !== undefined && value !== null) {
+        return typeof value === "string" ? value : "";
+      }
+      return "";
+    })(),
+    propertyLayout1314SideBySide: Boolean(
+      config.get("propertyLayout1314SideBySide") ??
+        defaultViewSettings.propertyLayout1314SideBySide,
+    ),
+    propertyGroup1Position: (() => {
+      const value = config.get("propertyGroup1Position");
+      return value === "top" || value === "bottom"
+        ? value
+        : defaultViewSettings.propertyGroup1Position;
+    })(),
+    propertyGroup2Position: (() => {
+      const value = config.get("propertyGroup2Position");
+      return value === "top" || value === "bottom"
+        ? value
+        : defaultViewSettings.propertyGroup2Position;
+    })(),
+    propertyGroup3Position: (() => {
+      const value = config.get("propertyGroup3Position");
+      return value === "top" || value === "bottom"
+        ? value
+        : defaultViewSettings.propertyGroup3Position;
+    })(),
+    propertyGroup4Position: (() => {
+      const value = config.get("propertyGroup4Position");
+      return value === "top" || value === "bottom"
+        ? value
+        : defaultViewSettings.propertyGroup4Position;
+    })(),
+    propertyGroup5Position: (() => {
+      const value = config.get("propertyGroup5Position");
+      return value === "top" || value === "bottom"
+        ? value
+        : defaultViewSettings.propertyGroup5Position;
+    })(),
+    propertyGroup6Position: (() => {
+      const value = config.get("propertyGroup6Position");
+      return value === "top" || value === "bottom"
+        ? value
+        : defaultViewSettings.propertyGroup6Position;
+    })(),
+    propertyGroup7Position: (() => {
+      const value = config.get("propertyGroup7Position");
+      return value === "top" || value === "bottom"
+        ? value
+        : defaultViewSettings.propertyGroup7Position;
+    })(),
     propertyLabels: (() => {
       const value = config.get("propertyLabels");
       return value === "hide" || value === "inline" || value === "above"
@@ -283,59 +678,18 @@ export function readBasesSettings(
         : defaultViewSettings.propertyLabels;
     })(),
     imageFormat: (() => {
-      const rawFormat = config.get("imageFormat");
-      const rawPosition = config.get("imagePosition");
-
-      // Handle migration from old compound format (e.g., 'thumbnail-top') to new split format
-      let format: "thumbnail" | "cover" | "none" = "thumbnail";
-      let position: "left" | "right" | "top" | "bottom" = "right";
-
-      if (
-        rawFormat === "thumbnail" ||
-        rawFormat === "cover" ||
-        rawFormat === "none"
-      ) {
-        // New format: imageFormat is just the format part
-        format = rawFormat;
-      } else if (typeof rawFormat === "string" && rawFormat.includes("-")) {
-        // Old compound format: extract both parts from imageFormat
-        const parts = rawFormat.split("-");
-        const formatPart = parts[0];
-        format =
-          formatPart === "thumbnail" ||
-          formatPart === "cover" ||
-          formatPart === "none"
-            ? formatPart
-            : "thumbnail";
-        // If we have an old compound format, extract position from it (unless overridden by new imagePosition setting)
-        const oldPosition = parts[1];
-        position =
-          rawPosition === "left" ||
-          rawPosition === "right" ||
-          rawPosition === "top" ||
-          rawPosition === "bottom"
-            ? rawPosition
-            : oldPosition === "left" ||
-                oldPosition === "right" ||
-                oldPosition === "top" ||
-                oldPosition === "bottom"
-              ? oldPosition
-              : "right";
-      }
-
-      if (format === "none") return "none";
-
-      // Use rawPosition if it exists, otherwise keep the position extracted above (or default)
-      if (
-        rawPosition === "left" ||
-        rawPosition === "right" ||
-        rawPosition === "top" ||
-        rawPosition === "bottom"
-      ) {
-        position = rawPosition;
-      }
-
-      return `${format}-${position}` as typeof defaultViewSettings.imageFormat;
+      const value = config.get("imageFormat");
+      return value === "thumbnail-left" ||
+        value === "thumbnail-right" ||
+        value === "thumbnail-top" ||
+        value === "thumbnail-bottom" ||
+        value === "cover-left" ||
+        value === "cover-right" ||
+        value === "cover-top" ||
+        value === "cover-bottom" ||
+        value === "none"
+        ? value
+        : defaultViewSettings.imageFormat;
     })(),
     coverFitMode: (() => {
       const value = config.get("coverFitMode");
@@ -366,7 +720,6 @@ export function readBasesSettings(
     createdTimeProperty: globalSettings.createdTimeProperty, // From global settings
     modifiedTimeProperty: globalSettings.modifiedTimeProperty, // From global settings
     fallbackToFileMetadata: globalSettings.fallbackToFileMetadata, // From global settings
-    expandImagesOnClick: globalSettings.expandImagesOnClick, // From global settings
     cardSize: (() => {
       const value = config.get("cardSize");
       return typeof value === "number" ? value : defaultViewSettings.cardSize;

@@ -1,6 +1,20 @@
 import { App, TFile } from "obsidian";
 
 /**
+ * Valid image file extensions supported by the plugin
+ */
+export const VALID_IMAGE_EXTENSIONS: string[] = [
+  "avif",
+  "bmp",
+  "gif",
+  "jpeg",
+  "jpg",
+  "png",
+  "svg",
+  "webp",
+];
+
+/**
  * Check if a URL is an external HTTP/HTTPS URL
  * @param url - The URL to check
  * @returns true if URL starts with http:// or https://
@@ -39,9 +53,10 @@ export function validateImageUrl(url: string): Promise<boolean> {
  * Strip wikilink syntax from image path
  * Handles: [[path]], ![[path]], [[path|caption]]
  * @param path - Path that may contain wikilink syntax
- * @returns Clean path without wikilink markers
+ * @returns Clean path without wikilink markers, or empty string if path is null/undefined
  */
-export function stripWikilinkSyntax(path: string): string {
+export function stripWikilinkSyntax(path: string | null | undefined): string {
+  if (!path) return "";
   const wikilinkMatch = path.match(/^!?\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
   return wikilinkMatch ? wikilinkMatch[1].trim() : path;
 }
@@ -96,16 +111,6 @@ export function resolveInternalImagePaths(
   sourcePath: string,
   app: App,
 ): string[] {
-  const validImageExtensions = [
-    "avif",
-    "bmp",
-    "gif",
-    "jpeg",
-    "jpg",
-    "png",
-    "svg",
-    "webp",
-  ];
   const resourcePaths: string[] = [];
 
   for (const propPath of internalPaths) {
@@ -113,7 +118,7 @@ export function resolveInternalImagePaths(
       propPath,
       sourcePath,
     );
-    if (imageFile && validImageExtensions.includes(imageFile.extension)) {
+    if (imageFile && VALID_IMAGE_EXTENSIONS.includes(imageFile.extension)) {
       const resourcePath = app.vault.getResourcePath(imageFile);
       resourcePaths.push(resourcePath);
     }
@@ -132,16 +137,6 @@ export async function extractEmbedImages(
   file: TFile,
   app: App,
 ): Promise<string[]> {
-  const validImageExtensions = [
-    "avif",
-    "bmp",
-    "gif",
-    "jpeg",
-    "jpg",
-    "png",
-    "svg",
-    "webp",
-  ];
   const metadata = app.metadataCache.getFileCache(file);
 
   if (!metadata?.embeds) return [];
@@ -163,7 +158,7 @@ export async function extractEmbedImages(
         embedLink,
         file.path,
       );
-      if (targetFile && validImageExtensions.includes(targetFile.extension)) {
+      if (targetFile && VALID_IMAGE_EXTENSIONS.includes(targetFile.extension)) {
         const resourcePath = app.vault.getResourcePath(targetFile);
         bodyResourcePaths.push(resourcePath);
       }
@@ -199,17 +194,6 @@ export async function loadImageForFile(
   fallbackToEmbeds: boolean = true,
   imagePropertyName: string = "",
 ): Promise<string | string[] | null> {
-  const validImageExtensions = [
-    "avif",
-    "bmp",
-    "gif",
-    "jpeg",
-    "jpg",
-    "png",
-    "svg",
-    "webp",
-  ];
-
   const propertyImagePaths: string[] = [];
   const propertyExternalUrls: string[] = [];
 
@@ -239,7 +223,7 @@ export async function loadImageForFile(
       propPath,
       filePath,
     );
-    if (imageFile && validImageExtensions.includes(imageFile.extension)) {
+    if (imageFile && VALID_IMAGE_EXTENSIONS.includes(imageFile.extension)) {
       const resourcePath = app.vault.getResourcePath(imageFile);
       propertyResourcePaths.push(resourcePath);
     }
@@ -278,7 +262,10 @@ export async function loadImageForFile(
           embedLink,
           filePath,
         );
-        if (targetFile && validImageExtensions.includes(targetFile.extension)) {
+        if (
+          targetFile &&
+          VALID_IMAGE_EXTENSIONS.includes(targetFile.extension)
+        ) {
           const resourcePath = app.vault.getResourcePath(targetFile);
           bodyResourcePaths.push(resourcePath);
         }

@@ -11,11 +11,86 @@ import {
   getFirstDatacorePropertyValue,
   getFirstBasesPropertyValue,
 } from "../utils/property";
-import {
-  formatTimestamp,
-  extractBasesTimestamp,
-  extractDatacoreTimestamp,
-} from "./render-utils";
+import { formatTimestamp, extractTimestamp } from "./render-utils";
+
+/**
+ * Strip leading hash (#) from tag strings
+ * @param tags Array of tag strings
+ * @returns Array with hashes removed
+ */
+function stripTagHashes(tags: string[]): string[] {
+  return tags.map((tag) => tag.replace(/^#/, ""));
+}
+
+/**
+ * Handle custom timestamp property fallback logic
+ * @param propertyName The property being resolved
+ * @param settings Plugin settings
+ * @param cardData Card data with file metadata timestamps
+ * @returns Formatted timestamp string, placeholder, or null
+ */
+function handleTimestampPropertyFallback(
+  propertyName: string,
+  settings: Settings,
+  cardData: CardData,
+): string | null {
+  // Check if this is a custom timestamp property
+  const isCustomCreatedTime =
+    settings.createdTimeProperty &&
+    propertyName === settings.createdTimeProperty;
+  const isCustomModifiedTime =
+    settings.modifiedTimeProperty &&
+    propertyName === settings.modifiedTimeProperty;
+
+  if (!isCustomCreatedTime && !isCustomModifiedTime) {
+    return null; // Not a custom timestamp property
+  }
+
+  if (settings.fallbackToFileMetadata) {
+    // Fall back to file metadata
+    const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
+    return formatTimestamp(timestamp, settings);
+  } else {
+    // Show placeholder but still render as timestamp (for icon)
+    return "...";
+  }
+}
+
+/**
+ * Convert resolved property value to plain text for subtitle
+ * Handles tags marker, array JSON, and regular strings
+ */
+function resolveSubtitleToPlainText(
+  subtitleValue: string | null,
+  settings: Settings,
+  cardData: CardData,
+): string | undefined {
+  if (!subtitleValue) return undefined;
+
+  // Handle tags marker - use correct array based on property name
+  if (subtitleValue === "tags") {
+    const isYamlOnly =
+      settings.subtitleProperty === "tags" ||
+      settings.subtitleProperty === "note.tags";
+    const tags = isYamlOnly ? cardData.yamlTags : cardData.tags;
+    return tags.length > 0 ? tags.join(", ") : undefined;
+  }
+
+  // Handle array JSON (starts with specific prefix)
+  if (subtitleValue.startsWith('{"type":"array"')) {
+    try {
+      const parsed = JSON.parse(subtitleValue) as {
+        type: string;
+        items: string[];
+      };
+      if (parsed.type === "array") return parsed.items.join(", ");
+    } catch {
+      /* fall through to return raw value */
+    }
+  }
+
+  return subtitleValue || undefined;
+}
 
 /**
  * Apply smart timestamp logic to properties
@@ -159,12 +234,22 @@ export function datacoreResultToCardData(
     settings.propertyDisplay2,
     settings.propertyDisplay3,
     settings.propertyDisplay4,
+    settings.propertyDisplay5,
+    settings.propertyDisplay6,
+    settings.propertyDisplay7,
+    settings.propertyDisplay8,
+    settings.propertyDisplay9,
+    settings.propertyDisplay10,
+    settings.propertyDisplay11,
+    settings.propertyDisplay12,
+    settings.propertyDisplay13,
+    settings.propertyDisplay14,
   ];
 
   // Apply smart timestamp logic
   props = applySmartTimestamp(props, sortMethod, settings);
 
-  // Detect duplicates (priority: 1 > 2 > 3 > 4)
+  // Detect duplicates (priority: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14)
   const seen = new Set<string>();
   const effectiveProps = props.map((prop) => {
     if (!prop || prop === "") return "";
@@ -173,25 +258,67 @@ export function datacoreResultToCardData(
     return prop;
   });
 
-  // Store property names for rendering
-  cardData.propertyName1 = effectiveProps[0] || undefined;
-  cardData.propertyName2 = effectiveProps[1] || undefined;
-  cardData.propertyName3 = effectiveProps[2] || undefined;
-  cardData.propertyName4 = effectiveProps[3] || undefined;
+  // Store property names and resolve property values (loop for all 14 properties)
+  for (let i = 0; i < 14; i++) {
+    const propName = `propertyName${i + 1}` as keyof CardData;
+    const propValue = `property${i + 1}` as keyof CardData;
 
-  // Resolve property values
-  cardData.property1 = effectiveProps[0]
-    ? resolveDatacoreProperty(effectiveProps[0], result, cardData, settings, dc)
-    : null;
-  cardData.property2 = effectiveProps[1]
-    ? resolveDatacoreProperty(effectiveProps[1], result, cardData, settings, dc)
-    : null;
-  cardData.property3 = effectiveProps[2]
-    ? resolveDatacoreProperty(effectiveProps[2], result, cardData, settings, dc)
-    : null;
-  cardData.property4 = effectiveProps[3]
-    ? resolveDatacoreProperty(effectiveProps[3], result, cardData, settings, dc)
-    : null;
+    cardData[propName] = (effectiveProps[i] || undefined) as never;
+    cardData[propValue] = (
+      effectiveProps[i]
+        ? resolveDatacoreProperty(
+            effectiveProps[i],
+            result,
+            cardData,
+            settings,
+            dc,
+          )
+        : null
+    ) as never;
+  }
+
+  // Resolve subtitle property (supports comma-separated list)
+  if (settings.subtitleProperty) {
+    const subtitleProps = settings.subtitleProperty
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p);
+    for (const prop of subtitleProps) {
+      const resolved = resolveDatacoreProperty(
+        prop,
+        result,
+        cardData,
+        settings,
+        dc,
+      );
+      if (resolved !== null && resolved !== "") {
+        cardData.subtitle = resolveSubtitleToPlainText(
+          resolved,
+          settings,
+          cardData,
+        );
+        break;
+      }
+    }
+  }
+
+  // Resolve URL property
+  if (settings.urlProperty) {
+    const urlValue = getFirstDatacorePropertyValue(
+      result,
+      settings.urlProperty,
+    );
+
+    if (urlValue !== null && typeof urlValue === "string") {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { isValidUri } = require("../utils/property") as {
+        isValidUri: (value: string) => boolean;
+      };
+
+      cardData.urlValue = urlValue;
+      cardData.hasValidUrl = isValidUri(urlValue);
+    }
+  }
 
   return cardData;
 }
@@ -256,8 +383,7 @@ export function basesEntryToCardData(
         ? [String(tagData)]
         : [];
 
-    // Strip leading # from tags if present
-    yamlTags = rawTags.map((tag) => tag.replace(/^#/, ""));
+    yamlTags = stripTagHashes(rawTags);
   }
 
   // Get tags in YAML + note body from file.tags property
@@ -283,8 +409,7 @@ export function basesEntryToCardData(
         ? [String(tagData)]
         : [];
 
-    // Strip leading # from tags if present
-    tags = rawTags.map((tag) => tag.replace(/^#/, ""));
+    tags = stripTagHashes(rawTags);
   }
 
   // Get timestamps
@@ -312,12 +437,22 @@ export function basesEntryToCardData(
     settings.propertyDisplay2,
     settings.propertyDisplay3,
     settings.propertyDisplay4,
+    settings.propertyDisplay5,
+    settings.propertyDisplay6,
+    settings.propertyDisplay7,
+    settings.propertyDisplay8,
+    settings.propertyDisplay9,
+    settings.propertyDisplay10,
+    settings.propertyDisplay11,
+    settings.propertyDisplay12,
+    settings.propertyDisplay13,
+    settings.propertyDisplay14,
   ];
 
   // Apply smart timestamp logic
   props = applySmartTimestamp(props, sortMethod, settings);
 
-  // Detect duplicates (priority: 1 > 2 > 3 > 4)
+  // Detect duplicates (priority: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14)
   const seen = new Set<string>();
   const effectiveProps = props.map((prop) => {
     if (!prop || prop === "") return "";
@@ -326,25 +461,73 @@ export function basesEntryToCardData(
     return prop;
   });
 
-  // Store property names for rendering
-  cardData.propertyName1 = effectiveProps[0] || undefined;
-  cardData.propertyName2 = effectiveProps[1] || undefined;
-  cardData.propertyName3 = effectiveProps[2] || undefined;
-  cardData.propertyName4 = effectiveProps[3] || undefined;
+  // Store property names and resolve property values (loop for all 14 properties)
+  for (let i = 0; i < 14; i++) {
+    const propName = `propertyName${i + 1}` as keyof CardData;
+    const propValue = `property${i + 1}` as keyof CardData;
 
-  // Resolve property values
-  cardData.property1 = effectiveProps[0]
-    ? resolveBasesProperty(app, effectiveProps[0], entry, cardData, settings)
-    : null;
-  cardData.property2 = effectiveProps[1]
-    ? resolveBasesProperty(app, effectiveProps[1], entry, cardData, settings)
-    : null;
-  cardData.property3 = effectiveProps[2]
-    ? resolveBasesProperty(app, effectiveProps[2], entry, cardData, settings)
-    : null;
-  cardData.property4 = effectiveProps[3]
-    ? resolveBasesProperty(app, effectiveProps[3], entry, cardData, settings)
-    : null;
+    cardData[propName] = (effectiveProps[i] || undefined) as never;
+    cardData[propValue] = (
+      effectiveProps[i]
+        ? resolveBasesProperty(
+            app,
+            effectiveProps[i],
+            entry,
+            cardData,
+            settings,
+          )
+        : null
+    ) as never;
+  }
+
+  // Resolve subtitle property (supports comma-separated list)
+  if (settings.subtitleProperty) {
+    const subtitleProps = settings.subtitleProperty
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p);
+    for (const prop of subtitleProps) {
+      const resolved = resolveBasesProperty(
+        app,
+        prop,
+        entry,
+        cardData,
+        settings,
+      );
+      if (resolved !== null && resolved !== "") {
+        cardData.subtitle = resolveSubtitleToPlainText(
+          resolved,
+          settings,
+          cardData,
+        );
+        break;
+      }
+    }
+  }
+
+  // Resolve URL property
+  if (settings.urlProperty) {
+    const urlValue = getFirstBasesPropertyValue(
+      app,
+      entry,
+      settings.urlProperty,
+    );
+
+    if (
+      urlValue &&
+      typeof urlValue === "object" &&
+      "data" in urlValue &&
+      typeof urlValue.data === "string"
+    ) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { isValidUri } = require("../utils/property") as {
+        isValidUri: (value: string) => boolean;
+      };
+
+      cardData.urlValue = urlValue.data;
+      cardData.hasValidUrl = isValidUri(urlValue.data);
+    }
+  }
 
   return cardData;
 }
@@ -454,32 +637,20 @@ export function resolveBasesProperty(
   // Generic property: read from frontmatter
   const value = getFirstBasesPropertyValue(app, entry, propertyName);
 
-  // Handle fallback for custom timestamp properties
+  // Handle fallback for custom timestamp properties when property is missing
   if (!value) {
-    // Check if this is a custom timestamp property
-    const isCustomCreatedTime =
-      settings.createdTimeProperty &&
-      propertyName === settings.createdTimeProperty;
-    const isCustomModifiedTime =
-      settings.modifiedTimeProperty &&
-      propertyName === settings.modifiedTimeProperty;
-
-    if (isCustomCreatedTime || isCustomModifiedTime) {
-      if (settings.fallbackToFileMetadata) {
-        // Fall back to file metadata
-        const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
-        return formatTimestamp(timestamp, settings);
-      } else {
-        // Show placeholder but still render as timestamp (for icon)
-        return "...";
-      }
-    }
+    const fallback = handleTimestampPropertyFallback(
+      propertyName,
+      settings,
+      cardData,
+    );
+    if (fallback !== null) return fallback;
     return null;
   }
 
   // Check if it's a date/datetime value - format with custom format
   // Date properties return { date: Date, time: boolean } directly
-  const timestampData = extractBasesTimestamp(value);
+  const timestampData = extractTimestamp(value);
   if (timestampData) {
     const formatted = formatTimestamp(
       timestampData.timestamp,
@@ -498,24 +669,13 @@ export function resolveBasesProperty(
     data === "" ||
     (Array.isArray(data) && data.length === 0)
   ) {
-    // Check if this is a custom timestamp property
-    const isCustomCreatedTime =
-      settings.createdTimeProperty &&
-      propertyName === settings.createdTimeProperty;
-    const isCustomModifiedTime =
-      settings.modifiedTimeProperty &&
-      propertyName === settings.modifiedTimeProperty;
+    const fallback = handleTimestampPropertyFallback(
+      propertyName,
+      settings,
+      cardData,
+    );
+    if (fallback !== null) return fallback;
 
-    if (isCustomCreatedTime || isCustomModifiedTime) {
-      if (settings.fallbackToFileMetadata) {
-        // Fall back to file metadata
-        const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
-        return formatTimestamp(timestamp, settings);
-      } else {
-        // Show placeholder but still render as timestamp (for icon)
-        return "...";
-      }
-    }
     // Return empty string for empty property (property exists but empty)
     // This distinguishes from null (missing property)
     return "";
@@ -531,6 +691,16 @@ export function resolveBasesProperty(
     // Treat whitespace-only strings as empty
     if (typeof data === "string" && result.trim() === "") {
       return "";
+    }
+    // Check if this is a link property (Bases strips [[]] for single link values)
+    // Link properties have sourcePath or display keys
+    const valueObj = value as { sourcePath?: unknown; display?: unknown };
+    if (
+      typeof data === "string" &&
+      (valueObj.sourcePath !== undefined || valueObj.display !== undefined)
+    ) {
+      // Wrap in wikilink syntax so renderTextWithLinks can detect it
+      return `[[${result}]]`;
     }
     return result;
   }
@@ -550,6 +720,21 @@ export function resolveBasesProperty(
           ) {
             return String(nestedData);
           }
+          // Handle nested Link objects in .data
+          if (typeof nestedData === "object" && nestedData !== null) {
+            if ("path" in nestedData) {
+              const pathValue = (nestedData as { path: unknown }).path;
+              if (typeof pathValue === "string" && pathValue.trim() !== "") {
+                return `[[${pathValue}]]`;
+              }
+            }
+            if ("link" in nestedData) {
+              const linkValue = (nestedData as { link: unknown }).link;
+              if (typeof linkValue === "string" && linkValue.trim() !== "") {
+                return `[[${linkValue}]]`;
+              }
+            }
+          }
           return null; // Can't stringify complex nested objects
         }
         if (item == null || item === "") return null;
@@ -560,15 +745,48 @@ export function resolveBasesProperty(
         ) {
           return String(item);
         }
+        // Handle Link objects directly in array
+        if (typeof item === "object") {
+          if ("path" in item) {
+            const pathValue = (item as { path: unknown }).path;
+            if (typeof pathValue === "string" && pathValue.trim() !== "") {
+              return `[[${pathValue}]]`;
+            }
+          }
+          if ("link" in item) {
+            const linkValue = (item as { link: unknown }).link;
+            if (typeof linkValue === "string" && linkValue.trim() !== "") {
+              return `[[${linkValue}]]`;
+            }
+          }
+        }
         return null; // Can't stringify complex objects
       })
       .filter((s): s is string => s !== null);
 
     if (stringElements.length === 0) {
-      return ""; // All elements were empty
+      return null; // All elements were empty - treat as missing property
     }
     // Return array marker for special rendering
     return JSON.stringify({ type: "array", items: stringElements });
+  }
+
+  // Handle Link objects (Bases may use path or link property for wikilinks)
+  if (typeof data === "object" && data !== null) {
+    // Check for path property (like Datacore Link objects)
+    if ("path" in data) {
+      const pathValue = (data as { path: unknown }).path;
+      if (typeof pathValue === "string" && pathValue.trim() !== "") {
+        return `[[${pathValue}]]`;
+      }
+    }
+    // Check for link property (alternative structure)
+    if ("link" in data) {
+      const linkValue = (data as { link: unknown }).link;
+      if (typeof linkValue === "string" && linkValue.trim() !== "") {
+        return `[[${linkValue}]]`;
+      }
+    }
   }
 
   // For complex types, return null (can't display)
@@ -617,13 +835,13 @@ export function resolveDatacoreProperty(
   }
 
   // Generic property: read from frontmatter
-  let rawValue = getFirstDatacorePropertyValue(result, propertyName);
+  const rawValue = getFirstDatacorePropertyValue(result, propertyName);
 
   // Handle arrays - join elements
   if (Array.isArray(rawValue)) {
     // Check if all elements are dates - if so, format first one
     const firstElement = rawValue[0] as unknown;
-    const timestampData = extractDatacoreTimestamp(firstElement);
+    const timestampData = extractTimestamp(firstElement);
     if (timestampData) {
       return formatTimestamp(
         timestampData.timestamp,
@@ -635,22 +853,29 @@ export function resolveDatacoreProperty(
     // Otherwise join all elements as strings
     const stringElements = rawValue
       .map((item: unknown) => {
+        // Handle Link objects with path property
+        if (typeof item === "object" && item !== null && "path" in item) {
+          const pathValue = (item as { path: unknown }).path;
+          if (typeof pathValue === "string" && pathValue.trim() !== "") {
+            return pathValue;
+          }
+        }
         const str = dc.coerce.string(item);
         return str && str.trim() !== "" ? str : null;
       })
       .filter((s): s is string => s !== null);
 
     if (stringElements.length === 0) {
-      // Treat as missing property
-      rawValue = null;
-    } else {
-      // Return array marker for special rendering
-      return JSON.stringify({ type: "array", items: stringElements });
+      // All elements were empty - treat as missing property
+      return null;
     }
+
+    // Return array marker for special rendering
+    return JSON.stringify({ type: "array", items: stringElements });
   }
 
   // Check if it's a date/datetime value - format with custom format
-  const timestampData = extractDatacoreTimestamp(rawValue);
+  const timestampData = extractTimestamp(rawValue);
   if (timestampData) {
     return formatTimestamp(
       timestampData.timestamp,
@@ -683,29 +908,27 @@ export function resolveDatacoreProperty(
     return null;
   }
 
-  // Coerce to string for non-date values
+  // Handle Link objects with path property (single value)
+  // Preserve wikilink syntax so renderTextWithLinks can detect it
+  if (typeof rawValue === "object" && rawValue !== null && "path" in rawValue) {
+    const pathValue = (rawValue as { path: unknown }).path;
+    if (typeof pathValue === "string" && pathValue.trim() !== "") {
+      return `[[${pathValue}]]`;
+    }
+  }
+
+  // Coerce to string for non-date, non-link values
   const value = dc.coerce.string(rawValue);
 
   // Handle empty values (property exists but empty)
-  if (value === "" || (typeof value === "string" && value.trim() === "")) {
-    // Check if this is a custom timestamp property
-    const isCustomCreatedTime =
-      settings.createdTimeProperty &&
-      propertyName === settings.createdTimeProperty;
-    const isCustomModifiedTime =
-      settings.modifiedTimeProperty &&
-      propertyName === settings.modifiedTimeProperty;
+  if (!value || value.trim() === "") {
+    const fallback = handleTimestampPropertyFallback(
+      propertyName,
+      settings,
+      cardData,
+    );
+    if (fallback !== null) return fallback;
 
-    if (isCustomCreatedTime || isCustomModifiedTime) {
-      if (settings.fallbackToFileMetadata) {
-        // Fall back to file metadata
-        const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
-        return formatTimestamp(timestamp, settings);
-      } else {
-        // Show placeholder but still render as timestamp (for icon)
-        return "...";
-      }
-    }
     // Return empty string for empty property (property exists but empty)
     // This distinguishes from null (missing property)
     return "";

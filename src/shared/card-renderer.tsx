@@ -8,7 +8,7 @@ import { TFile, TFolder, Menu } from "obsidian";
 import type { Settings } from "../types";
 import type { RefObject } from "../types/datacore";
 import {
-  getTagStyle,
+  showTagHashPrefix,
   showTimestampIcon,
   getEmptyValueMarker,
   shouldHideMissingProperties,
@@ -16,7 +16,125 @@ import {
   getListSeparator,
 } from "../utils/style-settings";
 import { getPropertyLabel } from "../utils/property";
+import { findLinksInText, type ParsedLink } from "../utils/link-parser";
 import { handleImageLoad } from "./image-loader";
+import { setupImageZoomGestures } from "./image-zoom-gestures";
+
+/**
+ * Render a single link as JSX
+ */
+function renderLink(link: ParsedLink, app: App): JSX.Element {
+  // Internal link (wikilink or markdown internal)
+  if (link.type === "internal") {
+    if (link.isEmbed) {
+      // Embedded internal link - render as embed container
+      return (
+        <span
+          className="internal-embed"
+          data-src={link.url}
+          onClick={(e: MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const newLeaf = e.metaKey || e.ctrlKey;
+            void app.workspace.openLinkText(link.url, "", newLeaf);
+          }}
+        >
+          {link.caption}
+        </span>
+      );
+    }
+    // Regular internal link
+    return (
+      <a
+        href={link.url}
+        className="internal-link"
+        data-href={link.url}
+        draggable={true}
+        onClick={(e: MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const newLeaf = e.metaKey || e.ctrlKey;
+          void app.workspace.openLinkText(link.url, "", newLeaf);
+        }}
+        onDragStart={(e: DragEvent) => {
+          const file = app.metadataCache.getFirstLinkpathDest(link.url, "");
+          if (!(file instanceof TFile)) return;
+          const dragData = app.dragManager.dragFile(e, file);
+          app.dragManager.onDragStart(e, dragData);
+        }}
+      >
+        {link.caption}
+      </a>
+    );
+  }
+
+  // External link
+  if (link.isEmbed) {
+    // Embedded external link (image)
+    return (
+      <img
+        src={link.url}
+        alt={link.caption}
+        className="external-embed"
+        onClick={(e: MouseEvent) => {
+          e.stopPropagation();
+        }}
+      />
+    );
+  }
+  // Regular external link
+  // Only open in new tab for web URLs, not custom URIs like obsidian://
+  return (
+    <a
+      href={link.url}
+      className="external-link"
+      target={link.isWebUrl ? "_blank" : undefined}
+      rel={link.isWebUrl ? "noopener noreferrer" : undefined}
+      onClick={(e: MouseEvent) => {
+        e.stopPropagation();
+      }}
+      onDragStart={(e: DragEvent) => {
+        e.dataTransfer?.clearData();
+        // Bare link (caption === url) → plain URL; captioned → markdown link
+        const dragText =
+          link.caption === link.url
+            ? link.url
+            : `[${link.caption}](${link.url})`;
+        e.dataTransfer?.setData("text/plain", dragText);
+      }}
+    >
+      {link.caption}
+    </a>
+  );
+}
+
+/**
+ * Parse text and render links as clickable elements
+ * Uses findLinksInText utility for comprehensive link detection in mixed content
+ */
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- JSX.Element resolves to any due to Datacore's JSX runtime
+function renderTextWithLinks(text: string, app: App): JSX.Element | string {
+  const segments = findLinksInText(text);
+
+  // Use array of elements/strings - text segments don't need span wrapper
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- JSX.Element resolves to any due to Datacore's JSX runtime
+  const elements: (JSX.Element | string)[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment.type === "text") {
+      // Render text directly without span wrapper to preserve whitespace
+      elements.push(segment.content);
+    } else {
+      elements.push(<span key={i}>{renderLink(segment.link, app)}</span>);
+    }
+  }
+
+  return <>{elements}</>;
+}
+
+// Module-level Maps to store zoom cleanup functions and original parents
+const zoomCleanupFns = new Map<HTMLElement, () => void>();
+const zoomedOriginalParents = new Map<HTMLElement, HTMLElement>();
 
 // Extend App type to include isMobile property and dragManager
 declare module "obsidian" {
@@ -53,18 +171,41 @@ export interface CardData {
   mtime: number; // milliseconds
   folderPath: string;
   snippet?: string;
+  subtitle?: string;
   imageUrl?: string | string[];
   hasImageAvailable: boolean;
+  urlValue?: string | null;
+  hasValidUrl?: boolean;
   // Property names (for rendering special properties)
   propertyName1?: string;
   propertyName2?: string;
   propertyName3?: string;
   propertyName4?: string;
-  // Resolved property values (null if missing/empty)
-  property1?: string | null;
-  property2?: string | null;
-  property3?: string | null;
-  property4?: string | null;
+  propertyName5?: string;
+  propertyName6?: string;
+  propertyName7?: string;
+  propertyName8?: string;
+  propertyName9?: string;
+  propertyName10?: string;
+  propertyName11?: string;
+  propertyName12?: string;
+  propertyName13?: string;
+  propertyName14?: string;
+  // Resolved property values (null if missing/empty, unknown for Bases Value objects)
+  property1?: unknown;
+  property2?: unknown;
+  property3?: unknown;
+  property4?: unknown;
+  property5?: unknown;
+  property6?: unknown;
+  property7?: unknown;
+  property8?: unknown;
+  property9?: unknown;
+  property10?: unknown;
+  property11?: unknown;
+  property12?: unknown;
+  property13?: unknown;
+  property14?: unknown;
 }
 
 export interface CardRendererProps {
@@ -87,15 +228,17 @@ export interface CardRendererProps {
 function renderPropertyContent(
   propertyName: string,
   card: CardData,
-  resolvedValue: string | null,
+  resolvedValue: unknown,
   timeIcon: "calendar" | "clock",
   settings: Settings,
   app: App,
 ): unknown {
+  // Coerce unknown to string for rendering
+  const stringValue = typeof resolvedValue === "string" ? resolvedValue : "";
   return renderProperty(
     propertyName,
     null,
-    resolvedValue || "",
+    stringValue,
     settings,
     card,
     app,
@@ -367,7 +510,9 @@ function renderProperty(
                   {arrayData.items.map(
                     (item, idx): JSX.Element => (
                       <span key={idx}>
-                        <span className="list-item">{item}</span>
+                        <span className="list-item">
+                          {renderTextWithLinks(item, app)}
+                        </span>
                         {idx < arrayData.items.length - 1 && (
                           <span className="list-separator">{separator}</span>
                         )}
@@ -438,8 +583,7 @@ function renderProperty(
     card.yamlTags.length > 0
   ) {
     // YAML tags only
-    const tagStyle = getTagStyle();
-    const showHashPrefix = tagStyle === "minimal";
+    const showHashPrefix = showTagHashPrefix();
 
     return (
       <>
@@ -477,8 +621,7 @@ function renderProperty(
     card.tags.length > 0
   ) {
     // tags in YAML + note body
-    const tagStyle = getTagStyle();
-    const showHashPrefix = tagStyle === "minimal";
+    const showHashPrefix = showTagHashPrefix();
 
     return (
       <>
@@ -593,14 +736,14 @@ function renderProperty(
     );
   }
 
-  // Generic property: just render the resolved value as text
+  // Generic property: render value with link detection
   return (
     <>
       {labelAbove}
       {labelInline}
       <div className="property-content-wrapper">
         <div className="property-content">
-          <span>{resolvedValue}</span>
+          <span>{renderTextWithLinks(resolvedValue, app)}</span>
         </div>
       </div>
     </>
@@ -758,16 +901,8 @@ function Card({
           const isTag =
             target.classList.contains("tag") || target.closest(".tag");
           const isImage = target.tagName === "IMG";
-          const expandOnClick =
-            document.body.classList.contains(
-              "dynamic-views-thumbnail-expand-click-hold",
-            ) ||
-            document.body.classList.contains(
-              "dynamic-views-thumbnail-expand-click-toggle",
-            );
-          const shouldBlockImageClick = isImage && expandOnClick;
 
-          if (!isLink && !isTag && !shouldBlockImageClick) {
+          if (!isLink && !isTag && !isImage) {
             const newLeaf = e.metaKey || e.ctrlKey;
             if (onCardClick) {
               onCardClick(card.path, newLeaf);
@@ -828,26 +963,71 @@ function Card({
       }}
     >
       {/* Title */}
-      {settings.showTitle && (
-        <div className="card-title">
-          {settings.openFileAction === "title" ? (
-            <a
-              href={card.path}
-              className="internal-link"
-              data-href={card.path}
-              draggable={true}
-              onDragStart={handleDrag}
+      {(settings.showTitle || card.hasValidUrl) && (
+        <div
+          className={card.hasValidUrl ? "card-title-container" : "card-title"}
+        >
+          {settings.showTitle && (
+            <div className={card.hasValidUrl ? "card-title" : undefined}>
+              {settings.openFileAction === "title" ? (
+                <a
+                  href={card.path}
+                  className="internal-link"
+                  data-href={card.path}
+                  draggable={true}
+                  onDragStart={handleDrag}
+                  onClick={(e: MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const newLeaf = e.metaKey || e.ctrlKey;
+                    void app.workspace.openLinkText(card.path, "", newLeaf);
+                  }}
+                >
+                  {card.title}
+                </a>
+              ) : (
+                card.title
+              )}
+            </div>
+          )}
+          {card.hasValidUrl && card.urlValue && (
+            <svg
+              className="card-title-url-icon text-icon-button svg-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const newLeaf = e.metaKey || e.ctrlKey;
-                void app.workspace.openLinkText(card.path, "", newLeaf);
+                window.open(card.urlValue!, "_blank", "noopener,noreferrer");
               }}
+              title="Open URL"
             >
-              {card.title}
-            </a>
-          ) : (
-            card.title
+              <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
+              <path d="m21 3-9 9"></path>
+              <path d="M15 3h6v6"></path>
+            </svg>
+          )}
+        </div>
+      )}
+
+      {/* Subtitle */}
+      {settings.subtitleProperty && card.subtitle && (
+        <div className="card-subtitle">
+          {renderProperty(
+            settings.subtitleProperty,
+            null,
+            card.subtitle,
+            { ...settings, propertyLabels: "hide" },
+            card,
+            app,
+            timeIcon,
           )}
         </div>
       )}
@@ -886,69 +1066,149 @@ function Card({
                       "--cover-image-url": `url("${imageArray[0] || ""}")`,
                     }}
                     onClick={(e: MouseEvent) => {
-                      const isToggleMode = document.body.classList.contains(
-                        "dynamic-views-thumbnail-expand-click-toggle",
+                      const isZoomEnabled = document.body.classList.contains(
+                        "dynamic-views-image-zoom-enabled",
                       );
-                      const isHoldMode = document.body.classList.contains(
-                        "dynamic-views-thumbnail-expand-click-hold",
-                      );
+                      if (!isZoomEnabled) return;
 
-                      if (isToggleMode || isHoldMode) {
-                        e.stopPropagation();
+                      e.stopPropagation();
+                      const embedEl = e.currentTarget as HTMLElement;
+                      const isZoomed = embedEl.classList.contains("is-zoomed");
 
-                        if (isToggleMode) {
-                          const embedEl = e.currentTarget as HTMLElement;
-                          const isZoomed =
-                            embedEl.classList.contains("is-zoomed");
-
-                          if (isZoomed) {
-                            embedEl.classList.remove("is-zoomed");
-                          } else {
-                            document
-                              .querySelectorAll(".image-embed.is-zoomed")
-                              .forEach((el) => {
-                                el.classList.remove("is-zoomed");
-                              });
-                            embedEl.classList.add("is-zoomed");
-
-                            const closeZoom = (evt: Event) => {
-                              const target = evt.target as HTMLElement;
-                              if (!embedEl.contains(target)) {
-                                embedEl.classList.remove("is-zoomed");
-                                document.removeEventListener(
-                                  "click",
-                                  closeZoom,
-                                );
-                                document.removeEventListener(
-                                  "keydown",
-                                  handleEscape,
-                                );
-                              }
-                            };
-
-                            const handleEscape = (evt: KeyboardEvent) => {
-                              if (evt.key === "Escape") {
-                                embedEl.classList.remove("is-zoomed");
-                                document.removeEventListener(
-                                  "click",
-                                  closeZoom,
-                                );
-                                document.removeEventListener(
-                                  "keydown",
-                                  handleEscape,
-                                );
-                              }
-                            };
-
-                            setTimeout(() => {
-                              document.addEventListener("click", closeZoom);
-                              document.addEventListener(
-                                "keydown",
-                                handleEscape,
-                              );
-                            }, 0);
-                          }
+                      if (isZoomed) {
+                        embedEl.classList.remove("is-zoomed");
+                        // Return to original parent
+                        const originalParent =
+                          zoomedOriginalParents.get(embedEl);
+                        if (
+                          originalParent &&
+                          embedEl.parentElement !== originalParent
+                        ) {
+                          originalParent.appendChild(embedEl);
+                          zoomedOriginalParents.delete(embedEl);
                         }
+                        // Cleanup zoom gestures
+                        const cleanup = zoomCleanupFns.get(embedEl);
+                        if (cleanup) {
+                          cleanup();
+                          zoomCleanupFns.delete(embedEl);
+                        }
+                      } else {
+                        // Close other zoomed images in this view/tab only (not globally)
+                        const viewContainer = embedEl.closest(
+                          ".workspace-leaf-content",
+                        );
+                        if (viewContainer) {
+                          viewContainer
+                            .querySelectorAll(".image-embed.is-zoomed")
+                            .forEach((el) => {
+                              el.classList.remove("is-zoomed");
+                              // Return to original parent
+                              const originalParent = zoomedOriginalParents.get(
+                                el as HTMLElement,
+                              );
+                              if (
+                                originalParent &&
+                                el.parentElement !== originalParent
+                              ) {
+                                originalParent.appendChild(el);
+                                zoomedOriginalParents.delete(el as HTMLElement);
+                              }
+                              // Cleanup zoom gestures for other images
+                              const cleanup = zoomCleanupFns.get(
+                                el as HTMLElement,
+                              );
+                              if (cleanup) {
+                                cleanup();
+                                zoomCleanupFns.delete(el as HTMLElement);
+                              }
+                            });
+                        }
+                        // Store original parent and teleport to body (only if NOT constrained to tab)
+                        const isConstrained = document.body.classList.contains(
+                          "dynamic-views-zoom-constrain-to-editor",
+                        );
+                        const originalParent = embedEl.parentElement;
+                        if (originalParent && !isConstrained) {
+                          zoomedOriginalParents.set(embedEl, originalParent);
+                          document.body.appendChild(embedEl);
+                        }
+                        embedEl.classList.add("is-zoomed");
+
+                        // Setup zoom gestures
+                        const imgEl = embedEl.querySelector("img");
+                        if (imgEl) {
+                          const file = app.vault.getAbstractFileByPath(
+                            card.path,
+                          );
+                          const cleanup = setupImageZoomGestures(
+                            imgEl,
+                            embedEl,
+                            app,
+                            file instanceof TFile ? file : undefined,
+                          );
+                          zoomCleanupFns.set(embedEl, cleanup);
+                        }
+
+                        const closeZoom = (evt: Event) => {
+                          const target = evt.target as HTMLElement;
+                          if (!embedEl.contains(target)) {
+                            embedEl.classList.remove("is-zoomed");
+                            // Return to original parent
+                            const originalParent =
+                              zoomedOriginalParents.get(embedEl);
+                            if (
+                              originalParent &&
+                              embedEl.parentElement !== originalParent
+                            ) {
+                              originalParent.appendChild(embedEl);
+                              zoomedOriginalParents.delete(embedEl);
+                            }
+                            // Cleanup zoom gestures
+                            const cleanup = zoomCleanupFns.get(embedEl);
+                            if (cleanup) {
+                              cleanup();
+                              zoomCleanupFns.delete(embedEl);
+                            }
+                            document.removeEventListener("click", closeZoom);
+                            document.removeEventListener(
+                              "keydown",
+                              handleEscape,
+                            );
+                          }
+                        };
+
+                        const handleEscape = (evt: KeyboardEvent) => {
+                          if (evt.key === "Escape") {
+                            embedEl.classList.remove("is-zoomed");
+                            // Return to original parent
+                            const originalParent =
+                              zoomedOriginalParents.get(embedEl);
+                            if (
+                              originalParent &&
+                              embedEl.parentElement !== originalParent
+                            ) {
+                              originalParent.appendChild(embedEl);
+                              zoomedOriginalParents.delete(embedEl);
+                            }
+                            // Cleanup zoom gestures
+                            const cleanup = zoomCleanupFns.get(embedEl);
+                            if (cleanup) {
+                              cleanup();
+                              zoomCleanupFns.delete(embedEl);
+                            }
+                            document.removeEventListener("click", closeZoom);
+                            document.removeEventListener(
+                              "keydown",
+                              handleEscape,
+                            );
+                          }
+                        };
+
+                        setTimeout(() => {
+                          document.addEventListener("click", closeZoom);
+                          document.addEventListener("keydown", handleEscape);
+                        }, 0);
                       }
                     }}
                   >
@@ -1216,59 +1476,100 @@ function Card({
               className="image-embed"
               style={{ "--cover-image-url": `url("${imageArray[0] || ""}")` }}
               onClick={(e: MouseEvent) => {
-                const isToggleMode = document.body.classList.contains(
-                  "dynamic-views-thumbnail-expand-click-toggle",
-                );
-                const isHoldMode = document.body.classList.contains(
-                  "dynamic-views-thumbnail-expand-click-hold",
-                );
+                e.stopPropagation();
+                const embedEl = e.currentTarget as HTMLElement;
+                const isZoomed = embedEl.classList.contains("is-zoomed");
 
-                if (isToggleMode || isHoldMode) {
-                  e.stopPropagation();
-
-                  if (isToggleMode) {
-                    const embedEl = e.currentTarget as HTMLElement;
-                    const isZoomed = embedEl.classList.contains("is-zoomed");
-
-                    if (isZoomed) {
-                      // Close zoom
-                      embedEl.classList.remove("is-zoomed");
-                    } else {
-                      // Close all other zoomed images first
-                      document
-                        .querySelectorAll(".image-embed.is-zoomed")
-                        .forEach((el) => {
-                          el.classList.remove("is-zoomed");
-                        });
-                      // Open this one
-                      embedEl.classList.add("is-zoomed");
-
-                      // Add listeners for closing
-                      const closeZoom = (evt: Event) => {
-                        const target = evt.target as HTMLElement;
-                        // Don't close if clicking on the zoomed image itself
-                        if (!embedEl.contains(target)) {
-                          embedEl.classList.remove("is-zoomed");
-                          document.removeEventListener("click", closeZoom);
-                          document.removeEventListener("keydown", handleEscape);
-                        }
-                      };
-
-                      const handleEscape = (evt: KeyboardEvent) => {
-                        if (evt.key === "Escape") {
-                          embedEl.classList.remove("is-zoomed");
-                          document.removeEventListener("click", closeZoom);
-                          document.removeEventListener("keydown", handleEscape);
-                        }
-                      };
-
-                      // Delay adding listeners to avoid immediate trigger
-                      setTimeout(() => {
-                        document.addEventListener("click", closeZoom);
-                        document.addEventListener("keydown", handleEscape);
-                      }, 0);
-                    }
+                if (isZoomed) {
+                  // Close zoom
+                  embedEl.classList.remove("is-zoomed");
+                  // Cleanup zoom gestures
+                  const cleanup = zoomCleanupFns.get(embedEl);
+                  if (cleanup) {
+                    cleanup();
+                    zoomCleanupFns.delete(embedEl);
                   }
+                } else {
+                  // Close other zoomed images in this view/tab only (not globally)
+                  const viewContainer = embedEl.closest(
+                    ".workspace-leaf-content",
+                  );
+                  if (viewContainer) {
+                    viewContainer
+                      .querySelectorAll(".image-embed.is-zoomed")
+                      .forEach((el) => {
+                        el.classList.remove("is-zoomed");
+                        // Return to original parent
+                        const originalParent = zoomedOriginalParents.get(
+                          el as HTMLElement,
+                        );
+                        if (
+                          originalParent &&
+                          el.parentElement !== originalParent
+                        ) {
+                          originalParent.appendChild(el);
+                          zoomedOriginalParents.delete(el as HTMLElement);
+                        }
+                        // Cleanup zoom gestures for other images
+                        const cleanup = zoomCleanupFns.get(el as HTMLElement);
+                        if (cleanup) {
+                          cleanup();
+                          zoomCleanupFns.delete(el as HTMLElement);
+                        }
+                      });
+                  }
+                  // Open this one
+                  embedEl.classList.add("is-zoomed");
+
+                  // Setup zoom gestures
+                  const imgEl = embedEl.querySelector("img");
+                  if (imgEl) {
+                    const file = app.vault.getAbstractFileByPath(card.path);
+                    const cleanup = setupImageZoomGestures(
+                      imgEl,
+                      embedEl,
+                      app,
+                      file instanceof TFile ? file : undefined,
+                    );
+                    zoomCleanupFns.set(embedEl, cleanup);
+                  }
+
+                  // Add listeners for closing
+                  const closeZoom = (evt: Event) => {
+                    const target = evt.target as HTMLElement;
+                    // Don't close if clicking on the zoomed image itself
+                    if (!embedEl.contains(target)) {
+                      embedEl.classList.remove("is-zoomed");
+                      // Cleanup zoom gestures
+                      const cleanup = zoomCleanupFns.get(embedEl);
+                      if (cleanup) {
+                        cleanup();
+                        zoomCleanupFns.delete(embedEl);
+                      }
+                      document.removeEventListener("click", closeZoom);
+                      document.removeEventListener("keydown", handleEscape);
+                    }
+                  };
+
+                  const handleEscape = (evt: KeyboardEvent) => {
+                    if (evt.key === "Escape") {
+                      embedEl.classList.remove("is-zoomed");
+                      // Cleanup zoom gestures
+                      const cleanup = zoomCleanupFns.get(embedEl);
+                      if (cleanup) {
+                        cleanup();
+                        zoomCleanupFns.delete(embedEl);
+                      }
+                      document.removeEventListener("click", closeZoom);
+                      document.removeEventListener("keydown", handleEscape);
+                    }
+                  };
+
+                  // Delay adding listeners to avoid immediate trigger
+                  setTimeout(() => {
+                    document.addEventListener("click", closeZoom);
+                    document.addEventListener("keydown", handleEscape);
+                  }, 0);
                 }
               }}
             >
@@ -1364,66 +1665,145 @@ function Card({
                     "--cover-image-url": `url("${imageArray[0] || ""}")`,
                   }}
                   onClick={(e: MouseEvent) => {
-                    const isToggleMode = document.body.classList.contains(
-                      "dynamic-views-thumbnail-expand-click-toggle",
+                    const isZoomEnabled = document.body.classList.contains(
+                      "dynamic-views-image-zoom-enabled",
                     );
-                    const isHoldMode = document.body.classList.contains(
-                      "dynamic-views-thumbnail-expand-click-hold",
-                    );
+                    if (!isZoomEnabled) return;
 
-                    if (isToggleMode || isHoldMode) {
-                      e.stopPropagation();
+                    e.stopPropagation();
+                    const embedEl = e.currentTarget as HTMLElement;
+                    const isZoomed = embedEl.classList.contains("is-zoomed");
 
-                      if (isToggleMode) {
-                        const embedEl = e.currentTarget as HTMLElement;
-                        const isZoomed =
-                          embedEl.classList.contains("is-zoomed");
-
-                        if (isZoomed) {
-                          // Close zoom
-                          embedEl.classList.remove("is-zoomed");
-                        } else {
-                          // Close all other zoomed images first
-                          document
-                            .querySelectorAll(".image-embed.is-zoomed")
-                            .forEach((el) => {
-                              el.classList.remove("is-zoomed");
-                            });
-                          // Open this one
-                          embedEl.classList.add("is-zoomed");
-
-                          // Add listeners for closing
-                          const closeZoom = (evt: Event) => {
-                            const target = evt.target as HTMLElement;
-                            // Don't close if clicking on the zoomed image itself
-                            if (!embedEl.contains(target)) {
-                              embedEl.classList.remove("is-zoomed");
-                              document.removeEventListener("click", closeZoom);
-                              document.removeEventListener(
-                                "keydown",
-                                handleEscape,
-                              );
-                            }
-                          };
-
-                          const handleEscape = (evt: KeyboardEvent) => {
-                            if (evt.key === "Escape") {
-                              embedEl.classList.remove("is-zoomed");
-                              document.removeEventListener("click", closeZoom);
-                              document.removeEventListener(
-                                "keydown",
-                                handleEscape,
-                              );
-                            }
-                          };
-
-                          // Delay adding listeners to avoid immediate trigger
-                          setTimeout(() => {
-                            document.addEventListener("click", closeZoom);
-                            document.addEventListener("keydown", handleEscape);
-                          }, 0);
-                        }
+                    if (isZoomed) {
+                      // Close zoom
+                      embedEl.classList.remove("is-zoomed");
+                      // Return to original parent
+                      const originalParent = zoomedOriginalParents.get(embedEl);
+                      if (
+                        originalParent &&
+                        embedEl.parentElement !== originalParent
+                      ) {
+                        originalParent.appendChild(embedEl);
+                        zoomedOriginalParents.delete(embedEl);
                       }
+                      // Cleanup zoom gestures
+                      const cleanup = zoomCleanupFns.get(embedEl);
+                      if (cleanup) {
+                        cleanup();
+                        zoomCleanupFns.delete(embedEl);
+                      }
+                    } else {
+                      // Close other zoomed images in this view/tab only (not globally)
+                      const viewContainer = embedEl.closest(
+                        ".workspace-leaf-content",
+                      );
+                      if (viewContainer) {
+                        viewContainer
+                          .querySelectorAll(".image-embed.is-zoomed")
+                          .forEach((el) => {
+                            el.classList.remove("is-zoomed");
+                            // Return to original parent
+                            const originalParent = zoomedOriginalParents.get(
+                              el as HTMLElement,
+                            );
+                            if (
+                              originalParent &&
+                              el.parentElement !== originalParent
+                            ) {
+                              originalParent.appendChild(el);
+                              zoomedOriginalParents.delete(el as HTMLElement);
+                            }
+                            // Cleanup zoom gestures for other images
+                            const cleanup = zoomCleanupFns.get(
+                              el as HTMLElement,
+                            );
+                            if (cleanup) {
+                              cleanup();
+                              zoomCleanupFns.delete(el as HTMLElement);
+                            }
+                          });
+                      }
+                      // Store original parent and teleport to body (only if NOT constrained to tab)
+                      const isConstrained = document.body.classList.contains(
+                        "dynamic-views-zoom-constrain-to-editor",
+                      );
+                      const originalParent = embedEl.parentElement;
+                      if (originalParent && !isConstrained) {
+                        zoomedOriginalParents.set(embedEl, originalParent);
+                        document.body.appendChild(embedEl);
+                      }
+                      // Open this one
+                      embedEl.classList.add("is-zoomed");
+
+                      // Setup zoom gestures
+                      const imgEl = embedEl.querySelector("img");
+                      if (imgEl) {
+                        const file = app.vault.getAbstractFileByPath(card.path);
+                        const cleanup = setupImageZoomGestures(
+                          imgEl,
+                          embedEl,
+                          app,
+                          file instanceof TFile ? file : undefined,
+                        );
+                        zoomCleanupFns.set(embedEl, cleanup);
+                      }
+
+                      // Add listeners for closing
+                      const closeZoom = (evt: Event) => {
+                        const target = evt.target as HTMLElement;
+                        // Don't close if clicking on the zoomed image itself
+                        if (!embedEl.contains(target)) {
+                          embedEl.classList.remove("is-zoomed");
+                          // Return to original parent
+                          const originalParent =
+                            zoomedOriginalParents.get(embedEl);
+                          if (
+                            originalParent &&
+                            embedEl.parentElement !== originalParent
+                          ) {
+                            originalParent.appendChild(embedEl);
+                            zoomedOriginalParents.delete(embedEl);
+                          }
+                          // Cleanup zoom gestures
+                          const cleanup = zoomCleanupFns.get(embedEl);
+                          if (cleanup) {
+                            cleanup();
+                            zoomCleanupFns.delete(embedEl);
+                          }
+                          document.removeEventListener("click", closeZoom);
+                          document.removeEventListener("keydown", handleEscape);
+                        }
+                      };
+
+                      const handleEscape = (evt: KeyboardEvent) => {
+                        if (evt.key === "Escape") {
+                          embedEl.classList.remove("is-zoomed");
+                          // Return to original parent
+                          const originalParent =
+                            zoomedOriginalParents.get(embedEl);
+                          if (
+                            originalParent &&
+                            embedEl.parentElement !== originalParent
+                          ) {
+                            originalParent.appendChild(embedEl);
+                            zoomedOriginalParents.delete(embedEl);
+                          }
+                          // Cleanup zoom gestures
+                          const cleanup = zoomCleanupFns.get(embedEl);
+                          if (cleanup) {
+                            cleanup();
+                            zoomCleanupFns.delete(embedEl);
+                          }
+                          document.removeEventListener("click", closeZoom);
+                          document.removeEventListener("keydown", handleEscape);
+                        }
+                      };
+
+                      // Delay adding listeners to avoid immediate trigger
+                      setTimeout(() => {
+                        document.addEventListener("click", closeZoom);
+                        document.addEventListener("keydown", handleEscape);
+                      }, 0);
                     }
                   }}
                 >
@@ -1509,59 +1889,100 @@ function Card({
               className="image-embed"
               style={{ "--cover-image-url": `url("${imageArray[0] || ""}")` }}
               onClick={(e: MouseEvent) => {
-                const isToggleMode = document.body.classList.contains(
-                  "dynamic-views-thumbnail-expand-click-toggle",
-                );
-                const isHoldMode = document.body.classList.contains(
-                  "dynamic-views-thumbnail-expand-click-hold",
-                );
+                e.stopPropagation();
+                const embedEl = e.currentTarget as HTMLElement;
+                const isZoomed = embedEl.classList.contains("is-zoomed");
 
-                if (isToggleMode || isHoldMode) {
-                  e.stopPropagation();
-
-                  if (isToggleMode) {
-                    const embedEl = e.currentTarget as HTMLElement;
-                    const isZoomed = embedEl.classList.contains("is-zoomed");
-
-                    if (isZoomed) {
-                      // Close zoom
-                      embedEl.classList.remove("is-zoomed");
-                    } else {
-                      // Close all other zoomed images first
-                      document
-                        .querySelectorAll(".image-embed.is-zoomed")
-                        .forEach((el) => {
-                          el.classList.remove("is-zoomed");
-                        });
-                      // Open this one
-                      embedEl.classList.add("is-zoomed");
-
-                      // Add listeners for closing
-                      const closeZoom = (evt: Event) => {
-                        const target = evt.target as HTMLElement;
-                        // Don't close if clicking on the zoomed image itself
-                        if (!embedEl.contains(target)) {
-                          embedEl.classList.remove("is-zoomed");
-                          document.removeEventListener("click", closeZoom);
-                          document.removeEventListener("keydown", handleEscape);
-                        }
-                      };
-
-                      const handleEscape = (evt: KeyboardEvent) => {
-                        if (evt.key === "Escape") {
-                          embedEl.classList.remove("is-zoomed");
-                          document.removeEventListener("click", closeZoom);
-                          document.removeEventListener("keydown", handleEscape);
-                        }
-                      };
-
-                      // Delay adding listeners to avoid immediate trigger
-                      setTimeout(() => {
-                        document.addEventListener("click", closeZoom);
-                        document.addEventListener("keydown", handleEscape);
-                      }, 0);
-                    }
+                if (isZoomed) {
+                  // Close zoom
+                  embedEl.classList.remove("is-zoomed");
+                  // Cleanup zoom gestures
+                  const cleanup = zoomCleanupFns.get(embedEl);
+                  if (cleanup) {
+                    cleanup();
+                    zoomCleanupFns.delete(embedEl);
                   }
+                } else {
+                  // Close other zoomed images in this view/tab only (not globally)
+                  const viewContainer = embedEl.closest(
+                    ".workspace-leaf-content",
+                  );
+                  if (viewContainer) {
+                    viewContainer
+                      .querySelectorAll(".image-embed.is-zoomed")
+                      .forEach((el) => {
+                        el.classList.remove("is-zoomed");
+                        // Return to original parent
+                        const originalParent = zoomedOriginalParents.get(
+                          el as HTMLElement,
+                        );
+                        if (
+                          originalParent &&
+                          el.parentElement !== originalParent
+                        ) {
+                          originalParent.appendChild(el);
+                          zoomedOriginalParents.delete(el as HTMLElement);
+                        }
+                        // Cleanup zoom gestures for other images
+                        const cleanup = zoomCleanupFns.get(el as HTMLElement);
+                        if (cleanup) {
+                          cleanup();
+                          zoomCleanupFns.delete(el as HTMLElement);
+                        }
+                      });
+                  }
+                  // Open this one
+                  embedEl.classList.add("is-zoomed");
+
+                  // Setup zoom gestures
+                  const imgEl = embedEl.querySelector("img");
+                  if (imgEl) {
+                    const file = app.vault.getAbstractFileByPath(card.path);
+                    const cleanup = setupImageZoomGestures(
+                      imgEl,
+                      embedEl,
+                      app,
+                      file instanceof TFile ? file : undefined,
+                    );
+                    zoomCleanupFns.set(embedEl, cleanup);
+                  }
+
+                  // Add listeners for closing
+                  const closeZoom = (evt: Event) => {
+                    const target = evt.target as HTMLElement;
+                    // Don't close if clicking on the zoomed image itself
+                    if (!embedEl.contains(target)) {
+                      embedEl.classList.remove("is-zoomed");
+                      // Cleanup zoom gestures
+                      const cleanup = zoomCleanupFns.get(embedEl);
+                      if (cleanup) {
+                        cleanup();
+                        zoomCleanupFns.delete(embedEl);
+                      }
+                      document.removeEventListener("click", closeZoom);
+                      document.removeEventListener("keydown", handleEscape);
+                    }
+                  };
+
+                  const handleEscape = (evt: KeyboardEvent) => {
+                    if (evt.key === "Escape") {
+                      embedEl.classList.remove("is-zoomed");
+                      // Cleanup zoom gestures
+                      const cleanup = zoomCleanupFns.get(embedEl);
+                      if (cleanup) {
+                        cleanup();
+                        zoomCleanupFns.delete(embedEl);
+                      }
+                      document.removeEventListener("click", closeZoom);
+                      document.removeEventListener("keydown", handleEscape);
+                    }
+                  };
+
+                  // Delay adding listeners to avoid immediate trigger
+                  setTimeout(() => {
+                    document.addEventListener("click", closeZoom);
+                    document.addEventListener("keydown", handleEscape);
+                  }, 0);
                 }
               }}
             >
@@ -1593,7 +2014,7 @@ function Card({
           <div className="card-thumbnail-placeholder"></div>
         ))}
 
-      {/* Properties - 4-field rendering with 2-row layout */}
+      {/* Properties - 14-field rendering with 7-row layout, split by position */}
       {(() => {
         // Check if any row has content
         // When labels are enabled, show row if property is configured (even if value is empty)
@@ -1608,81 +2029,336 @@ function Card({
             ? card.propertyName3 !== undefined ||
               card.propertyName4 !== undefined
             : card.property3 !== null || card.property4 !== null;
+        const row3HasContent =
+          settings.propertyLabels !== "hide"
+            ? card.propertyName5 !== undefined ||
+              card.propertyName6 !== undefined
+            : card.property5 !== null || card.property6 !== null;
+        const row4HasContent =
+          settings.propertyLabels !== "hide"
+            ? card.propertyName7 !== undefined ||
+              card.propertyName8 !== undefined
+            : card.property7 !== null || card.property8 !== null;
+        const row5HasContent =
+          settings.propertyLabels !== "hide"
+            ? card.propertyName9 !== undefined ||
+              card.propertyName10 !== undefined
+            : card.property9 !== null || card.property10 !== null;
+        const row6HasContent =
+          settings.propertyLabels !== "hide"
+            ? card.propertyName11 !== undefined ||
+              card.propertyName12 !== undefined
+            : card.property11 !== null || card.property12 !== null;
+        const row7HasContent =
+          settings.propertyLabels !== "hide"
+            ? card.propertyName13 !== undefined ||
+              card.propertyName14 !== undefined
+            : card.property13 !== null || card.property14 !== null;
 
-        if (!row1HasContent && !row2HasContent) return null;
+        if (
+          !row1HasContent &&
+          !row2HasContent &&
+          !row3HasContent &&
+          !row4HasContent &&
+          !row5HasContent &&
+          !row6HasContent &&
+          !row7HasContent
+        )
+          return null;
+
+        // Build row elements
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+        const row1 = row1HasContent && (
+          <div
+            className={`property-row property-row-1${settings.propertyLayout12SideBySide ? " property-row-sidebyside" : ""}${
+              (card.property1 === null && card.property2 !== null) ||
+              (card.property1 !== null && card.property2 === null)
+                ? " property-row-single"
+                : ""
+            }`}
+          >
+            <div className="property-field property-field-1">
+              {card.propertyName1 &&
+                renderPropertyContent(
+                  card.propertyName1,
+                  card,
+                  card.property1 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+            <div className="property-field property-field-2">
+              {card.propertyName2 &&
+                renderPropertyContent(
+                  card.propertyName2,
+                  card,
+                  card.property2 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+          </div>
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+        const row2 = row2HasContent && (
+          <div
+            className={`property-row property-row-2${settings.propertyLayout34SideBySide ? " property-row-sidebyside" : ""}${
+              (card.property3 === null && card.property4 !== null) ||
+              (card.property3 !== null && card.property4 === null)
+                ? " property-row-single"
+                : ""
+            }`}
+          >
+            <div className="property-field property-field-3">
+              {card.propertyName3 &&
+                renderPropertyContent(
+                  card.propertyName3,
+                  card,
+                  card.property3 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+            <div className="property-field property-field-4">
+              {card.propertyName4 &&
+                renderPropertyContent(
+                  card.propertyName4,
+                  card,
+                  card.property4 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+          </div>
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+        const row3 = row3HasContent && (
+          <div
+            className={`property-row property-row-3${settings.propertyLayout56SideBySide ? " property-row-sidebyside" : ""}${
+              (card.property5 === null && card.property6 !== null) ||
+              (card.property5 !== null && card.property6 === null)
+                ? " property-row-single"
+                : ""
+            }`}
+          >
+            <div className="property-field property-field-5">
+              {card.propertyName5 &&
+                renderPropertyContent(
+                  card.propertyName5,
+                  card,
+                  card.property5 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+            <div className="property-field property-field-6">
+              {card.propertyName6 &&
+                renderPropertyContent(
+                  card.propertyName6,
+                  card,
+                  card.property6 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+          </div>
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+        const row4 = row4HasContent && (
+          <div
+            className={`property-row property-row-4${settings.propertyLayout78SideBySide ? " property-row-sidebyside" : ""}${
+              (card.property7 === null && card.property8 !== null) ||
+              (card.property7 !== null && card.property8 === null)
+                ? " property-row-single"
+                : ""
+            }`}
+          >
+            <div className="property-field property-field-7">
+              {card.propertyName7 &&
+                renderPropertyContent(
+                  card.propertyName7,
+                  card,
+                  card.property7 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+            <div className="property-field property-field-8">
+              {card.propertyName8 &&
+                renderPropertyContent(
+                  card.propertyName8,
+                  card,
+                  card.property8 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+          </div>
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+        const row5 = row5HasContent && (
+          <div
+            className={`property-row property-row-5${settings.propertyLayout910SideBySide ? " property-row-sidebyside" : ""}${
+              (card.property9 === null && card.property10 !== null) ||
+              (card.property9 !== null && card.property10 === null)
+                ? " property-row-single"
+                : ""
+            }`}
+          >
+            <div className="property-field property-field-9">
+              {card.propertyName9 &&
+                renderPropertyContent(
+                  card.propertyName9,
+                  card,
+                  card.property9 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+            <div className="property-field property-field-10">
+              {card.propertyName10 &&
+                renderPropertyContent(
+                  card.propertyName10,
+                  card,
+                  card.property10 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+          </div>
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+        const row6 = row6HasContent && (
+          <div
+            className={`property-row property-row-6${settings.propertyLayout1112SideBySide ? " property-row-sidebyside" : ""}${
+              (card.property11 === null && card.property12 !== null) ||
+              (card.property11 !== null && card.property12 === null)
+                ? " property-row-single"
+                : ""
+            }`}
+          >
+            <div className="property-field property-field-11">
+              {card.propertyName11 &&
+                renderPropertyContent(
+                  card.propertyName11,
+                  card,
+                  card.property11 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+            <div className="property-field property-field-12">
+              {card.propertyName12 &&
+                renderPropertyContent(
+                  card.propertyName12,
+                  card,
+                  card.property12 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+          </div>
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+        const row7 = row7HasContent && (
+          <div
+            className={`property-row property-row-7${settings.propertyLayout1314SideBySide ? " property-row-sidebyside" : ""}${
+              (card.property13 === null && card.property14 !== null) ||
+              (card.property13 !== null && card.property14 === null)
+                ? " property-row-single"
+                : ""
+            }`}
+          >
+            <div className="property-field property-field-13">
+              {card.propertyName13 &&
+                renderPropertyContent(
+                  card.propertyName13,
+                  card,
+                  card.property13 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+            <div className="property-field property-field-14">
+              {card.propertyName14 &&
+                renderPropertyContent(
+                  card.propertyName14,
+                  card,
+                  card.property14 ?? null,
+                  timeIcon,
+                  settings,
+                  app,
+                )}
+            </div>
+          </div>
+        );
+
+        // Split rows by position setting
+        const topRows: JSX.Element[] = [];
+        const bottomRows: JSX.Element[] = [];
+
+        if (row1) {
+          if (settings.propertyGroup1Position === "top") topRows.push(row1);
+          else bottomRows.push(row1);
+        }
+        if (row2) {
+          if (settings.propertyGroup2Position === "top") topRows.push(row2);
+          else bottomRows.push(row2);
+        }
+        if (row3) {
+          if (settings.propertyGroup3Position === "top") topRows.push(row3);
+          else bottomRows.push(row3);
+        }
+        if (row4) {
+          if (settings.propertyGroup4Position === "top") topRows.push(row4);
+          else bottomRows.push(row4);
+        }
+        if (row5) {
+          if (settings.propertyGroup5Position === "top") topRows.push(row5);
+          else bottomRows.push(row5);
+        }
+        if (row6) {
+          if (settings.propertyGroup6Position === "top") topRows.push(row6);
+          else bottomRows.push(row6);
+        }
+        if (row7) {
+          if (settings.propertyGroup7Position === "top") topRows.push(row7);
+          else bottomRows.push(row7);
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
         return (
-          <div className="card-properties properties-4field">
-            {/* Row 1 */}
-            {row1HasContent && (
-              <div
-                className={`property-row property-row-1${settings.propertyLayout12SideBySide ? " property-row-sidebyside" : ""}${
-                  (card.property1 === null && card.property2 !== null) ||
-                  (card.property1 !== null && card.property2 === null)
-                    ? " property-row-single"
-                    : ""
-                }`}
-              >
-                <div className="property-field property-field-1">
-                  {card.propertyName1 &&
-                    renderPropertyContent(
-                      card.propertyName1,
-                      card,
-                      card.property1 ?? null,
-                      timeIcon,
-                      settings,
-                      app,
-                    )}
-                </div>
-                <div className="property-field property-field-2">
-                  {card.propertyName2 &&
-                    renderPropertyContent(
-                      card.propertyName2,
-                      card,
-                      card.property2 ?? null,
-                      timeIcon,
-                      settings,
-                      app,
-                    )}
-                </div>
+          <>
+            {topRows.length > 0 && (
+              <div className="card-properties card-properties-top properties-4field">
+                {topRows}
               </div>
             )}
-            {/* Row 2 */}
-            {row2HasContent && (
-              <div
-                className={`property-row property-row-2${settings.propertyLayout34SideBySide ? " property-row-sidebyside" : ""}${
-                  (card.property3 === null && card.property4 !== null) ||
-                  (card.property3 !== null && card.property4 === null)
-                    ? " property-row-single"
-                    : ""
-                }`}
-              >
-                <div className="property-field property-field-3">
-                  {card.propertyName3 &&
-                    renderPropertyContent(
-                      card.propertyName3,
-                      card,
-                      card.property3 ?? null,
-                      timeIcon,
-                      settings,
-                      app,
-                    )}
-                </div>
-                <div className="property-field property-field-4">
-                  {card.propertyName4 &&
-                    renderPropertyContent(
-                      card.propertyName4,
-                      card,
-                      card.property4 ?? null,
-                      timeIcon,
-                      settings,
-                      app,
-                    )}
-                </div>
+            {bottomRows.length > 0 && (
+              <div className="card-properties card-properties-bottom properties-4field">
+                {bottomRows}
               </div>
             )}
-          </div>
+          </>
         );
       })()}
     </div>
@@ -1775,4 +2451,25 @@ function handleArrowKey(
     targetCard.focus();
     targetCard.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
+}
+
+/**
+ * Cleanup function to restore all zoomed images and remove event listeners
+ * Should be called when a view using CardRenderer is unmounted
+ */
+export function cleanupZoomState(): void {
+  // Cleanup all zoom gestures and restore teleported images
+  zoomCleanupFns.forEach((cleanup, embedEl) => {
+    // Remove zoom class
+    embedEl.classList.remove("is-zoomed");
+    // Return to original parent if teleported
+    const originalParent = zoomedOriginalParents.get(embedEl);
+    if (originalParent && embedEl.parentElement !== originalParent) {
+      originalParent.appendChild(embedEl);
+    }
+    // Call cleanup function (removes event listeners)
+    cleanup();
+  });
+  // Note: WeakMaps will automatically clean up when elements are garbage collected
+  // but we can't manually clear them since they don't have a clear() method
 }

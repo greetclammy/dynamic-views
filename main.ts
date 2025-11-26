@@ -25,6 +25,33 @@ import { openRandomFile, toggleShuffleActiveView } from "./src/utils/randomize";
 export default class DynamicViewsPlugin extends Plugin {
   persistenceManager: PersistenceManager;
 
+  /**
+   * Extract alpha from --background-modifier-cover and set as CSS custom property
+   */
+  syncOverlayOpacity() {
+    const computedStyle = getComputedStyle(document.body);
+    const coverBg = computedStyle.getPropertyValue(
+      "--background-modifier-cover",
+    );
+
+    // Parse color to extract alpha
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.fillStyle = coverBg;
+    ctx.fillRect(0, 0, 1, 1);
+    const [, , , a] = ctx.getImageData(0, 0, 1, 1).data;
+
+    // Set alpha as percentage for color-mix
+    const alphaPercent = Math.round((a / 255) * 100);
+    document.body.style.setProperty(
+      "--dynamic-views-overlay-opacity",
+      `${alphaPercent}%`,
+    );
+  }
+
   // Helper function for datacorejsx blocks
   createView(dc: DatacoreAPI, userQuery?: string) {
     // Initialize jsxRuntime with Datacore's Preact BEFORE returning component
@@ -52,13 +79,6 @@ export default class DynamicViewsPlugin extends Plugin {
     document.body.classList.add(
       `dynamic-views-open-on-${settings.openFileAction}`,
     );
-    if (settings.expandImagesOnClick === "hold") {
-      document.body.classList.add("dynamic-views-thumbnail-expand-click-hold");
-    } else if (settings.expandImagesOnClick === "toggle") {
-      document.body.classList.add(
-        "dynamic-views-thumbnail-expand-click-toggle",
-      );
-    }
 
     // Set plugin instance for Bases view options to access template settings
     setPluginInstance(this);
@@ -86,6 +106,22 @@ export default class DynamicViewsPlugin extends Plugin {
 
     // Notify Style Settings to parse our CSS
     this.app.workspace.trigger("parse-style-settings");
+
+    // Sync overlay opacity from --background-modifier-cover (only if zoom enabled)
+    if (document.body.classList.contains("dynamic-views-image-zoom-enabled")) {
+      this.syncOverlayOpacity();
+    }
+
+    // Re-sync when CSS changes (theme/appearance changes)
+    this.registerEvent(
+      this.app.workspace.on("css-change", () => {
+        if (
+          document.body.classList.contains("dynamic-views-image-zoom-enabled")
+        ) {
+          this.syncOverlayOpacity();
+        }
+      }),
+    );
 
     this.addCommand({
       id: "create-dynamic-view",

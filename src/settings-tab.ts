@@ -203,38 +203,6 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Expand images on click")
-      .setDesc(
-        "How images (thumbnails and covers) expand to full-screen. Desktop only.",
-      )
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("off", "Off")
-          .addOption("hold", "Hold to zoom")
-          .addOption("toggle", "Click to toggle")
-          .setValue(settings.expandImagesOnClick)
-          .onChange(async (value: "off" | "hold" | "toggle") => {
-            await this.plugin.persistenceManager.setGlobalSettings({
-              expandImagesOnClick: value,
-            });
-            // Update body class for CSS
-            document.body.classList.remove(
-              "dynamic-views-thumbnail-expand-click-hold",
-              "dynamic-views-thumbnail-expand-click-toggle",
-            );
-            if (value === "hold") {
-              document.body.classList.add(
-                "dynamic-views-thumbnail-expand-click-hold",
-              );
-            } else if (value === "toggle") {
-              document.body.classList.add(
-                "dynamic-views-thumbnail-expand-click-toggle",
-              );
-            }
-          }),
-      );
-
-    new Setting(containerEl)
       .setName("Thumbnail cache size")
       .setDesc("Size of cached thumbnails (affects performance and quality)")
       .addDropdown((dropdown) =>
@@ -403,7 +371,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
     const appearanceDesc = containerEl.createEl("p", {
       cls: "setting-item-description",
     });
-    appearanceDesc.appendText("Appearance settings can be configured via ");
+    appearanceDesc.appendText("Appearance settings can be configured in ");
     appearanceDesc.createEl("a", {
       text: "Style Settings",
       href: "obsidian://show-plugin?id=obsidian-style-settings",

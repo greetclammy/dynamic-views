@@ -76,7 +76,7 @@ settings:
         type: variable-number-slider
         default: 8
         min: 0
-        max: 16
+        max: 24
         step: 1
         format: px
     -
@@ -89,6 +89,12 @@ settings:
         max: 24
         step: 1
         format: px
+    -
+        id: dynamic-views-fade-truncated-text
+        title: Fade truncated text
+        description: Show gradient fade on titles, subtitles, and properties that overflow their container
+        type: class-toggle
+        default: true
     -
         id: dynamic-views-cover-gap-setting
         title: Cover gap setting
@@ -115,9 +121,9 @@ settings:
         format: px
     -
         id: dynamic-views-card-border
-        title: Add card border
+        title: Card border
         description: Show border around cards
-        type: class-toggle
+        type: variable-boolean
         default: true
     -
         id: dynamic-views-card-border-color
@@ -164,115 +170,6 @@ settings:
         id: dynamic-views-ambient-background
         title: Ambient background
         description: Use ambient color from image as card background (only for cards with images)
-        type: class-toggle
-        default: false
-    -
-        id: datacore-heading
-        title: Datacore
-        type: heading
-        level: 2
-        collapsed: true
-    -
-        id: dynamic-views-show-search
-        title: Show search filter
-        description: Show search input field in toolbar
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-show-result-count
-        title: Show result count
-        description: Show result count and limit dropdown in toolbar
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-show-create-note
-        title: Show 'Create new note' button
-        description: Show button to create new note in toolbar
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-show-shuffle
-        title: Show 'Shuffle' button
-        description: Show shuffle button in toolbar
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-show-random
-        title: Show 'Open random file' button
-        description: Show random file button in toolbar
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-show-edit-query
-        title: Show 'Edit query' button
-        description: Show edit query button in toolbar
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-show-pin-toolbar
-        title: Show 'Pin toolbar' button
-        description: Show pin toolbar button
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-show-expand-width
-        title: Show 'Expand width' button
-        description: Show expand width button in toolbar
-        type: class-toggle
-        default: true
-    -
-        id: thumbnails-heading
-        title: Thumbnails
-        type: heading
-        level: 2
-        collapsed: true
-    -
-        id: dynamic-views-thumbnail-size
-        title: Thumbnail size
-        description: Size of card thumbnails in pixels
-        type: variable-select
-        default: 80px
-        options:
-            -
-                label: Compact
-                value: 64px
-            -
-                label: Standard
-                value: 80px
-            -
-                label: Expanded
-                value: 94.5px
-    -
-        id: dynamic-views-thumbnail-border-radius
-        title: Thumbnail border radius
-        description: Corner roundness of thumbnails
-        type: variable-number-slider
-        default: 4
-        min: 0
-        max: 50
-        step: 1
-        format: px
-    -
-        id: dynamic-views-thumbnail-crop
-        title: Thumbnail crop alignment
-        description: How to crop thumbnail images when aspect ratios don't match
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-thumbnail-crop-center
-        options:
-            -
-                label: Top
-                value: dynamic-views-thumbnail-crop-top
-            -
-                label: Center
-                value: dynamic-views-thumbnail-crop-center
-            -
-                label: Bottom
-                value: dynamic-views-thumbnail-crop-bottom
-    -
-        id: dynamic-views-show-thumbnail-placeholder
-        title: Show placeholder for files with no images
-        description: Show empty thumbnail placeholder for files without images
         type: class-toggle
         default: false
     -
@@ -331,17 +228,11 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: cards-cover-background-on-zoom
-        title: Show cover background on zoom
-        description: When enabled, zoomed images use the same background as covers (Blur/Ambient/Custom/Plain). Transparent always uses default background.
+        id: dynamic-views-masonry-fixed-cover-height
+        title: Fixed cover height
+        description: Use fixed aspect ratio for cover height in Masonry view (shows letterbox bars).
         type: class-toggle
         default: false
-    -
-        id: dynamic-views-masonry-flexible-cover-height
-        title: Flexible cover height
-        description: Remove horizontal letterbox bars in Masonry view.
-        type: class-toggle
-        default: true
     -
         id: dynamic-views-show-cover-placeholder
         title: Show placeholder for cards with no image
@@ -369,6 +260,680 @@ settings:
         type: variable-text
         default: 150px
     -
+        id: datacore-heading
+        title: Datacore
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-show-search
+        title: Show search filter
+        description: Show search input field in toolbar
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-show-result-count
+        title: Show result count
+        description: Show result count and limit dropdown in toolbar
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-show-create-note
+        title: Show 'Create new note' button
+        description: Show button to create new note in toolbar
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-show-shuffle
+        title: Show 'Shuffle' button
+        description: Show shuffle button in toolbar
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-show-random
+        title: Show 'Open random file' button
+        description: Show random file button in toolbar
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-show-edit-query
+        title: Show 'Edit query' button
+        description: Show edit query button in toolbar
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-show-pin-toolbar
+        title: Show 'Pin toolbar' button
+        description: Show pin toolbar button
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-show-expand-width
+        title: Show 'Expand width' button
+        description: Show expand width button in toolbar
+        type: class-toggle
+        default: true
+    -
+        id: image-zoom-heading
+        title: Image zoom
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-image-zoom-enabled
+        title: Enable image zoom
+        description: Enable or disable the image zoom feature entirely
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-zoom-enabled
+        title: Enable pinch/gesture zoom
+        description: Enable pinch-to-zoom and pan gestures on enlarged images
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-zoom-sensitivity
+        title: Zoom sensitivity
+        description: Controls how quickly images zoom when using trackpad pinch or mouse wheel
+        type: variable-number-slider
+        default: 0.15
+        min: 0.01
+        max: 1
+        step: 0.01
+        format: ''
+    -
+        id: dynamic-views-zoom-constrain-to-editor
+        title: Constrain to tab
+        description: When enabled, zoomed images are constrained to the editor pane instead of fullscreen
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-zoom-persist
+        title: Persistent zoom
+        description: When enabled, zoomed images stay zoomed when clicking outside. When disabled, clicking outside closes zoom.
+        type: class-toggle
+        default: false
+    -
+        id: properties-heading
+        title: Properties
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-list-separator
+        title: List item separator
+        description: Separator between items in list-type properties. Whitespace preserved.
+        type: variable-text
+        default: ", "
+        quotes: true
+    -
+        id: dynamic-views-fade-list-separator
+        title: Fade list separator
+        description: Dim the separator color
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-empty-value-marker
+        title: Empty value marker
+        description: What to show for empty property values. Whitespace preserved.
+        type: variable-text
+        default: "—"
+        quotes: true
+    -
+        id: dynamic-views-fade-empty-marker
+        title: Fade empty marker
+        description: Dim the empty value marker color
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-timestamp-recent-time-only
+        title: Only show time for recent timestamps
+        description: Omit the date for timestamps in the last 24 h. Will show timestamp as-is if it has no time.
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-timestamp-older-date-only
+        title: Only show date for older timestamps
+        description: Omit the time for timestamps older than a day.
+        type: class-toggle
+        default: true
+    -
+        id: dynamic-views-timestamp-icon
+        title: Timestamp icon
+        description: Show icon next to timestamp to distinguish between modified and created timestamps
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-timestamp-icon-edge
+        options:
+            -
+                label: Align left
+                value: dynamic-views-timestamp-icon-left
+            -
+                label: Align right
+                value: dynamic-views-timestamp-icon-right
+            -
+                label: Align to card center
+                value: dynamic-views-timestamp-icon-center
+            -
+                label: Align to card edge
+                value: dynamic-views-timestamp-icon-edge
+            -
+                label: Don't show
+                value: dynamic-views-timestamp-icon-hide
+    -
+        id: dynamic-views-property-master-font
+        title: Property font
+        description: Font name as it appears on your system. Can be overridden by individual item options below.
+        type: variable-text
+        default: ''
+    -
+        id: dynamic-views-property-master-font-size
+        title: Property font size
+        description: Font size for all properties (e.g., 0.8em, 13px, 0.8125rem)
+        type: variable-text
+        default: ''
+    -
+        id: dynamic-views-property-color
+        title: Text color
+        description: Theme color preset for property text
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-property-color-muted
+        options:
+            -
+                label: Faint
+                value: dynamic-views-property-color-faint
+            -
+                label: Muted
+                value: dynamic-views-property-color-muted
+            -
+                label: Normal
+                value: dynamic-views-property-color-normal
+            -
+                label: Accent
+                value: dynamic-views-property-color-accent
+            -
+                label: Red
+                value: dynamic-views-property-color-red
+            -
+                label: Orange
+                value: dynamic-views-property-color-orange
+            -
+                label: Yellow
+                value: dynamic-views-property-color-yellow
+            -
+                label: Green
+                value: dynamic-views-property-color-green
+            -
+                label: Cyan
+                value: dynamic-views-property-color-cyan
+            -
+                label: Blue
+                value: dynamic-views-property-color-blue
+            -
+                label: Purple
+                value: dynamic-views-property-color-purple
+            -
+                label: Pink
+                value: dynamic-views-property-color-pink
+            -
+                label: Custom
+                value: dynamic-views-property-color-custom
+    -
+        id: dynamic-views-property-color-custom
+        title: Custom text color
+        description: Custom color for property text (when Text color is set to Custom)
+        type: variable-themed-color
+        format: hsl-split
+        default-light: '#'
+        default-dark: '#'
+    -
+        id: dynamic-views-hide-missing-properties
+        title: Hide missing properties
+        description: Do not display a property if a file does not have it.
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-hide-empty-properties
+        title: Hide empty properties
+        description: Do not display a property if its value is empty.
+        type: class-toggle
+        default: false
+    -
+        id: property-labels-heading
+        title: Property labels
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-property-label-font
+        title: Property label font
+        description: Font name as it appears on your system
+        type: variable-text
+        default: ''
+    -
+        id: dynamic-views-property-label-font-size
+        title: Property label text size
+        description: Font size for property labels (e.g., 0.8em, 13px, 0.8125rem)
+        type: variable-text
+        default: ''
+    -
+        id: dynamic-views-property-label-color
+        title: Text color
+        description: Theme color preset for property labels
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-property-label-color-faint
+        options:
+            -
+                label: Faint
+                value: dynamic-views-property-label-color-faint
+            -
+                label: Muted
+                value: dynamic-views-property-label-color-muted
+            -
+                label: Normal
+                value: dynamic-views-property-label-color-normal
+            -
+                label: Accent
+                value: dynamic-views-property-label-color-accent
+            -
+                label: Red
+                value: dynamic-views-property-label-color-red
+            -
+                label: Orange
+                value: dynamic-views-property-label-color-orange
+            -
+                label: Yellow
+                value: dynamic-views-property-label-color-yellow
+            -
+                label: Green
+                value: dynamic-views-property-label-color-green
+            -
+                label: Cyan
+                value: dynamic-views-property-label-color-cyan
+            -
+                label: Blue
+                value: dynamic-views-property-label-color-blue
+            -
+                label: Purple
+                value: dynamic-views-property-label-color-purple
+            -
+                label: Pink
+                value: dynamic-views-property-label-color-pink
+            -
+                label: Custom
+                value: dynamic-views-property-label-color-custom
+    -
+        id: dynamic-views-property-label-color-custom
+        title: Custom text color
+        description: Color of property labels (when Text color is set to Custom)
+        type: variable-themed-color
+        format: hex
+        default-light: '#'
+        default-dark: '#'
+    -
+        id: dynamic-views-property-label-case
+        title: Property label case
+        description: Text case transformation for property labels
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-property-label-case-preserve
+        options:
+            -
+                label: Preserve case
+                value: dynamic-views-property-label-case-preserve
+            -
+                label: Lowercase
+                value: dynamic-views-property-label-case-lowercase
+            -
+                label: Uppercase
+                value: dynamic-views-property-label-case-uppercase
+    -
+        id: dynamic-views-property-label-bold
+        title: Bold
+        description: Make property labels bold
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-property-label-small-caps
+        title: Small caps
+        description: Use small caps for property labels
+        type: class-toggle
+        default: false
+    -
+        id: subtitle
+        title: Subtitle
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-subtitle-font
+        title: Subtitle font
+        description: Font name as it appears on your system
+        type: variable-text
+        default: ''
+    -
+        id: dynamic-views-subtitle-font-size
+        title: Subtitle font size
+        description: Font size for subtitles (e.g., 0.9em, 14px)
+        type: variable-text
+        default: ''
+    -
+        id: dynamic-views-subtitle-color
+        title: Text color
+        description: Theme color preset for subtitles
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-subtitle-color-faint
+        options:
+            -
+                label: Faint
+                value: dynamic-views-subtitle-color-faint
+            -
+                label: Muted
+                value: dynamic-views-subtitle-color-muted
+            -
+                label: Normal
+                value: dynamic-views-subtitle-color-normal
+            -
+                label: Accent
+                value: dynamic-views-subtitle-color-accent
+            -
+                label: Red
+                value: dynamic-views-subtitle-color-red
+            -
+                label: Orange
+                value: dynamic-views-subtitle-color-orange
+            -
+                label: Yellow
+                value: dynamic-views-subtitle-color-yellow
+            -
+                label: Green
+                value: dynamic-views-subtitle-color-green
+            -
+                label: Cyan
+                value: dynamic-views-subtitle-color-cyan
+            -
+                label: Blue
+                value: dynamic-views-subtitle-color-blue
+            -
+                label: Purple
+                value: dynamic-views-subtitle-color-purple
+            -
+                label: Pink
+                value: dynamic-views-subtitle-color-pink
+            -
+                label: Custom
+                value: dynamic-views-subtitle-color-custom
+    -
+        id: dynamic-views-subtitle-color-custom
+        title: Custom text color
+        description: Custom color for subtitles (when Text color is set to Custom)
+        type: variable-themed-color
+        format: hex
+        default-light: '#'
+        default-dark: '#'
+    -
+        id: dynamic-views-subtitle-alignment
+        title: Subtitle alignment
+        description: Horizontal alignment of subtitles
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-subtitle-align-left
+        options:
+            -
+                label: Left
+                value: dynamic-views-subtitle-align-left
+            -
+                label: Center
+                value: dynamic-views-subtitle-align-center
+            -
+                label: Right
+                value: dynamic-views-subtitle-align-right
+    -
+        id: dynamic-views-subtitle-overflow
+        title: Overflow behavior
+        description: How to handle long subtitle text
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-subtitle-overflow-wrap
+        options:
+            -
+                label: Wrap
+                value: dynamic-views-subtitle-overflow-wrap
+            -
+                label: Scroll
+                value: dynamic-views-subtitle-overflow-scroll
+    -
+        id: dynamic-views-subtitle-divider
+        title: Divider line
+        description: Show a horizontal rule below subtitle
+        type: class-toggle
+        default: false
+    -
+        id: tags-heading
+        title: Tags
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-tag-style
+        title: Tag style
+        description: Visual appearance of tags
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-tag-style-pill
+        options:
+            -
+                label: Pill
+                value: dynamic-views-tag-style-pill
+            -
+                label: Plaintext
+                value: dynamic-views-tag-style-plaintext
+            -
+                label: Match theme
+                value: dynamic-views-tag-style-theme
+    -
+        id: dynamic-views-show-tag-hash
+        title: Show hash (#) prefix
+        description: Show # prefix before tag names
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-tag-color
+        title: Tag color
+        description: Theme color preset for Pill and Plaintext tag styles
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-tag-color-faint
+        options:
+            -
+                label: Faint
+                value: dynamic-views-tag-color-faint
+            -
+                label: Muted
+                value: dynamic-views-tag-color-muted
+            -
+                label: Normal
+                value: dynamic-views-tag-color-normal
+            -
+                label: Accent
+                value: dynamic-views-tag-color-accent
+            -
+                label: Red
+                value: dynamic-views-tag-color-red
+            -
+                label: Orange
+                value: dynamic-views-tag-color-orange
+            -
+                label: Yellow
+                value: dynamic-views-tag-color-yellow
+            -
+                label: Green
+                value: dynamic-views-tag-color-green
+            -
+                label: Cyan
+                value: dynamic-views-tag-color-cyan
+            -
+                label: Blue
+                value: dynamic-views-tag-color-blue
+            -
+                label: Purple
+                value: dynamic-views-tag-color-purple
+            -
+                label: Pink
+                value: dynamic-views-tag-color-pink
+            -
+                label: Custom
+                value: dynamic-views-tag-color-custom
+    -
+        id: dynamic-views-tag-color-custom
+        title: Custom tag color
+        description: Applied when Tag color is set to Custom
+        type: variable-themed-color
+        format: hsl-split
+        default-light: '#'
+        default-dark: '#'
+    -
+        id: text-preview-heading
+        title: Text preview
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-text-preview-font
+        title: Text preview font
+        description: Font name as it appears on your system
+        type: variable-text
+        default: ''
+    -
+        id: dynamic-views-text-preview-font-size
+        title: Text preview font size
+        description: Font size for text previews (e.g., 0.9em, 14px, 0.875rem)
+        type: variable-text
+        default: ''
+    -
+        id: dynamic-views-text-preview-color
+        title: Text color
+        description: Theme color preset for text previews
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-text-preview-color-muted
+        options:
+            -
+                label: Faint
+                value: dynamic-views-text-preview-color-faint
+            -
+                label: Muted
+                value: dynamic-views-text-preview-color-muted
+            -
+                label: Normal
+                value: dynamic-views-text-preview-color-normal
+            -
+                label: Accent
+                value: dynamic-views-text-preview-color-accent
+            -
+                label: Red
+                value: dynamic-views-text-preview-color-red
+            -
+                label: Orange
+                value: dynamic-views-text-preview-color-orange
+            -
+                label: Yellow
+                value: dynamic-views-text-preview-color-yellow
+            -
+                label: Green
+                value: dynamic-views-text-preview-color-green
+            -
+                label: Cyan
+                value: dynamic-views-text-preview-color-cyan
+            -
+                label: Blue
+                value: dynamic-views-text-preview-color-blue
+            -
+                label: Purple
+                value: dynamic-views-text-preview-color-purple
+            -
+                label: Pink
+                value: dynamic-views-text-preview-color-pink
+            -
+                label: Custom
+                value: dynamic-views-text-preview-color-custom
+    -
+        id: dynamic-views-text-preview-color-custom
+        title: Custom text color
+        description: Custom color for text previews (when Text color is set to Custom)
+        type: variable-themed-color
+        format: hex
+        default-light: '#'
+        default-dark: '#'
+    -
+        id: dynamic-views-text-preview-lines
+        title: Number of text preview lines
+        description: Maximum number of lines for text previews
+        type: variable-number-slider
+        default: 5
+        min: 1
+        max: 10
+        step: 1
+        format: ''
+    -
+        id: thumbnails-heading
+        title: Thumbnails
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-thumbnail-size
+        title: Thumbnail size
+        description: Size of card thumbnails in pixels
+        type: variable-select
+        default: 80px
+        options:
+            -
+                label: Compact
+                value: 64px
+            -
+                label: Standard
+                value: 80px
+            -
+                label: Expanded
+                value: 94.5px
+    -
+        id: dynamic-views-thumbnail-border-radius
+        title: Thumbnail border radius
+        description: Corner roundness of thumbnails
+        type: variable-number-slider
+        default: 4
+        min: 0
+        max: 50
+        step: 1
+        format: px
+    -
+        id: dynamic-views-thumbnail-crop
+        title: Thumbnail crop alignment
+        description: How to crop thumbnail images when aspect ratios don't match
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-thumbnail-crop-center
+        options:
+            -
+                label: Top
+                value: dynamic-views-thumbnail-crop-top
+            -
+                label: Center
+                value: dynamic-views-thumbnail-crop-center
+            -
+                label: Bottom
+                value: dynamic-views-thumbnail-crop-bottom
+    -
+        id: dynamic-views-show-thumbnail-placeholder
+        title: Show placeholder for files with no images
+        description: Show empty thumbnail placeholder for files without images
+        type: class-toggle
+        default: false
+    -
         id: title-heading
         title: Title
         type: heading
@@ -388,8 +953,55 @@ settings:
         default: ''
     -
         id: dynamic-views-title-color
-        title: Title text color
-        description: Color of card titles
+        title: Text color
+        description: Theme color preset for titles
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-title-color-normal
+        options:
+            -
+                label: Faint
+                value: dynamic-views-title-color-faint
+            -
+                label: Muted
+                value: dynamic-views-title-color-muted
+            -
+                label: Normal
+                value: dynamic-views-title-color-normal
+            -
+                label: Accent
+                value: dynamic-views-title-color-accent
+            -
+                label: Red
+                value: dynamic-views-title-color-red
+            -
+                label: Orange
+                value: dynamic-views-title-color-orange
+            -
+                label: Yellow
+                value: dynamic-views-title-color-yellow
+            -
+                label: Green
+                value: dynamic-views-title-color-green
+            -
+                label: Cyan
+                value: dynamic-views-title-color-cyan
+            -
+                label: Blue
+                value: dynamic-views-title-color-blue
+            -
+                label: Purple
+                value: dynamic-views-title-color-purple
+            -
+                label: Pink
+                value: dynamic-views-title-color-pink
+            -
+                label: Custom
+                value: dynamic-views-title-color-custom
+    -
+        id: dynamic-views-title-color-custom
+        title: Custom text color
+        description: Custom color for titles (when Text color is set to Custom)
         type: variable-themed-color
         format: hex
         default-light: '#'
@@ -422,183 +1034,19 @@ settings:
                 label: Right
                 value: dynamic-views-title-align-right
     -
-        id: text-preview-heading
-        title: Text preview
-        type: heading
-        level: 2
-        collapsed: true
-    -
-        id: dynamic-views-text-preview-font
-        title: Text preview font
-        description: Font name as it appears on your system
-        type: variable-text
-        default: ''
-    -
-        id: dynamic-views-text-preview-font-size
-        title: Text preview font size
-        description: Font size for text previews (e.g., 0.9em, 14px, 0.875rem)
-        type: variable-text
-        default: ''
-    -
-        id: dynamic-views-text-preview-color
-        title: Text preview color
-        description: Color of text previews
-        type: variable-themed-color
-        format: hex
-        default-light: '#'
-        default-dark: '#'
-    -
-        id: dynamic-views-text-preview-lines
-        title: Number of text preview lines
-        description: Maximum number of lines for text previews
-        type: variable-number-slider
-        default: 5
-        min: 1
-        max: 10
-        step: 1
-        format: ''
-    -
-        id: properties-heading
-        title: Properties
-        type: heading
-        level: 2
-        collapsed: true
-    -
-        id: dynamic-views-tag-style
-        title: Tag style
-        description: Visual appearance of tags in card properties
+        id: dynamic-views-title-overflow
+        title: Overflow behavior
+        description: How to handle long title text
         type: class-select
         allowEmpty: false
-        default: dynamic-views-tag-style-outline
+        default: dynamic-views-title-overflow-wrap
         options:
             -
-                label: Outline
-                value: dynamic-views-tag-style-outline
+                label: Wrap
+                value: dynamic-views-title-overflow-wrap
             -
-                label: Match theme
-                value: dynamic-views-tag-style-theme
-            -
-                label: Minimal
-                value: dynamic-views-tag-style-minimal
-    -
-        id: dynamic-views-list-separator
-        title: List item separator
-        description: Separator between items in list-type properties. Whitespace preserved.
-        type: variable-text
-        default: ", "
-        quotes: true
-    -
-        id: dynamic-views-fade-list-separator
-        title: Fade list separator
-        description: Dim the separator color
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-empty-value-marker
-        title: Empty value marker
-        description: What to show for empty property values. Whitespace preserved.
-        type: variable-text
-        default: "—"
-        quotes: true
-    -
-        id: dynamic-views-fade-empty-marker
-        title: Fade empty marker
-        description: Dim the empty value marker color
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-fade-trimmed-content
-        title: Fade trimmed content
-        description: Show gradient fade on tags and paths that overflow their container
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-timestamp-recent-time-only
-        title: Only show time for recent timestamps
-        description: Omit the date for timestamps in the last 24 h. Will show timestamp as-is if it has no time.
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-timestamp-older-date-only
-        title: Only show date for older timestamps
-        description: Omit the time for timestamps older than a day.
-        type: class-toggle
-        default: true
-    -
-        id: dynamic-views-timestamp-icon
-        title: Show timestamp icon
-        description: Show icon next to timestamp to distinguish between modified and created timestamps
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-timestamp-icon-outer
-        options:
-            -
-                label: Show left
-                value: dynamic-views-timestamp-icon-left
-            -
-                label: Show right
-                value: dynamic-views-timestamp-icon-right
-            -
-                label: Show inner
-                value: dynamic-views-timestamp-icon-inner
-            -
-                label: Show outer
-                value: dynamic-views-timestamp-icon-outer
-            -
-                label: Don't show
-                value: dynamic-views-timestamp-icon-hide
-    -
-        id: dynamic-views-property-master-font
-        title: Property font
-        description: Font name as it appears on your system. Can be overridden by individual item options below.
-        type: variable-text
-        default: ''
-    -
-        id: dynamic-views-property-master-font-size
-        title: Property font size
-        description: Font size for all properties (e.g., 0.8em, 13px, 0.8125rem)
-        type: variable-text
-        default: ''
-    -
-        id: dynamic-views-property-master-color
-        title: Property text color
-        description: Text color of all properties. Can be overridden by individual property options below.
-        type: variable-themed-color
-        format: hsl-split
-        default-light: '#'
-        default-dark: '#'
-    -
-        id: dynamic-views-property-label-font-size
-        title: Property label text size
-        description: Font size for property labels (e.g., 0.8em, 13px, 0.8125rem)
-        type: variable-text
-        default: ''
-    -
-        id: dynamic-views-property-label-font
-        title: Property label font
-        description: Font name as it appears on your system
-        type: variable-text
-        default: ''
-    -
-        id: dynamic-views-property-label-color
-        title: Property label color
-        description: Color of property labels
-        type: variable-themed-color
-        format: hex
-        default-light: '#'
-        default-dark: '#'
-    -
-        id: dynamic-views-hide-missing-properties
-        title: Hide missing properties
-        description: Do not display a property if a file does not have it.
-        type: class-toggle
-        default: false
-    -
-        id: dynamic-views-hide-empty-properties
-        title: Hide empty properties
-        description: Do not display a property if its value is empty.
-        type: class-toggle
-        default: false
+                label: Scroll
+                value: dynamic-views-title-overflow-scroll
 
 */
 
@@ -617,18 +1065,28 @@ body {
   --dynamic-views-empty-value-marker: "—";
 }
 
-/* Compose property colors from HSL components */
-/* When HSL components undefined, entire color becomes invalid and falls back to text-faint/text-muted */
+/* Compose custom colors from HSL components */
+/* When HSL components undefined, entire color becomes invalid and falls back */
 body {
-  --dynamic-views-property-master-color: hsl(
-    var(--dynamic-views-property-master-color-h),
-    var(--dynamic-views-property-master-color-s),
-    var(--dynamic-views-property-master-color-l)
+  --dynamic-views-property-color-custom: hsl(
+    var(--dynamic-views-property-color-custom-h),
+    var(--dynamic-views-property-color-custom-s),
+    var(--dynamic-views-property-color-custom-l)
   );
-  --dynamic-views-property-master-color-hover: hsl(
-    calc(var(--dynamic-views-property-master-color-h) - 3),
-    calc(var(--dynamic-views-property-master-color-s) * 1.02),
-    calc(var(--dynamic-views-property-master-color-l) * 1.15)
+  --dynamic-views-property-color-custom-hover: hsl(
+    calc(var(--dynamic-views-property-color-custom-h) - 3),
+    calc(var(--dynamic-views-property-color-custom-s) * 1.02),
+    calc(var(--dynamic-views-property-color-custom-l) * 1.15)
+  );
+  --dynamic-views-tag-color-custom: hsl(
+    var(--dynamic-views-tag-color-custom-h),
+    var(--dynamic-views-tag-color-custom-s),
+    var(--dynamic-views-tag-color-custom-l)
+  );
+  --dynamic-views-tag-color-custom-hover: hsl(
+    calc(var(--dynamic-views-tag-color-custom-h) - 3),
+    calc(var(--dynamic-views-tag-color-custom-s) * 1.02),
+    calc(var(--dynamic-views-tag-color-custom-l) * 1.15)
   );
 }
 
@@ -704,17 +1162,23 @@ body {
    CONTAINER & LAYOUT STYLES
    ============================================ */
 
-/* Title alignment */
-body.dynamic-views-title-align-left .dynamic-views .card-title {
-  text-align: left;
-}
-
+/* Title alignment (left is default in base CSS) */
 body.dynamic-views-title-align-center .dynamic-views .card-title {
   text-align: center;
 }
 
 body.dynamic-views-title-align-right .dynamic-views .card-title {
   text-align: right;
+}
+
+/* Title scroll mode */
+body.dynamic-views-title-overflow-scroll .dynamic-views .card-title {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 /* Results container with fade effect */
@@ -1884,19 +2348,48 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   overflow: visible;
 }
 
-/* Grid mode: push properties to bottom of card */
+/* Card element ordering for flexbox layout */
+.dynamic-views .card .card-title,
+.dynamic-views .card .card-title-container {
+  order: -100;
+}
+
+.dynamic-views .card .card-subtitle {
+  order: -90;
+}
+
+/* Property group position: top (below title/subtitle, above content) */
+.dynamic-views .card .card-properties-top {
+  order: -50;
+}
+
+/* Property group position: bottom (after content) */
+.dynamic-views .card .card-properties-bottom {
+  order: 50;
+}
+
+/* Grid mode: push bottom properties to bottom of card */
 .bases-view[data-view-type="dynamic-views-card"]
   .dynamic-views-grid
   .card
   .card-content
-  ~ .card-properties,
-.dynamic-views .dynamic-views-grid .card .card-content ~ .card-properties,
+  ~ .card-properties-bottom,
+.dynamic-views
+  .dynamic-views-grid
+  .card
+  .card-content
+  ~ .card-properties-bottom,
 .bases-view[data-view-type="dynamic-views-card"]
   .dynamic-views-grid
   .card
   .card-title
-  ~ .card-properties,
-.dynamic-views .dynamic-views-grid .card .card-title ~ .card-properties {
+  ~ .card-properties-bottom,
+.dynamic-views .dynamic-views-grid .card .card-title ~ .card-properties-bottom,
+.bases-view[data-view-type="dynamic-views-card"]
+  .dynamic-views-grid
+  .card
+  .card-properties-bottom:only-child,
+.dynamic-views .dynamic-views-grid .card .card-properties-bottom:only-child {
   margin-top: auto;
   padding-top: var(--dynamic-views-element-spacing, 8px);
 }
@@ -1939,10 +2432,11 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 }
 
 .dynamic-views .card {
+  --_border-enabled: var(--dynamic-views-card-border, 1);
   position: relative;
   container-type: inline-size;
   box-sizing: border-box;
-  border: 1px solid
+  border: calc(var(--_border-enabled) * 1px) solid
     var(--dynamic-views-card-border-color, var(--background-modifier-border));
   border-radius: var(--dynamic-views-card-border-radius, 8px);
   padding: var(--dynamic-views-card-padding, 12px);
@@ -1953,6 +2447,30 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   transition:
     border-color 0.2s,
     box-shadow var(--anim-duration-fast) ease-in-out;
+}
+
+/* Disable container-type and position: relative on ALL ancestors when zoomed */
+body.dynamic-views-image-zoom-enabled .dynamic-views:has(.is-zoomed),
+body.dynamic-views-image-zoom-enabled .dynamic-views-grid:has(.is-zoomed),
+body.dynamic-views-image-zoom-enabled .dynamic-views-masonry:has(.is-zoomed),
+body.dynamic-views-image-zoom-enabled .masonry-container:has(.is-zoomed) {
+  position: static !important;
+}
+
+body.dynamic-views-image-zoom-enabled .dynamic-views .card:has(.is-zoomed) {
+  container-type: normal !important;
+  position: static !important;
+}
+
+body.dynamic-views-image-zoom-enabled
+  .dynamic-views
+  .card:has(.is-zoomed)
+  .card-cover,
+body.dynamic-views-image-zoom-enabled
+  .dynamic-views
+  .card:has(.is-zoomed)
+  .card-thumbnail {
+  position: static !important;
 }
 
 /* Completely blank cards: no title, content, thumbnails, covers, or properties */
@@ -2058,20 +2576,16 @@ body.dynamic-views-ambient-background
   }
 }
 
-/* No border when toggle is off */
-body:not(.dynamic-views-card-border) .dynamic-views .card {
-  border-color: transparent;
-}
-
-@media (hover: hover) {
-  body:not(.dynamic-views-card-border) .card:hover {
-    border-color: transparent;
-  }
+.dynamic-views .card-title-container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dynamic-views-element-spacing, 8px);
 }
 
 .dynamic-views .card-title {
   font-weight: calc(var(--font-weight) + var(--bold-modifier));
-  color: var(--dynamic-views-title-color, var(--color-base-100));
+  color: var(--text-normal);
   font-family: var(--dynamic-views-title-font, inherit);
   font-size: var(--dynamic-views-title-font-size, var(--font-ui-medium));
   max-width: 100%;
@@ -2083,6 +2597,10 @@ body:not(.dynamic-views-card-border) .dynamic-views .card {
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: var(--line-height-tight);
+}
+
+.dynamic-views .card-title-url-icon {
+  flex-shrink: 0;
 }
 
 .dynamic-views .card-title a {
@@ -2100,10 +2618,108 @@ body:not(.dynamic-views-card-border) .dynamic-views .card {
   }
 }
 
+.dynamic-views .card-subtitle {
+  color: var(--text-faint);
+  font-family: var(--dynamic-views-subtitle-font);
+  font-size: var(--dynamic-views-subtitle-font-size, var(--font-ui-small));
+  max-width: 100%;
+  word-break: break-word;
+  text-align: left;
+  margin: 0;
+  display: block;
+  overflow: visible;
+  line-height: var(--line-height-tight);
+}
+
+/* Subtitle property content inherits color from subtitle */
+.dynamic-views .card-subtitle .property-content,
+.dynamic-views .card-subtitle .property-content * {
+  color: inherit;
+}
+
+/* Subtitle alignment */
+body.dynamic-views-subtitle-align-center .dynamic-views .card-subtitle {
+  text-align: center;
+}
+
+body.dynamic-views-subtitle-align-right .dynamic-views .card-subtitle {
+  text-align: right;
+}
+
+/* Subtitle wrap mode (default) - override property-content-wrapper's overflow */
+.dynamic-views .card-subtitle .property-content-wrapper {
+  overflow: hidden;
+  flex-wrap: wrap;
+}
+
+.dynamic-views .card-subtitle .property-content,
+.dynamic-views .card-subtitle .text-wrapper {
+  display: block;
+  width: 100%;
+  height: auto;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Disable fade gradient in wrap mode */
+body:not(.dynamic-views-subtitle-overflow-scroll)
+  .dynamic-views
+  .card-subtitle
+  .property-content-wrapper.scroll-gradient-left,
+body:not(.dynamic-views-subtitle-overflow-scroll)
+  .dynamic-views
+  .card-subtitle
+  .property-content-wrapper.scroll-gradient-right,
+body:not(.dynamic-views-subtitle-overflow-scroll)
+  .dynamic-views
+  .card-subtitle
+  .property-content-wrapper.scroll-gradient-both {
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+}
+
+/* Subtitle scroll mode */
+body.dynamic-views-subtitle-overflow-scroll .dynamic-views .card-subtitle {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+body.dynamic-views-subtitle-overflow-scroll
+  .dynamic-views
+  .card-subtitle
+  .property-content-wrapper {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+body.dynamic-views-subtitle-overflow-scroll
+  .dynamic-views
+  .card-subtitle
+  .property-content,
+body.dynamic-views-subtitle-overflow-scroll
+  .dynamic-views
+  .card-subtitle
+  .text-wrapper {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
+}
+
+/* Subtitle divider line (shown when class-toggle is ON) */
+body.dynamic-views-subtitle-divider .dynamic-views .card-subtitle {
+  padding-bottom: var(--dynamic-views-element-spacing, 8px);
+  border-bottom: 1px solid var(--hr-color);
+}
+
 .dynamic-views .card-content {
   display: flex;
   flex-direction: row;
   gap: var(--dynamic-views-element-spacing, 8px);
+  order: 0; /* Between properties-top (-50) and properties-bottom (50) */
 }
 
 /* When card-content only has text preview (no thumbnails), use column layout */
@@ -2133,7 +2749,7 @@ body:not(.dynamic-views-card-border) .dynamic-views .card {
 }
 
 .dynamic-views .card-text-preview {
-  color: var(--dynamic-views-text-preview-color, var(--text-muted));
+  color: var(--text-muted);
   font-family: var(--dynamic-views-text-preview-font, inherit);
   font-size: var(
     --dynamic-views-text-preview-font-size,
@@ -2226,265 +2842,22 @@ body.dynamic-views-show-thumbnail-placeholder.is-mobile.theme-dark
   pointer-events: auto;
 }
 
-/* Thumbnail expand on click - Hold mode */
-body.dynamic-views-thumbnail-expand-click-hold
-  .dynamic-views
-  .card-thumbnail
-  img {
-  cursor: zoom-in;
-}
-
-body.dynamic-views-thumbnail-expand-click-hold
-  .dynamic-views
-  .card-thumbnail
-  .image-embed {
-  cursor: zoom-in;
-}
-
-body.dynamic-views-thumbnail-expand-click-hold
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed {
-  cursor: zoom-in;
-}
-
-body.dynamic-views-thumbnail-expand-click-hold .dynamic-views .image-embed {
-  pointer-events: auto;
-}
-
-body.dynamic-views-thumbnail-expand-click-hold .dynamic-views .image-embed img {
-  pointer-events: none;
-  cursor: zoom-in;
-}
-
-body.dynamic-views-thumbnail-expand-click-hold
-  .dynamic-views
-  .image-embed:active {
-  background: var(--background-primary);
-  cursor: zoom-out;
-  display: block;
-  z-index: 200;
-  position: fixed;
-  max-height: 100%;
-  max-width: 100%;
-  height: auto;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto;
-  text-align: center;
-  padding: 0;
-  left: 0;
-  right: 0;
-  top: 0%;
-  bottom: 0;
-}
-
-body.dynamic-views-thumbnail-expand-click-hold
-  .dynamic-views
-  .image-embed:active
-  img {
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 0;
-  margin: 0 auto;
-  width: auto;
-  height: auto;
-  max-height: min(100%, 100vh);
-  max-width: min(100%, 100vw);
-  object-fit: contain;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  position: absolute;
-  opacity: 1;
-}
-
-/* Cover-specific zoom override (higher specificity needed) */
-body.dynamic-views-thumbnail-expand-click-hold
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(--background-primary);
-  cursor: zoom-out;
-  display: block;
-  z-index: 200;
-  position: fixed;
-  max-height: 100%;
-  max-width: 100%;
-  height: auto;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto;
-  text-align: center;
-  padding: 0;
-  left: 0;
-  right: 0;
-  top: 0%;
-  bottom: 0;
-}
-
-body.dynamic-views-thumbnail-expand-click-hold
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active
-  img {
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 0;
-  margin: 0 auto;
-  width: auto;
-  height: auto;
-  max-height: min(100%, 100vh);
-  max-width: min(100%, 100vw);
-  object-fit: contain;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  position: absolute;
-  opacity: 1;
-}
-
-/* Toggle OFF: Blur - hide ::before pseudo-element */
-body.dynamic-views-thumbnail-expand-click-hold:not(
-    .cards-cover-background-on-zoom
-  ).dynamic-views-cover-bg-blur
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active::before {
-  content: none !important;
-}
-
-/* Toggle OFF: Ambient - force default background */
-body.dynamic-views-thumbnail-expand-click-hold:not(
-    .cards-cover-background-on-zoom
-  ).dynamic-views-cover-bg-ambient
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(--background-primary) !important;
-}
-
-/* Toggle OFF: Custom color - force default background */
-body.dynamic-views-thumbnail-expand-click-hold:not(
-    .cards-cover-background-on-zoom
-  ).dynamic-views-cover-bg-custom
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(--background-primary) !important;
-}
-
-/* Toggle OFF: Plain - force default background */
-body.dynamic-views-thumbnail-expand-click-hold:not(
-    .cards-cover-background-on-zoom
-  ).dynamic-views-cover-bg-plain
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(--background-primary) !important;
-}
-
-/* Toggle ON: Blur - show blurred background */
-body.dynamic-views-thumbnail-expand-click-hold.cards-cover-background-on-zoom.dynamic-views-cover-bg-blur
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active::before {
-  content: "" !important;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: var(--cover-image-url);
-  background-size: cover;
-  background-position: center;
-  filter: blur(20px) brightness(0.7);
-  transform: scale(1.1);
-  z-index: 0;
-}
-
-.theme-dark
-  body.dynamic-views-thumbnail-expand-click-hold.cards-cover-background-on-zoom.dynamic-views-cover-bg-blur
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active::before {
-  filter: blur(20px) brightness(0.5);
-}
-
-/* Toggle ON: Ambient - show ambient color background */
-body.dynamic-views-thumbnail-expand-click-hold.cards-cover-background-on-zoom.dynamic-views-cover-bg-ambient
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(--ambient-color, var(--background-secondary)) !important;
-}
-
-/* Toggle ON: Custom color - show custom color background */
-body.dynamic-views-thumbnail-expand-click-hold.cards-cover-background-on-zoom.dynamic-views-cover-bg-custom
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(
-    --dynamic-views-cover-background-custom-color,
-    var(--background-secondary)
-  ) !important;
-}
-
-/* Toggle ON: Plain - depends on Card background setting */
-/* Default: use Obsidian's Bases cards cover background variable */
-body.dynamic-views-thumbnail-expand-click-hold.cards-cover-background-on-zoom.dynamic-views-cover-bg-plain
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(--bases-cards-cover-background) !important;
-}
-
-/* Override: If Card background is Tinted, use background-primary */
-body.dynamic-views-thumbnail-expand-click-hold.cards-cover-background-on-zoom.dynamic-views-cover-bg-plain.dynamic-views-card-background-tinted
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(--background-primary) !important;
-}
-
-/* Transparent: Always use default background (overrides toggle state) */
-body.dynamic-views-thumbnail-expand-click-hold.dynamic-views-cover-bg-transparent
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed:active {
-  background: var(--background-primary) !important;
-}
-
 /* Thumbnail expand on click - Toggle mode */
-body.dynamic-views-thumbnail-expand-click-toggle
+body.dynamic-views-image-zoom-enabled:not(.dynamic-views-image-zoom-disabled)
   .dynamic-views
   .card-thumbnail
   img {
   cursor: zoom-in;
 }
 
-body.dynamic-views-thumbnail-expand-click-toggle
+body.dynamic-views-image-zoom-enabled
   .dynamic-views
   .card-thumbnail
   .image-embed {
   cursor: zoom-in;
 }
 
-body.dynamic-views-thumbnail-expand-click-toggle
+body.dynamic-views-image-zoom-enabled
   .dynamic-views
   .card.image-format-cover
   .card-cover
@@ -2492,257 +2865,197 @@ body.dynamic-views-thumbnail-expand-click-toggle
   cursor: zoom-in;
 }
 
-body.dynamic-views-thumbnail-expand-click-toggle .dynamic-views .image-embed {
+body.dynamic-views-image-zoom-enabled .dynamic-views .image-embed {
   pointer-events: auto;
 }
 
-body.dynamic-views-thumbnail-expand-click-toggle
-  .dynamic-views
-  .image-embed
-  img {
+body.dynamic-views-image-zoom-enabled .dynamic-views .image-embed img {
   pointer-events: none;
   cursor: zoom-in;
 }
 
-body.dynamic-views-thumbnail-expand-click-toggle
-  .dynamic-views
-  .image-embed.is-zoomed {
-  background: var(--background-primary);
+body.dynamic-views-image-zoom-enabled .dynamic-views .image-embed.is-zoomed,
+body.dynamic-views-image-zoom-enabled > .image-embed.is-zoomed {
   cursor: zoom-out;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 200;
   position: fixed;
-  max-height: 100%;
-  max-width: 100%;
-  height: auto;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto;
-  text-align: center;
+  height: 100%;
+  width: 100%;
   padding: 0;
   left: 0;
   right: 0;
-  top: 0%;
+  top: 0;
   bottom: 0;
 }
 
-body.dynamic-views-thumbnail-expand-click-toggle
+/* Constrain to tab: opacity from --background-modifier-cover + absolute positioning */
+body.dynamic-views-image-zoom-enabled.dynamic-views-zoom-constrain-to-editor
   .dynamic-views
-  .image-embed.is-zoomed
-  img {
-  top: 50%;
-  transform: translateY(-50%);
+  .image-embed.is-zoomed {
+  background: color-mix(
+    in srgb,
+    var(--background-primary) var(--dynamic-views-overlay-opacity, 90%),
+    transparent
+  );
+  position: absolute;
+  /* Debug: green border for constrained mode */
+  outline: 3px solid green;
+}
+
+/* Not constrained: transparent background + fixed positioning */
+body.dynamic-views-image-zoom-enabled:not(
+    .dynamic-views-zoom-constrain-to-editor
+  )
+  .dynamic-views
+  .image-embed.is-zoomed,
+body.dynamic-views-image-zoom-enabled:not(
+    .dynamic-views-zoom-constrain-to-editor
+  )
+  > .image-embed.is-zoomed {
+  background: var(--background-modifier-cover);
+  position: fixed;
+  /* Debug: red border for unconstrained mode */
+  outline: 3px solid red;
+}
+
+body.dynamic-views-image-zoom-enabled .dynamic-views .image-embed.is-zoomed img,
+body.dynamic-views-image-zoom-enabled > .image-embed.is-zoomed img {
   padding: 0;
-  margin: 0 auto;
+  margin: 0;
   width: auto;
   height: auto;
-  max-height: min(100%, 100vh);
-  max-width: min(100%, 100vw);
+  max-height: 100vh;
+  max-width: 100vw;
   object-fit: contain;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  position: absolute;
   opacity: 1;
+}
+
+/* Desktop only: limit zoomed images to 90% viewport */
+body.dynamic-views-image-zoom-enabled:not(.is-mobile)
+  .dynamic-views
+  .image-embed.is-zoomed
+  img,
+body.dynamic-views-image-zoom-enabled:not(.is-mobile)
+  > .image-embed.is-zoomed
+  img {
+  max-height: 90vh;
+  max-width: 90vw;
 }
 
 /* Cover-specific zoom override (higher specificity needed) */
-body.dynamic-views-thumbnail-expand-click-toggle
+body.dynamic-views-image-zoom-enabled
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover
+  .image-embed.is-zoomed,
+body.dynamic-views-image-zoom-enabled > .image-embed.is-zoomed {
+  cursor: zoom-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  position: fixed;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+/* Constrain to tab: opacity from --background-modifier-cover + absolute positioning for covers */
+body.dynamic-views-image-zoom-enabled.dynamic-views-zoom-constrain-to-editor
   .dynamic-views
   .card.image-format-cover
   .card-cover
   .image-embed.is-zoomed {
-  background: var(--background-primary);
-  cursor: zoom-out;
-  display: block;
-  z-index: 200;
-  position: fixed;
-  max-height: 100%;
-  max-width: 100%;
-  height: auto;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto;
-  text-align: center;
-  padding: 0;
-  left: 0;
-  right: 0;
-  top: 0%;
-  bottom: 0;
+  background: color-mix(
+    in srgb,
+    var(--background-primary) var(--dynamic-views-overlay-opacity, 90%),
+    transparent
+  ) !important;
+  position: absolute !important;
+  /* Debug: green border for constrained mode */
+  outline: 3px solid green !important;
 }
 
-body.dynamic-views-thumbnail-expand-click-toggle
+/* Not constrained: transparent background + fixed positioning for covers */
+body.dynamic-views-image-zoom-enabled:not(
+    .dynamic-views-zoom-constrain-to-editor
+  )
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover
+  .image-embed.is-zoomed,
+body.dynamic-views-image-zoom-enabled:not(
+    .dynamic-views-zoom-constrain-to-editor
+  )
+  > .image-embed.is-zoomed {
+  background: var(--background-modifier-cover) !important;
+  position: fixed !important;
+  /* Debug: red border for unconstrained mode */
+  outline: 3px solid red !important;
+}
+
+body.dynamic-views-image-zoom-enabled
   .dynamic-views
   .card.image-format-cover
   .card-cover
   .image-embed.is-zoomed
-  img {
-  top: 50%;
-  transform: translateY(-50%);
+  img,
+body.dynamic-views-image-zoom-enabled > .image-embed.is-zoomed img {
   padding: 0;
-  margin: 0 auto;
+  margin: 0;
   width: auto;
   height: auto;
-  max-height: min(100%, 100vh);
-  max-width: min(100%, 100vw);
+  max-height: 100vh;
+  max-width: 100vw;
   object-fit: contain;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  position: absolute;
   opacity: 1;
 }
 
-/* Toggle OFF: Blur - hide ::before pseudo-element */
-body.dynamic-views-thumbnail-expand-click-toggle:not(
-    .cards-cover-background-on-zoom
-  ).dynamic-views-cover-bg-blur
+/* Desktop only: limit zoomed cover images to 90% viewport */
+body.dynamic-views-image-zoom-enabled:not(.is-mobile)
   .dynamic-views
   .card.image-format-cover
   .card-cover
-  .image-embed.is-zoomed::before {
-  content: none !important;
+  .image-embed.is-zoomed
+  img,
+body.dynamic-views-image-zoom-enabled:not(.is-mobile)
+  > .image-embed.is-zoomed
+  img {
+  max-height: 90vh;
+  max-width: 90vw;
 }
 
-/* Toggle OFF: Ambient - force default background */
-body.dynamic-views-thumbnail-expand-click-toggle:not(
-    .cards-cover-background-on-zoom
-  ).dynamic-views-cover-bg-ambient
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed {
-  background: var(--background-primary) !important;
+/* Thumbnail crop alignment (center is default) */
+.dynamic-views .card-thumbnail img {
+  object-position: center center;
 }
 
-/* Toggle OFF: Custom color - force default background */
-body.dynamic-views-thumbnail-expand-click-toggle:not(
-    .cards-cover-background-on-zoom
-  ).dynamic-views-cover-bg-custom
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed {
-  background: var(--background-primary) !important;
-}
-
-/* Toggle OFF: Plain - force default background */
-body.dynamic-views-thumbnail-expand-click-toggle:not(
-    .cards-cover-background-on-zoom
-  ).dynamic-views-cover-bg-plain
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed {
-  background: var(--background-primary) !important;
-}
-
-/* Toggle ON: Blur - show blurred background */
-body.dynamic-views-thumbnail-expand-click-toggle.cards-cover-background-on-zoom.dynamic-views-cover-bg-blur
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed::before {
-  content: "" !important;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: var(--cover-image-url);
-  background-size: cover;
-  background-position: center;
-  filter: blur(20px) brightness(0.7);
-  transform: scale(1.1);
-  z-index: 0;
-}
-
-.theme-dark
-  body.dynamic-views-thumbnail-expand-click-toggle.cards-cover-background-on-zoom.dynamic-views-cover-bg-blur
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed::before {
-  filter: blur(20px) brightness(0.5);
-}
-
-/* Toggle ON: Ambient - show ambient color background */
-body.dynamic-views-thumbnail-expand-click-toggle.cards-cover-background-on-zoom.dynamic-views-cover-bg-ambient
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed {
-  background: var(--ambient-color, var(--background-secondary)) !important;
-}
-
-/* Toggle ON: Custom color - show custom color background */
-body.dynamic-views-thumbnail-expand-click-toggle.cards-cover-background-on-zoom.dynamic-views-cover-bg-custom
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed {
-  background: var(
-    --dynamic-views-cover-background-custom-color,
-    var(--background-secondary)
-  ) !important;
-}
-
-/* Toggle ON: Plain - depends on Card background setting */
-/* Default: use Obsidian's Bases cards cover background variable */
-body.dynamic-views-thumbnail-expand-click-toggle.cards-cover-background-on-zoom.dynamic-views-cover-bg-plain
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed {
-  background: var(--bases-cards-cover-background) !important;
-}
-
-/* Override: If Card background is Tinted, use background-primary */
-body.dynamic-views-thumbnail-expand-click-toggle.cards-cover-background-on-zoom.dynamic-views-cover-bg-plain.dynamic-views-card-background-tinted
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed {
-  background: var(--background-primary) !important;
-}
-
-/* Transparent: Always use default background (overrides toggle state) */
-body.dynamic-views-thumbnail-expand-click-toggle.dynamic-views-cover-bg-transparent
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  .image-embed.is-zoomed {
-  background: var(--background-primary) !important;
-}
-
-/* Thumbnail crop alignment (controlled by body class from Style Settings) */
 body.dynamic-views-thumbnail-crop-top .dynamic-views .card-thumbnail img {
   object-position: center top;
-}
-
-body.dynamic-views-thumbnail-crop-center .dynamic-views .card-thumbnail img {
-  object-position: center center;
 }
 
 body.dynamic-views-thumbnail-crop-bottom .dynamic-views .card-thumbnail img {
   object-position: center bottom;
 }
 
-/* Cover crop alignment (controlled by body class from Style Settings) */
+/* Cover crop alignment (center is default) */
+.dynamic-views .card.image-format-cover .card-cover img {
+  object-position: center center;
+}
+
 body.dynamic-views-cover-crop-top
   .dynamic-views
   .card.image-format-cover
   .card-cover
   img {
   object-position: center top;
-}
-
-body.dynamic-views-cover-crop-center
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover
-  img {
-  object-position: center center;
 }
 
 body.dynamic-views-cover-crop-bottom
@@ -2792,11 +3105,8 @@ body.dynamic-views-cover-bg-blur
   opacity: 0.5;
 }
 
-/* Ambient background */
-body.dynamic-views-cover-bg-ambient
-  .dynamic-views
-  .card.card-cover-contain.image-format-cover
-  .card-cover {
+/* Ambient background (default) */
+.dynamic-views .card.card-cover-contain.image-format-cover .card-cover {
   background-color: var(--ambient-color, var(--background-secondary));
 }
 
@@ -2840,18 +3150,30 @@ body.dynamic-views-cover-bg-custom
   );
 }
 
-/* Flexible cover height for masonry (use actual image aspect ratio) - top/bottom only */
-body.dynamic-views-masonry-flexible-cover-height
-  [data-view-type="dynamic-views-masonry"]
+/* Flexible cover height for masonry (default: use actual image aspect ratio) - top/bottom only */
+[data-view-type="dynamic-views-masonry"]
   .card.card-cover-top.image-format-cover
   .card-cover,
-body.dynamic-views-masonry-flexible-cover-height
-  [data-view-type="dynamic-views-masonry"]
+[data-view-type="dynamic-views-masonry"]
   .card.card-cover-bottom.image-format-cover
   .card-cover {
   padding-top: calc(
     var(--actual-aspect-ratio, var(--dynamic-views-image-aspect-ratio, 0.55)) *
       100%
+  ) !important;
+}
+
+/* Fixed cover height for masonry (override to fixed aspect ratio) */
+body.dynamic-views-masonry-fixed-cover-height
+  [data-view-type="dynamic-views-masonry"]
+  .card.card-cover-top.image-format-cover
+  .card-cover,
+body.dynamic-views-masonry-fixed-cover-height
+  [data-view-type="dynamic-views-masonry"]
+  .card.card-cover-bottom.image-format-cover
+  .card-cover {
+  padding-top: calc(
+    var(--dynamic-views-image-aspect-ratio, 0.55) * 100%
   ) !important;
 }
 
@@ -3004,6 +3326,46 @@ body.dynamic-views-cover-gap-card-padding
 /* Hide placeholder by default */
 .dynamic-views .card.image-format-cover .card-cover-placeholder {
   display: none;
+}
+
+/* Show placeholder in grid view by default (when no Style Settings class present) */
+body:not(.dynamic-views-show-cover-placeholder-masonry):not(
+    .dynamic-views-show-cover-placeholder-both
+  ):not(.dynamic-views-show-cover-placeholder-none)
+  .dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-top.image-format-cover
+  .card-cover-placeholder,
+body:not(.dynamic-views-show-cover-placeholder-masonry):not(
+    .dynamic-views-show-cover-placeholder-both
+  ):not(.dynamic-views-show-cover-placeholder-none)
+  .dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-bottom.image-format-cover
+  .card-cover-placeholder {
+  display: block;
+  width: 100%;
+  height: 0;
+  padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
+}
+
+body:not(.dynamic-views-show-cover-placeholder-masonry):not(
+    .dynamic-views-show-cover-placeholder-both
+  ):not(.dynamic-views-show-cover-placeholder-none)
+  .dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-left.image-format-cover
+  .card-cover-placeholder,
+body:not(.dynamic-views-show-cover-placeholder-masonry):not(
+    .dynamic-views-show-cover-placeholder-both
+  ):not(.dynamic-views-show-cover-placeholder-none)
+  .dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-right.image-format-cover
+  .card-cover-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* Show placeholder for top/bottom covers in grid view */
@@ -3802,12 +4164,9 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
   overflow: hidden;
 }
 
-/* Individual property field styles - selectors kept for custom CSS targeting */
-.dynamic-views .property-field-1,
-.dynamic-views .property-field-2,
-.dynamic-views .property-field-3,
-.dynamic-views .property-field-4 {
-  color: var(--dynamic-views-property-master-color, var(--text-faint));
+/* Property field text color and font */
+.dynamic-views .property-field {
+  color: var(--text-faint);
   font-family: var(--dynamic-views-property-master-font, inherit);
 }
 
@@ -3818,102 +4177,145 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
   gap: 0;
 }
 
+/* Timestamp icon - visible by default with "edge" positioning */
 .dynamic-views .timestamp-icon {
-  display: none; /* Hidden by default */
+  display: inline-flex;
   flex-shrink: 0;
   opacity: 0.7;
   width: 1em;
   height: 1em;
-}
-
-/* Add spacing between icon and text based on icon position */
-/* When icon is on left (order: 0 or default), add right margin */
-.dynamic-views .timestamp-icon {
   margin-right: 0.3em;
 }
 
-/* When icon is on right (order: 2), use left margin instead */
-body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon,
-body.dynamic-views-timestamp-icon-inner
-  .dynamic-views
-  .property-field-1
-  .timestamp-icon,
-body.dynamic-views-timestamp-icon-inner
-  .dynamic-views
-  .property-field-3
-  .timestamp-icon,
-body.dynamic-views-timestamp-icon-outer
-  .dynamic-views
-  .property-field-2
-  .timestamp-icon,
-body.dynamic-views-timestamp-icon-outer
-  .dynamic-views
-  .property-field-4
-  .timestamp-icon {
+/* Edge positioning is default: right-side fields (even) show icon on right */
+.dynamic-views .property-field-2 .timestamp-icon,
+.dynamic-views .property-field-4 .timestamp-icon,
+.dynamic-views .property-field-6 .timestamp-icon,
+.dynamic-views .property-field-8 .timestamp-icon,
+.dynamic-views .property-field-10 .timestamp-icon,
+.dynamic-views .property-field-12 .timestamp-icon,
+.dynamic-views .property-field-14 .timestamp-icon {
+  order: 2;
   margin-right: 0;
   margin-left: 0.3em;
 }
 
-/* Show icon when left, right, inner, or outer position is selected */
-body.dynamic-views-timestamp-icon-left .dynamic-views .timestamp-icon,
-body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon,
-body.dynamic-views-timestamp-icon-inner .dynamic-views .timestamp-icon,
-body.dynamic-views-timestamp-icon-outer .dynamic-views .timestamp-icon {
-  display: inline-flex;
+/* Hide icon when "hide" option selected */
+body.dynamic-views-timestamp-icon-hide .dynamic-views .timestamp-icon {
+  display: none;
 }
 
-/* Show left - icon timestamp (all fields) */
-/* Default behavior - no override needed */
+/* When icon is on right for all fields */
+body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
+  margin-right: 0;
+  margin-left: 0.3em;
+}
 
-/* Show right - timestamp icon (all fields) */
+/* Center positioning: odd fields (left side) show icon on right */
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-1
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-3
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-5
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-7
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-9
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-11
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-13
+  .timestamp-icon {
+  order: 2;
+  margin-right: 0;
+  margin-left: 0.3em;
+}
+
+/* Center positioning: even fields (right side) show icon on left */
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-2
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-4
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-6
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-8
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-10
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-12
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-center
+  .dynamic-views
+  .property-field-14
+  .timestamp-icon {
+  order: 0;
+  margin-right: 0.3em;
+  margin-left: 0;
+}
+
+/* Left positioning: even fields (right side) reset to left */
+body.dynamic-views-timestamp-icon-left
+  .dynamic-views
+  .property-field-2
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-left
+  .dynamic-views
+  .property-field-4
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-left
+  .dynamic-views
+  .property-field-6
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-left
+  .dynamic-views
+  .property-field-8
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-left
+  .dynamic-views
+  .property-field-10
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-left
+  .dynamic-views
+  .property-field-12
+  .timestamp-icon,
+body.dynamic-views-timestamp-icon-left
+  .dynamic-views
+  .property-field-14
+  .timestamp-icon {
+  order: 0;
+  margin-right: 0.3em;
+  margin-left: 0;
+}
+
+/* Right positioning: all icons on right */
 body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
   order: 2;
-}
-
-/* Show inner - left fields show icon on right, right fields show icon on left */
-body.dynamic-views-timestamp-icon-inner
-  .dynamic-views
-  .property-field-1
-  .timestamp-icon,
-body.dynamic-views-timestamp-icon-inner
-  .dynamic-views
-  .property-field-3
-  .timestamp-icon {
-  order: 2; /* Right side of left fields */
-}
-
-body.dynamic-views-timestamp-icon-inner
-  .dynamic-views
-  .property-field-2
-  .timestamp-icon,
-body.dynamic-views-timestamp-icon-inner
-  .dynamic-views
-  .property-field-4
-  .timestamp-icon {
-  order: 0; /* Left side of right fields */
-}
-
-/* Show outer - left fields show icon on left, right fields show icon on right */
-body.dynamic-views-timestamp-icon-outer
-  .dynamic-views
-  .property-field-1
-  .timestamp-icon,
-body.dynamic-views-timestamp-icon-outer
-  .dynamic-views
-  .property-field-3
-  .timestamp-icon {
-  order: 0; /* Left side of left fields */
-}
-
-body.dynamic-views-timestamp-icon-outer
-  .dynamic-views
-  .property-field-2
-  .timestamp-icon,
-body.dynamic-views-timestamp-icon-outer
-  .dynamic-views
-  .property-field-4
-  .timestamp-icon {
-  order: 2; /* Right side of right fields */
 }
 
 .dynamic-views .timestamp-icon svg {
@@ -3948,6 +4350,13 @@ body.dynamic-views-timestamp-icon-outer
   height: 20px;
 }
 
+/* Preserve whitespace in text spans within flex containers */
+.dynamic-views
+  .text-wrapper
+  > span:not(.internal-link):not(.external-link):not(.tag) {
+  white-space: pre;
+}
+
 /* Path segments must be inline for ellipsis to work across the whole path */
 .dynamic-views .path-wrapper > span {
   display: inline;
@@ -3955,6 +4364,7 @@ body.dynamic-views-timestamp-icon-outer
 
 /* Base tag styles */
 .dynamic-views .card-properties .tag,
+.dynamic-views .card-subtitle .tag,
 .dynamic-views .list-meta .tag {
   text-decoration: none;
   white-space: nowrap;
@@ -3967,149 +4377,36 @@ body.dynamic-views-timestamp-icon-outer
   font-size: 0.85em;
 }
 
-/* Tag style: Outline */
-body.dynamic-views-tag-style-outline .dynamic-views .card-properties .tag,
-body.dynamic-views-tag-style-outline .dynamic-views .list-meta .tag {
+/* Tag style: Outline (default) */
+.dynamic-views .card-properties .tag,
+.dynamic-views .card-subtitle .tag,
+.dynamic-views .list-meta .tag {
   background-color: transparent;
   border-radius: var(--tag-radius);
   border: 1px solid var(--background-modifier-border);
   color: var(--text-faint);
 }
 
-body.dynamic-views-tag-style-outline .dynamic-views .card-properties .tag:hover,
-body.dynamic-views-tag-style-outline .dynamic-views .list-meta .tag:hover {
-  color: var(--text-muted);
+.dynamic-views .card-properties .tag:hover,
+.dynamic-views .card-subtitle .tag:hover,
+.dynamic-views .list-meta .tag:hover {
   border-color: var(--background-modifier-border-hover);
   opacity: 1;
 }
 
-/* Cascading colors: field-specific → master → default */
-body.dynamic-views-tag-style-outline .dynamic-views .property-field-1 .tag {
-  color: var(
-    --dynamic-views-property-1-color,
-    var(--dynamic-views-property-master-color, var(--text-faint))
-  );
-  border-color: var(
-    --dynamic-views-property-1-color,
-    var(
-      --dynamic-views-property-master-color,
-      var(--background-modifier-border)
-    )
-  );
+/* Property tags - default faint color (Style Settings OFF) */
+.dynamic-views .card-properties .tag {
+  color: var(--text-faint);
+  border-color: var(--background-modifier-border);
 }
 
-body.dynamic-views-tag-style-outline
-  .dynamic-views
-  .property-field-1
-  .tag:hover {
-  color: var(
-    --dynamic-views-property-1-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  border-color: var(
-    --dynamic-views-property-1-color,
-    var(
-      --dynamic-views-property-master-color,
-      var(--background-modifier-border-hover)
-    )
-  );
-}
-
-body.dynamic-views-tag-style-outline .dynamic-views .property-field-2 .tag {
-  color: var(
-    --dynamic-views-property-2-color,
-    var(--dynamic-views-property-master-color, var(--text-faint))
-  );
-  border-color: var(
-    --dynamic-views-property-2-color,
-    var(
-      --dynamic-views-property-master-color,
-      var(--background-modifier-border)
-    )
-  );
-}
-
-body.dynamic-views-tag-style-outline
-  .dynamic-views
-  .property-field-2
-  .tag:hover {
-  color: var(
-    --dynamic-views-property-2-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  border-color: var(
-    --dynamic-views-property-2-color,
-    var(
-      --dynamic-views-property-master-color,
-      var(--background-modifier-border-hover)
-    )
-  );
-}
-
-body.dynamic-views-tag-style-outline .dynamic-views .property-field-3 .tag {
-  color: var(
-    --dynamic-views-property-3-color,
-    var(--dynamic-views-property-master-color, var(--text-faint))
-  );
-  border-color: var(
-    --dynamic-views-property-3-color,
-    var(
-      --dynamic-views-property-master-color,
-      var(--background-modifier-border)
-    )
-  );
-}
-
-body.dynamic-views-tag-style-outline
-  .dynamic-views
-  .property-field-3
-  .tag:hover {
-  color: var(
-    --dynamic-views-property-3-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  border-color: var(
-    --dynamic-views-property-3-color,
-    var(
-      --dynamic-views-property-master-color,
-      var(--background-modifier-border-hover)
-    )
-  );
-}
-
-body.dynamic-views-tag-style-outline .dynamic-views .property-field-4 .tag {
-  color: var(
-    --dynamic-views-property-4-color,
-    var(--dynamic-views-property-master-color, var(--text-faint))
-  );
-  border-color: var(
-    --dynamic-views-property-4-color,
-    var(
-      --dynamic-views-property-master-color,
-      var(--background-modifier-border)
-    )
-  );
-}
-
-body.dynamic-views-tag-style-outline
-  .dynamic-views
-  .property-field-4
-  .tag:hover {
-  color: var(
-    --dynamic-views-property-4-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  border-color: var(
-    --dynamic-views-property-4-color,
-    var(
-      --dynamic-views-property-master-color,
-      var(--background-modifier-border-hover)
-    )
-  );
+.dynamic-views .card-properties .tag:hover {
+  border-color: var(--background-modifier-border-hover);
 }
 
 /* Tag style: Match theme */
 body.dynamic-views-tag-style-theme .dynamic-views .card-properties .tag,
+body.dynamic-views-tag-style-theme .dynamic-views .card-subtitle .tag,
 body.dynamic-views-tag-style-theme .dynamic-views .list-meta .tag {
   background-color: var(--tag-background);
   color: var(--tag-color);
@@ -4118,94 +4415,125 @@ body.dynamic-views-tag-style-theme .dynamic-views .list-meta .tag {
 }
 
 body.dynamic-views-tag-style-theme .dynamic-views .card-properties .tag:hover,
+body.dynamic-views-tag-style-theme .dynamic-views .card-subtitle .tag:hover,
 body.dynamic-views-tag-style-theme .dynamic-views .list-meta .tag:hover {
   background-color: var(--tag-background-hover);
   color: var(--tag-color);
   opacity: 1;
 }
 
-/* Tag style: Minimal */
-body.dynamic-views-tag-style-minimal .dynamic-views .card-properties .tag,
-body.dynamic-views-tag-style-minimal .dynamic-views .list-meta .tag {
+/* Tag style: Plaintext */
+body.dynamic-views-tag-style-plaintext .dynamic-views .card-properties .tag,
+body.dynamic-views-tag-style-plaintext .dynamic-views .card-subtitle .tag,
+body.dynamic-views-tag-style-plaintext .dynamic-views .list-meta .tag {
   background-color: transparent;
-  color: var(--text-faint);
   border: none;
   padding: 0;
   border-radius: 0;
   font-size: inherit;
 }
 
-/* Cascading colors for minimal tags */
-body.dynamic-views-tag-style-minimal .dynamic-views .property-field-1 .tag {
-  color: var(
-    --dynamic-views-property-1-color,
-    var(--dynamic-views-property-master-color, var(--text-faint))
-  );
-}
-
-body.dynamic-views-tag-style-minimal
+body.dynamic-views-tag-style-plaintext
   .dynamic-views
-  .property-field-1
+  .card-properties
   .tag:hover {
-  color: var(
-    --dynamic-views-property-1-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
   text-decoration: underline;
 }
 
-body.dynamic-views-tag-style-minimal .dynamic-views .property-field-2 .tag {
-  color: var(
-    --dynamic-views-property-2-color,
-    var(--dynamic-views-property-master-color, var(--text-faint))
-  );
+/* Tag color presets */
+body.dynamic-views-tag-color-faint .dynamic-views .tag {
+  color: var(--text-faint);
+}
+body.dynamic-views-tag-color-muted .dynamic-views .tag {
+  color: var(--text-muted);
+}
+body.dynamic-views-tag-color-normal .dynamic-views .tag {
+  color: var(--text-normal);
+}
+body.dynamic-views-tag-color-accent .dynamic-views .tag {
+  color: var(--text-accent);
+}
+body.dynamic-views-tag-color-red .dynamic-views .tag {
+  color: var(--color-red);
+}
+body.dynamic-views-tag-color-orange .dynamic-views .tag {
+  color: var(--color-orange);
+}
+body.dynamic-views-tag-color-yellow .dynamic-views .tag {
+  color: var(--color-yellow);
+}
+body.dynamic-views-tag-color-green .dynamic-views .tag {
+  color: var(--color-green);
+}
+body.dynamic-views-tag-color-cyan .dynamic-views .tag {
+  color: var(--color-cyan);
+}
+body.dynamic-views-tag-color-blue .dynamic-views .tag {
+  color: var(--color-blue);
+}
+body.dynamic-views-tag-color-purple .dynamic-views .tag {
+  color: var(--color-purple);
+}
+body.dynamic-views-tag-color-pink .dynamic-views .tag {
+  color: var(--color-pink);
+}
+body.dynamic-views-tag-color-custom .dynamic-views .tag {
+  color: var(--dynamic-views-tag-color-custom, var(--text-faint));
 }
 
-body.dynamic-views-tag-style-minimal
+/* Pill style: colorful presets also color the border */
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-accent
   .dynamic-views
-  .property-field-2
-  .tag:hover {
-  color: var(
-    --dynamic-views-property-2-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  text-decoration: underline;
+  .tag {
+  border-color: var(--text-accent);
 }
-
-body.dynamic-views-tag-style-minimal .dynamic-views .property-field-3 .tag {
-  color: var(
-    --dynamic-views-property-3-color,
-    var(--dynamic-views-property-master-color, var(--text-faint))
-  );
-}
-
-body.dynamic-views-tag-style-minimal
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-red
   .dynamic-views
-  .property-field-3
-  .tag:hover {
-  color: var(
-    --dynamic-views-property-3-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  text-decoration: underline;
+  .tag {
+  border-color: var(--color-red);
 }
-
-body.dynamic-views-tag-style-minimal .dynamic-views .property-field-4 .tag {
-  color: var(
-    --dynamic-views-property-4-color,
-    var(--dynamic-views-property-master-color, var(--text-faint))
-  );
-}
-
-body.dynamic-views-tag-style-minimal
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-orange
   .dynamic-views
-  .property-field-4
-  .tag:hover {
-  color: var(
-    --dynamic-views-property-4-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
+  .tag {
+  border-color: var(--color-orange);
+}
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-yellow
+  .dynamic-views
+  .tag {
+  border-color: var(--color-yellow);
+}
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-green
+  .dynamic-views
+  .tag {
+  border-color: var(--color-green);
+}
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-cyan
+  .dynamic-views
+  .tag {
+  border-color: var(--color-cyan);
+}
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-blue
+  .dynamic-views
+  .tag {
+  border-color: var(--color-blue);
+}
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-purple
+  .dynamic-views
+  .tag {
+  border-color: var(--color-purple);
+}
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-pink
+  .dynamic-views
+  .tag {
+  border-color: var(--color-pink);
+}
+body.dynamic-views-tag-style-pill.dynamic-views-tag-color-custom
+  .dynamic-views
+  .tag {
+  border-color: var(
+    --dynamic-views-tag-color-custom,
+    var(--background-modifier-border)
   );
-  text-decoration: underline;
 }
 
 .dynamic-views .file-path-segment,
@@ -4216,43 +4544,9 @@ body.dynamic-views-tag-style-minimal
   cursor: pointer;
 }
 
-.dynamic-views .property-field-1 .file-path-segment:hover,
-.dynamic-views .property-field-1 .folder-segment:hover,
-.dynamic-views .property-field-1 .filename-segment:hover {
-  color: var(
-    --dynamic-views-property-1-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  text-decoration: underline;
-}
-
-.dynamic-views .property-field-2 .file-path-segment:hover,
-.dynamic-views .property-field-2 .folder-segment:hover,
-.dynamic-views .property-field-2 .filename-segment:hover {
-  color: var(
-    --dynamic-views-property-2-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  text-decoration: underline;
-}
-
-.dynamic-views .property-field-3 .file-path-segment:hover,
-.dynamic-views .property-field-3 .folder-segment:hover,
-.dynamic-views .property-field-3 .filename-segment:hover {
-  color: var(
-    --dynamic-views-property-3-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
-  text-decoration: underline;
-}
-
-.dynamic-views .property-field-4 .file-path-segment:hover,
-.dynamic-views .property-field-4 .folder-segment:hover,
-.dynamic-views .property-field-4 .filename-segment:hover {
-  color: var(
-    --dynamic-views-property-4-color-hover,
-    var(--dynamic-views-property-master-color-hover, var(--text-muted))
-  );
+.dynamic-views .file-path-segment:hover,
+.dynamic-views .folder-segment:hover,
+.dynamic-views .filename-segment:hover {
   text-decoration: underline;
 }
 
@@ -4278,6 +4572,8 @@ body.dynamic-views-tag-style-minimal
   display: flex;
   flex-direction: column;
   gap: var(--size-4-1);
+  width: 100%;
+  min-width: 0;
 }
 
 .dynamic-views .property-row.property-row-sidebyside {
@@ -4375,23 +4671,55 @@ body.dynamic-views-tag-style-minimal
 }
 
 /* Measured state: use calculated widths from CSS variables, remove 50% cap */
+/* Odd fields (left side) use --field1-width */
 .dynamic-views
   .property-row.property-row-sidebyside.property-measured
   .property-field-1,
 .dynamic-views
   .property-row.property-row-sidebyside.property-measured
-  .property-field-3 {
+  .property-field-3,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-5,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-7,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-9,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-11,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-13 {
   width: var(--field1-width);
   flex: 0 0 auto;
   max-width: none;
 }
 
+/* Even fields (right side) use --field2-width */
 .dynamic-views
   .property-row.property-row-sidebyside.property-measured
   .property-field-2,
 .dynamic-views
   .property-row.property-row-sidebyside.property-measured
-  .property-field-4 {
+  .property-field-4,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-6,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-8,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-10,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-12,
+.dynamic-views
+  .property-row.property-row-sidebyside.property-measured
+  .property-field-14 {
   width: var(--field2-width);
   flex: 0 0 auto;
   max-width: none;
@@ -4412,7 +4740,7 @@ body.dynamic-views-tag-style-minimal
     var(--font-ui-smaller)
   );
   font-family: var(--dynamic-views-property-label-font, inherit);
-  color: var(--dynamic-views-property-label-color, var(--text-faint));
+  color: var(--text-faint);
   margin-bottom: var(--size-2-1);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -4425,7 +4753,7 @@ body.dynamic-views-tag-style-minimal
     var(--font-ui-smaller)
   );
   font-family: var(--dynamic-views-property-label-font, inherit);
-  color: var(--dynamic-views-property-label-color, var(--text-faint));
+  color: var(--text-faint);
   white-space: nowrap;
   flex-shrink: 0;
   z-index: 2;
@@ -4435,57 +4763,781 @@ body.dynamic-views-tag-style-minimal
   align-items: center;
 }
 
-/* Left fields (1, 3) - label on left side */
+/* Property label case transformations */
+body.dynamic-views-property-label-case-lowercase .dynamic-views .property-label,
+body.dynamic-views-property-label-case-lowercase
+  .dynamic-views
+  .property-label-inline {
+  text-transform: lowercase;
+}
+
+body.dynamic-views-property-label-case-uppercase .dynamic-views .property-label,
+body.dynamic-views-property-label-case-uppercase
+  .dynamic-views
+  .property-label-inline {
+  text-transform: uppercase;
+}
+
+/* Property label bold */
+body.dynamic-views-property-label-bold .dynamic-views .property-label,
+body.dynamic-views-property-label-bold .dynamic-views .property-label-inline {
+  font-weight: var(--font-semibold);
+}
+
+/* Property label small caps */
+body.dynamic-views-property-label-small-caps .dynamic-views .property-label,
+body.dynamic-views-property-label-small-caps
+  .dynamic-views
+  .property-label-inline {
+  font-variant: small-caps;
+}
+
+/* Property label color presets */
+body.dynamic-views-property-label-color-faint .dynamic-views .property-label,
+body.dynamic-views-property-label-color-faint
+  .dynamic-views
+  .property-label-inline {
+  color: var(--text-faint);
+}
+
+body.dynamic-views-property-label-color-muted .dynamic-views .property-label,
+body.dynamic-views-property-label-color-muted
+  .dynamic-views
+  .property-label-inline {
+  color: var(--text-muted);
+}
+
+body.dynamic-views-property-label-color-normal .dynamic-views .property-label,
+body.dynamic-views-property-label-color-normal
+  .dynamic-views
+  .property-label-inline {
+  color: var(--text-normal);
+}
+
+body.dynamic-views-property-label-color-accent .dynamic-views .property-label,
+body.dynamic-views-property-label-color-accent
+  .dynamic-views
+  .property-label-inline {
+  color: var(--text-accent);
+}
+
+body.dynamic-views-property-label-color-red .dynamic-views .property-label,
+body.dynamic-views-property-label-color-red
+  .dynamic-views
+  .property-label-inline {
+  color: var(--color-red);
+}
+
+body.dynamic-views-property-label-color-orange .dynamic-views .property-label,
+body.dynamic-views-property-label-color-orange
+  .dynamic-views
+  .property-label-inline {
+  color: var(--color-orange);
+}
+
+body.dynamic-views-property-label-color-yellow .dynamic-views .property-label,
+body.dynamic-views-property-label-color-yellow
+  .dynamic-views
+  .property-label-inline {
+  color: var(--color-yellow);
+}
+
+body.dynamic-views-property-label-color-green .dynamic-views .property-label,
+body.dynamic-views-property-label-color-green
+  .dynamic-views
+  .property-label-inline {
+  color: var(--color-green);
+}
+
+body.dynamic-views-property-label-color-cyan .dynamic-views .property-label,
+body.dynamic-views-property-label-color-cyan
+  .dynamic-views
+  .property-label-inline {
+  color: var(--color-cyan);
+}
+
+body.dynamic-views-property-label-color-blue .dynamic-views .property-label,
+body.dynamic-views-property-label-color-blue
+  .dynamic-views
+  .property-label-inline {
+  color: var(--color-blue);
+}
+
+body.dynamic-views-property-label-color-purple .dynamic-views .property-label,
+body.dynamic-views-property-label-color-purple
+  .dynamic-views
+  .property-label-inline {
+  color: var(--color-purple);
+}
+
+body.dynamic-views-property-label-color-pink .dynamic-views .property-label,
+body.dynamic-views-property-label-color-pink
+  .dynamic-views
+  .property-label-inline {
+  color: var(--color-pink);
+}
+
+body.dynamic-views-property-label-color-custom .dynamic-views .property-label,
+body.dynamic-views-property-label-color-custom
+  .dynamic-views
+  .property-label-inline {
+  color: var(--dynamic-views-property-label-color-custom, var(--text-faint));
+}
+
+/* Property text color presets */
+body.dynamic-views-property-color-faint .dynamic-views .property-field {
+  color: var(--text-faint);
+}
+body.dynamic-views-property-color-muted .dynamic-views .property-field {
+  color: var(--text-muted);
+}
+body.dynamic-views-property-color-normal .dynamic-views .property-field {
+  color: var(--text-normal);
+}
+body.dynamic-views-property-color-accent .dynamic-views .property-field {
+  color: var(--text-accent);
+}
+body.dynamic-views-property-color-red .dynamic-views .property-field {
+  color: var(--color-red);
+}
+body.dynamic-views-property-color-orange .dynamic-views .property-field {
+  color: var(--color-orange);
+}
+body.dynamic-views-property-color-yellow .dynamic-views .property-field {
+  color: var(--color-yellow);
+}
+body.dynamic-views-property-color-green .dynamic-views .property-field {
+  color: var(--color-green);
+}
+body.dynamic-views-property-color-cyan .dynamic-views .property-field {
+  color: var(--color-cyan);
+}
+body.dynamic-views-property-color-blue .dynamic-views .property-field {
+  color: var(--color-blue);
+}
+body.dynamic-views-property-color-purple .dynamic-views .property-field {
+  color: var(--color-purple);
+}
+body.dynamic-views-property-color-pink .dynamic-views .property-field {
+  color: var(--color-pink);
+}
+body.dynamic-views-property-color-custom .dynamic-views .property-field {
+  color: var(--dynamic-views-property-color-custom, var(--text-faint));
+}
+
+/* Links in properties use Obsidian default colors (not property text color) */
+.dynamic-views .property-field a.internal-link {
+  color: var(--link-color);
+}
+.dynamic-views .property-field a.internal-link:hover {
+  color: var(--link-color-hover);
+}
+.dynamic-views .property-field a.external-link {
+  color: var(--link-external-color);
+}
+.dynamic-views .property-field a.external-link:hover {
+  color: var(--link-external-color-hover);
+}
+
+/* Subtitle color presets */
+body.dynamic-views-subtitle-color-faint .dynamic-views .card-subtitle {
+  color: var(--text-faint);
+}
+
+body.dynamic-views-subtitle-color-muted .dynamic-views .card-subtitle {
+  color: var(--text-muted);
+}
+
+body.dynamic-views-subtitle-color-normal .dynamic-views .card-subtitle {
+  color: var(--text-normal);
+}
+
+body.dynamic-views-subtitle-color-accent .dynamic-views .card-subtitle {
+  color: var(--text-accent);
+}
+
+body.dynamic-views-subtitle-color-red .dynamic-views .card-subtitle {
+  color: var(--color-red);
+}
+
+body.dynamic-views-subtitle-color-orange .dynamic-views .card-subtitle {
+  color: var(--color-orange);
+}
+
+body.dynamic-views-subtitle-color-yellow .dynamic-views .card-subtitle {
+  color: var(--color-yellow);
+}
+
+body.dynamic-views-subtitle-color-green .dynamic-views .card-subtitle {
+  color: var(--color-green);
+}
+
+body.dynamic-views-subtitle-color-cyan .dynamic-views .card-subtitle {
+  color: var(--color-cyan);
+}
+
+body.dynamic-views-subtitle-color-blue .dynamic-views .card-subtitle {
+  color: var(--color-blue);
+}
+
+body.dynamic-views-subtitle-color-purple .dynamic-views .card-subtitle {
+  color: var(--color-purple);
+}
+
+body.dynamic-views-subtitle-color-pink .dynamic-views .card-subtitle {
+  color: var(--color-pink);
+}
+
+body.dynamic-views-subtitle-color-custom .dynamic-views .card-subtitle {
+  color: var(--dynamic-views-subtitle-color-custom, var(--text-faint));
+}
+
+/* Text preview color presets */
+body.dynamic-views-text-preview-color-faint .dynamic-views .card-text-preview {
+  color: var(--text-faint);
+}
+
+body.dynamic-views-text-preview-color-muted .dynamic-views .card-text-preview {
+  color: var(--text-muted);
+}
+
+body.dynamic-views-text-preview-color-normal .dynamic-views .card-text-preview {
+  color: var(--text-normal);
+}
+
+body.dynamic-views-text-preview-color-accent .dynamic-views .card-text-preview {
+  color: var(--text-accent);
+}
+
+body.dynamic-views-text-preview-color-red .dynamic-views .card-text-preview {
+  color: var(--color-red);
+}
+
+body.dynamic-views-text-preview-color-orange .dynamic-views .card-text-preview {
+  color: var(--color-orange);
+}
+
+body.dynamic-views-text-preview-color-yellow .dynamic-views .card-text-preview {
+  color: var(--color-yellow);
+}
+
+body.dynamic-views-text-preview-color-green .dynamic-views .card-text-preview {
+  color: var(--color-green);
+}
+
+body.dynamic-views-text-preview-color-cyan .dynamic-views .card-text-preview {
+  color: var(--color-cyan);
+}
+
+body.dynamic-views-text-preview-color-blue .dynamic-views .card-text-preview {
+  color: var(--color-blue);
+}
+
+body.dynamic-views-text-preview-color-purple .dynamic-views .card-text-preview {
+  color: var(--color-purple);
+}
+
+body.dynamic-views-text-preview-color-pink .dynamic-views .card-text-preview {
+  color: var(--color-pink);
+}
+
+body.dynamic-views-text-preview-color-custom .dynamic-views .card-text-preview {
+  color: var(--dynamic-views-text-preview-color-custom, var(--text-muted));
+}
+
+/* Title color presets */
+body.dynamic-views-title-color-faint .dynamic-views .card-title {
+  color: var(--text-faint);
+}
+
+body.dynamic-views-title-color-muted .dynamic-views .card-title {
+  color: var(--text-muted);
+}
+
+body.dynamic-views-title-color-normal .dynamic-views .card-title {
+  color: var(--text-normal);
+}
+
+body.dynamic-views-title-color-accent .dynamic-views .card-title {
+  color: var(--text-accent);
+}
+
+body.dynamic-views-title-color-red .dynamic-views .card-title {
+  color: var(--color-red);
+}
+
+body.dynamic-views-title-color-orange .dynamic-views .card-title {
+  color: var(--color-orange);
+}
+
+body.dynamic-views-title-color-yellow .dynamic-views .card-title {
+  color: var(--color-yellow);
+}
+
+body.dynamic-views-title-color-green .dynamic-views .card-title {
+  color: var(--color-green);
+}
+
+body.dynamic-views-title-color-cyan .dynamic-views .card-title {
+  color: var(--color-cyan);
+}
+
+body.dynamic-views-title-color-blue .dynamic-views .card-title {
+  color: var(--color-blue);
+}
+
+body.dynamic-views-title-color-purple .dynamic-views .card-title {
+  color: var(--color-purple);
+}
+
+body.dynamic-views-title-color-pink .dynamic-views .card-title {
+  color: var(--color-pink);
+}
+
+body.dynamic-views-title-color-custom .dynamic-views .card-title {
+  color: var(--dynamic-views-title-color-custom, var(--text-normal));
+}
+
+/* ============================================
+   HOVER COLOR RULES FOR CLICKABLE ELEMENTS
+   ============================================ */
+
+@media (hover: hover) {
+  /* Title hover colors (when open-on-title enabled) */
+  body.dynamic-views-open-on-title.dynamic-views-title-color-faint
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: var(--text-muted);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-muted
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: var(--text-normal);
+  }
+  /* Normal - no hover color change */
+  body.dynamic-views-open-on-title.dynamic-views-title-color-accent
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: var(--text-accent-hover);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-red
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: color-mix(in hsl, var(--color-red), white 15%);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-orange
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: color-mix(in hsl, var(--color-orange), white 15%);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-yellow
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: color-mix(in hsl, var(--color-yellow), white 15%);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-green
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: color-mix(in hsl, var(--color-green), white 15%);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-cyan
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: color-mix(in hsl, var(--color-cyan), white 15%);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-blue
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: color-mix(in hsl, var(--color-blue), white 15%);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-purple
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: color-mix(in hsl, var(--color-purple), white 15%);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-pink
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: color-mix(in hsl, var(--color-pink), white 15%);
+  }
+  body.dynamic-views-open-on-title.dynamic-views-title-color-custom
+    .dynamic-views
+    .card-title
+    a:hover {
+    color: var(
+      --dynamic-views-title-color-custom-hover,
+      var(--dynamic-views-title-color-custom, var(--text-normal))
+    );
+  }
+
+  /* Subtitle hover colors (when clickable) */
+  body.dynamic-views-subtitle-color-faint
+    .dynamic-views
+    .card-subtitle
+    a:hover {
+    color: var(--text-muted);
+  }
+  body.dynamic-views-subtitle-color-muted
+    .dynamic-views
+    .card-subtitle
+    a:hover {
+    color: var(--text-normal);
+  }
+  /* Normal - no hover color change */
+  body.dynamic-views-subtitle-color-accent
+    .dynamic-views
+    .card-subtitle
+    a:hover {
+    color: var(--text-accent-hover);
+  }
+  body.dynamic-views-subtitle-color-red .dynamic-views .card-subtitle a:hover {
+    color: color-mix(in hsl, var(--color-red), white 15%);
+  }
+  body.dynamic-views-subtitle-color-orange
+    .dynamic-views
+    .card-subtitle
+    a:hover {
+    color: color-mix(in hsl, var(--color-orange), white 15%);
+  }
+  body.dynamic-views-subtitle-color-yellow
+    .dynamic-views
+    .card-subtitle
+    a:hover {
+    color: color-mix(in hsl, var(--color-yellow), white 15%);
+  }
+  body.dynamic-views-subtitle-color-green
+    .dynamic-views
+    .card-subtitle
+    a:hover {
+    color: color-mix(in hsl, var(--color-green), white 15%);
+  }
+  body.dynamic-views-subtitle-color-cyan .dynamic-views .card-subtitle a:hover {
+    color: color-mix(in hsl, var(--color-cyan), white 15%);
+  }
+  body.dynamic-views-subtitle-color-blue .dynamic-views .card-subtitle a:hover {
+    color: color-mix(in hsl, var(--color-blue), white 15%);
+  }
+  body.dynamic-views-subtitle-color-purple
+    .dynamic-views
+    .card-subtitle
+    a:hover {
+    color: color-mix(in hsl, var(--color-purple), white 15%);
+  }
+  body.dynamic-views-subtitle-color-pink .dynamic-views .card-subtitle a:hover {
+    color: color-mix(in hsl, var(--color-pink), white 15%);
+  }
+  body.dynamic-views-subtitle-color-custom
+    .dynamic-views
+    .card-subtitle
+    a:hover {
+    color: var(
+      --dynamic-views-subtitle-color-custom-hover,
+      var(--dynamic-views-subtitle-color-custom, var(--text-faint))
+    );
+  }
+
+  /* Property hover colors (for clickable links and path segments, excluding tags) */
+  body.dynamic-views-property-color-faint
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-faint
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: var(--text-muted);
+  }
+  body.dynamic-views-property-color-muted
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-muted
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: var(--text-normal);
+  }
+  /* Normal - no hover color change */
+  body.dynamic-views-property-color-accent
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-accent
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: var(--text-accent-hover);
+  }
+  body.dynamic-views-property-color-red
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-red
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: color-mix(in hsl, var(--color-red), white 15%);
+  }
+  body.dynamic-views-property-color-orange
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-orange
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: color-mix(in hsl, var(--color-orange), white 15%);
+  }
+  body.dynamic-views-property-color-yellow
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-yellow
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: color-mix(in hsl, var(--color-yellow), white 15%);
+  }
+  body.dynamic-views-property-color-green
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-green
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: color-mix(in hsl, var(--color-green), white 15%);
+  }
+  body.dynamic-views-property-color-cyan
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-cyan
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: color-mix(in hsl, var(--color-cyan), white 15%);
+  }
+  body.dynamic-views-property-color-blue
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-blue
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: color-mix(in hsl, var(--color-blue), white 15%);
+  }
+  body.dynamic-views-property-color-purple
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-purple
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: color-mix(in hsl, var(--color-purple), white 15%);
+  }
+  body.dynamic-views-property-color-pink
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-pink
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: color-mix(in hsl, var(--color-pink), white 15%);
+  }
+  body.dynamic-views-property-color-custom
+    .dynamic-views
+    .property-content
+    a:not(.tag):not(.internal-link):not(.external-link):hover,
+  body.dynamic-views-property-color-custom
+    .dynamic-views
+    .property-content
+    :is(.file-path-segment, .folder-segment, .filename-segment):hover {
+    color: var(--dynamic-views-property-color-custom-hover, var(--text-muted));
+  }
+
+  /* Tag hover colors */
+  body.dynamic-views-tag-color-faint .dynamic-views .tag:hover {
+    color: var(--text-muted);
+  }
+  body.dynamic-views-tag-color-muted .dynamic-views .tag:hover {
+    color: var(--text-normal);
+  }
+  /* Normal - no hover color change */
+  body.dynamic-views-tag-color-accent .dynamic-views .tag:hover {
+    color: var(--text-accent-hover);
+  }
+  body.dynamic-views-tag-color-red .dynamic-views .tag:hover {
+    color: color-mix(in hsl, var(--color-red), white 15%);
+  }
+  body.dynamic-views-tag-color-orange .dynamic-views .tag:hover {
+    color: color-mix(in hsl, var(--color-orange), white 15%);
+  }
+  body.dynamic-views-tag-color-yellow .dynamic-views .tag:hover {
+    color: color-mix(in hsl, var(--color-yellow), white 15%);
+  }
+  body.dynamic-views-tag-color-green .dynamic-views .tag:hover {
+    color: color-mix(in hsl, var(--color-green), white 15%);
+  }
+  body.dynamic-views-tag-color-cyan .dynamic-views .tag:hover {
+    color: color-mix(in hsl, var(--color-cyan), white 15%);
+  }
+  body.dynamic-views-tag-color-blue .dynamic-views .tag:hover {
+    color: color-mix(in hsl, var(--color-blue), white 15%);
+  }
+  body.dynamic-views-tag-color-purple .dynamic-views .tag:hover {
+    color: color-mix(in hsl, var(--color-purple), white 15%);
+  }
+  body.dynamic-views-tag-color-pink .dynamic-views .tag:hover {
+    color: color-mix(in hsl, var(--color-pink), white 15%);
+  }
+  body.dynamic-views-tag-color-custom .dynamic-views .tag:hover {
+    color: var(--dynamic-views-tag-color-custom-hover, var(--text-muted));
+  }
+
+  /* Pill border hover colors for colorful presets */
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-red
+    .dynamic-views
+    .tag:hover {
+    border-color: color-mix(in hsl, var(--color-red), white 15%);
+  }
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-orange
+    .dynamic-views
+    .tag:hover {
+    border-color: color-mix(in hsl, var(--color-orange), white 15%);
+  }
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-yellow
+    .dynamic-views
+    .tag:hover {
+    border-color: color-mix(in hsl, var(--color-yellow), white 15%);
+  }
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-green
+    .dynamic-views
+    .tag:hover {
+    border-color: color-mix(in hsl, var(--color-green), white 15%);
+  }
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-cyan
+    .dynamic-views
+    .tag:hover {
+    border-color: color-mix(in hsl, var(--color-cyan), white 15%);
+  }
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-blue
+    .dynamic-views
+    .tag:hover {
+    border-color: color-mix(in hsl, var(--color-blue), white 15%);
+  }
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-purple
+    .dynamic-views
+    .tag:hover {
+    border-color: color-mix(in hsl, var(--color-purple), white 15%);
+  }
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-pink
+    .dynamic-views
+    .tag:hover {
+    border-color: color-mix(in hsl, var(--color-pink), white 15%);
+  }
+  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-custom
+    .dynamic-views
+    .tag:hover {
+    border-color: var(
+      --dynamic-views-tag-color-custom-hover,
+      var(--background-modifier-border-hover)
+    );
+  }
+}
+
+/* Odd fields (left side) - label padding */
 .dynamic-views
   .property-row-sidebyside
-  .property-field-1
-  .property-label-inline,
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-3
+  :is(
+    .property-field-1,
+    .property-field-3,
+    .property-field-5,
+    .property-field-7,
+    .property-field-9,
+    .property-field-11,
+    .property-field-13
+  )
   .property-label-inline {
   padding-right: var(--size-4-1);
 }
 
-/* Right fields (2, 4) - label on right side */
+/* Even fields (right side) - label padding and order */
 .dynamic-views
   .property-row-sidebyside
-  .property-field-2
-  .property-label-inline,
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-4
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
   .property-label-inline {
   padding-left: var(--size-4-1);
-}
-
-/* Right fields (2, 4) - visual order: content before label */
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-2
-  .property-label-inline,
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-4
-  .property-label-inline {
   order: 2;
 }
 
-.dynamic-views .property-row-sidebyside .property-field-2 .property-content,
-.dynamic-views .property-row-sidebyside .property-field-4 .property-content {
+/* Even fields (right side) - content before label */
+.dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-content {
   order: 1;
 }
 
-/* Alignment for labels in side-by-side layout */
-/* Left fields (1, 3) - left-aligned labels */
-.dynamic-views .property-row-sidebyside .property-field-1 .property-label,
-.dynamic-views .property-row-sidebyside .property-field-3 .property-label {
+/* Odd fields (left side) - left-aligned labels */
+.dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-1,
+    .property-field-3,
+    .property-field-5,
+    .property-field-7,
+    .property-field-9,
+    .property-field-11,
+    .property-field-13
+  )
+  .property-label {
   text-align: left;
 }
 
-/* Right fields (2, 4) - right-aligned labels */
-.dynamic-views .property-row-sidebyside .property-field-2 .property-label,
-.dynamic-views .property-row-sidebyside .property-field-4 .property-label {
+/* Even fields (right side) - right-aligned labels */
+.dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-label {
   text-align: right;
 }
 
@@ -4497,13 +5549,13 @@ body.dynamic-views-tag-style-minimal
   flex-shrink: 0;
   white-space: nowrap;
   height: var(--dynamic-views-property-content-height, 20px);
-  color: var(--text-muted);
+  color: inherit;
   min-width: 0;
   flex: 0 0 auto;
   width: max-content;
 }
 
-/* Empty value marker styling */
+/* Empty value marker styling (inherited by default, faded when enabled) */
 body.dynamic-views-fade-empty-marker
   .dynamic-views
   .property-content
@@ -4511,16 +5563,19 @@ body.dynamic-views-fade-empty-marker
   color: var(--text-faint);
 }
 
-body:not(.dynamic-views-fade-empty-marker)
-  .dynamic-views
-  .property-content
-  > span.empty-value-marker {
-  color: inherit;
-}
-
-/* Right fields - content should fill wrapper width to enable proper alignment, but expand when needed for scrolling */
-.dynamic-views .property-row-sidebyside .property-field-2 .property-content,
-.dynamic-views .property-row-sidebyside .property-field-4 .property-content {
+/* Even fields (right side) - content should fill wrapper width for proper alignment */
+.dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-content {
   min-width: 100%;
   width: max-content;
   justify-content: flex-end;
@@ -4543,13 +5598,9 @@ body:not(.dynamic-views-fade-empty-marker)
   display: inline;
 }
 
-/* List separator styling */
+/* List separator styling (inherited by default, faded when enabled) */
 body.dynamic-views-fade-list-separator .dynamic-views .list-separator {
   color: var(--text-faint);
-}
-
-body:not(.dynamic-views-fade-list-separator) .dynamic-views .list-separator {
-  color: inherit;
 }
 
 /* Measurement state: remove min-width to allow natural sizing */
@@ -4560,60 +5611,50 @@ body:not(.dynamic-views-fade-list-separator) .dynamic-views .list-separator {
 }
 
 /* Alignment via justify-content on meta-content wrapper */
-/* Left fields (1, 3) */
-.dynamic-views .property-row-sidebyside .property-field-1 .property-content,
-.dynamic-views .property-row-sidebyside .property-field-3 .property-content {
+/* Odd fields (left side) */
+.dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-1,
+    .property-field-3,
+    .property-field-5,
+    .property-field-7,
+    .property-field-9,
+    .property-field-11,
+    .property-field-13
+  )
+  .property-content {
   justify-content: flex-start;
 }
 
-/* Right fields (2, 4) - align content right when not scrollable AND using inline labels */
+/* Even fields (right side) - align content right when not scrollable */
 .dynamic-views
   .property-row-sidebyside
-  .property-field-2:not(.is-scrollable):has(.property-label-inline)
-  .property-content-wrapper,
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-4:not(.is-scrollable):has(.property-label-inline)
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  ):not(.is-scrollable)
   .property-content-wrapper {
   justify-content: flex-end;
 }
 
-/* Right fields (2, 4) - align content right when not scrollable AND using labels-on-top */
+/* Even fields (right side) - align content left when scrollable */
 .dynamic-views
   .property-row-sidebyside
-  .property-field-2:not(.is-scrollable):has(.property-label)
-  .property-content-wrapper,
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-4:not(.is-scrollable):has(.property-label)
-  .property-content-wrapper {
-  justify-content: flex-end;
-}
-
-/* Right fields (2, 4) - align content right when not scrollable AND no labels */
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-2:not(.is-scrollable):not(:has(.property-label)):not(
-    :has(.property-label-inline)
-  )
-  .property-content-wrapper,
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-4:not(.is-scrollable):not(:has(.property-label)):not(
-    :has(.property-label-inline)
-  )
-  .property-content-wrapper {
-  justify-content: flex-end;
-}
-
-/* Right fields (2, 4) - align content left when scrollable */
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-2.is-scrollable
-  .property-content-wrapper,
-.dynamic-views
-  .property-row-sidebyside
-  .property-field-4.is-scrollable
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  ).is-scrollable
   .property-content-wrapper {
   justify-content: flex-start;
 }
@@ -4628,10 +5669,16 @@ body:not(.dynamic-views-fade-list-separator) .dynamic-views .list-separator {
   display: none;
 }
 
-/* Gradient masks for scrollable content - unified approach with wrapper */
-body.dynamic-views-fade-trimmed-content
+/* Gradient masks for scrollable content (when enabled via Style Settings) */
+body.dynamic-views-fade-truncated-text
   .dynamic-views
-  .property-content-wrapper.scroll-gradient-left {
+  .property-content-wrapper.scroll-gradient-left,
+body.dynamic-views-fade-truncated-text
+  .dynamic-views
+  .card-subtitle.scroll-gradient-left,
+body.dynamic-views-fade-truncated-text
+  .dynamic-views
+  .card-title.scroll-gradient-left {
   mask-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0) 0,
@@ -4648,9 +5695,15 @@ body.dynamic-views-fade-trimmed-content
   );
 }
 
-body.dynamic-views-fade-trimmed-content
+body.dynamic-views-fade-truncated-text
   .dynamic-views
-  .property-content-wrapper.scroll-gradient-right {
+  .property-content-wrapper.scroll-gradient-right,
+body.dynamic-views-fade-truncated-text
+  .dynamic-views
+  .card-subtitle.scroll-gradient-right,
+body.dynamic-views-fade-truncated-text
+  .dynamic-views
+  .card-title.scroll-gradient-right {
   mask-image: linear-gradient(
     to right,
     black 0,
@@ -4667,9 +5720,15 @@ body.dynamic-views-fade-trimmed-content
   );
 }
 
-body.dynamic-views-fade-trimmed-content
+body.dynamic-views-fade-truncated-text
   .dynamic-views
-  .property-content-wrapper.scroll-gradient-both {
+  .property-content-wrapper.scroll-gradient-both,
+body.dynamic-views-fade-truncated-text
+  .dynamic-views
+  .card-subtitle.scroll-gradient-both,
+body.dynamic-views-fade-truncated-text
+  .dynamic-views
+  .card-title.scroll-gradient-both {
   mask-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0) 0,

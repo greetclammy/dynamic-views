@@ -67,6 +67,13 @@ export function getTagStyle(): "plain" | "theme" | "minimal" {
 }
 
 /**
+ * Check if tag hash (#) prefix should be shown
+ */
+export function showTagHashPrefix(): boolean {
+  return hasBodyClass("dynamic-views-show-tag-hash");
+}
+
+/**
  * Get card spacing from CSS variable
  */
 export function getCardSpacing(): number {
@@ -145,6 +152,13 @@ export function shouldHideMissingProperties(): boolean {
  */
 export function shouldHideEmptyProperties(): boolean {
   return hasBodyClass("dynamic-views-hide-empty-properties");
+}
+
+/**
+ * Get zoom sensitivity from Style Settings
+ */
+export function getZoomSensitivity(): number {
+  return getCSSVariableAsNumber("--dynamic-views-zoom-sensitivity", 0.15);
 }
 
 /**
