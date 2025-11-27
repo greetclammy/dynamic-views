@@ -533,11 +533,11 @@ export function readBasesSettings(
     })(),
     propertyLayout12SideBySide: Boolean(
       config.get("propertyLayout12SideBySide") ??
-        defaultViewSettings.propertyLayout12SideBySide,
+      defaultViewSettings.propertyLayout12SideBySide,
     ),
     propertyLayout34SideBySide: Boolean(
       config.get("propertyLayout34SideBySide") ??
-        defaultViewSettings.propertyLayout34SideBySide,
+      defaultViewSettings.propertyLayout34SideBySide,
     ),
     propertyDisplay5: (() => {
       const value = config.get("propertyDisplay5");
@@ -555,7 +555,7 @@ export function readBasesSettings(
     })(),
     propertyLayout56SideBySide: Boolean(
       config.get("propertyLayout56SideBySide") ??
-        defaultViewSettings.propertyLayout56SideBySide,
+      defaultViewSettings.propertyLayout56SideBySide,
     ),
     propertyDisplay7: (() => {
       const value = config.get("propertyDisplay7");
@@ -573,7 +573,7 @@ export function readBasesSettings(
     })(),
     propertyLayout78SideBySide: Boolean(
       config.get("propertyLayout78SideBySide") ??
-        defaultViewSettings.propertyLayout78SideBySide,
+      defaultViewSettings.propertyLayout78SideBySide,
     ),
     propertyDisplay9: (() => {
       const value = config.get("propertyDisplay9");
@@ -591,7 +591,7 @@ export function readBasesSettings(
     })(),
     propertyLayout910SideBySide: Boolean(
       config.get("propertyLayout910SideBySide") ??
-        defaultViewSettings.propertyLayout910SideBySide,
+      defaultViewSettings.propertyLayout910SideBySide,
     ),
     propertyDisplay11: (() => {
       const value = config.get("propertyDisplay11");
@@ -609,7 +609,7 @@ export function readBasesSettings(
     })(),
     propertyLayout1112SideBySide: Boolean(
       config.get("propertyLayout1112SideBySide") ??
-        defaultViewSettings.propertyLayout1112SideBySide,
+      defaultViewSettings.propertyLayout1112SideBySide,
     ),
     propertyDisplay13: (() => {
       const value = config.get("propertyDisplay13");
@@ -627,7 +627,7 @@ export function readBasesSettings(
     })(),
     propertyLayout1314SideBySide: Boolean(
       config.get("propertyLayout1314SideBySide") ??
-        defaultViewSettings.propertyLayout1314SideBySide,
+      defaultViewSettings.propertyLayout1314SideBySide,
     ),
     propertyGroup1Position: (() => {
       const value = config.get("propertyGroup1Position");
@@ -678,8 +678,27 @@ export function readBasesSettings(
         : defaultViewSettings.propertyLabels;
     })(),
     imageFormat: (() => {
-      const value = config.get("imageFormat");
-      return value === "thumbnail-left" ||
+      const format = config.get("imageFormat");
+      const position = config.get("imagePosition");
+
+      // Handle "none" directly
+      if (format === "none") return "none";
+
+      // Combine format + position (e.g., "cover" + "top" → "cover-top")
+      if (
+        (format === "thumbnail" || format === "cover") &&
+        (position === "left" ||
+          position === "right" ||
+          position === "top" ||
+          position === "bottom")
+      ) {
+        return `${format}-${position}` as Settings["imageFormat"];
+      }
+
+      // Check if already a combined value (legacy/direct)
+      const value = format;
+      if (
+        value === "thumbnail-left" ||
         value === "thumbnail-right" ||
         value === "thumbnail-top" ||
         value === "thumbnail-bottom" ||
@@ -688,8 +707,11 @@ export function readBasesSettings(
         value === "cover-top" ||
         value === "cover-bottom" ||
         value === "none"
-        ? value
-        : defaultViewSettings.imageFormat;
+      ) {
+        return value;
+      }
+
+      return defaultViewSettings.imageFormat;
     })(),
     coverFitMode: (() => {
       const value = config.get("coverFitMode");

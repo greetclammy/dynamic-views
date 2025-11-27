@@ -1308,8 +1308,6 @@ export function View({
     (e: MouseEvent) => {
       e.stopPropagation();
       const limit = parseInt(resultLimit);
-      const count = limit > 0 && totalCount > limit ? limit : totalCount;
-      const text = `Copied ${count} result${count === 1 ? "" : "s"} to clipboard`;
 
       const links = sorted
         .slice(0, limit > 0 ? limit : sorted.length)
@@ -1317,11 +1315,8 @@ export function View({
         .join("\n");
 
       void navigator.clipboard.writeText(links);
-
-      // TODO: Show notification
-      console.log(text);
     },
-    [resultLimit, totalCount, sorted],
+    [resultLimit, sorted],
   );
 
   const handleSettingsChange = dc.useCallback(

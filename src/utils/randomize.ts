@@ -152,44 +152,23 @@ export function toggleShuffleActiveView(app: App): void {
     // Dynamic views have the isShuffled property for persistent shuffle
     const dynamicView = basesView as DynamicBasesView;
     const currentState = dynamicView.isShuffled ?? false;
-    console.log(
-      "// [Shuffle Debug] toggleShuffle - current state:",
-      currentState,
-    );
-    console.log("// [Shuffle Debug] basesView type:", basesView.type);
 
     dynamicView.isShuffled = !currentState;
 
     // If enabling shuffle, create shuffled order
     if (dynamicView.isShuffled) {
       const entries = basesView.data?.data;
-      console.log(
-        "// [Shuffle Debug] Enabling shuffle, entries.length:",
-        entries?.length,
-      );
       if (entries && entries.length > 0) {
         const paths = entries.map((e) => e.file.path);
         dynamicView.shuffledOrder = shuffleArray([...paths]);
-        console.log(
-          "// [Shuffle Debug] Created shuffledOrder.length:",
-          dynamicView.shuffledOrder.length,
-        );
-        console.log(
-          "// [Shuffle Debug] First 3 shuffled paths:",
-          dynamicView.shuffledOrder.slice(0, 3),
-        );
       }
     } else {
       // Clear shuffled order when disabling
-      console.log(
-        "// [Shuffle Debug] Disabling shuffle, clearing shuffledOrder",
-      );
       dynamicView.shuffledOrder = [];
     }
 
     // Trigger re-render
     if (dynamicView.onDataUpdated) {
-      console.log("// [Shuffle Debug] Triggering onDataUpdated");
       dynamicView.onDataUpdated();
     }
   } else {

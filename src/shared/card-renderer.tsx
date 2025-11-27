@@ -269,21 +269,11 @@ function CoverCarousel({
 
       if (!oldSlide || !newSlide) return;
 
-      console.log("// CAROUSEL TRANSITION (Datacore):", {
-        from: currentSlide,
-        to: newIndex,
-        direction,
-        oldClasses: oldSlide.className,
-        newClasses: newSlide.className,
-      });
-
       // Position new slide off-screen in the direction it will enter from
       newSlide.classList.remove("is-active", "slide-left", "slide-right");
       newSlide.classList.add(
         direction === "next" ? "slide-right" : "slide-left",
       );
-
-      console.log("// After positioning new slide:", newSlide.className);
 
       // Force reflow to ensure position is set before transition
       void (newSlide as HTMLElement).offsetHeight;
@@ -301,11 +291,6 @@ function CoverCarousel({
       setTimeout(() => {
         newSlide.classList.remove("slide-left", "slide-right");
       }, 310);
-
-      console.log("// After transition:", {
-        oldClasses: oldSlide.className,
-        newClasses: newSlide.className,
-      });
 
       currentSlide = newIndex;
     };
@@ -1153,96 +1138,7 @@ function Card({
             };
 
             // Initial calculation
-            const {
-              cardWidth: _cardWidth,
-              targetWidth,
-              paddingValue,
-            } = updateWrapperDimensions();
-
-            // Debug: Check if variable is actually set
-            const cardComputed = getComputedStyle(cardEl);
-            console.log(
-              "[CSS Variable Check]",
-              "cardEl classes:",
-              cardEl.className,
-              "--side-cover-width on card style:",
-              cardEl.style.getPropertyValue("--dynamic-views-side-cover-width"),
-              "card computed --side-cover-width:",
-              cardComputed.getPropertyValue("--dynamic-views-side-cover-width"),
-            );
-
-            // Debug logging
-            const computedStyle = cardComputed;
-            console.log(
-              "[Side Cover Debug - card-renderer]",
-              "cardPath:",
-              card.path,
-              "position:",
-              position,
-              "aspectRatio:",
-              aspectRatio,
-              "wrapperRatio:",
-              wrapperRatio,
-              "cardOffsetWidth:",
-              cardEl.offsetWidth,
-              "cardClientWidth:",
-              cardEl.clientWidth,
-              "padding:",
-              computedStyle.padding,
-              "targetWidth:",
-              targetWidth,
-              "paddingValue:",
-              paddingValue,
-            );
-
-            // Check rendered dimensions after DOM updates
-            setTimeout(() => {
-              const wrapper = cardEl.querySelector(
-                ".card-cover-wrapper",
-              ) as HTMLElement;
-              const cover = cardEl.querySelector(".card-cover") as HTMLElement;
-              const img = cardEl.querySelector(
-                ".card-cover img",
-              ) as HTMLElement;
-              if (wrapper && cover && img) {
-                const wrapperComputed = getComputedStyle(wrapper);
-                console.log(
-                  "[Wrapper CSS Debug - card-renderer]",
-                  "wrapper classes:",
-                  wrapper.className,
-                  "wrapper.style.width:",
-                  wrapper.style.width,
-                  "wrapper parent is card:",
-                  wrapper.parentElement === cardEl,
-                  "wrapper CSS width value:",
-                  wrapperComputed.getPropertyValue("width"),
-                  "wrapper resolves variable:",
-                  wrapperComputed.getPropertyValue(
-                    "--dynamic-views-side-cover-width",
-                  ),
-                );
-
-                console.log(
-                  "[Side Cover Rendered - card-renderer]",
-                  "cardPath:",
-                  card.path,
-                  "position:",
-                  position,
-                  "wrapperWidth:",
-                  wrapper.offsetWidth,
-                  "wrapperComputedWidth:",
-                  wrapperComputed.width,
-                  "coverWidth:",
-                  cover.offsetWidth,
-                  "coverComputedWidth:",
-                  getComputedStyle(cover).width,
-                  "imgWidth:",
-                  img.offsetWidth,
-                  "imgComputedWidth:",
-                  getComputedStyle(img).width,
-                );
-              }
-            }, 200);
+            updateWrapperDimensions();
 
             // Create ResizeObserver to update wrapper width when card resizes
             const resizeObserver = new ResizeObserver((entries) => {
@@ -1252,9 +1148,6 @@ function Card({
 
                 // Skip if card not yet rendered (width = 0)
                 if (newCardWidth === 0) {
-                  console.log(
-                    "[Side Cover Resize - card-renderer] Skipped - cardWidth is 0",
-                  );
                   continue;
                 }
 
@@ -1268,18 +1161,6 @@ function Card({
                 cardEl.style.setProperty(
                   "--dynamic-views-side-cover-content-padding",
                   `${newPaddingValue}px`,
-                );
-
-                console.log(
-                  "[Side Cover Resize - card-renderer]",
-                  "cardPath:",
-                  card.path,
-                  "newCardWidth:",
-                  newCardWidth,
-                  "newTargetWidth:",
-                  newTargetWidth,
-                  "newPaddingValue:",
-                  newPaddingValue,
                 );
               }
             });

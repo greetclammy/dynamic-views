@@ -334,14 +334,12 @@ export class DynamicViewsMasonryView extends BasesView {
       const containerWidth = this.masonryContainer.clientWidth;
 
       // Calculate layout using shared logic
-      const gap = getCardSpacing();
-      console.log("masonry calc:", { containerWidth, cardSize: settings.cardSize, minColumns, gap });
       const result = calculateMasonryLayout({
         cards,
         containerWidth,
         cardSize: settings.cardSize,
         minColumns,
-        gap,
+        gap: getCardSpacing(),
       });
 
       // Apply layout to DOM

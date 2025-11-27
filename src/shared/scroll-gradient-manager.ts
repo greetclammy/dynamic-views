@@ -93,9 +93,11 @@ export function setupScrollGradients(
 
     if (!wrapper) return;
 
-    // Initial gradient update after layout settles
+    // Initial gradient update after layout settles (double rAF for CSS to fully apply)
     requestAnimationFrame(() => {
-      updateGradientFn(element);
+      requestAnimationFrame(() => {
+        updateGradientFn(element);
+      });
     });
 
     // Attach scroll listener to wrapper for user scroll interaction

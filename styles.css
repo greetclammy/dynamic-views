@@ -92,7 +92,7 @@ settings:
     -
         id: dynamic-views-fade-truncated-text
         title: Fade truncated text
-        description: Show gradient fade on titles, subtitles, and properties that overflow their container
+        description: Show gradient fade on titles, subtitles, and properties when they can be scrolled horizontally
         type: class-toggle
         default: true
     -
@@ -499,6 +499,20 @@ settings:
         description: Do not display a property if its value is empty.
         type: class-toggle
         default: false
+    -
+        id: dynamic-views-full-row-property-alignment
+        title: Full-row property alignment
+        description: How to align properties with inline labels that aren't shown side-by-side
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-full-row-align-left
+        options:
+            -
+                label: Left
+                value: dynamic-views-full-row-align-left
+            -
+                label: Right
+                value: dynamic-views-full-row-align-right
     -
         id: property-labels-heading
         title: Property labels
@@ -4579,6 +4593,16 @@ body.dynamic-views-tag-style-pill.dynamic-views-tag-color-custom
 .dynamic-views .property-row.property-row-sidebyside {
   flex-direction: row;
   gap: var(--dynamic-views-element-spacing, 8px);
+}
+
+/* Right alignment for full-row properties with inline labels - value only */
+body.dynamic-views-full-row-align-right
+  .dynamic-views
+  .property-row:not(.property-row-sidebyside)
+  .property-field:has(.property-label-inline)
+  .property-content-wrapper {
+  flex: 0 1 auto;
+  margin-left: auto;
 }
 
 /* Meta-field: scrollable container */

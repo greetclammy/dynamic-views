@@ -48,6 +48,7 @@ export class DynamicViewsCardView extends BasesView {
   private scrollThrottleTimeout: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private cardRenderer: SharedCardRenderer;
+  private currentCardSize: number = 400;
   isShuffled: boolean = false;
   shuffledOrder: string[] = [];
   private lastSortMethod: string | null = null;
@@ -140,7 +141,8 @@ export class DynamicViewsCardView extends BasesView {
       // Calculate grid columns
       const containerWidth = this.containerEl.clientWidth;
       // Card size represents minimum width; actual width may be larger to fill space
-      const cardSize = settings.cardSize;
+      this.currentCardSize = settings.cardSize;
+      const cardSize = this.currentCardSize;
       const minColumns = getMinGridColumns();
       const gap = getCardSpacing();
       const cols = Math.max(
@@ -281,7 +283,7 @@ export class DynamicViewsCardView extends BasesView {
         this.resizeObserver = new ResizeObserver(() => {
           const containerWidth = this.containerEl.clientWidth;
           // Card size represents minimum width; actual width may be larger to fill space
-          const cardSize = settings.cardSize;
+          const cardSize = this.currentCardSize;
           const minColumns = getMinGridColumns();
           const gap = getCardSpacing();
           const cols = Math.max(
