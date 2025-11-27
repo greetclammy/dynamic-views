@@ -172,12 +172,12 @@ export function View({
       viewSettings.propertyDisplay3 ?? defaultViewSettings.propertyDisplay3;
     baseSettings.propertyDisplay4 =
       viewSettings.propertyDisplay4 ?? defaultViewSettings.propertyDisplay4;
-    baseSettings.propertyLayout12SideBySide =
-      viewSettings.propertyLayout12SideBySide ??
-      defaultViewSettings.propertyLayout12SideBySide;
-    baseSettings.propertyLayout34SideBySide =
-      viewSettings.propertyLayout34SideBySide ??
-      defaultViewSettings.propertyLayout34SideBySide;
+    baseSettings.propertyGroup1SideBySide =
+      viewSettings.propertyGroup1SideBySide ??
+      defaultViewSettings.propertyGroup1SideBySide;
+    baseSettings.propertyGroup2SideBySide =
+      viewSettings.propertyGroup2SideBySide ??
+      defaultViewSettings.propertyGroup2SideBySide;
     baseSettings.showTextPreview =
       viewSettings.showTextPreview ?? defaultViewSettings.showTextPreview;
     baseSettings.fallbackToContent =
@@ -319,8 +319,8 @@ export function View({
           propertyDisplay2: settings.propertyDisplay2,
           propertyDisplay3: settings.propertyDisplay3,
           propertyDisplay4: settings.propertyDisplay4,
-          propertyLayout12SideBySide: settings.propertyLayout12SideBySide,
-          propertyLayout34SideBySide: settings.propertyLayout34SideBySide,
+          propertyGroup1SideBySide: settings.propertyGroup1SideBySide,
+          propertyGroup2SideBySide: settings.propertyGroup2SideBySide,
           propertyLabels: settings.propertyLabels,
           showTitle: settings.showTitle,
           showTextPreview: settings.showTextPreview,

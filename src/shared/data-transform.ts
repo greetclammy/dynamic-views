@@ -11,6 +11,7 @@ import {
   getFirstDatacorePropertyValue,
   getFirstBasesPropertyValue,
 } from "../utils/property";
+import { hasUriScheme } from "../utils/link-parser";
 import { formatTimestamp, extractTimestamp } from "./render-utils";
 
 /**
@@ -692,15 +693,15 @@ export function resolveBasesProperty(
     if (typeof data === "string" && result.trim() === "") {
       return "";
     }
-    // Check if this is a link property (Bases strips [[]] for single link values)
-    // Link properties have sourcePath or display keys
-    const valueObj = value as { sourcePath?: unknown; display?: unknown };
-    if (
-      typeof data === "string" &&
-      (valueObj.sourcePath !== undefined || valueObj.display !== undefined)
-    ) {
-      // Wrap in wikilink syntax so renderTextWithLinks can detect it
-      return `[[${result}]]`;
+    // Check if this is an internal link (Bases strips [[]] for single link values)
+    // Internal links: have sourcePath/display AND no URI scheme
+    // External links: have URI scheme (https://, obsidian://, etc.)
+    if (!hasUriScheme(result) && typeof data === "string") {
+      const valueObj = value as { sourcePath?: unknown; display?: unknown };
+      if (valueObj.sourcePath !== undefined || valueObj.display !== undefined) {
+        // Wrap internal link in wikilink syntax for renderTextWithLinks
+        return `[[${result}]]`;
+      }
     }
     return result;
   }

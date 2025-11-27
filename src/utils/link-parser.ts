@@ -21,7 +21,7 @@ function isWebUrl(url: string): boolean {
 /**
  * Check if URL has any URI scheme (protocol://)
  */
-function hasUriScheme(url: string): boolean {
+export function hasUriScheme(url: string): boolean {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(url);
 }
 

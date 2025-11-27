@@ -57,6 +57,7 @@ function renderLink(link: ParsedLink, app: App): JSX.Element {
           void app.workspace.openLinkText(link.url, "", newLeaf);
         }}
         onDragStart={(e: DragEvent) => {
+          e.stopPropagation();
           const file = app.metadataCache.getFirstLinkpathDest(link.url, "");
           if (!(file instanceof TFile)) return;
           const dragData = app.dragManager.dragFile(e, file);
@@ -94,6 +95,7 @@ function renderLink(link: ParsedLink, app: App): JSX.Element {
         e.stopPropagation();
       }}
       onDragStart={(e: DragEvent) => {
+        e.stopPropagation();
         e.dataTransfer?.clearData();
         // Bare link (caption === url) → plain URL; captioned → markdown link
         const dragText =
@@ -1505,7 +1507,7 @@ function Card({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row1 = row1HasContent && (
           <div
-            className={`property-row property-row-1${settings.propertyLayout12SideBySide ? " property-row-sidebyside" : ""}${
+            className={`property-row property-row-1${settings.propertyGroup1SideBySide ? " property-row-sidebyside" : ""}${
               (card.property1 === null && card.property2 !== null) ||
               (card.property1 !== null && card.property2 === null)
                 ? " property-row-single"
@@ -1540,7 +1542,7 @@ function Card({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row2 = row2HasContent && (
           <div
-            className={`property-row property-row-2${settings.propertyLayout34SideBySide ? " property-row-sidebyside" : ""}${
+            className={`property-row property-row-2${settings.propertyGroup2SideBySide ? " property-row-sidebyside" : ""}${
               (card.property3 === null && card.property4 !== null) ||
               (card.property3 !== null && card.property4 === null)
                 ? " property-row-single"
@@ -1575,7 +1577,7 @@ function Card({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row3 = row3HasContent && (
           <div
-            className={`property-row property-row-3${settings.propertyLayout56SideBySide ? " property-row-sidebyside" : ""}${
+            className={`property-row property-row-3${settings.propertyGroup3SideBySide ? " property-row-sidebyside" : ""}${
               (card.property5 === null && card.property6 !== null) ||
               (card.property5 !== null && card.property6 === null)
                 ? " property-row-single"
@@ -1610,7 +1612,7 @@ function Card({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row4 = row4HasContent && (
           <div
-            className={`property-row property-row-4${settings.propertyLayout78SideBySide ? " property-row-sidebyside" : ""}${
+            className={`property-row property-row-4${settings.propertyGroup4SideBySide ? " property-row-sidebyside" : ""}${
               (card.property7 === null && card.property8 !== null) ||
               (card.property7 !== null && card.property8 === null)
                 ? " property-row-single"
@@ -1645,7 +1647,7 @@ function Card({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row5 = row5HasContent && (
           <div
-            className={`property-row property-row-5${settings.propertyLayout910SideBySide ? " property-row-sidebyside" : ""}${
+            className={`property-row property-row-5${settings.propertyGroup5SideBySide ? " property-row-sidebyside" : ""}${
               (card.property9 === null && card.property10 !== null) ||
               (card.property9 !== null && card.property10 === null)
                 ? " property-row-single"
@@ -1680,7 +1682,7 @@ function Card({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row6 = row6HasContent && (
           <div
-            className={`property-row property-row-6${settings.propertyLayout1112SideBySide ? " property-row-sidebyside" : ""}${
+            className={`property-row property-row-6${settings.propertyGroup6SideBySide ? " property-row-sidebyside" : ""}${
               (card.property11 === null && card.property12 !== null) ||
               (card.property11 !== null && card.property12 === null)
                 ? " property-row-single"
@@ -1715,7 +1717,7 @@ function Card({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row7 = row7HasContent && (
           <div
-            className={`property-row property-row-7${settings.propertyLayout1314SideBySide ? " property-row-sidebyside" : ""}${
+            className={`property-row property-row-7${settings.propertyGroup7SideBySide ? " property-row-sidebyside" : ""}${
               (card.property13 === null && card.property14 !== null) ||
               (card.property13 !== null && card.property14 === null)
                 ? " property-row-single"

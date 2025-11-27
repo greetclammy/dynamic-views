@@ -119,6 +119,7 @@ export class SharedCardRenderer {
         void this.app.workspace.openLinkText(link.url, "", newLeaf);
       });
       el.addEventListener("dragstart", (e) => {
+        e.stopPropagation();
         const file = this.app.metadataCache.getFirstLinkpathDest(link.url, "");
         if (!(file instanceof TFile)) return;
         const dragData = this.app.dragManager.dragFile(e, file);
@@ -154,6 +155,7 @@ export class SharedCardRenderer {
       e.stopPropagation();
     });
     el.addEventListener("dragstart", (e) => {
+      e.stopPropagation();
       e.dataTransfer?.clearData();
       // Bare link (caption === url) → plain URL; captioned → markdown link
       const dragText =
@@ -608,6 +610,64 @@ export class SharedCardRenderer {
 
     // Properties - 4-field rendering with 2-row layout
     this.renderProperties(cardEl, card, entry, settings);
+
+    // Compact mode: add class when card width below breakpoint
+    const breakpoint =
+      parseFloat(
+        getComputedStyle(document.body).getPropertyValue(
+          "--dynamic-views-compact-breakpoint",
+        ),
+      ) || 400;
+
+    if (breakpoint > 0) {
+      const compactObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const width = entry.contentRect.width;
+          cardEl.classList.toggle("compact-mode", width < breakpoint);
+        }
+      });
+      compactObserver.observe(cardEl);
+      this.propertyObservers.push(compactObserver);
+    }
+
+    // Responsive thumbnail: move to top position when text preview too narrow
+    if (
+      format === "thumbnail" &&
+      (position === "left" || position === "right") &&
+      settings.showTextPreview &&
+      card.snippet
+    ) {
+      const thumbnailEl = cardEl.querySelector(
+        ".card-thumbnail",
+      ) as HTMLElement;
+      const contentEl = cardEl.querySelector(".card-content") as HTMLElement;
+
+      if (thumbnailEl && contentEl) {
+        let isStacked = false;
+
+        const thumbnailObserver = new ResizeObserver(() => {
+          const thumbnailWidth = thumbnailEl.offsetWidth;
+          const cardWidth = cardEl.offsetWidth;
+          // Stack when card too narrow for side-by-side layout
+          // Text preview needs thumbnail × 2 minimum, plus thumbnail itself + padding
+          const shouldStack = cardWidth < thumbnailWidth * 3.5;
+
+          if (shouldStack && !isStacked) {
+            // Move thumbnail before card-content (like thumbnail-top)
+            cardEl.insertBefore(thumbnailEl, contentEl);
+            cardEl.classList.add("thumbnail-stack");
+            isStacked = true;
+          } else if (!shouldStack && isStacked) {
+            // Move thumbnail back inside card-content (always after text preview)
+            contentEl.appendChild(thumbnailEl);
+            cardEl.classList.remove("thumbnail-stack");
+            isStacked = false;
+          }
+        });
+        thumbnailObserver.observe(cardEl);
+        this.propertyObservers.push(thumbnailObserver);
+      }
+    }
   }
 
   /**
@@ -911,7 +971,7 @@ export class SharedCardRenderer {
     // Row 1
     if (row1HasContent) {
       const row1El = getContainer(1)!.createDiv("property-row property-row-1");
-      if (settings.propertyLayout12SideBySide) {
+      if (settings.propertyGroup1SideBySide) {
         row1El.addClass("property-row-sidebyside");
       }
 
@@ -984,7 +1044,7 @@ export class SharedCardRenderer {
     // Row 2
     if (row2HasContent) {
       const row2El = getContainer(2)!.createDiv("property-row property-row-2");
-      if (settings.propertyLayout34SideBySide) {
+      if (settings.propertyGroup2SideBySide) {
         row2El.addClass("property-row-sidebyside");
       }
 
@@ -1057,7 +1117,7 @@ export class SharedCardRenderer {
     // Row 3
     if (row3HasContent) {
       const row3El = getContainer(3)!.createDiv("property-row property-row-3");
-      if (settings.propertyLayout56SideBySide) {
+      if (settings.propertyGroup3SideBySide) {
         row3El.addClass("property-row-sidebyside");
       }
 
@@ -1123,7 +1183,7 @@ export class SharedCardRenderer {
     // Row 4
     if (row4HasContent) {
       const row4El = getContainer(4)!.createDiv("property-row property-row-4");
-      if (settings.propertyLayout78SideBySide) {
+      if (settings.propertyGroup4SideBySide) {
         row4El.addClass("property-row-sidebyside");
       }
 
@@ -1189,7 +1249,7 @@ export class SharedCardRenderer {
     // Row 5
     if (row5HasContent) {
       const row5El = getContainer(5)!.createDiv("property-row property-row-5");
-      if (settings.propertyLayout910SideBySide) {
+      if (settings.propertyGroup5SideBySide) {
         row5El.addClass("property-row-sidebyside");
       }
 
@@ -1256,7 +1316,7 @@ export class SharedCardRenderer {
     // Row 6
     if (row6HasContent) {
       const row6El = getContainer(6)!.createDiv("property-row property-row-6");
-      if (settings.propertyLayout1112SideBySide) {
+      if (settings.propertyGroup6SideBySide) {
         row6El.addClass("property-row-sidebyside");
       }
 
@@ -1324,7 +1384,7 @@ export class SharedCardRenderer {
     // Row 7
     if (row7HasContent) {
       const row7El = getContainer(7)!.createDiv("property-row property-row-7");
-      if (settings.propertyLayout1314SideBySide) {
+      if (settings.propertyGroup7SideBySide) {
         row7El.addClass("property-row-sidebyside");
       }
 
@@ -1712,15 +1772,22 @@ export class SharedCardRenderer {
    * Measures property fields for side-by-side layout
    */
   private measurePropertyFields(container: HTMLElement): void {
+    // Skip measurement if 50-50 mode - default CSS is already 50-50
+    if (
+      document.body.classList.contains("dynamic-views-property-width-50-50")
+    ) {
+      return;
+    }
+
     const rows = container.querySelectorAll(".property-row-sidebyside");
     rows.forEach((row) => {
       const rowEl = row as HTMLElement;
 
       const field1 = rowEl.querySelector(
-        ".property-field-1, .property-field-3",
+        ".property-field-1, .property-field-3, .property-field-5, .property-field-7, .property-field-9, .property-field-11, .property-field-13",
       ) as HTMLElement;
       const field2 = rowEl.querySelector(
-        ".property-field-2, .property-field-4",
+        ".property-field-2, .property-field-4, .property-field-6, .property-field-8, .property-field-10, .property-field-12, .property-field-14",
       ) as HTMLElement;
 
       if (field1 && field2) {

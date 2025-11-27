@@ -394,10 +394,10 @@ export function Settings({
           </div>
         </div>
         <div
-          className={`checkbox-container ${settings.propertyLayout12SideBySide ? "is-enabled" : ""}`}
+          className={`checkbox-container ${settings.propertyGroup1SideBySide ? "is-enabled" : ""}`}
           onClick={() =>
             onSettingsChange({
-              propertyLayout12SideBySide: !settings.propertyLayout12SideBySide,
+              propertyGroup1SideBySide: !settings.propertyGroup1SideBySide,
             })
           }
           onKeyDown={(e: unknown) => {
@@ -405,14 +405,13 @@ export function Settings({
             if (evt.key === "Enter" || evt.key === " ") {
               evt.preventDefault();
               onSettingsChange({
-                propertyLayout12SideBySide:
-                  !settings.propertyLayout12SideBySide,
+                propertyGroup1SideBySide: !settings.propertyGroup1SideBySide,
               });
             }
           }}
           tabIndex={0}
           role="checkbox"
-          aria-checked={settings.propertyLayout12SideBySide}
+          aria-checked={settings.propertyGroup1SideBySide}
         />
       </div>
 
@@ -477,10 +476,10 @@ export function Settings({
           </div>
         </div>
         <div
-          className={`checkbox-container ${settings.propertyLayout34SideBySide ? "is-enabled" : ""}`}
+          className={`checkbox-container ${settings.propertyGroup2SideBySide ? "is-enabled" : ""}`}
           onClick={() =>
             onSettingsChange({
-              propertyLayout34SideBySide: !settings.propertyLayout34SideBySide,
+              propertyGroup2SideBySide: !settings.propertyGroup2SideBySide,
             })
           }
           onKeyDown={(e: unknown) => {
@@ -488,14 +487,13 @@ export function Settings({
             if (evt.key === "Enter" || evt.key === " ") {
               evt.preventDefault();
               onSettingsChange({
-                propertyLayout34SideBySide:
-                  !settings.propertyLayout34SideBySide,
+                propertyGroup2SideBySide: !settings.propertyGroup2SideBySide,
               });
             }
           }}
           tabIndex={0}
           role="checkbox"
-          aria-checked={settings.propertyLayout34SideBySide}
+          aria-checked={settings.propertyGroup2SideBySide}
         />
       </div>
 

@@ -514,6 +514,41 @@ settings:
                 label: Right
                 value: dynamic-views-full-row-align-right
     -
+        id: dynamic-views-paired-property-alignment
+        title: Paired property alignment
+        description: How to align right-side property when properties are shown side-by-side
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-paired-prop-align-right
+        options:
+            -
+                label: Left
+                value: dynamic-views-paired-prop-align-left
+            -
+                label: Right
+                value: dynamic-views-paired-prop-align-right
+    -
+        id: dynamic-views-property-width-allocation
+        title: Property width allocation
+        description: How much space each side-by-side property should take
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-property-width-flexible
+        options:
+            -
+                label: Flexible
+                value: dynamic-views-property-width-flexible
+            -
+                label: 50-50
+                value: dynamic-views-property-width-50-50
+    -
+        id: dynamic-views-compact-breakpoint
+        title: Compact breakpoint
+        description: Card width (in pixels) at which side-by-side properties stack vertically. Set to 0 to disable.
+        type: variable-number
+        default: 400
+        format: px
+    -
         id: property-labels-heading
         title: Property labels
         type: heading
@@ -2667,7 +2702,11 @@ body.dynamic-views-subtitle-align-right .dynamic-views .card-subtitle {
 }
 
 .dynamic-views .card-subtitle .property-content,
-.dynamic-views .card-subtitle .text-wrapper {
+.dynamic-views .card-subtitle .text-wrapper,
+.dynamic-views
+  .card-subtitle
+  .text-wrapper
+  > span:not(.internal-link):not(.external-link):not(.tag) {
   display: block;
   width: 100%;
   height: auto;
@@ -2717,7 +2756,12 @@ body.dynamic-views-subtitle-overflow-scroll
 body.dynamic-views-subtitle-overflow-scroll
   .dynamic-views
   .card-subtitle
-  .text-wrapper {
+  .text-wrapper,
+body.dynamic-views-subtitle-overflow-scroll
+  .dynamic-views
+  .card-subtitle
+  .text-wrapper
+  > span:not(.internal-link):not(.external-link):not(.tag) {
   display: flex;
   width: max-content;
   white-space: nowrap;
@@ -2758,6 +2802,12 @@ body.dynamic-views-subtitle-divider .dynamic-views .card-subtitle {
 
 /* Thumbnail bottom: after text preview */
 .dynamic-views .card.card-thumbnail-bottom .card-thumbnail {
+  margin-top: var(--dynamic-views-element-spacing, 8px);
+  margin-bottom: var(--dynamic-views-element-spacing, 8px);
+}
+
+/* Responsive thumbnail: stack uses thumbnail-top styling */
+.dynamic-views .card.thumbnail-stack .card-thumbnail {
   margin-top: var(--dynamic-views-element-spacing, 8px);
   margin-bottom: var(--dynamic-views-element-spacing, 8px);
 }
@@ -4499,7 +4549,7 @@ body.dynamic-views-tag-color-custom .dynamic-views .tag {
 body.dynamic-views-tag-style-pill.dynamic-views-tag-color-accent
   .dynamic-views
   .tag {
-  border-color: var(--text-accent);
+  border-color: var(--text-accent-hover);
 }
 body.dynamic-views-tag-style-pill.dynamic-views-tag-color-red
   .dynamic-views
@@ -4593,6 +4643,108 @@ body.dynamic-views-tag-style-pill.dynamic-views-tag-color-custom
 .dynamic-views .property-row.property-row-sidebyside {
   flex-direction: row;
   gap: var(--dynamic-views-element-spacing, 8px);
+}
+
+/* Compact mode: stack side-by-side properties on narrow cards */
+.dynamic-views .card.compact-mode .property-row.property-row-sidebyside {
+  flex-direction: column;
+}
+
+.dynamic-views
+  .card.compact-mode
+  .property-row.property-row-sidebyside
+  .property-field,
+.dynamic-views
+  .card.compact-mode
+  .property-row.property-row-sidebyside.property-measured
+  .property-field {
+  max-width: 100% !important;
+  flex: none;
+  width: 100% !important;
+}
+
+/* Compact mode: left-align right-side properties when stacked */
+.dynamic-views
+  .card.compact-mode
+  .property-row.property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-content-wrapper {
+  justify-content: flex-start;
+}
+
+.dynamic-views
+  .card.compact-mode
+  .property-row.property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-content {
+  justify-content: flex-start;
+}
+
+.dynamic-views
+  .card.compact-mode
+  .property-row.property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-label {
+  text-align: left;
+}
+
+/* Compact mode: reset inline label order (label before content) */
+.dynamic-views
+  .card.compact-mode
+  .property-row.property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-label-inline {
+  order: 0;
+  padding-left: 0;
+  padding-right: var(--size-4-1);
+}
+
+.dynamic-views
+  .card.compact-mode
+  .property-row.property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-content {
+  order: 0;
 }
 
 /* Right alignment for full-row properties with inline labels - value only */
@@ -5401,7 +5553,9 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
   body.dynamic-views-tag-color-muted .dynamic-views .tag:hover {
     color: var(--text-normal);
   }
-  /* Normal - no hover color change */
+  body.dynamic-views-tag-color-normal .dynamic-views .tag:hover {
+    color: var(--text-muted);
+  }
   body.dynamic-views-tag-color-accent .dynamic-views .tag:hover {
     color: var(--text-accent-hover);
   }
@@ -5681,6 +5835,90 @@ body.dynamic-views-fade-list-separator .dynamic-views .list-separator {
   ).is-scrollable
   .property-content-wrapper {
   justify-content: flex-start;
+}
+
+/* Left alignment for paired (right-side) properties */
+body.dynamic-views-paired-prop-align-left
+  .dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-content-wrapper {
+  justify-content: flex-start;
+}
+
+body.dynamic-views-paired-prop-align-left
+  .dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-content {
+  justify-content: flex-start;
+}
+
+body.dynamic-views-paired-prop-align-left
+  .dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-label {
+  text-align: left;
+}
+
+/* Reset inline label order to place label before content */
+body.dynamic-views-paired-prop-align-left
+  .dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-label-inline {
+  order: 0;
+  padding-left: 0;
+  padding-right: var(--size-4-1);
+}
+
+body.dynamic-views-paired-prop-align-left
+  .dynamic-views
+  .property-row-sidebyside
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  )
+  .property-content {
+  order: 0;
 }
 
 /* Stacked layout */

@@ -431,10 +431,10 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       .setDesc("Display first two properties horizontally")
       .addToggle((toggle) =>
         toggle
-          .setValue(defaultViewSettings.propertyLayout12SideBySide)
+          .setValue(defaultViewSettings.propertyGroup1SideBySide)
           .onChange(async (value) => {
             await this.plugin.persistenceManager.setDefaultViewSettings({
-              propertyLayout12SideBySide: value,
+              propertyGroup1SideBySide: value,
             });
           }),
       );
@@ -474,10 +474,10 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       .setDesc("Display third and fourth properties horizontally")
       .addToggle((toggle) =>
         toggle
-          .setValue(defaultViewSettings.propertyLayout34SideBySide)
+          .setValue(defaultViewSettings.propertyGroup2SideBySide)
           .onChange(async (value) => {
             await this.plugin.persistenceManager.setDefaultViewSettings({
-              propertyLayout34SideBySide: value,
+              propertyGroup2SideBySide: value,
             });
           }),
       );

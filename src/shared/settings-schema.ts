@@ -205,8 +205,8 @@ export function getBasesViewOptions(): any[] {
         {
           type: "toggle",
           displayName: "Show side-by-side",
-          key: "propertyLayout12SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertyLayout12SideBySide,
+          key: "propertyGroup1SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup1SideBySide,
         },
         {
           type: "dropdown",
@@ -241,8 +241,8 @@ export function getBasesViewOptions(): any[] {
         {
           type: "toggle",
           displayName: "Show side-by-side",
-          key: "propertyLayout34SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertyLayout34SideBySide,
+          key: "propertyGroup2SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup2SideBySide,
         },
         {
           type: "dropdown",
@@ -277,8 +277,8 @@ export function getBasesViewOptions(): any[] {
         {
           type: "toggle",
           displayName: "Show side-by-side",
-          key: "propertyLayout56SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertyLayout56SideBySide,
+          key: "propertyGroup3SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup3SideBySide,
         },
         {
           type: "dropdown",
@@ -313,8 +313,8 @@ export function getBasesViewOptions(): any[] {
         {
           type: "toggle",
           displayName: "Show side-by-side",
-          key: "propertyLayout78SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertyLayout78SideBySide,
+          key: "propertyGroup4SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup4SideBySide,
         },
         {
           type: "dropdown",
@@ -349,8 +349,8 @@ export function getBasesViewOptions(): any[] {
         {
           type: "toggle",
           displayName: "Show side-by-side",
-          key: "propertyLayout910SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertyLayout910SideBySide,
+          key: "propertyGroup5SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup5SideBySide,
         },
         {
           type: "dropdown",
@@ -385,8 +385,8 @@ export function getBasesViewOptions(): any[] {
         {
           type: "toggle",
           displayName: "Show side-by-side",
-          key: "propertyLayout1112SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertyLayout1112SideBySide,
+          key: "propertyGroup6SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup6SideBySide,
         },
         {
           type: "dropdown",
@@ -421,8 +421,8 @@ export function getBasesViewOptions(): any[] {
         {
           type: "toggle",
           displayName: "Show side-by-side",
-          key: "propertyLayout1314SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertyLayout1314SideBySide,
+          key: "propertyGroup7SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertyGroup7SideBySide,
         },
         {
           type: "dropdown",
@@ -531,13 +531,13 @@ export function readBasesSettings(
       }
       return "";
     })(),
-    propertyLayout12SideBySide: Boolean(
-      config.get("propertyLayout12SideBySide") ??
-      defaultViewSettings.propertyLayout12SideBySide,
+    propertyGroup1SideBySide: Boolean(
+      config.get("propertyGroup1SideBySide") ??
+      defaultViewSettings.propertyGroup1SideBySide,
     ),
-    propertyLayout34SideBySide: Boolean(
-      config.get("propertyLayout34SideBySide") ??
-      defaultViewSettings.propertyLayout34SideBySide,
+    propertyGroup2SideBySide: Boolean(
+      config.get("propertyGroup2SideBySide") ??
+      defaultViewSettings.propertyGroup2SideBySide,
     ),
     propertyDisplay5: (() => {
       const value = config.get("propertyDisplay5");
@@ -553,9 +553,9 @@ export function readBasesSettings(
       }
       return "";
     })(),
-    propertyLayout56SideBySide: Boolean(
-      config.get("propertyLayout56SideBySide") ??
-      defaultViewSettings.propertyLayout56SideBySide,
+    propertyGroup3SideBySide: Boolean(
+      config.get("propertyGroup3SideBySide") ??
+      defaultViewSettings.propertyGroup3SideBySide,
     ),
     propertyDisplay7: (() => {
       const value = config.get("propertyDisplay7");
@@ -571,9 +571,9 @@ export function readBasesSettings(
       }
       return "";
     })(),
-    propertyLayout78SideBySide: Boolean(
-      config.get("propertyLayout78SideBySide") ??
-      defaultViewSettings.propertyLayout78SideBySide,
+    propertyGroup4SideBySide: Boolean(
+      config.get("propertyGroup4SideBySide") ??
+      defaultViewSettings.propertyGroup4SideBySide,
     ),
     propertyDisplay9: (() => {
       const value = config.get("propertyDisplay9");
@@ -589,9 +589,9 @@ export function readBasesSettings(
       }
       return "";
     })(),
-    propertyLayout910SideBySide: Boolean(
-      config.get("propertyLayout910SideBySide") ??
-      defaultViewSettings.propertyLayout910SideBySide,
+    propertyGroup5SideBySide: Boolean(
+      config.get("propertyGroup5SideBySide") ??
+      defaultViewSettings.propertyGroup5SideBySide,
     ),
     propertyDisplay11: (() => {
       const value = config.get("propertyDisplay11");
@@ -607,9 +607,9 @@ export function readBasesSettings(
       }
       return "";
     })(),
-    propertyLayout1112SideBySide: Boolean(
-      config.get("propertyLayout1112SideBySide") ??
-      defaultViewSettings.propertyLayout1112SideBySide,
+    propertyGroup6SideBySide: Boolean(
+      config.get("propertyGroup6SideBySide") ??
+      defaultViewSettings.propertyGroup6SideBySide,
     ),
     propertyDisplay13: (() => {
       const value = config.get("propertyDisplay13");
@@ -625,9 +625,9 @@ export function readBasesSettings(
       }
       return "";
     })(),
-    propertyLayout1314SideBySide: Boolean(
-      config.get("propertyLayout1314SideBySide") ??
-      defaultViewSettings.propertyLayout1314SideBySide,
+    propertyGroup7SideBySide: Boolean(
+      config.get("propertyGroup7SideBySide") ??
+      defaultViewSettings.propertyGroup7SideBySide,
     ),
     propertyGroup1Position: (() => {
       const value = config.get("propertyGroup1Position");
