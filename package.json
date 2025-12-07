@@ -25,5 +25,8 @@
     "obsidian": "latest",
     "tslib": "^2.8.1",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@panzoom/panzoom": "^4.6.1"
   }
 }
