@@ -260,7 +260,7 @@ function renderTextWithLinks(text: string, app: App): JSX.Element | string {
 
 // Module-level Maps to store zoom cleanup functions and original parents
 const zoomCleanupFns = new Map<HTMLElement, () => void>();
-const zoomedOriginalParents = new Map<HTMLElement, HTMLElement>();
+const zoomedClones = new Map<HTMLElement, HTMLElement>();
 
 // Extend App type to include isMobile property and dragManager
 declare module "obsidian" {
@@ -387,38 +387,51 @@ function CoverSlideshow({
     if (!slideshowEl) return;
 
     let currentSlide = 0;
+    let isTransitioning = false;
     const slides = Array.from(slideshowEl.querySelectorAll(".slideshow-slide"));
 
     const updateSlide = (newIndex: number, direction: "next" | "prev") => {
       const oldSlide = slides[currentSlide];
       const newSlide = slides[newIndex];
 
-      if (!oldSlide || !newSlide) return;
+      if (
+        !oldSlide ||
+        !newSlide ||
+        newIndex === currentSlide ||
+        isTransitioning
+      )
+        return;
 
-      // Position new slide off-screen in the direction it will enter from
+      isTransitioning = true;
+
+      // Determine classes based on direction
+      const enterFrom = direction === "next" ? "slide-right" : "slide-left";
+      const exitTo = direction === "next" ? "slide-left" : "slide-right";
+
+      // Position new slide off-screen (no transition yet)
       newSlide.classList.remove("is-active", "slide-left", "slide-right");
-      newSlide.classList.add(
-        direction === "next" ? "slide-right" : "slide-left",
-      );
+      newSlide.classList.add(enterFrom);
 
-      // Force reflow to ensure position is set before transition
-      void (newSlide as HTMLElement).offsetHeight;
+      // Use double RAF to ensure browser has painted the initial position
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Move old slide out
+          oldSlide.classList.remove("is-active");
+          oldSlide.classList.add(exitTo);
 
-      // Move old slide out and new slide in
-      oldSlide.classList.remove("is-active", "slide-left", "slide-right");
-      oldSlide.classList.add(
-        direction === "next" ? "slide-left" : "slide-right",
-      );
+          // Move new slide in (is-active overrides position class via CSS order)
+          newSlide.classList.add("is-active");
 
-      // Add is-active class (keep positioning class, CSS will handle the transition)
-      newSlide.classList.add("is-active");
+          // Clean up position classes after transition
+          setTimeout(() => {
+            newSlide.classList.remove("slide-left", "slide-right");
+            oldSlide.classList.remove("slide-left", "slide-right");
+            isTransitioning = false;
+          }, 310);
 
-      // Clean up position class after transition completes
-      setTimeout(() => {
-        newSlide.classList.remove("slide-left", "slide-right");
-      }, 310);
-
-      currentSlide = newIndex;
+          currentSlide = newIndex;
+        });
+      });
     };
 
     const leftArrow = slideshowEl.querySelector(".slideshow-nav-left");
@@ -428,19 +441,14 @@ function CoverSlideshow({
       e.stopPropagation();
       const newIndex =
         currentSlide === 0 ? imageArray.length - 1 : currentSlide - 1;
-      // Direction based on visual progression: wrapping forward (last->first) should look like going forward
-      const direction = currentSlide === 0 ? "next" : "prev";
-      updateSlide(newIndex, direction);
+      updateSlide(newIndex, "prev");
     });
 
     rightArrow?.addEventListener("click", (e) => {
       e.stopPropagation();
       const newIndex =
         currentSlide === imageArray.length - 1 ? 0 : currentSlide + 1;
-      // Direction based on visual progression: wrapping back (last->first) should look like going backward
-      const direction =
-        currentSlide === imageArray.length - 1 ? "prev" : "next";
-      updateSlide(newIndex, direction);
+      updateSlide(newIndex, "next");
     });
   };
 
@@ -457,26 +465,6 @@ function CoverSlideshow({
                 className="image-embed"
                 style={{ "--cover-image-url": `url("${url}")` }}
               >
-                {index === 0 && isSlideshowIndicatorEnabled() && (
-                  <div className="slideshow-indicator">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <rect x="5" y="7" width="13" height="10" rx="1"></rect>
-                      <polyline points="4 2,8 2,8 7"></polyline>
-                      <polyline points="8 2,16 2,16 7"></polyline>
-                      <polyline points="16 2,20 2,20 7"></polyline>
-                    </svg>
-                  </div>
-                )}
                 <img
                   src={url}
                   alt=""
@@ -495,6 +483,26 @@ function CoverSlideshow({
           ),
         )}
       </div>
+      {isSlideshowIndicatorEnabled() && (
+        <div className="slideshow-indicator">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="5" y="7" width="13" height="10" rx="1"></rect>
+            <polyline points="4 2,8 2,8 7"></polyline>
+            <polyline points="8 2,16 2,16 7"></polyline>
+            <polyline points="16 2,20 2,20 7"></polyline>
+          </svg>
+        </div>
+      )}
       <div className="slideshow-nav-left">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -1219,7 +1227,7 @@ function Card({
                         card.path,
                         app,
                         zoomCleanupFns,
-                        zoomedOriginalParents,
+                        zoomedClones,
                       );
                     }}
                   >
@@ -1377,7 +1385,7 @@ function Card({
                   card.path,
                   app,
                   zoomCleanupFns,
-                  zoomedOriginalParents,
+                  zoomedClones,
                 );
               }}
             >
@@ -1465,7 +1473,7 @@ function Card({
                       card.path,
                       app,
                       zoomCleanupFns,
-                      zoomedOriginalParents,
+                      zoomedClones,
                     );
                   }}
                 >
@@ -1545,7 +1553,7 @@ function Card({
                   card.path,
                   app,
                   zoomCleanupFns,
-                  zoomedOriginalParents,
+                  zoomedClones,
                 );
               }}
             >
@@ -2004,22 +2012,18 @@ function handleArrowKey(
 }
 
 /**
- * Cleanup function to restore all zoomed images and remove event listeners
+ * Cleanup function to remove all zoomed clones and event listeners
  * Should be called when a view using CardRenderer is unmounted
  */
 export function cleanupZoomState(): void {
-  // Cleanup all zoom gestures and restore teleported images
-  zoomCleanupFns.forEach((cleanup, embedEl) => {
-    // Remove zoom class
-    embedEl.classList.remove("is-zoomed");
-    // Return to original parent if teleported
-    const originalParent = zoomedOriginalParents.get(embedEl);
-    if (originalParent && embedEl.parentElement !== originalParent) {
-      originalParent.appendChild(embedEl);
-    }
-    // Call cleanup function (removes event listeners)
+  // Remove all zoom clones and cleanup
+  zoomedClones.forEach((clone) => {
+    clone.remove();
+  });
+  zoomedClones.clear();
+
+  zoomCleanupFns.forEach((cleanup) => {
     cleanup();
   });
-  // Note: WeakMaps will automatically clean up when elements are garbage collected
-  // but we can't manually clear them since they don't have a clear() method
+  zoomCleanupFns.clear();
 }

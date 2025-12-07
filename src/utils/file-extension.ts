@@ -5,34 +5,31 @@
 
 import { VALID_IMAGE_EXTENSIONS } from "./image";
 
-// Cache for hidden extensions (invalidated on style change)
-let cachedHiddenExtensions: Set<string> | null = null;
+// Cached hidden formats (set once per session)
+let cachedHiddenFormats: Set<string> | null = null;
 
 /**
- * Invalidate the hidden extensions cache
- * Call when --dynamic-views-hidden-file-extensions CSS variable changes
- */
-export function invalidateHiddenExtensionsCache(): void {
-  cachedHiddenExtensions = null;
-}
-
-/**
- * Get hidden file extensions from Style Settings CSS variable
- * Results are cached until invalidateHiddenExtensionsCache() is called
+ * Get hidden file formats from Style Settings CSS variable
+ * Cached for performance - changes require reload
  */
 export function getHiddenExtensions(): Set<string> {
-  if (cachedHiddenExtensions) return cachedHiddenExtensions;
+  if (cachedHiddenFormats) return cachedHiddenFormats;
 
-  const value = getComputedStyle(document.body)
+  const rawValue = getComputedStyle(document.body)
     .getPropertyValue("--dynamic-views-hidden-file-extensions")
-    .trim()
-    .replace(/['"]/g, "");
+    .trim();
 
-  cachedHiddenExtensions = value
-    ? new Set(value.split(",").map((e) => e.trim().toLowerCase()))
-    : new Set(["md"]);
+  // Explicitly cleared (literal "" or '') = show all
+  if (rawValue === '""' || rawValue === "''") {
+    cachedHiddenFormats = new Set();
+  } else {
+    const value = rawValue.replace(/['"]/g, "");
+    cachedHiddenFormats = value
+      ? new Set(value.split(",").map((e) => e.trim().toLowerCase()))
+      : new Set(["md"]); // Default when not set
+  }
 
-  return cachedHiddenExtensions;
+  return cachedHiddenFormats;
 }
 
 /**
@@ -73,11 +70,13 @@ export function stripExtFromTitle(
 }
 
 /**
- * Get Lucide icon name for file type (non-markdown files only)
+ * Get Lucide icon name for file type
+ * Returns null if format is hidden or no extension
  */
 export function getFileTypeIcon(path: string): string | null {
   const ext = path.split(".").pop()?.toLowerCase();
-  if (!ext || ext === "md") return null;
+  if (!ext) return null;
+  if (getHiddenExtensions().has(ext)) return null;
 
   if (ext === "canvas") return "layout-dashboard";
   if (ext === "base") return "layout-list";

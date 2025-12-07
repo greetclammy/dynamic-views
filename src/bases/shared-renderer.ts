@@ -103,7 +103,7 @@ declare module "obsidian" {
 export class SharedCardRenderer {
   private propertyObservers: ResizeObserver[] = [];
   private zoomCleanupFns: Map<HTMLElement, () => void> = new Map();
-  private zoomedOriginalParents: Map<HTMLElement, HTMLElement> = new Map();
+  private zoomedClones: Map<HTMLElement, HTMLElement> = new Map();
 
   constructor(
     protected app: App,
@@ -118,20 +118,16 @@ export class SharedCardRenderer {
     this.propertyObservers.forEach((obs) => obs.disconnect());
     this.propertyObservers = [];
 
-    // Cleanup all zoom gestures and restore teleported images
-    this.zoomCleanupFns.forEach((cleanup, embedEl) => {
-      // Remove zoom class
-      embedEl.classList.remove("is-zoomed");
-      // Return to original parent if teleported
-      const originalParent = this.zoomedOriginalParents.get(embedEl);
-      if (originalParent && embedEl.parentElement !== originalParent) {
-        originalParent.appendChild(embedEl);
-      }
-      // Call cleanup function (removes event listeners)
+    // Remove all zoom clones and cleanup
+    this.zoomedClones.forEach((clone) => {
+      clone.remove();
+    });
+    this.zoomedClones.clear();
+
+    this.zoomCleanupFns.forEach((cleanup) => {
       cleanup();
     });
     this.zoomCleanupFns.clear();
-    this.zoomedOriginalParents.clear();
   }
 
   /**
@@ -1290,6 +1286,7 @@ export class SharedCardRenderer {
     settings: Settings,
   ): void {
     let currentSlide = 0;
+    let isTransitioning = false;
 
     // Create slides container
     const slidesContainer = slideshowEl.createDiv("slideshow-slides");
@@ -1303,12 +1300,6 @@ export class SharedCardRenderer {
       // Don't add position classes to non-active slides - let transition logic handle it
 
       const imageEmbedContainer = slideEl.createDiv("image-embed");
-
-      // Multi-image indicator (positioned on image itself)
-      if (index === 0 && isSlideshowIndicatorEnabled()) {
-        const indicator = imageEmbedContainer.createDiv("slideshow-indicator");
-        setIcon(indicator, "lucide-images");
-      }
 
       const imgEl = imageEmbedContainer.createEl("img", {
         attr: { src: url, alt: "" },
@@ -1338,27 +1329,45 @@ export class SharedCardRenderer {
       const oldSlide = slideElements[currentSlide];
       const newSlide = slideElements[newIndex];
 
-      // Position new slide off-screen in the direction it will enter from
+      if (newIndex === currentSlide || isTransitioning) return;
+
+      isTransitioning = true;
+
+      // Determine classes based on direction
+      const enterFrom = direction === "next" ? "slide-right" : "slide-left";
+      const exitTo = direction === "next" ? "slide-left" : "slide-right";
+
+      // Position new slide off-screen (no transition yet)
       newSlide.removeClass("is-active", "slide-left", "slide-right");
-      newSlide.addClass(direction === "next" ? "slide-right" : "slide-left");
+      newSlide.addClass(enterFrom);
 
-      // Force reflow to ensure position is set before transition
-      void newSlide.offsetHeight;
+      // Use double RAF to ensure browser has painted the initial position
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Move old slide out
+          oldSlide.removeClass("is-active");
+          oldSlide.addClass(exitTo);
 
-      // Move old slide out and new slide in
-      oldSlide.removeClass("is-active", "slide-left", "slide-right");
-      oldSlide.addClass(direction === "next" ? "slide-left" : "slide-right");
+          // Move new slide in (is-active overrides position class via CSS order)
+          newSlide.addClass("is-active");
 
-      // Add is-active class (keep positioning class, CSS will handle the transition)
-      newSlide.addClass("is-active");
+          // Clean up position classes after transition
+          setTimeout(() => {
+            newSlide.removeClass("slide-left", "slide-right");
+            oldSlide.removeClass("slide-left", "slide-right");
+            isTransitioning = false;
+          }, 310);
 
-      // Clean up position class after transition completes
-      setTimeout(() => {
-        newSlide.removeClass("slide-left", "slide-right");
-      }, 310);
-
-      currentSlide = newIndex;
+          currentSlide = newIndex;
+        });
+      });
     };
+
+    // Multi-image indicator (positioned outside slides so it doesn't move)
+    if (isSlideshowIndicatorEnabled()) {
+      const indicator = slideshowEl.createDiv("slideshow-indicator");
+      setIcon(indicator, "lucide-images");
+    }
 
     // Navigation arrows
     const leftArrow = slideshowEl.createDiv("slideshow-nav-left");
@@ -1371,18 +1380,14 @@ export class SharedCardRenderer {
       e.stopPropagation();
       const newIndex =
         currentSlide === 0 ? imageUrls.length - 1 : currentSlide - 1;
-      // Direction based on visual progression: wrapping forward (last->first) should look like going forward
-      const direction = currentSlide === 0 ? "next" : "prev";
-      updateSlide(newIndex, direction);
+      updateSlide(newIndex, "prev");
     });
 
     rightArrow.addEventListener("click", (e) => {
       e.stopPropagation();
       const newIndex =
         currentSlide === imageUrls.length - 1 ? 0 : currentSlide + 1;
-      // Direction based on visual progression: wrapping back (last->first) should look like going backward
-      const direction = currentSlide === imageUrls.length - 1 ? "prev" : "next";
-      updateSlide(newIndex, direction);
+      updateSlide(newIndex, "next");
     });
   }
 
@@ -1406,7 +1411,7 @@ export class SharedCardRenderer {
         cardEl.getAttribute("data-path") || "",
         this.app,
         this.zoomCleanupFns,
-        this.zoomedOriginalParents,
+        this.zoomedClones,
       );
     });
 

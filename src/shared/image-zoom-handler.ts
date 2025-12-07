@@ -10,34 +10,36 @@ import { setupImageZoomGestures } from "./image-zoom-gestures";
 const zoomListenerCleanups = new WeakMap<HTMLElement, () => void>();
 
 /**
- * Closes zoomed image and returns it to original position
+ * Closes zoomed image clone and removes it from DOM
  */
 function closeImageZoom(
-  embedEl: HTMLElement,
+  cloneEl: HTMLElement,
   zoomCleanupFns: Map<HTMLElement, () => void>,
-  zoomedOriginalParents: Map<HTMLElement, HTMLElement>,
+  zoomedClones: Map<HTMLElement, HTMLElement>,
 ): void {
-  embedEl.classList.remove("is-zoomed");
+  // Remove clone from DOM
+  cloneEl.remove();
 
-  // Return to original parent
-  const originalParent = zoomedOriginalParents.get(embedEl);
-  if (originalParent && embedEl.parentElement !== originalParent) {
-    originalParent.appendChild(embedEl);
-    zoomedOriginalParents.delete(embedEl);
+  // Remove from tracking map (find and delete the entry for this clone)
+  for (const [original, clone] of zoomedClones) {
+    if (clone === cloneEl) {
+      zoomedClones.delete(original);
+      break;
+    }
   }
 
   // Cleanup zoom gestures
-  const cleanup = zoomCleanupFns.get(embedEl);
+  const cleanup = zoomCleanupFns.get(cloneEl);
   if (cleanup) {
     cleanup();
-    zoomCleanupFns.delete(embedEl);
+    zoomCleanupFns.delete(cloneEl);
   }
 
   // Remove event listeners
-  const removeListeners = zoomListenerCleanups.get(embedEl);
+  const removeListeners = zoomListenerCleanups.get(cloneEl);
   if (removeListeners) {
     removeListeners();
-    zoomListenerCleanups.delete(embedEl);
+    zoomListenerCleanups.delete(cloneEl);
   }
 }
 
@@ -47,14 +49,14 @@ function closeImageZoom(
  * @param cardPath - Path to the card's file
  * @param app - Obsidian app instance
  * @param zoomCleanupFns - Map storing cleanup functions
- * @param zoomedOriginalParents - Map storing original parent elements
+ * @param zoomedClones - Map storing original → clone element mappings
  */
 export function handleImageZoomClick(
   e: MouseEvent,
   cardPath: string,
   app: App,
   zoomCleanupFns: Map<HTMLElement, () => void>,
-  zoomedOriginalParents: Map<HTMLElement, HTMLElement>,
+  zoomedClones: Map<HTMLElement, HTMLElement>,
 ): void {
   const isZoomDisabled = document.body.classList.contains(
     "dynamic-views-image-zoom-disabled",
@@ -63,18 +65,13 @@ export function handleImageZoomClick(
 
   e.stopPropagation();
   const embedEl = e.currentTarget as HTMLElement;
-  const isZoomed = embedEl.classList.contains("is-zoomed");
 
-  if (isZoomed) {
-    closeImageZoom(embedEl, zoomCleanupFns, zoomedOriginalParents);
+  // Check if this element already has a zoomed clone
+  const existingClone = zoomedClones.get(embedEl);
+  if (existingClone) {
+    closeImageZoom(existingClone, zoomCleanupFns, zoomedClones);
   } else {
-    openImageZoom(
-      embedEl,
-      cardPath,
-      app,
-      zoomCleanupFns,
-      zoomedOriginalParents,
-    );
+    openImageZoom(embedEl, cardPath, app, zoomCleanupFns, zoomedClones);
   }
 }
 
@@ -86,31 +83,37 @@ function openImageZoom(
   cardPath: string,
   app: App,
   zoomCleanupFns: Map<HTMLElement, () => void>,
-  zoomedOriginalParents: Map<HTMLElement, HTMLElement>,
+  zoomedClones: Map<HTMLElement, HTMLElement>,
 ): void {
-  // Close other zoomed images in this view/tab only (not globally)
-  const viewContainer = embedEl.closest(".workspace-leaf-content");
-  if (viewContainer) {
-    viewContainer.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {
-      closeImageZoom(el as HTMLElement, zoomCleanupFns, zoomedOriginalParents);
-    });
+  // Close other zoomed images (find all existing clones)
+  for (const [, clone] of zoomedClones) {
+    closeImageZoom(clone, zoomCleanupFns, zoomedClones);
   }
 
-  // Store original parent and teleport to body (only if NOT constrained to tab)
+  // Clone the embed element for zooming (original stays on card)
+  const cloneEl = embedEl.cloneNode(true) as HTMLElement;
+  cloneEl.classList.add("is-zoomed");
+
+  // Append clone to appropriate container
   const isConstrained = document.body.classList.contains(
     "dynamic-views-zoom-constrain-to-editor",
   );
-  const originalParent = embedEl.parentElement;
-  if (originalParent && !isConstrained) {
-    zoomedOriginalParents.set(embedEl, originalParent);
-    document.body.appendChild(embedEl);
+  if (isConstrained) {
+    const viewContainer = embedEl.closest(".workspace-leaf-content");
+    if (viewContainer) {
+      viewContainer.appendChild(cloneEl);
+    } else {
+      document.body.appendChild(cloneEl);
+    }
+  } else {
+    document.body.appendChild(cloneEl);
   }
 
-  // Open this one
-  embedEl.classList.add("is-zoomed");
+  // Track the clone
+  zoomedClones.set(embedEl, cloneEl);
 
-  // Setup zoom gestures
-  const imgEl = embedEl.querySelector("img");
+  // Setup zoom gestures on clone
+  const imgEl = cloneEl.querySelector("img");
   if (!imgEl) {
     console.warn("Dynamic Views: Zoom opened but no img element found");
     return;
@@ -125,24 +128,26 @@ function openImageZoom(
   if (!isPinchZoomDisabled) {
     const cleanup = setupImageZoomGestures(
       imgEl,
-      embedEl,
+      cloneEl,
       app,
       file instanceof TFile ? file : undefined,
     );
-    zoomCleanupFns.set(embedEl, cleanup);
+    zoomCleanupFns.set(cloneEl, cleanup);
   }
 
   // Add listeners for closing
+  // Clicks on img are stopped by panzoom's click handler, so any click reaching here should close
   const onClickOutside = (evt: Event) => {
     const target = evt.target as HTMLElement;
-    if (!embedEl.contains(target)) {
-      closeImageZoom(embedEl, zoomCleanupFns, zoomedOriginalParents);
+    // Close unless clicking directly on the image (shouldn't reach here due to stopPropagation, but safety check)
+    if (target !== imgEl) {
+      closeImageZoom(cloneEl, zoomCleanupFns, zoomedClones);
     }
   };
 
   const onEscape = (evt: KeyboardEvent) => {
     if (evt.key === "Escape") {
-      closeImageZoom(embedEl, zoomCleanupFns, zoomedOriginalParents);
+      closeImageZoom(cloneEl, zoomCleanupFns, zoomedClones);
     }
   };
 
@@ -153,7 +158,7 @@ function openImageZoom(
   }, 0);
 
   // Store cleanup function for this zoom instance
-  zoomListenerCleanups.set(embedEl, () => {
+  zoomListenerCleanups.set(cloneEl, () => {
     document.removeEventListener("click", onClickOutside);
     document.removeEventListener("keydown", onEscape);
   });

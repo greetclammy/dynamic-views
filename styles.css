@@ -1073,13 +1073,13 @@ settings:
         collapsed: true
     -
         id: dynamic-views-hidden-file-extensions
-        title: Hide file extensions
-        description: Comma-separated list of extensions to hide (e.g., md, base, canvas)
+        title: Hide file formats
+        description: Comma-separated list of formats to hide (e.g., md, base, canvas)
         type: variable-text
         default: md
     -
         id: dynamic-views-file-type-indicator
-        title: File type indicator
+        title: File format indicator
         type: class-select
         allowEmpty: false
         default: dynamic-views-file-type-badge
@@ -2585,10 +2585,6 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   order: -100;
 }
 
-.dynamic-views .card .card-subtitle {
-  order: -90;
-}
-
 /* Property group position: top (below title/subtitle, above content) */
 .dynamic-views .card .card-properties-top {
   order: -50;
@@ -2931,6 +2927,7 @@ body.dynamic-views-file-type-none .dynamic-views .card-title-icon {
 }
 
 .dynamic-views .card-subtitle {
+  order: -90;
   color: var(--text-faint);
   font-family: var(--dynamic-views-subtitle-font);
   font-size: var(--dynamic-views-subtitle-font-size, var(--font-ui-small));
@@ -4574,11 +4571,6 @@ body.dynamic-views-hide-slideshow-indicator
 
 .theme-dark .dynamic-views .slideshow-indicator svg {
   color: rgb(209, 209, 209);
-}
-
-/* Hide indicator when zoomed */
-.dynamic-views .image-embed.is-zoomed .slideshow-indicator {
-  display: none;
 }
 
 /* Mobile: Larger indicator */
