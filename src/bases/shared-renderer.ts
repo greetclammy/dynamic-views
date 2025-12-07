@@ -912,6 +912,9 @@ export class SharedCardRenderer {
             void this.app.workspace.openLinkText(card.path, "", newLeaf);
           });
 
+          // Open context menu on right-click
+          link.addEventListener("contextmenu", handleContextMenu);
+
           // Make title draggable when openFileAction is 'title'
           link.addEventListener("dragstart", handleDrag);
         } else {
@@ -2402,10 +2405,12 @@ export class SharedCardRenderer {
           this.measureSideBySideRow(rowEl, field1, field2);
         });
 
-        // Re-measure on card resize
+        // Re-measure on card resize (RAF to avoid concurrent measurements)
         const card = rowEl.closest(".card") as HTMLElement;
         const observer = new ResizeObserver(() => {
-          this.measureSideBySideRow(rowEl, field1, field2);
+          requestAnimationFrame(() => {
+            this.measureSideBySideRow(rowEl, field1, field2);
+          });
         });
         observer.observe(card);
         this.propertyObservers.push(observer);
@@ -2422,8 +2427,9 @@ export class SharedCardRenderer {
     field2: HTMLElement,
   ): void {
     try {
-      const card = row.closest(".card") as HTMLElement;
-      const cardProperties = row.closest(".card-properties") as HTMLElement;
+      const card = row.closest(".card");
+      const cardProperties = row.closest(".card-properties");
+      if (!card || !cardProperties) return;
 
       // Remove measured state and enter measuring state to remove constraints
       row.removeClass("property-measured");
@@ -2432,13 +2438,17 @@ export class SharedCardRenderer {
       // Force reflow
       void row.offsetWidth;
 
-      // Measure property-content-wrapper (expands to content width in measuring mode)
+      // Get wrapper references for scroll reset later
       const wrapper1 = field1.querySelector(
         ".property-content-wrapper",
       ) as HTMLElement;
       const wrapper2 = field2.querySelector(
         ".property-content-wrapper",
       ) as HTMLElement;
+
+      // Measure property-content (actual content, not wrapper which may be flex-grown)
+      const content1 = field1.querySelector(".property-content") as HTMLElement;
+      const content2 = field2.querySelector(".property-content") as HTMLElement;
 
       // Measure inline labels if present
       const label1 = field1.querySelector(
@@ -2448,10 +2458,9 @@ export class SharedCardRenderer {
         ".property-label-inline",
       ) as HTMLElement;
 
-      // Total width = wrapper width + label width + gap (if inline label exists)
-      // During measuring mode, wrapper has overflow-x: visible and expands to content width
-      let width1 = wrapper1 ? wrapper1.scrollWidth : 0;
-      let width2 = wrapper2 ? wrapper2.scrollWidth : 0;
+      // Total width = content width + label width + gap (if inline label exists)
+      let width1 = content1 ? content1.scrollWidth : 0;
+      let width2 = content2 ? content2.scrollWidth : 0;
 
       // Add inline label width + gap between label and wrapper
       // Read gap from CSS variable (var(--size-4-1), typically 4px)
@@ -2504,7 +2513,12 @@ export class SharedCardRenderer {
       let field1Width: string;
       let field2Width: string;
 
-      if (percent1 <= 50) {
+      if (width1 === 0 && width2 === 0) {
+        // Both empty: split 50-50
+        const half = availableWidth / 2;
+        field1Width = `${half}px`;
+        field2Width = `${half}px`;
+      } else if (percent1 <= 50) {
         // Field1 fits: field1 exact, field2 fills remainder
         field1Width = `${width1}px`;
         field2Width = `${availableWidth - width1}px`;

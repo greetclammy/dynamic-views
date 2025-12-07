@@ -795,30 +795,33 @@ settings:
         description: Visual appearance of tags
         type: class-select
         allowEmpty: false
-        default: dynamic-views-tag-style-pill
+        default: dynamic-views-tag-style-fill
         options:
             -
-                label: Pill
-                value: dynamic-views-tag-style-pill
+                label: Outline
+                value: dynamic-views-tag-style-outline
+            -
+                label: Fill
+                value: dynamic-views-tag-style-fill
             -
                 label: Plaintext
                 value: dynamic-views-tag-style-plaintext
             -
-                label: Match theme
+                label: Theme style
                 value: dynamic-views-tag-style-theme
     -
         id: dynamic-views-show-tag-hash
-        title: Show hash (#) prefix
-        description: Show # prefix before tag names
+        title: Show hash
+        description: Show hash prefix (#)
         type: class-toggle
         default: false
     -
         id: dynamic-views-tag-color
         title: Tag color
-        description: Theme color preset for Pill and Plaintext tag styles
+        description: Theme color preset for Outline, Fill, and Plaintext tag styles
         type: class-select
         allowEmpty: false
-        default: dynamic-views-tag-color-faint
+        default: dynamic-views-tag-color-muted
         options:
             -
                 label: Faint
@@ -3096,12 +3099,19 @@ body.dynamic-views-open-on-title .dynamic-views .property-content {
   cursor: text;
 }
 
-/* Title link and extension: pointer cursor + selectable text */
+/* Title link and extension: selectable text */
 body.dynamic-views-open-on-title .dynamic-views .card-title a,
 body.dynamic-views-open-on-title .dynamic-views .card-title-ext.clickable {
-  cursor: pointer;
   user-select: text;
   -webkit-user-select: text;
+}
+
+/* Badge mode: enable selection when open-on-title */
+body.dynamic-views-open-on-title.dynamic-views-file-type-badge
+  .dynamic-views
+  .card-title-ext.clickable {
+  pointer-events: auto;
+  cursor: text;
 }
 
 .dynamic-views .card-thumbnail {
@@ -3171,7 +3181,9 @@ body.dynamic-views-show-thumbnail-placeholder.is-mobile.theme-dark
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center center;
   pointer-events: auto;
+  border-radius: 0; /* Override theme styles; container handles border-radius */
 }
 
 /* Thumbnail expand on click - Toggle mode */
@@ -3270,6 +3282,7 @@ body:not(.dynamic-views-image-zoom-disabled) > .image-embed.is-zoomed img {
   max-width: 100vw;
   object-fit: contain;
   opacity: 1;
+  border-radius: 0;
 }
 
 /* Desktop only: limit zoomed images to 90% viewport */
@@ -3357,6 +3370,7 @@ body:not(.dynamic-views-image-zoom-disabled) > .image-embed.is-zoomed img {
   max-width: 100vw;
   object-fit: contain;
   opacity: 1;
+  border-radius: 0;
 }
 
 /* Desktop only: limit zoomed cover images to 90% viewport */
@@ -3373,11 +3387,7 @@ body:not(.dynamic-views-image-zoom-disabled):not(.is-mobile)
   max-width: 90vw;
 }
 
-/* Thumbnail crop alignment (center is default) */
-.dynamic-views .card-thumbnail img {
-  object-position: center center;
-}
-
+/* Thumbnail crop alignment overrides */
 body.dynamic-views-thumbnail-crop-top .dynamic-views .card-thumbnail img {
   object-position: center top;
 }
@@ -3386,11 +3396,7 @@ body.dynamic-views-thumbnail-crop-bottom .dynamic-views .card-thumbnail img {
   object-position: center bottom;
 }
 
-/* Cover crop alignment (center is default) */
-.dynamic-views .card.image-format-cover .card-cover img {
-  object-position: center center;
-}
-
+/* Cover crop alignment overrides */
 body.dynamic-views-cover-crop-top
   .dynamic-views
   .card.image-format-cover
@@ -3413,6 +3419,7 @@ body.dynamic-views-cover-crop-bottom
   object-position: center;
   position: relative;
   z-index: 1;
+  border-radius: 0; /* Override theme styles; container handles border-radius */
 }
 
 /* Cover backgrounds for contain mode */
@@ -3699,6 +3706,8 @@ body.dynamic-views-cover-gap-card-padding
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center center;
+  border-radius: 0; /* Override theme styles; container handles border-radius */
 }
 
 /* ==================== COVER PLACEHOLDERS ==================== */
@@ -4609,12 +4618,6 @@ body.dynamic-views-hide-slideshow-indicator
   overflow: hidden;
 }
 
-/* Property field text color and font */
-.dynamic-views .property-field {
-  color: var(--text-faint);
-  font-family: var(--dynamic-views-property-master-font, inherit);
-}
-
 /* Timestamp wrapper - flex container for icon positioning */
 .dynamic-views .property-content > span:has(.timestamp-icon) {
   display: inline-flex;
@@ -4736,7 +4739,7 @@ body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 0;
-  height: 20px;
+  min-height: 20px;
 }
 
 .dynamic-views .path-wrapper {
@@ -4767,64 +4770,57 @@ body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
   display: inline;
 }
 
-/* Base tag styles */
-.dynamic-views .card-properties .tag,
-.dynamic-views .card-subtitle .tag,
-.dynamic-views .list-properties .tag {
-  text-decoration: none;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.dynamic-views .list-properties .tag {
+body:not(.dynamic-views-tag-style-theme) .dynamic-views .list-properties .tag {
   display: inline-block;
   cursor: pointer;
 }
 
-/* Tag style: Outline (default) */
-.dynamic-views .card-properties .tag,
-.dynamic-views .card-subtitle .tag,
-.dynamic-views .list-properties .tag {
-  background-color: transparent;
-  border-radius: var(--tag-radius);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-faint);
+/* Tag style: Outline (default) - reset all theme styles, apply only plugin styles */
+body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-properties .tag,
+body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-subtitle .tag,
+body:not(.dynamic-views-tag-style-theme) .dynamic-views .list-properties .tag {
+  all: unset;
+  --tag-text-color: var(--text-muted);
+  border-radius: var(--pill-radius);
+  border: 1px solid color-mix(in srgb, var(--tag-text-color) 40%, transparent);
+  color: var(--tag-text-color);
+  font-size: 0.875em;
+  line-height: 1;
+  padding: 0.25em 0.65em;
+  cursor: pointer;
 }
 
-.dynamic-views .card-properties .tag:hover,
-.dynamic-views .card-subtitle .tag:hover,
-.dynamic-views .list-properties .tag:hover {
-  border-color: var(--background-modifier-border-hover);
-  opacity: 1;
+body:not(.dynamic-views-tag-style-theme):not(.dynamic-views-tag-style-fill)
+  .dynamic-views
+  .card-properties
+  .tag:hover,
+body:not(.dynamic-views-tag-style-theme):not(.dynamic-views-tag-style-fill)
+  .dynamic-views
+  .card-subtitle
+  .tag:hover,
+body:not(.dynamic-views-tag-style-theme):not(.dynamic-views-tag-style-fill)
+  .dynamic-views
+  .list-properties
+  .tag:hover {
+  color: color-mix(in hsl, var(--tag-text-color), white 15%);
 }
 
-/* Property tags - default faint color (Style Settings OFF) */
-.dynamic-views .card-properties .tag {
-  color: var(--text-faint);
-  border-color: var(--background-modifier-border);
-}
-
-.dynamic-views .card-properties .tag:hover {
-  border-color: var(--background-modifier-border-hover);
-}
-
-/* Tag style: Match theme */
-body.dynamic-views-tag-style-theme .dynamic-views .card-properties .tag,
-body.dynamic-views-tag-style-theme .dynamic-views .card-subtitle .tag,
-body.dynamic-views-tag-style-theme .dynamic-views .list-properties .tag {
-  background-color: var(--tag-background);
-  color: var(--tag-color);
+/* Tag style: Fill - colored background based on text color */
+body.dynamic-views-tag-style-fill .dynamic-views .card-properties .tag,
+body.dynamic-views-tag-style-fill .dynamic-views .card-subtitle .tag,
+body.dynamic-views-tag-style-fill .dynamic-views .list-properties .tag {
   border: none;
-  border-radius: var(--tag-radius);
+  background-color: color-mix(in srgb, var(--tag-text-color) 10%, transparent);
+  color: var(--tag-text-color);
 }
 
-body.dynamic-views-tag-style-theme .dynamic-views .card-properties .tag:hover,
-body.dynamic-views-tag-style-theme .dynamic-views .card-subtitle .tag:hover,
-body.dynamic-views-tag-style-theme .dynamic-views .list-properties .tag:hover {
-  background-color: var(--tag-background-hover);
-  color: var(--tag-color);
-  opacity: 1;
+body.dynamic-views-tag-style-fill .dynamic-views .card-properties .tag:hover,
+body.dynamic-views-tag-style-fill .dynamic-views .card-subtitle .tag:hover,
+body.dynamic-views-tag-style-fill .dynamic-views .list-properties .tag:hover {
+  background-color: color-mix(in srgb, var(--tag-text-color) 20%, transparent);
 }
+
+/* Tag style: Theme style - no overrides, inherits Obsidian's a.tag styles */
 
 /* Tag style: Plaintext */
 body.dynamic-views-tag-style-plaintext .dynamic-views .card-properties .tag,
@@ -4840,104 +4836,75 @@ body.dynamic-views-tag-style-plaintext .dynamic-views .list-properties .tag {
 body.dynamic-views-tag-style-plaintext
   .dynamic-views
   .card-properties
+  .tag:hover,
+body.dynamic-views-tag-style-plaintext .dynamic-views .card-subtitle .tag:hover,
+body.dynamic-views-tag-style-plaintext
+  .dynamic-views
+  .list-properties
   .tag:hover {
   text-decoration: underline;
 }
 
-/* Tag color presets */
-body.dynamic-views-tag-color-faint .dynamic-views .tag {
-  color: var(--text-faint);
-}
-body.dynamic-views-tag-color-muted .dynamic-views .tag {
-  color: var(--text-muted);
-}
-body.dynamic-views-tag-color-normal .dynamic-views .tag {
-  color: var(--text-normal);
-}
-body.dynamic-views-tag-color-accent .dynamic-views .tag {
-  color: var(--text-accent);
-}
-body.dynamic-views-tag-color-red .dynamic-views .tag {
-  color: var(--color-red);
-}
-body.dynamic-views-tag-color-orange .dynamic-views .tag {
-  color: var(--color-orange);
-}
-body.dynamic-views-tag-color-yellow .dynamic-views .tag {
-  color: var(--color-yellow);
-}
-body.dynamic-views-tag-color-green .dynamic-views .tag {
-  color: var(--color-green);
-}
-body.dynamic-views-tag-color-cyan .dynamic-views .tag {
-  color: var(--color-cyan);
-}
-body.dynamic-views-tag-color-blue .dynamic-views .tag {
-  color: var(--color-blue);
-}
-body.dynamic-views-tag-color-purple .dynamic-views .tag {
-  color: var(--color-purple);
-}
-body.dynamic-views-tag-color-pink .dynamic-views .tag {
-  color: var(--color-pink);
-}
-body.dynamic-views-tag-color-custom .dynamic-views .tag {
-  color: var(--dynamic-views-tag-color-custom, var(--text-faint));
-}
-
-/* Pill style: colorful presets also color the border */
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-accent
+/* Tag color presets (muted is default, set in base style) */
+body.dynamic-views-tag-color-faint:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--text-accent-hover);
+  --tag-text-color: var(--text-faint);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-red
+body.dynamic-views-tag-color-normal:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--color-red);
+  --tag-text-color: var(--text-normal);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-orange
+body.dynamic-views-tag-color-accent:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--color-orange);
+  --tag-text-color: var(--text-accent);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-yellow
+body.dynamic-views-tag-color-red:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--color-yellow);
+  --tag-text-color: var(--color-red);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-green
+body.dynamic-views-tag-color-orange:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--color-green);
+  --tag-text-color: var(--color-orange);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-cyan
+body.dynamic-views-tag-color-yellow:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--color-cyan);
+  --tag-text-color: var(--color-yellow);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-blue
+body.dynamic-views-tag-color-green:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--color-blue);
+  --tag-text-color: var(--color-green);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-purple
+body.dynamic-views-tag-color-cyan:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--color-purple);
+  --tag-text-color: var(--color-cyan);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-pink
+body.dynamic-views-tag-color-blue:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(--color-pink);
+  --tag-text-color: var(--color-blue);
 }
-body.dynamic-views-tag-style-pill.dynamic-views-tag-color-custom
+body.dynamic-views-tag-color-purple:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
-  border-color: var(
-    --dynamic-views-tag-color-custom,
-    var(--background-modifier-border)
-  );
+  --tag-text-color: var(--color-purple);
+}
+body.dynamic-views-tag-color-pink:not(.dynamic-views-tag-style-theme)
+  .dynamic-views
+  .tag {
+  --tag-text-color: var(--color-pink);
+}
+body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
+  .dynamic-views
+  .tag {
+  --tag-text-color: var(--dynamic-views-tag-color-custom, var(--text-faint));
 }
 
 .dynamic-views .file-path-segment,
@@ -5091,6 +5058,8 @@ body.dynamic-views-full-row-align-right
   scrollbar-width: none;
   position: relative;
   direction: ltr;
+  color: var(--text-faint);
+  font-family: var(--dynamic-views-property-master-font, inherit);
 }
 
 /* Gap between inline label and content */
@@ -5259,7 +5228,7 @@ body.dynamic-views-full-row-align-right
   flex-shrink: 0;
   z-index: 2;
   background: inherit;
-  height: var(--dynamic-views-property-content-height, 20px);
+  min-height: var(--dynamic-views-property-content-height, 20px);
   display: flex;
   align-items: center;
 }
@@ -5540,10 +5509,6 @@ body.dynamic-views-property-color-without-labels-custom
 }
 
 /* Subtitle color presets */
-body.dynamic-views-subtitle-color-faint .dynamic-views .card-subtitle {
-  color: var(--text-faint);
-}
-
 body.dynamic-views-subtitle-color-muted .dynamic-views .card-subtitle {
   color: var(--text-muted);
 }
@@ -5597,10 +5562,6 @@ body.dynamic-views-text-preview-color-faint .dynamic-views .card-text-preview {
   color: var(--text-faint);
 }
 
-body.dynamic-views-text-preview-color-muted .dynamic-views .card-text-preview {
-  color: var(--text-muted);
-}
-
 body.dynamic-views-text-preview-color-normal .dynamic-views .card-text-preview {
   color: var(--text-normal);
 }
@@ -5652,10 +5613,6 @@ body.dynamic-views-title-color-faint .dynamic-views .card-title {
 
 body.dynamic-views-title-color-muted .dynamic-views .card-title {
   color: var(--text-muted);
-}
-
-body.dynamic-views-title-color-normal .dynamic-views .card-title {
-  color: var(--text-normal);
 }
 
 body.dynamic-views-title-color-accent .dynamic-views .card-title {
@@ -6146,97 +6103,6 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
       var(--text-muted)
     );
   }
-
-  /* Tag hover colors */
-  body.dynamic-views-tag-color-faint .dynamic-views .tag:hover {
-    color: var(--text-muted);
-  }
-  body.dynamic-views-tag-color-muted .dynamic-views .tag:hover {
-    color: var(--text-normal);
-  }
-  body.dynamic-views-tag-color-normal .dynamic-views .tag:hover {
-    color: var(--text-muted);
-  }
-  body.dynamic-views-tag-color-accent .dynamic-views .tag:hover {
-    color: var(--text-accent-hover);
-  }
-  body.dynamic-views-tag-color-red .dynamic-views .tag:hover {
-    color: color-mix(in hsl, var(--color-red), white 15%);
-  }
-  body.dynamic-views-tag-color-orange .dynamic-views .tag:hover {
-    color: color-mix(in hsl, var(--color-orange), white 15%);
-  }
-  body.dynamic-views-tag-color-yellow .dynamic-views .tag:hover {
-    color: color-mix(in hsl, var(--color-yellow), white 15%);
-  }
-  body.dynamic-views-tag-color-green .dynamic-views .tag:hover {
-    color: color-mix(in hsl, var(--color-green), white 15%);
-  }
-  body.dynamic-views-tag-color-cyan .dynamic-views .tag:hover {
-    color: color-mix(in hsl, var(--color-cyan), white 15%);
-  }
-  body.dynamic-views-tag-color-blue .dynamic-views .tag:hover {
-    color: color-mix(in hsl, var(--color-blue), white 15%);
-  }
-  body.dynamic-views-tag-color-purple .dynamic-views .tag:hover {
-    color: color-mix(in hsl, var(--color-purple), white 15%);
-  }
-  body.dynamic-views-tag-color-pink .dynamic-views .tag:hover {
-    color: color-mix(in hsl, var(--color-pink), white 15%);
-  }
-  body.dynamic-views-tag-color-custom .dynamic-views .tag:hover {
-    color: var(--dynamic-views-tag-color-custom-hover, var(--text-muted));
-  }
-
-  /* Pill border hover colors for colorful presets */
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-red
-    .dynamic-views
-    .tag:hover {
-    border-color: color-mix(in hsl, var(--color-red), white 15%);
-  }
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-orange
-    .dynamic-views
-    .tag:hover {
-    border-color: color-mix(in hsl, var(--color-orange), white 15%);
-  }
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-yellow
-    .dynamic-views
-    .tag:hover {
-    border-color: color-mix(in hsl, var(--color-yellow), white 15%);
-  }
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-green
-    .dynamic-views
-    .tag:hover {
-    border-color: color-mix(in hsl, var(--color-green), white 15%);
-  }
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-cyan
-    .dynamic-views
-    .tag:hover {
-    border-color: color-mix(in hsl, var(--color-cyan), white 15%);
-  }
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-blue
-    .dynamic-views
-    .tag:hover {
-    border-color: color-mix(in hsl, var(--color-blue), white 15%);
-  }
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-purple
-    .dynamic-views
-    .tag:hover {
-    border-color: color-mix(in hsl, var(--color-purple), white 15%);
-  }
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-pink
-    .dynamic-views
-    .tag:hover {
-    border-color: color-mix(in hsl, var(--color-pink), white 15%);
-  }
-  body.dynamic-views-tag-style-pill.dynamic-views-tag-color-custom
-    .dynamic-views
-    .tag:hover {
-    border-color: var(
-      --dynamic-views-tag-color-custom-hover,
-      var(--background-modifier-border-hover)
-    );
-  }
 }
 
 /* Odd fields (left side) - label padding */
@@ -6327,7 +6193,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
   gap: var(--size-4-1);
   flex-shrink: 0;
   white-space: nowrap;
-  height: var(--dynamic-views-property-content-height, 20px);
+  min-height: var(--dynamic-views-property-content-height, 20px);
   color: inherit;
   min-width: 0;
   flex: 0 0 auto;
