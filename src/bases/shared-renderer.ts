@@ -32,6 +32,7 @@ import {
   getListSeparator,
   isSlideshowEnabled,
   isSlideshowIndicatorEnabled,
+  getUrlIcon,
 } from "../utils/style-settings";
 import { getPropertyLabel, normalizePropertyName } from "../utils/property";
 import { findLinksInText, type ParsedLink } from "../utils/link-parser";
@@ -1103,7 +1104,7 @@ export class SharedCardRenderer {
           "card-title-url-icon text-icon-button svg-icon",
         );
         iconEl.setAttribute("aria-label", card.urlValue);
-        setIcon(iconEl, "square-arrow-out-up-right");
+        setIcon(iconEl, getUrlIcon());
 
         iconEl.addEventListener("click", (e) => {
           e.preventDefault();

@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 import obsidianmd from "eslint-plugin-obsidianmd";
 
 export default [
-  // Ignore generated files and configs
+  // Ignore generated files, configs, and test files
   {
     ignores: [
       "main.js",
@@ -13,6 +13,9 @@ export default [
       "eslint.config.js",
       "check-*.js",
       "version-bump.mjs",
+      "jest.config.cjs",
+      "tests/**",
+      "coverage/**",
     ],
   },
 

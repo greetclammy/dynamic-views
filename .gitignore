@@ -7,3 +7,4 @@ CLAUDE.md
 data.json
 *.zip
 .claude
+coverage/

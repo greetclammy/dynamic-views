@@ -1,12 +1,12 @@
 // JSX type definitions for datacorejsx context (non-React)
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// Note: JSX namespace requires broad types for compatibility with Datacore's Preact runtime
 declare namespace JSX {
   interface IntrinsicElements {
-    [elemName: string]: any;
+    [elemName: string]: Record<string, unknown>;
   }
-  type Element = any;
+  type Element = unknown;
   interface ElementClass {
-    render: any;
+    render: () => Element;
   }
   interface ElementAttributesProperty {
     props: object;
@@ -16,6 +16,13 @@ declare namespace JSX {
   }
 }
 
-// Declare global h and Fragment functions
-declare function h(type: any, props: any, ...children: any[]): any;
-declare const Fragment: any;
+// Fragment component type for JSX <>...</> syntax
+type FragmentComponent = (props: { children?: unknown }) => JSX.Element;
+
+// Declare global h and Fragment functions (Datacore's Preact runtime)
+declare function h(
+  type: unknown,
+  props: Record<string, unknown> | null,
+  ...children: unknown[]
+): JSX.Element;
+declare const Fragment: FragmentComponent;

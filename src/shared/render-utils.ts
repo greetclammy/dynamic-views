@@ -23,9 +23,9 @@ export function formatTimestamp(
   isDateOnly: boolean = false,
   styled: boolean = false,
 ): string {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment -- Dynamic require for moment.js dependency
   const moment = require("moment");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- Dynamic require to avoid circular dependency
   const styleSettings = require("../utils/style-settings") as {
     shouldShowRecentTimeOnly(): boolean;
     shouldShowOlderDateOnly(): boolean;
@@ -36,28 +36,29 @@ export function formatTimestamp(
 
   // For date-only properties, show date only
   if (isDateOnly) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
-    return moment(timestamp).format(styleSettings.getDateFormat());
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
+    return moment(timestamp).format(styleSettings.getDateFormat()) as string;
   }
 
   // For styled property display, apply Style Settings toggles
   if (styled) {
     const now = Date.now();
-    const isRecent = now - timestamp < 86400000;
+    // Guard against future timestamps - treat them as not recent
+    const isRecent = timestamp <= now && now - timestamp < 86400000;
 
     if (isRecent && styleSettings.shouldShowRecentTimeOnly()) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
-      return moment(timestamp).format(styleSettings.getTimeFormat());
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
+      return moment(timestamp).format(styleSettings.getTimeFormat()) as string;
     }
     if (!isRecent && styleSettings.shouldShowOlderDateOnly()) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
-      return moment(timestamp).format(styleSettings.getDateFormat());
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
+      return moment(timestamp).format(styleSettings.getDateFormat()) as string;
     }
   }
 
   // Full datetime
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
-  return moment(timestamp).format(styleSettings.getDatetimeFormat());
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
+  return moment(timestamp).format(styleSettings.getDatetimeFormat()) as string;
 }
 
 /**
@@ -65,10 +66,11 @@ export function formatTimestamp(
  */
 export function shouldShowTimestampIcon(): boolean {
   // Import at runtime to avoid circular dependencies
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-  const { showTimestampIcon } = require("../utils/style-settings");
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-  return showTimestampIcon();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- Dynamic require to avoid circular dependency
+  const styleSettings = require("../utils/style-settings") as {
+    showTimestampIcon(): boolean;
+  };
+  return styleSettings.showTimestampIcon();
 }
 
 /**

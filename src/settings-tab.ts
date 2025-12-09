@@ -330,7 +330,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
     }
 
     new Setting(containerEl)
-      .setName("Show 'Shuffle' ribbon icon")
+      .setName("Show 'shuffle' ribbon icon")
       .setDesc(
         "Display the shuffle button in the left sidebar ribbon. Reload plugin or Obsidian to apply.",
       )
@@ -345,7 +345,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Show 'Open random file' ribbon icon")
+      .setName("Show 'open random file' ribbon icon")
       .setDesc(
         "Display the random file button in the left sidebar ribbon. Reload plugin or Obsidian to apply.",
       )
@@ -394,9 +394,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
     appearanceTip.appendText(" command to open settings in a tab.");
 
     // Default settings for new views section
-    new Setting(containerEl)
-      .setName("Default settings for new views")
-      .setHeading();
+    new Setting(containerEl).setName("Default for new views").setHeading();
 
     const defaultViewSettings =
       this.plugin.persistenceManager.getDefaultViewSettings();
@@ -666,7 +664,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       .setName("Manage settings")
       .setDesc("Back up plugin settings to a file or restore from backup.")
       .addButton((button) =>
-        button.setButtonText("Import").onClick(() => {
+        button.setButtonText("Import...").onClick(() => {
           const input = document.createElement("input");
           input.setAttrs({
             type: "file",
@@ -768,7 +766,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
         }),
       )
       .addButton((button) =>
-        button.setButtonText("Export").onClick(async () => {
+        button.setButtonText("Export...").onClick(async () => {
           const globalSettings =
             this.plugin.persistenceManager.getGlobalSettings();
           const defaultViewSettings =

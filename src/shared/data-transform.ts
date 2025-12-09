@@ -256,9 +256,11 @@ export function datacoreResultToCardData(
   }
 
   // Get YAML tags only from 'tags' property
-  const yamlTagsRaw = result.value("tags") as unknown;
+  const yamlTagsRaw = result.value("tags");
   const yamlTags: string[] = stripTagHashes(
-    Array.isArray(yamlTagsRaw) ? (yamlTagsRaw as string[]) : [],
+    Array.isArray(yamlTagsRaw)
+      ? yamlTagsRaw.filter((t): t is string => typeof t === "string")
+      : [],
   );
   // Get tags in YAML + note body from $tags
   const tags = stripTagHashes(result.$tags || []);

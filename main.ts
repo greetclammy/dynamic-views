@@ -162,9 +162,9 @@ export default class DynamicViewsPlugin extends Plugin {
 
     // Add ribbon icons for Random and Shuffle (if enabled in settings)
     if (settings.showRandomInRibbon) {
-      const _randomRibbon = this.addRibbonIcon(
+      this.addRibbonIcon(
         "dices",
-        "Open random file from Bases view",
+        "Open random file from bases view",
         async (evt: MouseEvent) => {
           // Close any zoomed images
           document.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {
@@ -178,7 +178,7 @@ export default class DynamicViewsPlugin extends Plugin {
     }
 
     if (settings.showShuffleInRibbon) {
-      this.addRibbonIcon("shuffle", "Shuffle Bases view", () => {
+      this.addRibbonIcon("shuffle", "Shuffle bases view", () => {
         // Close any zoomed images
         document.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {
           el.classList.remove("is-zoomed");
@@ -190,7 +190,7 @@ export default class DynamicViewsPlugin extends Plugin {
     // Add commands for Random and Shuffle
     this.addCommand({
       id: "random-file-from-bases",
-      name: "Open random file from Bases view",
+      name: "Open random file from bases view",
       callback: async () => {
         // Close any zoomed images
         document.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {
@@ -204,7 +204,7 @@ export default class DynamicViewsPlugin extends Plugin {
 
     this.addCommand({
       id: "shuffle-bases-view",
-      name: "Shuffle Bases view",
+      name: "Shuffle bases view",
       callback: () => {
         // Close any zoomed images
         document.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {

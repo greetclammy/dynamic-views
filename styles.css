@@ -373,6 +373,12 @@ settings:
         description: Keep the empty value marker color at normal intensity
         type: class-toggle
     -
+        id: dynamic-views-url-icon
+        title: "'Open URL' button icon"
+        description: Lucide icon name (e.g., external-link, link, arrow-up-right)
+        type: variable-text
+        default: 'square-arrow-out-up-right'
+    -
         id: dynamic-views-property-master-font
         title: Property font
         description: Font name as it appears on your system. Can be overridden by individual item options below.
@@ -1321,8 +1327,17 @@ body {
 }
 
 .dynamic-views .card:focus-visible {
-  outline: 2px solid var(--background-modifier-border-focus);
-  outline-offset: -2px;
+  outline: none;
+}
+
+.dynamic-views .card:focus-visible::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--background-modifier-border-focus);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 10;
 }
 
 /* ============================================
@@ -2838,6 +2853,9 @@ body.dynamic-views-ambient-background
 
 .dynamic-views .card-title-url-icon {
   flex-shrink: 0;
+  /* Compensate for wrapper padding: (26px wrapper - 18px icon) / 2 = 4px */
+  margin-left: -4px;
+  margin-right: -4px;
 }
 
 /* File type indicator styles */
@@ -2891,6 +2909,7 @@ body.dynamic-views-file-type-badge .dynamic-views .card-title-ext {
 body.dynamic-views-file-type-badge .dynamic-views .card-title-ext::before {
   content: attr(data-ext);
   color: var(--text-muted);
+  font-family: var(--font-interface, var(--font-text));
   font-size: var(--font-ui-smaller);
   line-height: var(--dynamic-views-title-font-size, var(--font-ui-medium));
   padding: 0 0.4em;
@@ -4655,7 +4674,7 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
 
 .theme-dark .dynamic-views .slideshow-nav-left svg,
 .theme-dark .dynamic-views .slideshow-nav-right svg {
-  color: rgb(209, 209, 209);
+  color: var(--color-base-100);
 }
 
 /* Mobile: Always show arrows and larger touch targets */
@@ -4673,8 +4692,8 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
 /* Slideshow indicator */
 .dynamic-views .slideshow-indicator {
   position: absolute;
-  right: 8px;
-  bottom: calc(8px + var(--image-offset-bottom, 0px));
+  right: max(calc(var(--dynamic-views-card-padding, 12px) - 4px), 4px);
+  bottom: max(calc(var(--dynamic-views-card-padding, 12px) - 4px), 4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4682,6 +4701,7 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
   height: 20px;
   z-index: 3;
   pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
 /* Hide slideshow indicator when toggle is on */
@@ -4689,6 +4709,11 @@ body.dynamic-views-hide-slideshow-indicator
   .dynamic-views
   .slideshow-indicator {
   display: none;
+}
+
+/* Hide indicator when nav buttons appear on hover */
+.dynamic-views .card-cover-slideshow:hover .slideshow-indicator {
+  opacity: 0;
 }
 
 .dynamic-views .slideshow-indicator svg {
@@ -4703,15 +4728,13 @@ body.dynamic-views-hide-slideshow-indicator
 }
 
 .theme-dark .dynamic-views .slideshow-indicator svg {
-  color: rgb(209, 209, 209);
+  color: var(--color-base-100);
 }
 
 /* Mobile: Larger indicator */
 .is-mobile .dynamic-views .slideshow-indicator {
   width: 24px;
   height: 24px;
-  right: 6px;
-  bottom: calc(6px + var(--image-offset-bottom, 0px));
 }
 
 .is-mobile .dynamic-views .slideshow-indicator svg {

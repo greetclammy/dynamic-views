@@ -54,7 +54,7 @@ export function shuffleArray<T>(array: T[]): T[] {
 export function getActiveBasesView(
   app: App,
 ): BasesViewWrapper["basesView"] | null {
-  const activeLeaf = app.workspace.activeLeaf;
+  const activeLeaf = app.workspace.getMostRecentLeaf();
   if (!activeLeaf) return null;
 
   const view = activeLeaf.view;
@@ -127,7 +127,7 @@ export async function openRandomFile(
   const basesView = getActiveBasesView(app);
 
   if (!basesView) {
-    new Notice("No active Bases view");
+    new Notice("No active bases view");
     return;
   }
 
@@ -157,7 +157,7 @@ export function toggleShuffleActiveView(app: App): void {
   const basesView = getActiveBasesView(app);
 
   if (!basesView) {
-    new Notice("No active Bases view");
+    new Notice("No active bases view");
     return;
   }
 

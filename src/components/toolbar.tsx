@@ -815,14 +815,24 @@ export function Toolbar({
                   const evt = e as KeyboardEvent;
                   // Allow: backspace, delete, tab, escape, enter, arrows
                   if (
-                    [8, 9, 13, 27, 37, 38, 39, 40, 46].includes(evt.keyCode)
+                    [
+                      "Backspace",
+                      "Tab",
+                      "Enter",
+                      "Escape",
+                      "ArrowLeft",
+                      "ArrowUp",
+                      "ArrowRight",
+                      "ArrowDown",
+                      "Delete",
+                    ].includes(evt.key)
                   ) {
                     return;
                   }
                   // Allow: Ctrl/Cmd+A, Ctrl/Cmd+C, Ctrl/Cmd+V, Ctrl/Cmd+X
                   if (
                     (evt.ctrlKey || evt.metaKey) &&
-                    [65, 67, 86, 88].includes(evt.keyCode)
+                    ["a", "c", "v", "x"].includes(evt.key.toLowerCase())
                   ) {
                     return;
                   }
@@ -1002,15 +1012,18 @@ export function Toolbar({
                       target: HTMLTextAreaElement;
                     };
                     onDraftQueryChange(evt.target.value);
-                    evt.target.style.height = "auto";
-                    evt.target.style.height = evt.target.scrollHeight + "px";
+                    evt.target.style.setProperty("height", "auto");
+                    evt.target.style.setProperty(
+                      "height",
+                      `${evt.target.scrollHeight}px`,
+                    );
                   }}
                   className="query-input"
                   placeholder='#tag&#10;path("path/to/folder")&#10;key = "value"'
                   ref={(el: HTMLTextAreaElement | null) => {
                     if (el) {
-                      el.style.height = "auto";
-                      el.style.height = el.scrollHeight + "px";
+                      el.style.setProperty("height", "auto");
+                      el.style.setProperty("height", `${el.scrollHeight}px`);
                     }
                   }}
                 />
@@ -1291,14 +1304,24 @@ export function Toolbar({
                     const evt = e as KeyboardEvent;
                     // Allow: backspace, delete, tab, escape, enter, arrows
                     if (
-                      [8, 9, 13, 27, 37, 38, 39, 40, 46].includes(evt.keyCode)
+                      [
+                        "Backspace",
+                        "Tab",
+                        "Enter",
+                        "Escape",
+                        "ArrowLeft",
+                        "ArrowUp",
+                        "ArrowRight",
+                        "ArrowDown",
+                        "Delete",
+                      ].includes(evt.key)
                     ) {
                       return;
                     }
                     // Allow: Ctrl/Cmd+A, Ctrl/Cmd+C, Ctrl/Cmd+V, Ctrl/Cmd+X
                     if (
                       (evt.ctrlKey || evt.metaKey) &&
-                      [65, 67, 86, 88].includes(evt.keyCode)
+                      ["a", "c", "v", "x"].includes(evt.key.toLowerCase())
                     ) {
                       return;
                     }
