@@ -123,7 +123,7 @@ export function Settings({
   };
 
   // Chevron SVG for section headers
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
   const chevronSvg: JSX.Element = (
     <svg
       className="chevron"

@@ -33,10 +33,13 @@ export async function loadImageForEntry(
   }
 
   try {
-    // Process and validate image paths using shared utility
-    const { internalPaths, externalUrls } = await processImagePaths(
-      imagePropertyValues as string[],
+    // Filter to only valid string paths before processing
+    const validPaths = imagePropertyValues.filter(
+      (v): v is string => typeof v === "string" && v.length > 0,
     );
+
+    // Process and validate image paths using shared utility
+    const { internalPaths, externalUrls } = await processImagePaths(validPaths);
 
     // Convert internal paths to resource URLs using shared utility
     let validImages: string[] = [

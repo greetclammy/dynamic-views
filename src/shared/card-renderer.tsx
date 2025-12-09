@@ -40,7 +40,6 @@ function renderFileTypeIcon(path: string) {
   const icon = getFileTypeIcon(path);
   if (!icon) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return (
     <span
       className="card-title-icon"
@@ -119,7 +118,6 @@ function renderFileExt(
   const extNoDot = extInfo.ext.slice(1);
 
   if (settings.openFileAction === "title") {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return (
       <span
         className="card-title-ext clickable"
@@ -138,7 +136,6 @@ function renderFileExt(
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return (
     <span className="card-title-ext" data-ext={extNoDot}>
       {extInfo.ext}
@@ -553,8 +550,7 @@ function renderProperty(
   card: CardData,
   app: App,
   timeIcon: "calendar" | "clock",
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSX.Element resolves to any due to Datacore's JSX runtime
-): any {
+): unknown {
   if (propertyName === "") {
     return null;
   }
@@ -570,14 +566,14 @@ function renderProperty(
   }
 
   // Render label above if enabled
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+
   const labelAbove =
     settings.propertyLabels === "above" ? (
       <div className="property-label">{getPropertyLabel(propertyName)}</div>
     ) : null;
 
   // Render inline label if enabled (as sibling, before property-content)
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+
   const labelInline =
     settings.propertyLabels === "inline" ? (
       <span className="property-label-inline">
@@ -1223,7 +1219,6 @@ function Card({
                 imageArray.length >= 2;
 
               if (shouldShowSlideshow) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
                 return (
                   <CoverSlideshow
                     imageArray={imageArray}
@@ -1234,7 +1229,6 @@ function Card({
                 );
               }
 
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
               return (
                 <div className="card-cover">
                   <div
@@ -1646,7 +1640,7 @@ function Card({
           return null;
 
         // Build row elements
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
+
         const row1 = row1HasContent && (
           <div
             className={`property-row property-row-1${settings.propertyGroup1SideBySide ? " property-row-sidebyside" : ""}${
@@ -1681,7 +1675,6 @@ function Card({
           </div>
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row2 = row2HasContent && (
           <div
             className={`property-row property-row-2${settings.propertyGroup2SideBySide ? " property-row-sidebyside" : ""}${
@@ -1716,7 +1709,6 @@ function Card({
           </div>
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row3 = row3HasContent && (
           <div
             className={`property-row property-row-3${settings.propertyGroup3SideBySide ? " property-row-sidebyside" : ""}${
@@ -1751,7 +1743,6 @@ function Card({
           </div>
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row4 = row4HasContent && (
           <div
             className={`property-row property-row-4${settings.propertyGroup4SideBySide ? " property-row-sidebyside" : ""}${
@@ -1786,7 +1777,6 @@ function Card({
           </div>
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row5 = row5HasContent && (
           <div
             className={`property-row property-row-5${settings.propertyGroup5SideBySide ? " property-row-sidebyside" : ""}${
@@ -1821,7 +1811,6 @@ function Card({
           </div>
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row6 = row6HasContent && (
           <div
             className={`property-row property-row-6${settings.propertyGroup6SideBySide ? " property-row-sidebyside" : ""}${
@@ -1856,7 +1845,6 @@ function Card({
           </div>
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSX.Element resolves to any due to Datacore's JSX runtime
         const row7 = row7HasContent && (
           <div
             className={`property-row property-row-7${settings.propertyGroup7SideBySide ? " property-row-sidebyside" : ""}${
@@ -1924,7 +1912,6 @@ function Card({
           else bottomRows.push(row7);
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
         return (
           <>
             {topRows.length > 0 && (

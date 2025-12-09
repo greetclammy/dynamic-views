@@ -116,7 +116,6 @@ export function ListView({
 
                 if (!hasProperties) return null;
 
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- JSX.Element resolves to any due to Datacore's JSX runtime
                 return (
                   <span className="list-properties">
                     {card.property1 === "tags" &&

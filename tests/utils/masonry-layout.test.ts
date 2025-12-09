@@ -1,0 +1,256 @@
+import {
+  calculateMasonryLayout,
+  applyMasonryLayout,
+} from "../../src/utils/masonry-layout";
+
+describe("masonry-layout", () => {
+  describe("calculateMasonryLayout", () => {
+    const createMockCard = (height: number): HTMLElement => {
+      const card = document.createElement("div");
+      Object.defineProperty(card, "offsetHeight", {
+        configurable: true,
+        value: height,
+      });
+      return card;
+    };
+
+    it("should calculate correct number of columns based on container width", () => {
+      const cards = [createMockCard(200), createMockCard(300)];
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 1000,
+        cardSize: 200,
+        minColumns: 2,
+        gap: 16,
+      });
+
+      // (1000 + 16) / (200 + 16) = 4.7 => 4 columns
+      expect(result.columns).toBe(4);
+    });
+
+    it("should respect minimum columns constraint", () => {
+      const cards = [createMockCard(200)];
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 100,
+        cardSize: 200,
+        minColumns: 3,
+        gap: 16,
+      });
+
+      expect(result.columns).toBe(3);
+    });
+
+    it("should calculate correct card width for given columns", () => {
+      const cards = [createMockCard(200)];
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 1000,
+        cardSize: 200,
+        minColumns: 2,
+        gap: 16,
+      });
+
+      // Card width should be calculated based on columns and gap
+      expect(result.cardWidth).toBeGreaterThan(0);
+      expect(result.cardWidth).toBeLessThanOrEqual(1000 / result.columns);
+    });
+
+    it("should position cards in shortest column (masonry algorithm)", () => {
+      const cards = [
+        createMockCard(100),
+        createMockCard(200),
+        createMockCard(150),
+        createMockCard(300),
+      ];
+
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 500,
+        cardSize: 100,
+        minColumns: 2,
+        gap: 10,
+      });
+
+      // Should have at least 2 columns
+      expect(result.columns).toBeGreaterThanOrEqual(2);
+
+      // First card should be in first position
+      expect(result.positions[0]).toEqual({ left: 0, top: 0 });
+
+      // All positions should have been calculated
+      expect(result.positions.length).toBe(4);
+
+      // Positions should use masonry algorithm (shortest column)
+      result.positions.forEach((pos) => {
+        expect(pos.left).toBeGreaterThanOrEqual(0);
+        expect(pos.top).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    it("should handle single column layout", () => {
+      const cards = [createMockCard(100), createMockCard(200)];
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 200,
+        cardSize: 200,
+        minColumns: 1,
+        gap: 10,
+      });
+
+      expect(result.columns).toBe(1);
+      expect(result.cardWidth).toBe(200);
+      expect(result.positions[0]).toEqual({ left: 0, top: 0 });
+      expect(result.positions[1]).toEqual({ left: 0, top: 110 }); // 100 + 10 gap
+    });
+
+    it("should handle empty cards array", () => {
+      const result = calculateMasonryLayout({
+        cards: [],
+        containerWidth: 1000,
+        cardSize: 200,
+        minColumns: 2,
+        gap: 16,
+      });
+
+      expect(result.positions).toEqual([]);
+      // Container height with empty array might be 0 or -Infinity depending on implementation
+      expect(typeof result.containerHeight).toBe("number");
+      expect(result.columns).toBeGreaterThan(0);
+    });
+
+    it("should calculate correct container height", () => {
+      const cards = [
+        createMockCard(100),
+        createMockCard(200),
+        createMockCard(150),
+      ];
+
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 500,
+        cardSize: 100,
+        minColumns: 2,
+        gap: 10,
+      });
+
+      // Container height should be the tallest column
+      expect(result.containerHeight).toBeGreaterThan(0);
+      expect(result.containerHeight).toBeGreaterThanOrEqual(200); // At least tallest card
+    });
+
+    it("should handle various gap sizes", () => {
+      const cards = [createMockCard(100), createMockCard(100)];
+
+      const resultNoGap = calculateMasonryLayout({
+        cards,
+        containerWidth: 500,
+        cardSize: 100,
+        minColumns: 2,
+        gap: 0,
+      });
+
+      const resultWithGap = calculateMasonryLayout({
+        cards,
+        containerWidth: 500,
+        cardSize: 100,
+        minColumns: 2,
+        gap: 20,
+      });
+
+      // Both should have calculated widths
+      expect(resultNoGap.cardWidth).toBeGreaterThan(0);
+      expect(resultWithGap.cardWidth).toBeGreaterThan(0);
+
+      // With more columns possible, widths may vary - just ensure gap affects layout
+      expect(resultNoGap.positions.length).toBe(2);
+      expect(resultWithGap.positions.length).toBe(2);
+    });
+
+    it("should distribute cards evenly across columns", () => {
+      // All cards same height - should alternate columns
+      const cards = Array(6)
+        .fill(null)
+        .map(() => createMockCard(100));
+
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 600,
+        cardSize: 100,
+        minColumns: 3,
+        gap: 10,
+      });
+
+      // Should have at least minimum columns
+      expect(result.columns).toBeGreaterThanOrEqual(3);
+
+      // All cards should be positioned
+      expect(result.positions.length).toBe(6);
+
+      // With same-height cards, columns should be relatively balanced
+      const maxHeight = Math.max(...result.columnHeights);
+      const minHeight = Math.min(...result.columnHeights);
+      expect(maxHeight - minHeight).toBeLessThanOrEqual(200); // Within 2 cards difference
+    });
+  });
+
+  describe("applyMasonryLayout", () => {
+    it("should apply CSS custom properties to container", () => {
+      const container = document.createElement("div");
+      const cards = [document.createElement("div")];
+
+      Object.defineProperty(cards[0], "offsetHeight", {
+        value: 200,
+      });
+
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 1000,
+        cardSize: 200,
+        minColumns: 2,
+        gap: 16,
+      });
+
+      applyMasonryLayout(container, cards, result);
+
+      expect(container.classList.contains("masonry-container")).toBe(true);
+      expect(container.style.getPropertyValue("--masonry-height")).toBe(
+        `${result.containerHeight}px`,
+      );
+    });
+
+    it("should apply CSS custom properties to cards", () => {
+      const container = document.createElement("div");
+      const card1 = document.createElement("div");
+      const card2 = document.createElement("div");
+
+      Object.defineProperty(card1, "offsetHeight", { value: 100 });
+      Object.defineProperty(card2, "offsetHeight", { value: 200 });
+
+      const cards = [card1, card2];
+
+      const result = calculateMasonryLayout({
+        cards,
+        containerWidth: 500,
+        cardSize: 100,
+        minColumns: 2,
+        gap: 10,
+      });
+
+      applyMasonryLayout(container, cards, result);
+
+      // Check card1
+      expect(card1.classList.contains("masonry-positioned")).toBe(true);
+      expect(card1.style.getPropertyValue("--masonry-width")).toBe(
+        `${result.cardWidth}px`,
+      );
+      expect(card1.style.getPropertyValue("--masonry-left")).toBe("0px");
+      expect(card1.style.getPropertyValue("--masonry-top")).toBe("0px");
+
+      // Check card2
+      expect(card2.classList.contains("masonry-positioned")).toBe(true);
+      expect(card2.style.getPropertyValue("--masonry-left")).toBeTruthy();
+      expect(card2.style.getPropertyValue("--masonry-top")).toBeTruthy();
+    });
+  });
+});

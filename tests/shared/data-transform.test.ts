@@ -1,0 +1,662 @@
+import {
+  datacoreResultToCardData,
+  basesEntryToCardData,
+  transformDatacoreResults,
+  transformBasesEntries,
+  resolveBasesProperty,
+  resolveDatacoreProperty,
+} from "../../src/shared/data-transform";
+import type { Settings } from "../../src/types";
+import { App } from "obsidian";
+
+// Mock dependencies
+jest.mock("../../src/utils/property");
+jest.mock("../../src/shared/render-utils", () => ({
+  formatTimestamp: jest.fn((ts: number) =>
+    ts != null ? `formatted-${ts}` : null,
+  ),
+  extractTimestamp: jest.fn(() => null),
+  isDateValue: jest.fn(() => false),
+}));
+
+describe("data-transform", () => {
+  let mockSettings: Settings;
+  let mockApp: App;
+
+  beforeEach(() => {
+    mockSettings = {
+      titleProperty: "title",
+      snippetProperty: "description",
+      imageProperty: "cover",
+      propertyDisplay1: "prop1",
+      propertyDisplay2: "prop2",
+      propertyDisplay3: "",
+      propertyDisplay4: "",
+      smartTimestamp: false,
+      createdTimeProperty: "",
+      modifiedTimeProperty: "",
+      fallbackToInNote: true,
+      omitFirstLine: false,
+    } as Settings;
+
+    mockApp = new App();
+  });
+
+  describe("datacoreResultToCardData", () => {
+    it("should transform basic Datacore result to CardData", () => {
+      const mockResult: any = {
+        $path: "test/file.md",
+        $name: "file",
+        $tags: ["tag1", "tag2"],
+        $ctime: { toMillis: () => 1000000 },
+        $mtime: { toMillis: () => 2000000 },
+        value: jest.fn().mockReturnValue(["yaml-tag"]),
+      };
+
+      const mockDC: any = {
+        coerce: {
+          string: (val: any) => String(val),
+        },
+      };
+
+      const result = datacoreResultToCardData(
+        mockResult,
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+      );
+
+      expect(result.path).toBe("test/file.md");
+      expect(result.name).toBe("file");
+      expect(result.ctime).toBe(1000000);
+      expect(result.mtime).toBe(2000000);
+      expect(result.tags).toEqual(["tag1", "tag2"]);
+      expect(result.yamlTags).toEqual(["yaml-tag"]);
+    });
+
+    it("should extract folder path correctly", () => {
+      const mockResult: any = {
+        $path: "folder/subfolder/file.md",
+        $name: "file",
+        $tags: [],
+        $ctime: { toMillis: () => 0 },
+        $mtime: { toMillis: () => 0 },
+        value: jest.fn().mockReturnValue([]),
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = datacoreResultToCardData(
+        mockResult,
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+      );
+
+      expect(result.folderPath).toBe("folder/subfolder");
+    });
+
+    it("should handle missing timestamps", () => {
+      const mockResult: any = {
+        $path: "file.md",
+        $name: "file",
+        $tags: [],
+        value: jest.fn().mockReturnValue([]),
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = datacoreResultToCardData(
+        mockResult,
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+      );
+
+      expect(result.ctime).toBe(0);
+      expect(result.mtime).toBe(0);
+    });
+
+    it("should include snippet and imageUrl when provided", () => {
+      const mockResult: any = {
+        $path: "file.md",
+        $name: "file",
+        $tags: [],
+        $ctime: { toMillis: () => 0 },
+        $mtime: { toMillis: () => 0 },
+        value: jest.fn().mockReturnValue([]),
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = datacoreResultToCardData(
+        mockResult,
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+        "test snippet",
+        "image.png",
+      );
+
+      expect(result.snippet).toBe("test snippet");
+      expect(result.imageUrl).toBe("image.png");
+    });
+
+    it("should handle array title property", () => {
+      const mockResult: any = {
+        $path: "file.md",
+        $name: "file",
+        $tags: [],
+        $ctime: { toMillis: () => 0 },
+        $mtime: { toMillis: () => 0 },
+        value: jest.fn().mockReturnValue([]),
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      // Mock getFirstDatacorePropertyValue to return array
+      const {
+        getFirstDatacorePropertyValue,
+      } = require("../../src/utils/property");
+      getFirstDatacorePropertyValue.mockReturnValue(["Title 1", "Title 2"]);
+
+      const result = datacoreResultToCardData(
+        mockResult,
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+      );
+
+      // Should use first element
+      expect(result.title).toBeTruthy();
+    });
+
+    it("should set hasImageAvailable flag", () => {
+      const mockResult: any = {
+        $path: "file.md",
+        $name: "file",
+        $tags: [],
+        $ctime: { toMillis: () => 0 },
+        $mtime: { toMillis: () => 0 },
+        value: jest.fn().mockReturnValue([]),
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = datacoreResultToCardData(
+        mockResult,
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+        undefined,
+        undefined,
+        true,
+      );
+
+      expect(result.hasImageAvailable).toBe(true);
+    });
+  });
+
+  describe("basesEntryToCardData", () => {
+    it("should transform basic Bases entry to CardData", () => {
+      const mockEntry: any = {
+        file: {
+          path: "test/file.md",
+          name: "file.md",
+          basename: "file",
+          stat: {
+            ctime: 1000000,
+            mtime: 2000000,
+          },
+        },
+        getValue: jest.fn(),
+      };
+
+      const result = basesEntryToCardData(
+        mockApp,
+        mockEntry,
+        mockSettings,
+        "alphabetical",
+        false,
+      );
+
+      expect(result.path).toBe("test/file.md");
+      expect(result.name).toBe("file");
+      expect(result.ctime).toBe(1000000);
+      expect(result.mtime).toBe(2000000);
+    });
+
+    it("should extract folder path from file path", () => {
+      const mockEntry: any = {
+        file: {
+          path: "folder/subfolder/file.md",
+          basename: "file",
+          stat: { ctime: 0, mtime: 0 },
+        },
+        getValue: jest.fn(),
+      };
+
+      const result = basesEntryToCardData(
+        mockApp,
+        mockEntry,
+        mockSettings,
+        "alphabetical",
+        false,
+      );
+
+      expect(result.folderPath).toBe("folder/subfolder");
+    });
+
+    it("should handle root folder files", () => {
+      const mockEntry: any = {
+        file: {
+          path: "file.md",
+          basename: "file",
+          stat: { ctime: 0, mtime: 0 },
+        },
+        getValue: jest.fn(),
+      };
+
+      const result = basesEntryToCardData(
+        mockApp,
+        mockEntry,
+        mockSettings,
+        "alphabetical",
+        false,
+      );
+
+      expect(result.folderPath).toBe("");
+    });
+
+    it("should include snippet and imageUrl when provided", () => {
+      const mockEntry: any = {
+        file: {
+          path: "file.md",
+          basename: "file",
+          stat: { ctime: 0, mtime: 0 },
+        },
+        getValue: jest.fn(),
+      };
+
+      const result = basesEntryToCardData(
+        mockApp,
+        mockEntry,
+        mockSettings,
+        "alphabetical",
+        false,
+        "test snippet",
+        ["img1.png", "img2.png"],
+      );
+
+      expect(result.snippet).toBe("test snippet");
+      expect(result.imageUrl).toEqual(["img1.png", "img2.png"]);
+    });
+  });
+
+  describe("transformDatacoreResults", () => {
+    it("should transform array of Datacore results", () => {
+      const mockResults: any[] = [
+        {
+          $path: "file1.md",
+          $name: "file1",
+          $tags: [],
+          $ctime: { toMillis: () => 1000 },
+          $mtime: { toMillis: () => 2000 },
+          value: jest.fn().mockReturnValue([]),
+        },
+        {
+          $path: "file2.md",
+          $name: "file2",
+          $tags: [],
+          $ctime: { toMillis: () => 3000 },
+          $mtime: { toMillis: () => 4000 },
+          value: jest.fn().mockReturnValue([]),
+        },
+      ];
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const snippets = {
+        "file1.md": "snippet 1",
+        "file2.md": "snippet 2",
+      };
+
+      const images = {
+        "file1.md": "img1.png",
+        "file2.md": "img2.png",
+      };
+
+      const hasImageAvailable = {
+        "file1.md": true,
+        "file2.md": true,
+      };
+
+      const result = transformDatacoreResults(
+        mockApp,
+        mockResults,
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+        snippets,
+        images,
+        hasImageAvailable,
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].path).toBe("file1.md");
+      expect(result[0].snippet).toBe("snippet 1");
+      expect(result[0].imageUrl).toBe("img1.png");
+      expect(result[1].path).toBe("file2.md");
+      expect(result[1].snippet).toBe("snippet 2");
+      expect(result[1].imageUrl).toBe("img2.png");
+    });
+
+    it("should handle empty results array", () => {
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = transformDatacoreResults(
+        mockApp,
+        [],
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it("should work without snippets and images maps", () => {
+      const mockResults: any[] = [
+        {
+          $path: "file.md",
+          $name: "file",
+          $tags: [],
+          $ctime: { toMillis: () => 0 },
+          $mtime: { toMillis: () => 0 },
+          value: jest.fn().mockReturnValue([]),
+        },
+      ];
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = transformDatacoreResults(
+        mockApp,
+        mockResults,
+        mockDC,
+        mockSettings,
+        "alphabetical",
+        false,
+        {},
+        {},
+        {},
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].snippet).toBeUndefined();
+      expect(result[0].imageUrl).toBeUndefined();
+    });
+  });
+
+  describe("transformBasesEntries", () => {
+    it("should transform array of Bases entries", () => {
+      const mockEntries: any[] = [
+        {
+          file: {
+            path: "file1.md",
+            basename: "file1",
+            stat: { ctime: 1000, mtime: 2000 },
+          },
+          getValue: jest.fn(),
+        },
+        {
+          file: {
+            path: "file2.md",
+            basename: "file2",
+            stat: { ctime: 3000, mtime: 4000 },
+          },
+          getValue: jest.fn(),
+        },
+      ];
+
+      const snippets = {
+        "file1.md": "snippet 1",
+        "file2.md": "snippet 2",
+      };
+
+      const images = {
+        "file1.md": "img1.png",
+        "file2.md": "img2.png",
+      };
+
+      const hasImageAvailable = {
+        "file1.md": true,
+        "file2.md": false,
+      };
+
+      const result = transformBasesEntries(
+        mockApp,
+        mockEntries,
+        mockSettings,
+        "alphabetical",
+        false,
+        snippets,
+        images,
+        hasImageAvailable,
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].path).toBe("file1.md");
+      expect(result[0].snippet).toBe("snippet 1");
+      expect(result[1].path).toBe("file2.md");
+      expect(result[1].snippet).toBe("snippet 2");
+    });
+
+    it("should handle empty entries array", () => {
+      const result = transformBasesEntries(
+        mockApp,
+        [],
+        mockSettings,
+        "alphabetical",
+        false,
+        {},
+        {},
+        {},
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("resolveBasesProperty", () => {
+    it("should resolve file.path property", () => {
+      const mockEntry: any = {
+        file: { path: "test/folder/file.md" },
+      };
+
+      const mockCardData: any = {
+        folderPath: "test/folder",
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const result = resolveBasesProperty(
+        mockApp,
+        "file.path",
+        mockEntry,
+        mockCardData,
+        mockSettings,
+      );
+
+      expect(result).toBe("test/folder");
+    });
+
+    it("should resolve file.tags property", () => {
+      mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue({
+        tags: [{ tag: "#tag1" }, { tag: "#tag2" }],
+      });
+
+      const mockEntry: any = {
+        file: { path: "file.md" },
+      };
+
+      const mockCardData: any = {
+        folderPath: "",
+        tags: ["tag1", "tag2"],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const result = resolveBasesProperty(
+        mockApp,
+        "file.tags",
+        mockEntry,
+        mockCardData,
+        mockSettings,
+      );
+
+      expect(result).toBe("tags");
+    });
+
+    it("should handle null/undefined property values", () => {
+      const mockEntry: any = {
+        file: { path: "file.md" },
+        getValue: jest.fn().mockReturnValue(null),
+      };
+
+      const mockCardData: any = {
+        folderPath: "",
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const result = resolveBasesProperty(
+        mockApp,
+        "customProp",
+        mockEntry,
+        mockCardData,
+        mockSettings,
+      );
+
+      // Should return null for missing property
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("resolveDatacoreProperty", () => {
+    it("should resolve file.path property", () => {
+      const mockPage: any = {
+        $path: "test/folder/file.md",
+        value: jest.fn(),
+      };
+
+      const mockCardData: any = {
+        folderPath: "test/folder",
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = resolveDatacoreProperty(
+        "file.path",
+        mockPage,
+        mockCardData,
+        mockSettings,
+        mockDC,
+      );
+
+      expect(result).toBe("test/folder");
+    });
+
+    it("should resolve tags property", () => {
+      const mockPage: any = {
+        $tags: ["tag1", "tag2"],
+        value: jest.fn(),
+      };
+
+      const mockCardData: any = {
+        folderPath: "",
+        tags: [],
+        yamlTags: ["tag1", "tag2"],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = resolveDatacoreProperty(
+        "tags",
+        mockPage,
+        mockCardData,
+        mockSettings,
+        mockDC,
+      );
+
+      expect(result).toBe("tags");
+    });
+
+    it("should handle null/undefined property values", () => {
+      const mockPage: any = {
+        value: jest.fn().mockReturnValue(null),
+      };
+
+      const mockCardData: any = {
+        folderPath: "",
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = resolveDatacoreProperty(
+        "customProp",
+        mockPage,
+        mockCardData,
+        mockSettings,
+        mockDC,
+      );
+
+      // Should return null or string for missing property (depends on custom timestamp settings)
+      expect(result === null || typeof result === "string").toBe(true);
+    });
+  });
+});

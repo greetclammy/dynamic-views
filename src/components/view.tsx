@@ -303,7 +303,6 @@ export function View({
     .join("\n")
     .trim();
 
-  const [_query, setQuery] = dc.useState(cleanQuery);
   const [draftQuery, setDraftQuery] = dc.useState(cleanQuery);
   const [appliedQuery, setAppliedQuery] = dc.useState(cleanQuery);
   const [isShuffled, setIsShuffled] = dc.useState(false);
@@ -329,6 +328,7 @@ export function View({
   const explorerRef = dc.useRef<HTMLElement | null>(null);
   const toolbarRef = dc.useRef<HTMLElement | null>(null);
   const containerRef = dc.useRef<HTMLElement | null>(null);
+  const resultsContainerRef = dc.useRef<HTMLElement | null>(null);
   const updateLayoutRef = dc.useRef<(() => void) | null>(null);
   const loadMoreRef = dc.useRef<(() => void) | null>(null);
   const isLoadingRef = dc.useRef(false);
@@ -489,6 +489,24 @@ export function View({
       };
     }
   }, [isPinned]);
+
+  // Apply toolbar positioning styles
+  dc.useEffect(() => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+
+    if (isPinned) {
+      toolbar.style.setProperty("position", "fixed");
+      toolbar.style.setProperty("top", `${stickyTop}px`);
+      toolbar.style.setProperty("width", `${toolbarDimensions.width}px`);
+      toolbar.style.setProperty("left", `${toolbarDimensions.left}px`);
+    } else {
+      toolbar.style.removeProperty("position");
+      toolbar.style.removeProperty("top");
+      toolbar.style.removeProperty("width");
+      toolbar.style.removeProperty("left");
+    }
+  }, [isPinned, stickyTop, toolbarDimensions]);
 
   // Validate and fallback query
   const validatedQuery = dc.useMemo(() => {
@@ -955,6 +973,23 @@ export function View({
     sortedLengthRef.current = sorted.length;
   }, [sorted.length, dc]);
 
+  // Apply results container styles
+  dc.useEffect(() => {
+    const resultsContainer = resultsContainerRef.current;
+    if (!resultsContainer) return;
+
+    if (settings.queryHeight > 0) {
+      resultsContainer.style.setProperty(
+        "max-height",
+        `${settings.queryHeight}px`,
+      );
+      resultsContainer.style.setProperty("overflow-y", "auto");
+    } else {
+      resultsContainer.style.removeProperty("max-height");
+      resultsContainer.style.removeProperty("overflow-y");
+    }
+  }, [settings.queryHeight]);
+
   // Track scroll position for toolbar shadow and fade effect
   dc.useEffect(() => {
     const container = containerRef.current;
@@ -1164,7 +1199,6 @@ export function View({
 
     // Only update if query changed
     if (newCleanQuery !== appliedQuery) {
-      setQuery(newCleanQuery);
       setDraftQuery(newCleanQuery);
       setAppliedQuery(newCleanQuery);
     }
@@ -1376,7 +1410,6 @@ export function View({
       const processedQuery = ensurePageSelector(draftQuery.trim());
       setDraftQuery(processedQuery); // Update editor to show processed query
       setAppliedQuery(processedQuery);
-      setQuery(processedQuery);
       setShowQueryEditor(false);
 
       if (currentFile) {
@@ -1393,7 +1426,6 @@ export function View({
     void (async () => {
       setDraftQuery("");
       setAppliedQuery("");
-      setQuery("");
 
       // Save empty query to code block
       if (currentFile) {
@@ -1465,7 +1497,7 @@ export function View({
   );
 
   // Copy menu item for Toolbar
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Datacore useMemo lacks proper TypeScript types
+
   const copyMenuItem: JSX.Element = dc.useMemo(
     (): JSX.Element => (
       <div
@@ -1549,16 +1581,6 @@ export function View({
       <div
         ref={toolbarRef}
         className={`controls-wrapper${isPinned ? " pinned" : ""}${isResultsScrolled ? " scrolled" : ""}`}
-        style={
-          isPinned
-            ? {
-                position: "fixed",
-                top: `${stickyTop}px`,
-                width: `${toolbarDimensions.width}px`,
-                left: `${toolbarDimensions.left}px`,
-              }
-            : {}
-        }
       >
         <Toolbar
           dc={dc}
@@ -1599,9 +1621,7 @@ export function View({
           onToggleLimitDropdown={handleToggleLimitDropdown}
           onResultLimitChange={handleResultLimitChange}
           onResetLimit={handleResetLimit}
-          copyMenuItem={
-            copyMenuItem /* eslint-disable-line @typescript-eslint/no-unsafe-assignment */
-          }
+          copyMenuItem={copyMenuItem}
           onCreateNote={handleCreateNote}
           isPinned={isPinned}
           widthMode={widthMode}
@@ -1617,17 +1637,13 @@ export function View({
       {queryError && <div className="query-error">{queryError}</div>}
 
       <div
+        ref={resultsContainerRef}
         className={`results-container${settings.queryHeight > 0 && !isScrolledToBottom ? " with-fade" : ""}`}
-        style={
-          settings.queryHeight > 0
-            ? { maxHeight: `${settings.queryHeight}px`, overflowY: "auto" }
-            : {}
-        }
       >
         {renderView()}
       </div>
 
-      <div ref={loadMoreRef} style={{ height: "1px", width: "100%" }} />
+      <div ref={loadMoreRef} />
     </div>
   );
 }

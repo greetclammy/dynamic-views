@@ -195,6 +195,22 @@ export function isSlideshowIndicatorEnabled(): boolean {
 }
 
 /**
+ * Get URL button icon from Style Settings
+ * Accepts both "lucide-donut" and "donut" formats
+ */
+export function getUrlIcon(): string {
+  let icon = getCSSTextVariable(
+    "--dynamic-views-url-icon",
+    "square-arrow-out-up-right",
+  );
+  // Strip "lucide-" prefix if present (case-insensitive)
+  if (icon.toLowerCase().startsWith("lucide-")) {
+    icon = icon.slice(7);
+  }
+  return icon;
+}
+
+/**
  * Type for Style Settings color cache
  */
 export interface StyleSettingsColorCache {

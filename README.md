@@ -26,7 +26,8 @@ Add to note via Command palette > Dynamic Views: Insert query.
 - Fetch text preview from first few lines of notes.
 - Infinite scroll: items load as you scroll rather than all at once.
 - Optimized performance.
-- Fine-tuned customization.
+- Fine-tuned customization, including [Style Settings](https://obsidian.md/plugins?id=obsidian-style-settings) support.
+- Full keyboard navigation.
 
 ## ✅ Install
 

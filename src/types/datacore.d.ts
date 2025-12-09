@@ -7,8 +7,6 @@
  * Documentation: https://github.com/blacksmithgu/datacore
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { TFile } from "obsidian";
 
 /**
@@ -32,15 +30,15 @@ declare module "obsidian" {
 /**
  * Preact component type
  */
-export type ComponentType<P = object> = (props: P) => any;
+export type ComponentType<P = object> = (props: P) => unknown;
 
 /**
  * Preact virtual node
  */
 export interface VNode {
-  type: string | ComponentType<any>;
-  props: Record<string, any> | null;
-  key: any;
+  type: string | ComponentType<Record<string, unknown>>;
+  props: Record<string, unknown> | null;
+  key: unknown;
 }
 
 /**
@@ -60,20 +58,20 @@ export interface DatacorePreact {
    * Equivalent to React.createElement()
    */
   h: (
-    type: string | ComponentType<any>,
-    props: Record<string, any> | null,
-    ...children: any[]
+    type: string | ComponentType<Record<string, unknown>>,
+    props: Record<string, unknown> | null,
+    ...children: unknown[]
   ) => VNode;
 
   /**
    * Preact Fragment component for grouping elements without a wrapper
    */
-  Fragment: ComponentType<{ children?: any }>;
+  Fragment: ComponentType<{ children?: unknown }>;
 
   /**
    * Other Preact exports (Component, render, etc.)
    */
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -110,16 +108,16 @@ export interface DatacoreFile {
   $tags: string[];
 
   /** Links in the file */
-  $links: any[];
+  $links: unknown[];
 
   /** Backlinks to this file */
-  $backlinks: any[];
+  $backlinks: unknown[];
 
   /** Get a metadata value by key */
-  value(key: string): any;
+  value(key: string): unknown;
 
   /** User-defined frontmatter properties */
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -151,19 +149,22 @@ export interface DatacoreAPI {
    * React-like useMemo hook for memoizing expensive computations.
    * Only recomputes when dependencies change.
    */
-  useMemo<T>(factory: () => T, deps: any[]): T;
+  useMemo<T>(factory: () => T, deps: unknown[]): T;
 
   /**
    * React-like useCallback hook for memoizing callback functions.
    * Only recreates the function when dependencies change.
    */
-  useCallback<T extends (...args: any[]) => any>(callback: T, deps: any[]): T;
+  useCallback<T extends (...args: unknown[]) => unknown>(
+    callback: T,
+    deps: unknown[],
+  ): T;
 
   /**
    * React-like useEffect hook for side effects.
    * Runs after render and optionally returns a cleanup function.
    */
-  useEffect(effect: () => void | (() => void), deps?: any[]): void;
+  useEffect(effect: () => void | (() => void), deps?: unknown[]): void;
 
   // ========== Datacore-Specific Hooks ==========
 
@@ -214,7 +215,7 @@ export interface DatacoreAPI {
    * @param path - Path to file or header link to codeblock
    * @returns Whatever the imported code exports/returns
    */
-  require(path: any): Promise<any>;
+  require(path: unknown): Promise<unknown>;
 
   /**
    * Create a link to a header in a file.
@@ -223,7 +224,7 @@ export interface DatacoreAPI {
    * @param filePath - Path to the file
    * @param headerName - Name of the header/section
    */
-  headerLink(filePath: string, headerName: string): any;
+  headerLink(filePath: string, headerName: string): unknown;
 
   /**
    * Type coercion utilities for converting Datacore values to specific types
@@ -232,31 +233,31 @@ export interface DatacoreAPI {
     /**
      * Coerce a value to a string
      */
-    string(value: any): string;
+    string(value: unknown): string;
 
     /**
      * Coerce a value to a number
      */
-    number(value: any): number;
+    number(value: unknown): number;
 
     /**
      * Coerce a value to a boolean
      */
-    boolean(value: any): boolean;
+    boolean(value: unknown): boolean;
 
     /**
      * Coerce a value to a date
      */
-    date(value: any): Date | null;
+    date(value: unknown): Date | null;
 
     /**
      * Other coercion methods
      */
-    [key: string]: (value: any) => any;
+    [key: string]: (value: unknown) => unknown;
   };
 
   /**
    * Additional Datacore APIs that may exist
    */
-  [key: string]: any;
+  [key: string]: unknown;
 }

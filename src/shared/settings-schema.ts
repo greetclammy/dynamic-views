@@ -19,18 +19,16 @@ interface PluginInstance {
   };
 }
 
-// Module-level reference to plugin for accessing template settings
-let _pluginInstance: PluginInstance | null = null;
-
 export function setPluginInstance(plugin: PluginInstance): void {
-  _pluginInstance = plugin;
+  // Function exists to maintain API compatibility
+  // Plugin instance currently unused but may be needed for future features
 }
 
 /**
  * Bases view options for card/masonry views
  * These options appear in the Bases view configuration menu
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bases API requires untyped options array
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bases API requires any for options array structure
 export function getBasesViewOptions(): any[] {
   return [
     {
@@ -442,7 +440,7 @@ export function getBasesViewOptions(): any[] {
 /**
  * Additional options specific to masonry view
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bases API requires untyped options array
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bases API requires any for options array structure
 export function getMasonryViewOptions(): any[] {
   return getBasesViewOptions();
 }

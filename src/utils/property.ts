@@ -151,7 +151,7 @@ export function getFirstBasesPropertyValue(
 
   for (const prop of properties) {
     // Try property as-is first, then with formula. prefix if not found
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- Bases getValue requires any for property names
     let value = entry.getValue(prop as any);
 
     // If property not found (error object with icon), try as formula property
@@ -161,7 +161,7 @@ export function getFirstBasesPropertyValue(
       "icon" in value &&
       !("data" in value)
     ) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- Bases getValue requires any for property names
       value = entry.getValue(`formula.${prop}` as any);
     }
 
@@ -219,7 +219,7 @@ export function getFirstBasesDatePropertyValue(
 
   for (const prop of properties) {
     // Try property as-is first, then with formula. prefix if not found
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- Bases getValue requires any for property names
     let value = entry.getValue(prop as any);
 
     // If property not found (error object with icon), try as formula property
@@ -230,7 +230,7 @@ export function getFirstBasesDatePropertyValue(
       !("data" in value) &&
       !("date" in value)
     ) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- Bases getValue requires any for property names
       value = entry.getValue(`formula.${prop}` as any);
     }
 
@@ -296,7 +296,7 @@ export function getAllBasesImagePropertyValues(
 
   for (const prop of properties) {
     // Try property as-is first, then with formula. prefix if not found
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- Bases getValue requires any for property names
     let value = entry.getValue(prop as any);
 
     // If property not found (error object with icon), try as formula property
@@ -306,7 +306,7 @@ export function getAllBasesImagePropertyValues(
       "icon" in value &&
       !("data" in value)
     ) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- Bases getValue requires any for property names
       value = entry.getValue(`formula.${prop}` as any);
     }
 
@@ -468,16 +468,18 @@ export function getAllVaultProperties(app: App): string[] {
 
   // Get all properties from metadata cache using type assertion
   // getAllPropertyInfos was added in Obsidian 1.4.0+
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- MetadataCache lacks getAllPropertyInfos in type definitions
   const metadataCache = app.metadataCache as any;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- getAllPropertyInfos not in official types
   if (typeof metadataCache.getAllPropertyInfos === "function") {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const allPropertyInfos = metadataCache.getAllPropertyInfos();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- getAllPropertyInfos not in official types
+    const allPropertyInfos = metadataCache.getAllPropertyInfos() as Record<
+      string,
+      unknown
+    > | null;
 
     if (allPropertyInfos) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       for (const [propertyName] of Object.entries(allPropertyInfos)) {
         properties.add(propertyName);
       }
