@@ -10,7 +10,7 @@ jest.mock("../src/utils/sanitize", () => ({
 jest.mock("../src/constants", () => ({
   DEFAULT_SETTINGS: {
     titleProperty: "title",
-    snippetProperty: "description",
+    textPreviewProperty: "description",
   },
   DEFAULT_UI_STATE: {
     searchQuery: "",
@@ -73,7 +73,7 @@ describe("PersistenceManager", () => {
 
       const settings = manager.getGlobalSettings();
       expect(settings.titleProperty).toBe("custom");
-      expect(settings.snippetProperty).toBe("description"); // From defaults
+      expect(settings.textPreviewProperty).toBe("description"); // From defaults
     });
 
     it("should handle null loaded data", async () => {
@@ -140,11 +140,13 @@ describe("PersistenceManager", () => {
 
     it("should merge with existing settings", async () => {
       await manager.setGlobalSettings({ titleProperty: "new-title" });
-      await manager.setGlobalSettings({ snippetProperty: "new-snippet" });
+      await manager.setGlobalSettings({
+        textPreviewProperty: "new-text-preview",
+      });
 
       const settings = manager.getGlobalSettings();
       expect(settings.titleProperty).toBe("new-title");
-      expect(settings.snippetProperty).toBe("new-snippet");
+      expect(settings.textPreviewProperty).toBe("new-text-preview");
     });
 
     it("should sanitize settings", async () => {

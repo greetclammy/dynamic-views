@@ -9,7 +9,7 @@ interface MasonryViewProps {
   settings: Settings;
   sortMethod: string;
   isShuffled: boolean;
-  snippets: Record<string, string>;
+  textPreviews: Record<string, string>;
   images: Record<string, string | string[]>;
   hasImageAvailable: Record<string, boolean>;
   focusableCardIndex: number;

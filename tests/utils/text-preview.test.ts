@@ -1,4 +1,7 @@
-import { sanitizeForPreview, loadFilePreview } from "../../src/utils/preview";
+import {
+  sanitizeForPreview,
+  loadFilePreview,
+} from "../../src/utils/text-preview";
 import { App, TFile } from "obsidian";
 
 describe("preview", () => {
@@ -123,6 +126,30 @@ More content`;
       expect(result).toBe("1. Task one 2) Task two");
     });
 
+    it("should strip bare task checkboxes without list markers", () => {
+      const input = `[ ] Bare unchecked
+[x] Bare checked
+[X] Bare checked uppercase`;
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Bare unchecked Bare checked Bare checked uppercase");
+    });
+
+    it("should strip blockquote markers in list items", () => {
+      const input = `- >smile
+- > hello
+- [ ] >hi`;
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("smile hello hi");
+    });
+
+    it("should strip blockquote markers with varied indentation in lists", () => {
+      const input = `-   >indented
+-     > more indented
+- [ ]   >checkbox indented`;
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("indented more indented checkbox indented");
+    });
+
     it("should strip horizontal rules", () => {
       const input = `Text before
 ---
@@ -233,20 +260,20 @@ Regular text`;
       expect(result).toBe("Text with multiple spaces");
     });
 
-    it("should replace multiple periods with special character", () => {
+    it("should preserve multiple periods as-is", () => {
       const input = "Text with... ellipsis";
       const result = sanitizeForPreview(input);
-      expect(result).toBe("Text with\u2024\u2024\u2024 ellipsis");
+      expect(result).toBe("Text with... ellipsis");
     });
 
-    it("should truncate to 500 characters", () => {
-      const input = "a".repeat(600);
+    it("should truncate to 1000 characters", () => {
+      const input = "a".repeat(1200);
       const result = sanitizeForPreview(input);
-      expect(result.length).toBe(501); // 500 + ellipsis
+      expect(result.length).toBe(1001); // 1000 + ellipsis
       expect(result.endsWith("…")).toBe(true);
     });
 
-    it("should not add ellipsis for content under 500 chars", () => {
+    it("should not add ellipsis for content under 1000 chars", () => {
       const input = "Short content";
       const result = sanitizeForPreview(input);
       expect(result).toBe("Short content");
@@ -332,6 +359,41 @@ Code with triple backticks inside \`\`\`
 After`;
       const result = sanitizeForPreview(input);
       expect(result).toBe("Text After");
+    });
+
+    it("should handle malformed/unclosed markdown links", () => {
+      const input = "Text with [unclosed link and more text";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Text with [unclosed link and more text");
+    });
+
+    it("should handle block IDs in prose", () => {
+      // Block IDs attached to text (x^123) are NOT stripped to avoid breaking math notation
+      const input1 = "The value is x^123 or y^abc-def";
+      const result1 = sanitizeForPreview(input1);
+      expect(result1).toBe("The value is x^123 or y^abc-def");
+
+      // Block IDs with space before are stripped
+      const input2 = "Some text ^block-id here";
+      const result2 = sanitizeForPreview(input2);
+      expect(result2).toBe("Some text here");
+    });
+
+    it("should handle deeply nested markdown syntax", () => {
+      const input = "***___~~==deeply nested==~~___***";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("deeply nested");
+    });
+
+    it("should truncate emoji strings correctly at character boundary", () => {
+      // 1001 emojis (each is 2 code units due to surrogate pairs)
+      const input = "😀".repeat(1001);
+      const result = sanitizeForPreview(input);
+      // Should be exactly 1000 emojis + ellipsis
+      expect([...result].length).toBe(1001); // 1000 chars + ellipsis
+      expect(result.endsWith("…")).toBe(true);
+      // Verify no broken surrogate pairs (would show as replacement chars)
+      expect(result).not.toContain("\uFFFD");
     });
   });
 

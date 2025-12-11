@@ -172,10 +172,17 @@ export function shouldHideEmptyProperties(): boolean {
 }
 
 /**
- * Get zoom sensitivity from Style Settings
+ * Get zoom sensitivity from Style Settings (desktop)
  */
 export function getZoomSensitivity(): number {
-  return getCSSVariableAsNumber("--dynamic-views-zoom-sensitivity", 0.15);
+  return getCSSVariableAsNumber("--dynamic-views-zoom-sensitivity", 0.08);
+}
+
+/**
+ * Get zoom sensitivity from Style Settings (mobile)
+ */
+export function getZoomSensitivityMobile(): number {
+  return getCSSVariableAsNumber("--dynamic-views-zoom-sensitivity-mobile", 0.5);
 }
 
 /**
@@ -192,6 +199,22 @@ export function isSlideshowEnabled(): boolean {
  */
 export function isSlideshowIndicatorEnabled(): boolean {
   return !hasBodyClass("dynamic-views-hide-slideshow-indicator");
+}
+
+/**
+ * Check if thumbnail scrubbing is disabled
+ * Returns true when user enables "Disable thumbnail scrubbing"
+ */
+export function isThumbnailScrubbingDisabled(): boolean {
+  return hasBodyClass("dynamic-views-disable-thumbnail-scrubbing");
+}
+
+/**
+ * Get maximum number of images for slideshow
+ * Returns slider value (default 10, min 2, max 24)
+ */
+export function getSlideshowMaxImages(): number {
+  return getCSSVariableAsNumber("--dynamic-views-slideshow-max-images", 10);
 }
 
 /**
@@ -215,7 +238,7 @@ export function getUrlIcon(): string {
  */
 export interface StyleSettingsColorCache {
   titleColor?: { light?: string; dark?: string };
-  snippetColor?: { light?: string; dark?: string };
+  textPreviewColor?: { light?: string; dark?: string };
   tagsColor?: { light?: string; dark?: string };
   timestampColor?: { light?: string; dark?: string };
   propertyColor?: { light?: string; dark?: string };
@@ -239,10 +262,10 @@ export function applyCustomColors(
       cache.titleColor[theme],
     );
   }
-  if (cache.snippetColor?.[theme]) {
+  if (cache.textPreviewColor?.[theme]) {
     cardEl.style.setProperty(
-      "--dynamic-views-snippet-color",
-      cache.snippetColor[theme],
+      "--dynamic-views-text-preview-color",
+      cache.textPreviewColor[theme],
     );
   }
   if (cache.tagsColor?.[theme]) {

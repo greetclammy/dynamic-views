@@ -26,7 +26,7 @@ describe("data-transform", () => {
   beforeEach(() => {
     mockSettings = {
       titleProperty: "title",
-      snippetProperty: "description",
+      textPreviewProperty: "description",
       imageProperty: "cover",
       propertyDisplay1: "prop1",
       propertyDisplay2: "prop2",
@@ -124,7 +124,7 @@ describe("data-transform", () => {
       expect(result.mtime).toBe(0);
     });
 
-    it("should include snippet and imageUrl when provided", () => {
+    it("should include textPreview and imageUrl when provided", () => {
       const mockResult: any = {
         $path: "file.md",
         $name: "file",
@@ -144,11 +144,11 @@ describe("data-transform", () => {
         mockSettings,
         "alphabetical",
         false,
-        "test snippet",
+        "test textPreview",
         "image.png",
       );
 
-      expect(result.snippet).toBe("test snippet");
+      expect(result.textPreview).toBe("test textPreview");
       expect(result.imageUrl).toBe("image.png");
     });
 
@@ -284,7 +284,7 @@ describe("data-transform", () => {
       expect(result.folderPath).toBe("");
     });
 
-    it("should include snippet and imageUrl when provided", () => {
+    it("should include textPreview and imageUrl when provided", () => {
       const mockEntry: any = {
         file: {
           path: "file.md",
@@ -300,11 +300,11 @@ describe("data-transform", () => {
         mockSettings,
         "alphabetical",
         false,
-        "test snippet",
+        "test textPreview",
         ["img1.png", "img2.png"],
       );
 
-      expect(result.snippet).toBe("test snippet");
+      expect(result.textPreview).toBe("test textPreview");
       expect(result.imageUrl).toEqual(["img1.png", "img2.png"]);
     });
   });
@@ -334,9 +334,9 @@ describe("data-transform", () => {
         coerce: { string: (val: any) => String(val) },
       };
 
-      const snippets = {
-        "file1.md": "snippet 1",
-        "file2.md": "snippet 2",
+      const textPreviews = {
+        "file1.md": "textPreview 1",
+        "file2.md": "textPreview 2",
       };
 
       const images = {
@@ -356,17 +356,17 @@ describe("data-transform", () => {
         mockSettings,
         "alphabetical",
         false,
-        snippets,
+        textPreviews,
         images,
         hasImageAvailable,
       );
 
       expect(result).toHaveLength(2);
       expect(result[0].path).toBe("file1.md");
-      expect(result[0].snippet).toBe("snippet 1");
+      expect(result[0].textPreview).toBe("textPreview 1");
       expect(result[0].imageUrl).toBe("img1.png");
       expect(result[1].path).toBe("file2.md");
-      expect(result[1].snippet).toBe("snippet 2");
+      expect(result[1].textPreview).toBe("textPreview 2");
       expect(result[1].imageUrl).toBe("img2.png");
     });
 
@@ -387,7 +387,7 @@ describe("data-transform", () => {
       expect(result).toEqual([]);
     });
 
-    it("should work without snippets and images maps", () => {
+    it("should work without textPreviews and images maps", () => {
       const mockResults: any[] = [
         {
           $path: "file.md",
@@ -416,7 +416,7 @@ describe("data-transform", () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].snippet).toBeUndefined();
+      expect(result[0].textPreview).toBeUndefined();
       expect(result[0].imageUrl).toBeUndefined();
     });
   });
@@ -442,9 +442,9 @@ describe("data-transform", () => {
         },
       ];
 
-      const snippets = {
-        "file1.md": "snippet 1",
-        "file2.md": "snippet 2",
+      const textPreviews = {
+        "file1.md": "textPreview 1",
+        "file2.md": "textPreview 2",
       };
 
       const images = {
@@ -463,16 +463,16 @@ describe("data-transform", () => {
         mockSettings,
         "alphabetical",
         false,
-        snippets,
+        textPreviews,
         images,
         hasImageAvailable,
       );
 
       expect(result).toHaveLength(2);
       expect(result[0].path).toBe("file1.md");
-      expect(result[0].snippet).toBe("snippet 1");
+      expect(result[0].textPreview).toBe("textPreview 1");
       expect(result[1].path).toBe("file2.md");
-      expect(result[1].snippet).toBe("snippet 2");
+      expect(result[1].textPreview).toBe("textPreview 2");
     });
 
     it("should handle empty entries array", () => {

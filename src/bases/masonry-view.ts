@@ -16,7 +16,12 @@ import {
   applyMasonryLayout,
 } from "../utils/masonry-layout";
 import { SharedCardRenderer } from "./shared-renderer";
-import { BATCH_SIZE } from "../shared/constants";
+import {
+  BATCH_SIZE,
+  PANE_MULTIPLIER,
+  ROWS_PER_COLUMN,
+  MAX_BATCH_SIZE,
+} from "../shared/constants";
 import {
   setupBasesSwipeInterception,
   setupStyleSettingsObserver,
@@ -32,10 +37,12 @@ export class DynamicViewsMasonryView extends BasesView {
   readonly type = MASONRY_VIEW_TYPE;
   private containerEl: HTMLElement;
   private plugin: DynamicViewsPlugin;
-  private snippets: Record<string, string> = {};
+  private textPreviews: Record<string, string> = {};
   private images: Record<string, string | string[]> = {};
   private hasImageAvailable: Record<string, boolean> = {};
   private updateLayoutRef: { current: (() => void) | null } = { current: null };
+  private isUpdatingLayout: boolean = false;
+  private pendingLayoutUpdate: boolean = false;
   private focusableCardIndex: number = 0;
   private masonryContainer: HTMLElement | null = null;
   private displayedCount: number = 50;
@@ -49,6 +56,10 @@ export class DynamicViewsMasonryView extends BasesView {
   private lastSortMethod: string | null = null;
   private containerRef: { current: HTMLElement | null } = { current: null };
   private swipeAbortController: AbortController | null = null;
+  // Batch append state
+  private previousDisplayedCount: number = 0;
+  private lastGroupKey: string | undefined = undefined;
+  private lastGroupContainer: HTMLElement | null = null;
 
   // Style Settings compatibility - must be own property (not prototype)
   setSettings = (): void => {
@@ -73,7 +84,7 @@ export class DynamicViewsMasonryView extends BasesView {
       this.updateLayoutRef,
     );
     // Set initial batch size based on device
-    this.displayedCount = this.app.isMobile ? 25 : BATCH_SIZE;
+    this.displayedCount = this.app.isMobile ? BATCH_SIZE * 0.5 : BATCH_SIZE;
 
     // Setup swipe interception on mobile if enabled
     const globalSettings = this.plugin.persistenceManager.getGlobalSettings();
@@ -180,18 +191,23 @@ export class DynamicViewsMasonryView extends BasesView {
         remainingCount -= entriesToTake;
       }
 
-      // Load snippets and images ONLY for displayed entries
+      // Load text previews and images ONLY for displayed entries
       await loadContentForEntries(
         visibleEntries,
         settings,
         this.app,
-        this.snippets,
+        this.textPreviews,
         this.images,
         this.hasImageAvailable,
       );
 
       // Clear and re-render
       this.containerEl.empty();
+
+      // Reset batch append state for full re-render
+      this.previousDisplayedCount = 0;
+      this.lastGroupKey = undefined;
+      this.lastGroupContainer = null;
 
       // Cleanup card renderer observers before re-rendering
       this.cardRenderer.cleanup();
@@ -249,7 +265,7 @@ export class DynamicViewsMasonryView extends BasesView {
           settings,
           sortMethod,
           false,
-          this.snippets,
+          this.textPreviews,
           this.images,
           this.hasImageAvailable,
         );
@@ -261,7 +277,16 @@ export class DynamicViewsMasonryView extends BasesView {
         }
 
         displayedSoFar += entriesToDisplay;
+
+        // Track last group for batch append
+        this.lastGroupKey = processedGroup.group.hasKey()
+          ? processedGroup.group.key?.toString()
+          : undefined;
+        this.lastGroupContainer = groupEl;
       }
+
+      // Track state for batch append
+      this.previousDisplayedCount = displayedSoFar;
 
       // Initial layout calculation
       if (this.updateLayoutRef.current) {
@@ -298,11 +323,9 @@ export class DynamicViewsMasonryView extends BasesView {
         }
       }
 
-      // Setup infinite scroll
-      this.setupInfiniteScroll(allEntries.length);
-
-      // Clear loading flag after async work completes
-      this.isLoading = false;
+      // Setup infinite scroll (may set isLoading = true if triggering batch)
+      this.setupInfiniteScroll(allEntries.length, settings);
+      // Note: Don't reset isLoading here - setupInfiniteScroll may have started a batch
     })();
   }
 
@@ -314,25 +337,40 @@ export class DynamicViewsMasonryView extends BasesView {
     // Setup update function using shared masonry logic
     this.updateLayoutRef.current = () => {
       if (!this.masonryContainer) return;
+      // Guard against reentrant calls - queue update if one is in progress
+      if (this.isUpdatingLayout) {
+        this.pendingLayoutUpdate = true;
+        return;
+      }
+      this.isUpdatingLayout = true;
 
-      const cards = Array.from(
-        this.masonryContainer.querySelectorAll<HTMLElement>(".card"),
-      );
-      if (cards.length === 0) return;
+      try {
+        const cards = Array.from(
+          this.masonryContainer.querySelectorAll<HTMLElement>(".card"),
+        );
+        if (cards.length === 0) return;
 
-      const containerWidth = this.masonryContainer.clientWidth;
+        const containerWidth = this.masonryContainer.clientWidth;
 
-      // Calculate layout using shared logic
-      const result = calculateMasonryLayout({
-        cards,
-        containerWidth,
-        cardSize: settings.cardSize,
-        minColumns,
-        gap: getCardSpacing(),
-      });
+        // Calculate layout using shared logic
+        const result = calculateMasonryLayout({
+          cards,
+          containerWidth,
+          cardSize: settings.cardSize,
+          minColumns,
+          gap: getCardSpacing(),
+        });
 
-      // Apply layout to DOM
-      applyMasonryLayout(this.masonryContainer, cards, result);
+        // Apply layout to DOM
+        applyMasonryLayout(this.masonryContainer, cards, result);
+      } finally {
+        this.isUpdatingLayout = false;
+        // Process any queued update
+        if (this.pendingLayoutUpdate) {
+          this.pendingLayoutUpdate = false;
+          requestAnimationFrame(() => this.updateLayoutRef.current?.());
+        }
+      }
     };
 
     // Setup resize observer
@@ -371,10 +409,186 @@ export class DynamicViewsMasonryView extends BasesView {
     });
   }
 
-  private setupInfiniteScroll(totalEntries: number): void {
+  private async appendBatch(
+    totalEntries: number,
+    settings: Settings,
+  ): Promise<void> {
+    // Guard: return early if data not initialized or no masonry container
+    if (!this.data || !this.masonryContainer) return;
+
+    const groupedData = this.data.groupedData;
+    const sortMethod = getSortMethod(this.config);
+
+    // Process groups (same shuffle logic as onDataUpdated)
+    const processedGroups = groupedData.map((group) => {
+      let groupEntries = [...group.entries];
+      if (this.isShuffled && this.shuffledOrder.length > 0) {
+        groupEntries = groupEntries.sort((a, b) => {
+          const indexA = this.shuffledOrder.indexOf(a.file.path);
+          const indexB = this.shuffledOrder.indexOf(b.file.path);
+          return indexA - indexB;
+        });
+      }
+      return { group, entries: groupEntries };
+    });
+
+    // Capture state at start - these may change during async operations
+    const prevCount = this.previousDisplayedCount;
+    const currCount = this.displayedCount;
+
+    // Collect ONLY NEW entries (from prevCount to currCount)
+    const newEntries: BasesEntry[] = [];
+    let currentCount = 0;
+
+    for (const processedGroup of processedGroups) {
+      const groupStart = currentCount;
+      const groupEnd = currentCount + processedGroup.entries.length;
+
+      // Determine which entries from this group are new
+      const newStartInGroup = Math.max(0, prevCount - groupStart);
+      const newEndInGroup = Math.min(
+        processedGroup.entries.length,
+        currCount - groupStart,
+      );
+
+      if (
+        newEndInGroup > newStartInGroup &&
+        newStartInGroup < processedGroup.entries.length
+      ) {
+        newEntries.push(
+          ...processedGroup.entries.slice(newStartInGroup, newEndInGroup),
+        );
+      }
+
+      currentCount = groupEnd;
+    }
+
+    // Load content ONLY for new entries
+    await loadContentForEntries(
+      newEntries,
+      settings,
+      this.app,
+      this.textPreviews,
+      this.images,
+      this.hasImageAvailable,
+    );
+
+    // Render new cards, handling group boundaries
+    // Use captured prevCount/currCount to avoid race conditions
+    let displayedSoFar = 0;
+    let newCardsRendered = 0;
+    const startIndex = prevCount;
+
+    for (const processedGroup of processedGroups) {
+      if (displayedSoFar >= currCount) break;
+
+      const groupEntriesToDisplay = Math.min(
+        processedGroup.entries.length,
+        currCount - displayedSoFar,
+      );
+
+      // Skip groups that were fully rendered before
+      if (displayedSoFar + groupEntriesToDisplay <= prevCount) {
+        displayedSoFar += groupEntriesToDisplay;
+        continue;
+      }
+
+      // Determine entries to render in this group
+      const startInGroup = Math.max(0, prevCount - displayedSoFar);
+      const endInGroup = groupEntriesToDisplay;
+      const groupEntries = processedGroup.entries.slice(
+        startInGroup,
+        endInGroup,
+      );
+
+      // Get or create group container
+      let groupEl: HTMLElement;
+      const currentGroupKey = processedGroup.group.hasKey()
+        ? processedGroup.group.key?.toString()
+        : undefined;
+
+      if (currentGroupKey === this.lastGroupKey && this.lastGroupContainer) {
+        // Same group as last - append to existing container
+        groupEl = this.lastGroupContainer;
+      } else {
+        // New group - create container
+        groupEl = this.masonryContainer.createDiv("dynamic-views-group");
+
+        // Render group header if key exists
+        if (processedGroup.group.hasKey()) {
+          const headerEl = groupEl.createDiv("bases-group-heading");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          const groupBy = (this.config as any).groupBy;
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          if (groupBy?.property) {
+            const propertyEl = headerEl.createDiv("bases-group-property");
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+            const propertyName = this.config.getDisplayName(groupBy.property);
+            propertyEl.setText(propertyName);
+          }
+          const valueEl = headerEl.createDiv("bases-group-value");
+          const keyValue = processedGroup.group.key?.toString() || "";
+          valueEl.setText(keyValue);
+        }
+
+        // Update last group tracking
+        this.lastGroupKey = currentGroupKey;
+        this.lastGroupContainer = groupEl;
+      }
+
+      // Transform and render cards
+      const cards = transformBasesEntries(
+        this.app,
+        groupEntries,
+        settings,
+        sortMethod,
+        false,
+        this.textPreviews,
+        this.images,
+        this.hasImageAvailable,
+      );
+
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const entry = groupEntries[i];
+        this.renderCard(
+          groupEl,
+          card,
+          entry,
+          startIndex + newCardsRendered,
+          settings,
+        );
+        newCardsRendered++;
+      }
+
+      displayedSoFar += groupEntriesToDisplay;
+    }
+
+    // Update state for next append - use currCount (captured at start)
+    // to ensure consistency even if this.displayedCount changed during async
+    this.previousDisplayedCount = currCount;
+
+    // Recalculate masonry layout for ALL cards (including new ones)
+    // Use requestAnimationFrame to ensure DOM is updated before measuring
+    if (this.updateLayoutRef.current) {
+      requestAnimationFrame(() => {
+        if (this.updateLayoutRef.current) {
+          this.updateLayoutRef.current();
+        }
+      });
+    }
+
+    // Clear loading flag and re-setup infinite scroll
+    this.isLoading = false;
+    this.setupInfiniteScroll(totalEntries, settings);
+  }
+
+  private setupInfiniteScroll(totalEntries: number, settings?: Settings): void {
+    // Find the actual scroll container (parent in Bases views)
+    const scrollContainer = this.containerEl.parentElement || this.containerEl;
     // Clean up existing listeners
     if (this.scrollListener) {
-      this.containerEl.removeEventListener("scroll", this.scrollListener);
+      scrollContainer.removeEventListener("scroll", this.scrollListener);
       this.scrollListener = null;
     }
     if (this.resizeObserver) {
@@ -388,22 +602,22 @@ export class DynamicViewsMasonryView extends BasesView {
     }
 
     // Shared load check function
-    const checkAndLoad = (trigger: string) => {
+    const checkAndLoad = () => {
       // Skip if already loading
       if (this.isLoading) {
+        console.log("// checkAndLoad SKIP - isLoading true");
         return;
       }
+      console.log("// checkAndLoad PROCEED - isLoading false");
 
-      // Calculate distance from bottom
-      const scrollTop = this.containerEl.scrollTop;
-      const scrollHeight = this.containerEl.scrollHeight;
-      const clientHeight = this.containerEl.clientHeight;
+      // Calculate distance from bottom (use scrollContainer, not containerEl)
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollHeight = scrollContainer.scrollHeight;
+      const clientHeight = scrollContainer.clientHeight;
       const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
 
-      // Dynamic threshold based on viewport and device
-      const isMobile = this.app.isMobile;
-      const viewportMultiplier = isMobile ? 1 : 2;
-      const threshold = clientHeight * viewportMultiplier;
+      // Threshold: load when within PANE_MULTIPLIER × pane height from bottom
+      const threshold = clientHeight * PANE_MULTIPLIER;
 
       // Check if should load more
       if (
@@ -412,15 +626,28 @@ export class DynamicViewsMasonryView extends BasesView {
       ) {
         this.isLoading = true;
 
-        // Dynamic batch size based on masonry columns (estimate 3 columns avg, 10 rows per column)
-        const batchSize = Math.min(30, 70);
+        // Dynamic batch size: columns × rows per column, capped
+        const minColumns = getMinMasonryColumns();
+        const containerWidth = this.masonryContainer?.clientWidth || 0;
+        const gap = getCardSpacing();
+        const cardSize = settings?.cardSize || 400;
+        const columns = Math.max(
+          minColumns,
+          Math.floor((containerWidth + gap) / (cardSize + gap)),
+        );
+        const batchSize = Math.min(columns * ROWS_PER_COLUMN, MAX_BATCH_SIZE);
         this.displayedCount = Math.min(
           this.displayedCount + batchSize,
           totalEntries,
         );
 
-        // Re-render (this will call setupInfiniteScroll again)
-        this.onDataUpdated();
+        // Append new batch only (preserves existing DOM)
+        if (settings) {
+          void this.appendBatch(totalEntries, settings);
+        } else {
+          // Fallback to full re-render if settings not available
+          this.onDataUpdated();
+        }
       }
     };
 
@@ -431,7 +658,7 @@ export class DynamicViewsMasonryView extends BasesView {
         return;
       }
 
-      checkAndLoad("scroll");
+      checkAndLoad();
 
       // Start throttle cooldown
       this.scrollThrottleTimeout = window.setTimeout(() => {
@@ -439,14 +666,14 @@ export class DynamicViewsMasonryView extends BasesView {
       }, 100);
     };
 
-    // Attach scroll listener
-    this.containerEl.addEventListener("scroll", this.scrollListener);
+    // Attach scroll listener to scroll container
+    scrollContainer.addEventListener("scroll", this.scrollListener);
 
     // Setup ResizeObserver on masonry container to detect layout changes
     if (this.masonryContainer) {
       this.resizeObserver = new ResizeObserver(() => {
         // Masonry layout completed, check if need more items
-        checkAndLoad("resize");
+        checkAndLoad();
       });
       this.resizeObserver.observe(this.masonryContainer);
     }
@@ -454,7 +681,7 @@ export class DynamicViewsMasonryView extends BasesView {
     // Register cleanup
     this.register(() => {
       if (this.scrollListener) {
-        this.containerEl.removeEventListener("scroll", this.scrollListener);
+        scrollContainer.removeEventListener("scroll", this.scrollListener);
       }
       if (this.scrollThrottleTimeout !== null) {
         window.clearTimeout(this.scrollThrottleTimeout);

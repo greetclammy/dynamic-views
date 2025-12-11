@@ -12,7 +12,12 @@ import {
 } from "../shared/settings-schema";
 import { getMinGridColumns, getCardSpacing } from "../utils/style-settings";
 import { SharedCardRenderer } from "./shared-renderer";
-import { BATCH_SIZE } from "../shared/constants";
+import {
+  BATCH_SIZE,
+  PANE_MULTIPLIER,
+  ROWS_PER_COLUMN,
+  MAX_BATCH_SIZE,
+} from "../shared/constants";
 import {
   setupBasesSwipeInterception,
   setupStyleSettingsObserver,
@@ -35,7 +40,7 @@ export class DynamicViewsCardView extends BasesView {
   readonly type = GRID_VIEW_TYPE;
   private containerEl: HTMLElement;
   private plugin: DynamicViewsPlugin;
-  private snippets: Record<string, string> = {};
+  private textPreviews: Record<string, string> = {};
   private images: Record<string, string | string[]> = {};
   private hasImageAvailable: Record<string, boolean> = {};
   private updateLayoutRef: { current: (() => void) | null } = { current: null };
@@ -52,6 +57,10 @@ export class DynamicViewsCardView extends BasesView {
   private lastSortMethod: string | null = null;
   private feedContainerRef: { current: HTMLElement | null } = { current: null };
   private swipeAbortController: AbortController | null = null;
+  // Batch append state
+  private previousDisplayedCount: number = 0;
+  private lastGroupKey: string | undefined = undefined;
+  private lastGroupContainer: HTMLElement | null = null;
 
   // Style Settings compatibility - must be own property (not prototype)
   setSettings = (): void => {
@@ -76,7 +85,7 @@ export class DynamicViewsCardView extends BasesView {
       this.updateLayoutRef,
     );
     // Set initial batch size based on device
-    this.displayedCount = this.app.isMobile ? 25 : BATCH_SIZE;
+    this.displayedCount = this.app.isMobile ? BATCH_SIZE * 0.5 : BATCH_SIZE;
 
     // Setup swipe interception on mobile if enabled
     const globalSettings = this.plugin.persistenceManager.getGlobalSettings();
@@ -181,18 +190,23 @@ export class DynamicViewsCardView extends BasesView {
         remainingCount -= entriesToTake;
       }
 
-      // Load snippets and images ONLY for displayed entries
+      // Load text previews and images ONLY for displayed entries
       await loadContentForEntries(
         visibleEntries,
         settings,
         this.app,
-        this.snippets,
+        this.textPreviews,
         this.images,
         this.hasImageAvailable,
       );
 
       // Clear and re-render
       this.containerEl.empty();
+
+      // Reset batch append state for full re-render
+      this.previousDisplayedCount = 0;
+      this.lastGroupKey = undefined;
+      this.lastGroupContainer = null;
 
       // Cleanup card renderer observers before re-rendering
       this.cardRenderer.cleanup();
@@ -245,7 +259,7 @@ export class DynamicViewsCardView extends BasesView {
           settings,
           sortMethod,
           false,
-          this.snippets,
+          this.textPreviews,
           this.images,
           this.hasImageAvailable,
         );
@@ -257,7 +271,16 @@ export class DynamicViewsCardView extends BasesView {
         }
 
         displayedSoFar += entriesToDisplay;
+
+        // Track last group for batch append
+        this.lastGroupKey = processedGroup.group.hasKey()
+          ? processedGroup.group.key?.toString()
+          : undefined;
+        this.lastGroupContainer = groupEl;
       }
+
+      // Track state for batch append
+      this.previousDisplayedCount = displayedSoFar;
 
       // Restore scroll position after rendering
       if (savedScrollTop > 0) {
@@ -284,9 +307,7 @@ export class DynamicViewsCardView extends BasesView {
         });
         this.resizeObserver.observe(this.containerEl);
       }
-
-      // Clear loading flag after async work completes
-      this.isLoading = false;
+      // Note: Don't reset isLoading here - scroll listener may have started a batch
     })();
   }
 
@@ -307,10 +328,186 @@ export class DynamicViewsCardView extends BasesView {
     });
   }
 
+  private async appendBatch(totalEntries: number): Promise<void> {
+    // Guard: return early if data not initialized or no feed container
+    if (!this.data || !this.feedContainerRef.current) return;
+
+    const groupedData = this.data.groupedData;
+
+    // Read settings
+    const settings = readBasesSettings(
+      this.config,
+      this.plugin.persistenceManager.getGlobalSettings(),
+      this.plugin.persistenceManager.getDefaultViewSettings(),
+    );
+
+    const sortMethod = getSortMethod(this.config);
+
+    // Process groups (same shuffle logic as onDataUpdated)
+    const processedGroups = groupedData.map((group) => {
+      let groupEntries = [...group.entries];
+      if (this.isShuffled && this.shuffledOrder.length > 0) {
+        groupEntries = groupEntries.sort((a, b) => {
+          const indexA = this.shuffledOrder.indexOf(a.file.path);
+          const indexB = this.shuffledOrder.indexOf(b.file.path);
+          return indexA - indexB;
+        });
+      }
+      return { group, entries: groupEntries };
+    });
+
+    // Collect ONLY NEW entries (from previousDisplayedCount to displayedCount)
+    const newEntries: BasesEntry[] = [];
+    let currentCount = 0;
+
+    for (const processedGroup of processedGroups) {
+      const groupStart = currentCount;
+      const groupEnd = currentCount + processedGroup.entries.length;
+
+      // Determine which entries from this group are new
+      const newStartInGroup = Math.max(
+        0,
+        this.previousDisplayedCount - groupStart,
+      );
+      const newEndInGroup = Math.min(
+        processedGroup.entries.length,
+        this.displayedCount - groupStart,
+      );
+
+      if (
+        newEndInGroup > newStartInGroup &&
+        newStartInGroup < processedGroup.entries.length
+      ) {
+        newEntries.push(
+          ...processedGroup.entries.slice(newStartInGroup, newEndInGroup),
+        );
+      }
+
+      currentCount = groupEnd;
+    }
+
+    // Load content ONLY for new entries
+    await loadContentForEntries(
+      newEntries,
+      settings,
+      this.app,
+      this.textPreviews,
+      this.images,
+      this.hasImageAvailable,
+    );
+
+    // Render new cards, handling group boundaries
+    let displayedSoFar = 0;
+    let newCardsRendered = 0;
+    const startIndex = this.previousDisplayedCount;
+
+    for (const processedGroup of processedGroups) {
+      if (displayedSoFar >= this.displayedCount) break;
+
+      const groupEntriesToDisplay = Math.min(
+        processedGroup.entries.length,
+        this.displayedCount - displayedSoFar,
+      );
+
+      // Skip groups that were fully rendered before
+      if (
+        displayedSoFar + groupEntriesToDisplay <=
+        this.previousDisplayedCount
+      ) {
+        displayedSoFar += groupEntriesToDisplay;
+        continue;
+      }
+
+      // Determine entries to render in this group
+      const startInGroup = Math.max(
+        0,
+        this.previousDisplayedCount - displayedSoFar,
+      );
+      const groupEntries = processedGroup.entries.slice(
+        startInGroup,
+        groupEntriesToDisplay,
+      );
+
+      // Get or create group container
+      let groupEl: HTMLElement;
+      const currentGroupKey = processedGroup.group.hasKey()
+        ? processedGroup.group.key?.toString()
+        : undefined;
+
+      if (currentGroupKey === this.lastGroupKey && this.lastGroupContainer) {
+        // Same group as last - append to existing container
+        groupEl = this.lastGroupContainer;
+      } else {
+        // New group - create container
+        groupEl = this.feedContainerRef.current.createDiv(
+          "dynamic-views-group",
+        );
+
+        // Render group header if key exists
+        if (processedGroup.group.hasKey()) {
+          const headerEl = groupEl.createDiv("bases-group-heading");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          const groupBy = (this.config as any).groupBy;
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          if (groupBy?.property) {
+            const propertyEl = headerEl.createDiv("bases-group-property");
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+            const propertyName = this.config.getDisplayName(groupBy.property);
+            propertyEl.setText(propertyName);
+          }
+          const valueEl = headerEl.createDiv("bases-group-value");
+          const keyValue = processedGroup.group.key?.toString() || "";
+          valueEl.setText(keyValue);
+        }
+
+        // Update last group tracking
+        this.lastGroupKey = currentGroupKey;
+        this.lastGroupContainer = groupEl;
+      }
+
+      // Transform and render cards
+      const cards = transformBasesEntries(
+        this.app,
+        groupEntries,
+        settings,
+        sortMethod,
+        false,
+        this.textPreviews,
+        this.images,
+        this.hasImageAvailable,
+      );
+
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const entry = groupEntries[i];
+        this.renderCard(
+          groupEl,
+          card,
+          entry,
+          startIndex + newCardsRendered,
+          settings,
+        );
+        newCardsRendered++;
+      }
+
+      displayedSoFar += groupEntriesToDisplay;
+    }
+
+    // Update state for next append
+    this.previousDisplayedCount = displayedSoFar;
+
+    // Clear loading flag and re-setup infinite scroll
+    this.isLoading = false;
+    this.setupInfiniteScroll(totalEntries);
+  }
+
   private setupInfiniteScroll(totalEntries: number): void {
+    // Find the actual scroll container (parent in Bases views)
+    const scrollContainer = this.containerEl.parentElement || this.containerEl;
+
     // Clean up existing listener
     if (this.scrollListener) {
-      this.containerEl.removeEventListener("scroll", this.scrollListener);
+      scrollContainer.removeEventListener("scroll", this.scrollListener);
       this.scrollListener = null;
     }
 
@@ -331,16 +528,14 @@ export class DynamicViewsCardView extends BasesView {
         return;
       }
 
-      // Calculate distance from bottom
-      const scrollTop = this.containerEl.scrollTop;
-      const scrollHeight = this.containerEl.scrollHeight;
-      const clientHeight = this.containerEl.clientHeight;
+      // Calculate distance from bottom (use scrollContainer, not containerEl)
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollHeight = scrollContainer.scrollHeight;
+      const clientHeight = scrollContainer.clientHeight;
       const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
 
-      // Dynamic threshold based on viewport and device
-      const isMobile = this.app.isMobile;
-      const viewportMultiplier = isMobile ? 1 : 2;
-      const threshold = clientHeight * viewportMultiplier;
+      // Threshold: load when within PANE_MULTIPLIER × pane height from bottom
+      const threshold = clientHeight * PANE_MULTIPLIER;
 
       // Check if should load more
       if (
@@ -349,15 +544,19 @@ export class DynamicViewsCardView extends BasesView {
       ) {
         this.isLoading = true;
 
-        // Dynamic batch size: 50 items (simple for card view)
-        const batchSize = 50;
+        // Dynamic batch size: columns × rows per column, capped
+        const columns =
+          parseInt(
+            this.containerEl.style.getPropertyValue("--grid-columns") || "2",
+          ) || 2;
+        const batchSize = Math.min(columns * ROWS_PER_COLUMN, MAX_BATCH_SIZE);
         this.displayedCount = Math.min(
           this.displayedCount + batchSize,
           totalEntries,
         );
 
-        // Re-render (this will call setupInfiniteScroll again)
-        this.onDataUpdated();
+        // Append new batch only (preserves existing DOM)
+        void this.appendBatch(totalEntries);
       }
 
       // Start throttle cooldown
@@ -366,13 +565,13 @@ export class DynamicViewsCardView extends BasesView {
       }, 100);
     };
 
-    // Attach listener
-    this.containerEl.addEventListener("scroll", this.scrollListener);
+    // Attach listener to scroll container
+    scrollContainer.addEventListener("scroll", this.scrollListener);
 
     // Register cleanup
     this.register(() => {
       if (this.scrollListener) {
-        this.containerEl.removeEventListener("scroll", this.scrollListener);
+        scrollContainer.removeEventListener("scroll", this.scrollListener);
       }
       if (this.scrollThrottleTimeout !== null) {
         window.clearTimeout(this.scrollThrottleTimeout);

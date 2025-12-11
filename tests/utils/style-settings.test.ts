@@ -377,7 +377,7 @@ describe("style-settings", () => {
         "",
       );
       expect(
-        cardEl.style.getPropertyValue("--dynamic-views-snippet-color"),
+        cardEl.style.getPropertyValue("--dynamic-views-text-preview-color"),
       ).toBe("");
     });
 
@@ -408,7 +408,7 @@ describe("style-settings", () => {
     it("should apply all color types", () => {
       const cache: StyleSettingsColorCache = {
         titleColor: { light: "#111111" },
-        snippetColor: { light: "#222222" },
+        textPreviewColor: { light: "#222222" },
         tagsColor: { light: "#333333" },
         timestampColor: { light: "#444444" },
         propertyColor: { light: "#555555" },
@@ -420,7 +420,7 @@ describe("style-settings", () => {
         "#111111",
       );
       expect(
-        cardEl.style.getPropertyValue("--dynamic-views-snippet-color"),
+        cardEl.style.getPropertyValue("--dynamic-views-text-preview-color"),
       ).toBe("#222222");
       expect(cardEl.style.getPropertyValue("--dynamic-views-tags-color")).toBe(
         "#333333",
@@ -436,7 +436,7 @@ describe("style-settings", () => {
     it("should only apply colors for specified theme", () => {
       const cache: StyleSettingsColorCache = {
         titleColor: { light: "#000000" },
-        snippetColor: { dark: "#ffffff" },
+        textPreviewColor: { dark: "#ffffff" },
       };
 
       applyCustomColors(cardEl, "light", cache);
@@ -445,7 +445,7 @@ describe("style-settings", () => {
         "#000000",
       );
       expect(
-        cardEl.style.getPropertyValue("--dynamic-views-snippet-color"),
+        cardEl.style.getPropertyValue("--dynamic-views-text-preview-color"),
       ).toBe(""); // Only has dark
     });
 
@@ -460,7 +460,7 @@ describe("style-settings", () => {
         "#000000",
       );
       expect(
-        cardEl.style.getPropertyValue("--dynamic-views-snippet-color"),
+        cardEl.style.getPropertyValue("--dynamic-views-text-preview-color"),
       ).toBe("");
     });
 
@@ -519,7 +519,7 @@ describe("style-settings", () => {
     it("should accept all optional color fields", () => {
       const cache: StyleSettingsColorCache = {
         titleColor: { light: "#000", dark: "#fff" },
-        snippetColor: { light: "#111" },
+        textPreviewColor: { light: "#111" },
         tagsColor: { dark: "#222" },
         timestampColor: {},
         propertyColor: { light: "#333", dark: "#444" },

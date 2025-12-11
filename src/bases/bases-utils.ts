@@ -11,7 +11,7 @@ import {
   normalizePropertyName,
 } from "../utils/property";
 import {
-  loadSnippetsForEntries,
+  loadTextPreviewsForEntries,
   loadImagesForEntries,
 } from "../shared/content-loader";
 import { setupSwipeInterception } from "./swipe-interceptor";
@@ -53,12 +53,14 @@ export function setupBasesSwipeInterception(
 
 /**
  * Setup MutationObserver for Dynamic Views Style Settings changes
+ * Watches class changes (class-toggle settings) and Style Settings stylesheet changes (slider settings)
  * @returns Cleanup function to disconnect observer
  */
 export function setupStyleSettingsObserver(
   onStyleChange: () => void,
 ): () => void {
-  const observer = new MutationObserver((mutations) => {
+  // Observer for body class changes (Style Settings class-toggle settings)
+  const bodyObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (
         mutation.type === "attributes" &&
@@ -85,13 +87,35 @@ export function setupStyleSettingsObserver(
     }
   });
 
-  observer.observe(document.body, {
+  bodyObserver.observe(document.body, {
     attributes: true,
     attributeOldValue: true,
     attributeFilter: ["class"],
   });
 
-  return () => observer.disconnect();
+  // Observer for Style Settings stylesheet changes (slider/variable settings)
+  // Style Settings updates a <style> element in <head> with id "css-settings-manager"
+  const styleEl = document.getElementById("css-settings-manager");
+  let styleObserver: MutationObserver | null = null;
+
+  if (styleEl) {
+    styleObserver = new MutationObserver(() => {
+      if (styleEl.textContent?.includes("--dynamic-views-")) {
+        onStyleChange();
+      }
+    });
+
+    styleObserver.observe(styleEl, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+
+  return () => {
+    bodyObserver.disconnect();
+    styleObserver?.disconnect();
+  };
 }
 
 /** Interface for Bases config sort method */
@@ -121,20 +145,20 @@ export function getSortMethod(config: BasesConfigWithSort): string {
 }
 
 /**
- * Load snippets and images for Bases entries
+ * Load text previews and images for Bases entries
  */
 export async function loadContentForEntries(
   entries: BasesEntry[],
   settings: Settings,
   app: App,
-  snippets: Record<string, string>,
+  textPreviews: Record<string, string>,
   images: Record<string, string | string[]>,
   hasImageAvailable: Record<string, boolean>,
 ): Promise<void> {
-  // Load snippets for text preview
+  // Load text previews
   if (settings.showTextPreview) {
-    const snippetEntries = entries
-      .filter((entry) => !(entry.file.path in snippets))
+    const textPreviewEntries = entries
+      .filter((entry) => !(entry.file.path in textPreviews))
       .map((entry) => {
         const file = app.vault.getAbstractFileByPath(entry.file.path);
         if (!(file instanceof TFile)) return null;
@@ -163,32 +187,59 @@ export async function loadContentForEntries(
               entry,
               normalizedProp,
             ) as { data?: unknown } | null;
+            const data = textPreviewValue?.data;
             if (
-              textPreviewValue?.data != null &&
-              textPreviewValue.data !== ""
+              data != null &&
+              data !== "" &&
+              (typeof data === "string" || typeof data === "number")
             ) {
-              textPreviewData = textPreviewValue.data;
+              textPreviewData = data;
               break;
             }
           }
         }
+
+        // Get title for first line comparison (similar to Datacore path)
+        let titleString: string | undefined;
+        if (settings.titleProperty) {
+          const titleProps = settings.titleProperty
+            .split(",")
+            .map((p) => p.trim());
+          for (const prop of titleProps) {
+            const normalizedProp = normalizePropertyName(app, prop);
+            const titleValue = getFirstBasesPropertyValue(
+              app,
+              entry,
+              normalizedProp,
+            ) as { data?: unknown } | null;
+            if (
+              titleValue?.data != null &&
+              titleValue.data !== "" &&
+              (typeof titleValue.data === "string" ||
+                typeof titleValue.data === "number")
+            ) {
+              titleString = String(titleValue.data);
+              break;
+            }
+          }
+        }
+
         return {
           path: entry.file.path,
           file,
           textPreviewData,
+          fileName: entry.file.basename,
+          titleString,
         };
       })
-      .filter(
-        (e): e is { path: string; file: TFile; textPreviewData: unknown } =>
-          e !== null,
-      );
+      .filter((e): e is NonNullable<typeof e> => e !== null);
 
-    await loadSnippetsForEntries(
-      snippetEntries,
+    await loadTextPreviewsForEntries(
+      textPreviewEntries,
       settings.fallbackToContent,
       settings.omitFirstLine,
       app,
-      snippets,
+      textPreviews,
     );
   }
 

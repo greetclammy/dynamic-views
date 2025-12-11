@@ -16,6 +16,8 @@ import {
   getListSeparator,
   isSlideshowEnabled,
   isSlideshowIndicatorEnabled,
+  isThumbnailScrubbingDisabled,
+  getSlideshowMaxImages,
 } from "../utils/style-settings";
 import { getPropertyLabel, normalizePropertyName } from "../utils/property";
 import { findLinksInText, type ParsedLink } from "../utils/link-parser";
@@ -30,8 +32,12 @@ import {
   handleJsxImageError,
   handleImageLoad,
 } from "./image-loader";
-import { handleImageZoomClick } from "./image-zoom-handler";
-import { createSlideshowNavigator, setupImagePreload } from "./slideshow-utils";
+import { handleImageViewerClick } from "./image-viewer-handler";
+import {
+  createSlideshowNavigator,
+  setupImagePreload,
+  setupSwipeGestures,
+} from "./slideshow-utils";
 
 /**
  * Render file type icon as JSX
@@ -103,38 +109,12 @@ function truncateTitleWithExtension(titleEl: HTMLElement): void {
 
 /**
  * Render file format indicator as JSX
- * When openFileAction is 'title', indicator is clickable/draggable
  */
-function renderFileExt(
-  path: string,
-  extInfo: { ext: string } | null,
-  settings: Settings,
-  app: App,
-  handleDrag: (e: DragEvent) => void,
-) {
+function renderFileExt(extInfo: { ext: string } | null) {
   if (!extInfo) return null;
 
   // data-ext contains extension without dot for badge style
   const extNoDot = extInfo.ext.slice(1);
-
-  if (settings.openFileAction === "title") {
-    return (
-      <span
-        className="card-title-ext clickable"
-        data-ext={extNoDot}
-        draggable={true}
-        onDragStart={handleDrag}
-        onClick={(e: MouseEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const newLeaf = e.metaKey || e.ctrlKey;
-          void app.workspace.openLinkText(path, "", newLeaf);
-        }}
-      >
-        {extInfo.ext}
-      </span>
-    );
-  }
 
   return (
     <span className="card-title-ext" data-ext={extNoDot}>
@@ -258,8 +238,30 @@ function renderTextWithLinks(text: string, app: App): JSX.Element | string {
 }
 
 // Module-level Maps to store zoom cleanup functions and original parents
-const zoomCleanupFns = new Map<HTMLElement, () => void>();
-const zoomedClones = new Map<HTMLElement, HTMLElement>();
+const viewerCleanupFns = new Map<HTMLElement, () => void>();
+const viewerClones = new Map<HTMLElement, HTMLElement>();
+
+// Module-level Map to store ResizeObservers for cleanup
+const cardResizeObservers = new Map<string, ResizeObserver>();
+
+/**
+ * Cleanup ResizeObserver for a card when it's removed
+ */
+export function cleanupCardObserver(cardPath: string): void {
+  const observer = cardResizeObservers.get(cardPath);
+  if (observer) {
+    observer.disconnect();
+    cardResizeObservers.delete(cardPath);
+  }
+}
+
+/**
+ * Cleanup all card ResizeObservers (call when view is destroyed)
+ */
+export function cleanupAllCardObservers(): void {
+  cardResizeObservers.forEach((observer) => observer.disconnect());
+  cardResizeObservers.clear();
+}
 
 // Extend App type to include isMobile property and dragManager
 declare module "obsidian" {
@@ -295,7 +297,7 @@ export interface CardData {
   ctime: number; // milliseconds
   mtime: number; // milliseconds
   folderPath: string;
-  snippet?: string;
+  textPreview?: string;
   subtitle?: string;
   imageUrl?: string | string[];
   hasImageAvailable: boolean;
@@ -466,6 +468,9 @@ function CoverSlideshow({
       },
       { signal },
     );
+
+    // Setup swipe gestures
+    setupSwipeGestures(slideshowEl, navigate, signal);
   };
 
   return (
@@ -474,7 +479,13 @@ function CoverSlideshow({
         className="image-embed"
         style={{ "--cover-image-url": `url("${imageArray[0]}")` }}
         onClick={(e: MouseEvent) => {
-          handleImageZoomClick(e, cardPath, app, zoomCleanupFns, zoomedClones);
+          handleImageViewerClick(
+            e,
+            cardPath,
+            app,
+            viewerCleanupFns,
+            viewerClones,
+          );
         }}
       >
         <img
@@ -933,6 +944,12 @@ function Card({
   onCardClick,
   onFocusChange,
 }: CardProps): unknown {
+  // Edge case: if openFileAction is "title" but title is hidden, treat as "card"
+  const effectiveOpenFileAction =
+    settings.openFileAction === "title" && !settings.showTitle
+      ? "card"
+      : settings.openFileAction;
+
   // Determine which timestamp to show
   const useCreatedTime = sortMethod.startsWith("ctime") && !isShuffled;
   // Determine time icon (calendar for ctime, clock for mtime)
@@ -954,19 +971,20 @@ function Card({
 
   // Handle images
   const isArray = Array.isArray(card.imageUrl);
+  const scrubbingDisabled = isThumbnailScrubbingDisabled();
   const imageArray: string[] = isArray
     ? (card.imageUrl as (string | string[])[])
         .flat()
         .filter(
           (url): url is string => typeof url === "string" && url.length > 0,
         )
+        .slice(0, scrubbingDisabled ? 1 : 10)
     : card.imageUrl
       ? [card.imageUrl as string]
       : [];
-
-  // Track hovered image index (for multi-image thumbnails)
-  // TODO: Implement image cycling on hover
-  // const hoveredImageIndex = 0;
+  // Enable scrubbing only on desktop with multiple images and setting enabled
+  const enableScrubbing =
+    !app.isMobile && isArray && imageArray.length > 1 && !scrubbingDisabled;
 
   // Parse imageFormat to extract format and position
   const imageFormat = settings.imageFormat;
@@ -1007,13 +1025,13 @@ function Card({
     <div
       className={cardClasses.join(" ")}
       data-path={card.path}
-      draggable={settings.openFileAction === "card"}
-      onDragStart={settings.openFileAction === "card" ? handleDrag : undefined}
+      draggable={effectiveOpenFileAction === "card"}
+      onDragStart={effectiveOpenFileAction === "card" ? handleDrag : undefined}
       tabIndex={index === focusableCardIndex ? 0 : -1}
       onClick={(e: MouseEvent) => {
         // Only handle card-level clicks when openFileAction is 'card'
         // When openFileAction is 'title', the title link handles its own clicks
-        if (settings.openFileAction === "card") {
+        if (effectiveOpenFileAction === "card") {
           const target = e.target as HTMLElement;
           // Don't open if clicking on links, tags, path segments, or images (when zoom enabled)
           const isLink = target.tagName === "A" || target.closest("a");
@@ -1050,7 +1068,7 @@ function Card({
       onKeyDown={(e: KeyboardEvent) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          if (settings.openFileAction === "card") {
+          if (effectiveOpenFileAction === "card") {
             const newLeaf = e.metaKey || e.ctrlKey;
             if (onCardClick) {
               onCardClick(card.path, newLeaf);
@@ -1069,7 +1087,7 @@ function Card({
       }}
       onMouseEnter={(e: MouseEvent) => {
         // Trigger Obsidian's hover preview (only on card when openFileAction is 'card')
-        if (settings.openFileAction === "card") {
+        if (effectiveOpenFileAction === "card") {
           app.workspace.trigger("hover-link", {
             event: e,
             source: "dynamic-views",
@@ -1091,7 +1109,7 @@ function Card({
         }
       }}
       style={{
-        cursor: settings.openFileAction === "card" ? "pointer" : "default",
+        cursor: effectiveOpenFileAction === "card" ? "pointer" : "default",
       }}
     >
       {/* Title */}
@@ -1131,8 +1149,8 @@ function Card({
               }}
             >
               {renderFileTypeIcon(card.path)}
-              {renderFileExt(card.path, extInfo, settings, app, handleDrag)}
-              {settings.openFileAction === "title" ? (
+              {renderFileExt(extInfo)}
+              {effectiveOpenFileAction === "title" ? (
                 <a
                   href={card.path}
                   className="internal-link"
@@ -1213,15 +1231,17 @@ function Card({
         >
           {imageArray.length > 0 ? (
             (() => {
+              const maxSlideshow = getSlideshowMaxImages();
+              const slideshowUrls = imageArray.slice(0, maxSlideshow);
               const shouldShowSlideshow =
                 isSlideshowEnabled() &&
                 (position === "top" || position === "bottom") &&
-                imageArray.length >= 2;
+                slideshowUrls.length >= 2;
 
               if (shouldShowSlideshow) {
                 return (
                   <CoverSlideshow
-                    imageArray={imageArray}
+                    imageArray={slideshowUrls}
                     updateLayoutRef={updateLayoutRef}
                     cardPath={card.path}
                     app={app}
@@ -1237,12 +1257,12 @@ function Card({
                       "--cover-image-url": `url("${imageArray[0] || ""}")`,
                     }}
                     onClick={(e: MouseEvent) => {
-                      handleImageZoomClick(
+                      handleImageViewerClick(
                         e,
                         card.path,
                         app,
-                        zoomCleanupFns,
-                        zoomedClones,
+                        viewerCleanupFns,
+                        viewerClones,
                       );
                     }}
                   >
@@ -1315,6 +1335,9 @@ function Card({
             // Initial calculation
             updateWrapperDimensions();
 
+            // Cleanup existing observer for this card if any
+            cleanupCardObserver(card.path);
+
             // Create ResizeObserver to update wrapper width when card resizes
             const resizeObserver = new ResizeObserver((entries) => {
               for (const entry of entries) {
@@ -1340,7 +1363,8 @@ function Card({
               }
             });
 
-            // Observe the card element for size changes
+            // Store observer for cleanup and start observing
+            cardResizeObservers.set(card.path, resizeObserver);
             resizeObserver.observe(cardEl);
           }, 100);
           return null;
@@ -1352,9 +1376,9 @@ function Card({
         (imageArray.length > 0 || card.hasImageAvailable) &&
         (imageArray.length > 0 ? (
           <div
-            className={`card-thumbnail ${isArray && imageArray.length > 1 ? "multi-image" : ""}`}
+            className={`card-thumbnail ${enableScrubbing ? "multi-image" : ""}`}
             onMouseMove={
-              !app.isMobile && isArray && imageArray.length > 1
+              enableScrubbing
                 ? (e: MouseEvent) => {
                     const rect = (
                       e.currentTarget as HTMLElement
@@ -1363,7 +1387,10 @@ function Card({
                     const section = Math.floor(
                       (x / rect.width) * imageArray.length,
                     );
-                    const newIndex = Math.min(section, imageArray.length - 1);
+                    const newIndex = Math.max(
+                      0,
+                      Math.min(section, imageArray.length - 1),
+                    );
                     const imgEl = (
                       e.currentTarget as HTMLElement
                     ).querySelector("img");
@@ -1378,7 +1405,7 @@ function Card({
                 : undefined
             }
             onMouseLeave={
-              !app.isMobile && isArray && imageArray.length > 1
+              enableScrubbing
                 ? (e: MouseEvent) => {
                     const imgEl = (
                       e.currentTarget as HTMLElement
@@ -1395,12 +1422,12 @@ function Card({
               className="image-embed"
               style={{ "--cover-image-url": `url("${imageArray[0] || ""}")` }}
               onClick={(e: MouseEvent) => {
-                handleImageZoomClick(
+                handleImageViewerClick(
                   e,
                   card.path,
                   app,
-                  zoomCleanupFns,
-                  zoomedClones,
+                  viewerCleanupFns,
+                  viewerClones,
                 );
               }}
             >
@@ -1420,21 +1447,21 @@ function Card({
         ))}
 
       {/* Content container - only render if it will have children */}
-      {((settings.showTextPreview && card.snippet) ||
+      {((settings.showTextPreview && card.textPreview) ||
         (format === "thumbnail" &&
           (position === "left" || position === "right") &&
           (imageArray.length > 0 || card.hasImageAvailable))) && (
         <div className="card-content">
-          {settings.showTextPreview && card.snippet && (
-            <div className="card-text-preview">{card.snippet}</div>
+          {settings.showTextPreview && card.textPreview && (
+            <div className="card-text-preview">{card.textPreview}</div>
           )}
           {format === "thumbnail" &&
             (position === "left" || position === "right") &&
             (imageArray.length > 0 ? (
               <div
-                className={`card-thumbnail ${isArray && imageArray.length > 1 ? "multi-image" : ""}`}
+                className={`card-thumbnail ${enableScrubbing ? "multi-image" : ""}`}
                 onMouseMove={
-                  !app.isMobile && isArray && imageArray.length > 1
+                  enableScrubbing
                     ? (e: MouseEvent) => {
                         const rect = (
                           e.currentTarget as HTMLElement
@@ -1443,9 +1470,9 @@ function Card({
                         const section = Math.floor(
                           (x / rect.width) * imageArray.length,
                         );
-                        const newIndex = Math.min(
-                          section,
-                          imageArray.length - 1,
+                        const newIndex = Math.max(
+                          0,
+                          Math.min(section, imageArray.length - 1),
                         );
                         const imgEl = (
                           e.currentTarget as HTMLElement
@@ -1461,10 +1488,7 @@ function Card({
                     : undefined
                 }
                 onMouseLeave={
-                  !app.isMobile &&
-                  isArray &&
-                  imageArray.length > 1 &&
-                  format === "thumbnail"
+                  enableScrubbing
                     ? (e: MouseEvent) => {
                         const imgEl = (
                           e.currentTarget as HTMLElement
@@ -1483,12 +1507,12 @@ function Card({
                     "--cover-image-url": `url("${imageArray[0] || ""}")`,
                   }}
                   onClick={(e: MouseEvent) => {
-                    handleImageZoomClick(
+                    handleImageViewerClick(
                       e,
                       card.path,
                       app,
-                      zoomCleanupFns,
-                      zoomedClones,
+                      viewerCleanupFns,
+                      viewerClones,
                     );
                   }}
                 >
@@ -1520,9 +1544,9 @@ function Card({
         (imageArray.length > 0 || card.hasImageAvailable) &&
         (imageArray.length > 0 ? (
           <div
-            className={`card-thumbnail ${isArray && imageArray.length > 1 ? "multi-image" : ""}`}
+            className={`card-thumbnail ${enableScrubbing ? "multi-image" : ""}`}
             onMouseMove={
-              !app.isMobile && isArray && imageArray.length > 1
+              enableScrubbing
                 ? (e: MouseEvent) => {
                     const rect = (
                       e.currentTarget as HTMLElement
@@ -1531,7 +1555,10 @@ function Card({
                     const section = Math.floor(
                       (x / rect.width) * imageArray.length,
                     );
-                    const newIndex = Math.min(section, imageArray.length - 1);
+                    const newIndex = Math.max(
+                      0,
+                      Math.min(section, imageArray.length - 1),
+                    );
                     const imgEl = (
                       e.currentTarget as HTMLElement
                     ).querySelector("img");
@@ -1546,7 +1573,7 @@ function Card({
                 : undefined
             }
             onMouseLeave={
-              !app.isMobile && isArray && imageArray.length > 1
+              enableScrubbing
                 ? (e: MouseEvent) => {
                     const imgEl = (
                       e.currentTarget as HTMLElement
@@ -1563,12 +1590,12 @@ function Card({
               className="image-embed"
               style={{ "--cover-image-url": `url("${imageArray[0] || ""}")` }}
               onClick={(e: MouseEvent) => {
-                handleImageZoomClick(
+                handleImageViewerClick(
                   e,
                   card.path,
                   app,
-                  zoomCleanupFns,
-                  zoomedClones,
+                  viewerCleanupFns,
+                  viewerClones,
                 );
               }}
             >

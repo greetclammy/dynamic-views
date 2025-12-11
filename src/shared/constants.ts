@@ -17,11 +17,14 @@ export const ROW_TOLERANCE = 20;
 /** Default image aspect ratio for covers */
 export const IMAGE_ASPECT_RATIO = 0.55;
 
-/** Viewport multiplier for infinite scroll trigger (above viewport) */
-export const VIEWPORT_MULTIPLIER_ABOVE = 2;
+/** Pane height multiplier for infinite scroll trigger threshold */
+export const PANE_MULTIPLIER = 2;
 
-/** Viewport multiplier for infinite scroll trigger (below viewport) */
-export const VIEWPORT_MULTIPLIER_BELOW = 1;
+/** Rows per column for batch size calculation */
+export const ROWS_PER_COLUMN = 10;
+
+/** Maximum batch size cap */
+export const MAX_BATCH_SIZE = 70;
 
 /** Debounce delay for layout updates in milliseconds */
 export const LAYOUT_UPDATE_DELAY = 50;

@@ -1,5 +1,5 @@
 /**
- * Preview and snippet utilities
+ * Preview utilities
  * Extracts and sanitizes content for card previews
  */
 
@@ -7,33 +7,44 @@ import { App, TFile } from "obsidian";
 
 /**
  * Markdown patterns for syntax stripping
- * Note: Code blocks and escaped characters are handled separately before these patterns
+ *
+ * ORDERING MATTERS - patterns are applied sequentially:
+ * 1. Inline code first (preserves content in backticks)
+ * 2. Bold+italic (***) before bold (**) before italic (*) - longer patterns first
+ * 3. Same for underscores: ___ before __ before _
+ * 4. Task markers before bare checkboxes (so "- [ ]" strips fully, not to "[ ]")
+ * 5. Task markers before bullet markers (so "- [ ]" isn't just stripped to "[ ]")
+ * 6. HTML tag pairs before remaining tags (to preserve inner content)
+ *
+ * Code blocks and escaped characters are handled separately before these patterns.
  */
 const markdownPatterns = [
+  /%%[\s\S]*?%%/g, // Obsidian comments
   /`([^`]+)`/g, // Inline code
-  /\*\*\*((?:(?!\*\*\*).)+)\*\*\*/g, // Bold + italic asterisks
-  /___((?:(?!___).)+)___/g, // Bold + italic underscores
-  /\*\*((?:(?!\*\*).)+)\*\*/g, // Bold asterisks
-  /__((?:(?!__).)+)__/g, // Bold underscores
+  /\*\*\*((?:(?!\*\*\*).)+)\*\*\*/g, // Bold + italic asterisks (before ** and *)
+  /___((?:(?!___).)+)___/g, // Bold + italic underscores (before __ and _)
+  /\*\*((?:(?!\*\*).)+)\*\*/g, // Bold asterisks (before *)
+  /__((?:(?!__).)+)__/g, // Bold underscores (before _)
   /\*((?:(?!\*).)+)\*/g, // Italic asterisks
   /_((?:(?!_).)+)_/g, // Italic underscores
-  /~~((?:(?!~~).)+)~~/g, // Strikethrough (after code blocks processed)
+  /~~((?:(?!~~).)+)~~/g, // Strikethrough
   /==((?:(?!==).)+)==/g, // Highlight
-  /\[((?:[^\]]|\](?!\]))+)\]\([^)]+\)/g, // Links
+  /\[(?![ xX]\])([^\]\n]+)\]\([^)]+\)/g, // Links (exclude checkboxes, no newlines)
   /!\[\[(?:[^\]]|\](?!\]))+\]\]/g, // Embedded wikilinks (images, etc.)
   /\[\[(?:[^\]|]|\](?!\]))+\|(?:[^\]]|\](?!\]))*\]\]/g, // Wikilinks with display
   /\[\[(?:[^\]]|\](?!\]))+\]\]/g, // Wikilinks
   /#[a-zA-Z0-9_\-/]+/g, // Tags
-  /^\s*[-*+]\s*\[[ xX]\]\s+/gm, // Task list markers (bullet-style)
+  /^\s*[-*+]\s*\[[ xX]\]\s+/gm, // Task list markers (bullet-style) - before bare checkbox
   /^\s*(\d+[.)]\s*)\[[ xX]\]\s+/gm, // Task list markers (numbered) - preserves number
-  /^\s*[-*+]\s+/gm, // Bullet list markers
+  /\[[ xX]\]\s+/g, // Bare task checkboxes (after task markers)
+  /^\s*[-*+]\s+/gm, // Bullet list markers (after task markers)
   /^#{1,6}\s+.+$/gm, // Heading lines (full removal)
   /^\s*(?:[-_*])\s*(?:[-_*])\s*(?:[-_*])[\s\-_*]*$/gm, // Horizontal rules
   /^\s*\|.*\|.*$/gm, // Tables
   /\^\[[^\]]*?]/g, // Inline footnotes
   /\[\^[^\]]+]/g, // Footnote markers
   /^\s*\[\^[^\]]+]:.*$/gm, // Footnote details
-  /<([a-z][a-z0-9]*)\b[^>]*>(.*?)<\/\1>/gi, // HTML tag pairs
+  /<([a-z][a-z0-9]*)\b[^>]*>(.*?)<\/\1>/gi, // HTML tag pairs (before remaining tags)
   /<[^>]+>/g, // Remaining HTML tags
 ];
 
@@ -49,9 +60,9 @@ function protectEscapedChars(text: string): {
   const map = new Map<string, string>();
   let counter = 0;
 
-  const result = text.replace(/\\(.)/g, (match: string, char: string) => {
+  const result = text.replace(/\\(.)/g, (_match: string, char: string) => {
     const placeholder = `§§ESCAPED${counter}§§`;
-    map.set(placeholder, char);
+    map.set(placeholder, char); // Store escaped character (without backslash - the escape is consumed)
     counter++;
     return placeholder;
   });
@@ -83,12 +94,14 @@ function removeCodeBlocks(text: string): string {
   while (changed) {
     changed = false;
 
-    // Find opening fence (3+ backticks or tildes at start of line)
-    const openMatch = result.match(/^([`~]{3,})/m);
+    // Find opening fence (3+ backticks or tildes, optionally indented)
+    const openMatch = result.match(/^(\s*)([`~]{3,})/m);
     if (!openMatch) break;
 
-    const fenceChar = openMatch[1][0];
-    const fenceLength = openMatch[1].length;
+    const _indent = openMatch[1]; // Captured but unused (kept for clarity)
+    const fence = openMatch[2];
+    const fenceChar = fence[0];
+    const fenceLength = fence.length;
     const openIndex = openMatch.index!;
 
     // Build regex for matching closing fence (same char, exact count)
@@ -98,13 +111,13 @@ function removeCodeBlocks(text: string): string {
       "m",
     );
 
-    // Search for closing fence after opening
-    const afterOpen = result.substring(openIndex + openMatch[1].length);
+    // Search for closing fence after opening (skip indent + fence)
+    const afterOpen = result.substring(openIndex + openMatch[0].length);
     const closeMatch = afterOpen.match(closePattern);
 
     if (closeMatch) {
       // Found matching closing fence
-      const closeIndex = openIndex + openMatch[1].length + closeMatch.index!;
+      const closeIndex = openIndex + openMatch[0].length + closeMatch.index!;
       const blockEnd = closeIndex + closeMatch[0].length;
 
       // Remove entire code block (opening fence + content + closing fence)
@@ -129,13 +142,15 @@ function removeCodeBlocks(text: string): string {
 /**
  * Strip markdown syntax from text while preserving content
  */
-function stripMarkdownSyntax(text: string): string {
+export function stripMarkdownSyntax(text: string): string {
   if (!text || text.trim().length === 0) return "";
 
   // First pass: remove callout title lines only
   text = text.replace(/^>\s*\[![\w-]+\][+-]?.*$/gm, "");
   // Second pass: strip > prefix from remaining blockquote lines
   text = text.replace(/^>\s?/gm, "");
+  // Third pass: strip > after list markers (e.g., "- >text" or "- [ ] >text")
+  text = text.replace(/^(\s*[-*+](?:\s*\[[ xX]\])?\s*)>\s?/gm, "$1");
 
   // Protect escaped characters before processing markdown
   const { text: protectedText, map: escapedCharsMap } =
@@ -178,7 +193,7 @@ function stripMarkdownSyntax(text: string): string {
  * @param omitFirstLine - Whether to always omit the first line
  * @param filename - Optional filename to compare against first line
  * @param titleValue - Optional title value to compare against first line
- * @returns Sanitized preview text (max 500 chars)
+ * @returns Sanitized preview text (max 1000 chars)
  */
 export function sanitizeForPreview(
   content: string,
@@ -186,8 +201,8 @@ export function sanitizeForPreview(
   filename?: string,
   titleValue?: string,
 ): string {
-  // Remove frontmatter
-  const cleaned = content.replace(/^---[\s\S]*?---/, "").trim();
+  // Remove frontmatter (requires newline after opening ---)
+  const cleaned = content.replace(/^---\n[\s\S]*?\n---/, "").trim();
   let stripped = stripMarkdownSyntax(cleaned);
 
   // Check if first line matches filename or title
@@ -206,18 +221,18 @@ export function sanitizeForPreview(
       firstLineEnd !== -1 ? stripped.substring(firstLineEnd + 1).trim() : "";
   }
 
-  // Normalize whitespace and special characters
+  // Normalize whitespace and remove block IDs
   const normalized = stripped
-    .replace(/\^[a-zA-Z0-9-]+/g, "") // Remove block IDs
+    .replace(/(?<=\s|^)\^[a-zA-Z0-9-]+/g, "") // Remove block IDs (require whitespace/line-start before ^)
     .split(/\s+/)
     .filter((word) => word)
     .join(" ")
-    .trim()
-    .replace(/\.{2,}/g, (match) => match.replace(/\./g, "\u2024"));
+    .trim();
 
-  // Truncate to 500 characters
-  const wasTruncated = normalized.length > 500;
-  let preview = normalized.substring(0, 500);
+  // Truncate to 1000 characters (using spread to handle surrogate pairs correctly)
+  const chars = [...normalized];
+  const wasTruncated = chars.length > 1000;
+  let preview = wasTruncated ? chars.slice(0, 1000).join("") : normalized;
 
   if (wasTruncated) {
     preview += "…";
@@ -227,7 +242,7 @@ export function sanitizeForPreview(
 }
 
 /**
- * Load text preview/snippet for a file
+ * Load text preview for a file
  * Handles property extraction and content fallback
  * @param file - TFile to load preview for
  * @param app - Obsidian App instance

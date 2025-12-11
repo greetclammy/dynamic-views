@@ -188,41 +188,26 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
         }),
       );
 
-    const swipeSetting = new Setting(containerEl).setName(
-      "Prevent sidebar swipe on mobile",
-    );
-    const swipeDesc = document.createDocumentFragment();
-    swipeDesc.appendText(
-      "Disable mobile sidebar gestures when a plugin view is open. Prevents unintentional triggers when scrolling horizontally.",
-    );
-    const swipeTip = document.createElement("span");
-    swipeTip.appendChild(document.createElement("br"));
-    swipeTip.appendText(
-      "Tip: long press the triple dot button in the top-right to bring up the right sidebar.",
-    );
-    if (settings.preventSidebarSwipe !== "disabled") {
-      swipeDesc.appendChild(swipeTip);
-    }
-    swipeSetting.setDesc(swipeDesc).addDropdown((dropdown) =>
-      dropdown
-        .addOption("all-views", "In all views")
-        .addOption("base-files", "In base files")
-        .addOption("disabled", "Disabled")
-        .setValue(settings.preventSidebarSwipe)
-        .onChange(async (value) => {
-          if (value === "disabled") {
-            swipeTip.remove();
-          } else if (!swipeTip.parentElement) {
-            swipeSetting.descEl.appendChild(swipeTip);
-          }
-          await this.plugin.persistenceManager.setGlobalSettings({
-            preventSidebarSwipe: value as
-              | "disabled"
-              | "base-files"
-              | "all-views",
-          });
-        }),
-    );
+    new Setting(containerEl)
+      .setName("Prevent sidebar swipe on mobile")
+      .setDesc(
+        "Disable mobile sidebar gestures when a plugin view is open. Prevents unintentional triggers when scrolling horizontally.",
+      )
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("all-views", "In all views")
+          .addOption("base-files", "In base files")
+          .addOption("disabled", "Disabled")
+          .setValue(settings.preventSidebarSwipe)
+          .onChange(async (value) => {
+            await this.plugin.persistenceManager.setGlobalSettings({
+              preventSidebarSwipe: value as
+                | "disabled"
+                | "base-files"
+                | "all-views",
+            });
+          }),
+      );
 
     // Smart timestamp section
     const smartTimestampSetting = new Setting(containerEl)
@@ -384,14 +369,16 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       text: "Style Settings",
       href: "obsidian://show-plugin?id=obsidian-style-settings",
     });
-    appearanceDesc.appendText(".");
+    appearanceDesc.appendText(". Some options may need a reload to apply.");
 
     const appearanceTip = containerEl.createEl("p", {
       cls: "setting-item-description",
     });
     appearanceTip.appendText("Tip: Run ");
     appearanceTip.createEl("em").appendText("Show style settings view");
-    appearanceTip.appendText(" command to open settings in a tab.");
+    appearanceTip.appendText(
+      " in the Command palette to open settings in a tab.",
+    );
 
     // Default settings for new views section
     new Setting(containerEl).setName("Default for new views").setHeading();

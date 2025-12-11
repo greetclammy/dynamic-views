@@ -1,6 +1,37 @@
 import { extractAverageColor, getColorTheme } from "../utils/image-color";
 import type { RefObject } from "../types/datacore";
 
+// Cache ambient colors and aspect ratio by image URL to avoid flash on re-render
+const ambientColorCache = new Map<
+  string,
+  { color: string; theme: "light" | "dark"; aspectRatio?: number }
+>();
+
+/**
+ * Apply cached ambient color and aspect ratio to card immediately
+ * Called before image loads to prevent flash on re-render
+ */
+export function applyCachedAmbientColor(
+  imgSrc: string,
+  imageEmbedContainer: HTMLElement,
+  cardEl: HTMLElement,
+): boolean {
+  const cached = ambientColorCache.get(imgSrc);
+  if (!cached) return false;
+
+  imageEmbedContainer.style.setProperty("--ambient-color", cached.color);
+  cardEl.style.setProperty("--ambient-color", cached.color);
+  cardEl.setAttribute("data-ambient-theme", cached.theme);
+  if (cached.aspectRatio !== undefined) {
+    cardEl.style.setProperty(
+      "--actual-aspect-ratio",
+      cached.aspectRatio.toString(),
+    );
+  }
+  cardEl.classList.add("cover-ready");
+  return true;
+}
+
 /**
  * Core logic for handling image load
  * Extracts ambient color and triggers layout update
@@ -18,18 +49,42 @@ export function handleImageLoad(
   onLayoutUpdate?: (() => void) | null,
 ): void {
   // Extract ambient color for Cover background: Ambient and Card background: Ambient options
-  const ambientColor = extractAverageColor(imgEl);
+  let ambientColor: string;
+  let colorTheme: "light" | "dark";
+  try {
+    ambientColor = extractAverageColor(imgEl);
+    colorTheme = getColorTheme(ambientColor);
+  } catch {
+    // Canvas operations can fail (tainted canvas, etc.) - use fallback
+    cardEl.classList.add("cover-ready");
+    if (onLayoutUpdate) onLayoutUpdate();
+    return;
+  }
+
+  // Calculate aspect ratio
+  const aspectRatio =
+    imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0
+      ? imgEl.naturalHeight / imgEl.naturalWidth
+      : undefined;
+
+  // Cache for future re-renders
+  if (imgEl.src) {
+    ambientColorCache.set(imgEl.src, {
+      color: ambientColor,
+      theme: colorTheme,
+      aspectRatio,
+    });
+  }
+
   imageEmbedContainer.style.setProperty("--ambient-color", ambientColor); // For Cover background: Ambient
   cardEl.style.setProperty("--ambient-color", ambientColor); // For Card background: Ambient
 
   // Set ambient theme on card for text color adjustments
-  const colorTheme = getColorTheme(ambientColor);
   cardEl.setAttribute("data-ambient-theme", colorTheme);
 
   // Set actual aspect ratio for masonry contain mode (used when "Fixed cover height" is OFF)
-  if (imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0) {
-    const imgAspect = imgEl.naturalHeight / imgEl.naturalWidth;
-    cardEl.style.setProperty("--actual-aspect-ratio", imgAspect.toString());
+  if (aspectRatio !== undefined) {
+    cardEl.style.setProperty("--actual-aspect-ratio", aspectRatio.toString());
   }
 
   // Mark as processed (idempotency guard)
@@ -56,18 +111,50 @@ export function setupImageLoadHandler(
   cardEl: HTMLElement,
   onLayoutUpdate?: () => void,
 ): void {
+  // Apply cached ambient color immediately to prevent flash on re-render
+  const hasCached =
+    imgEl.src &&
+    applyCachedAmbientColor(imgEl.src, imageEmbedContainer, cardEl);
+
   // Handle already-loaded images (from cache)
   if (imgEl.complete && imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0) {
     handleImageLoad(imgEl, imageEmbedContainer, cardEl, onLayoutUpdate);
-  } else {
-    imgEl.addEventListener("load", () => {
-      handleImageLoad(imgEl, imageEmbedContainer, cardEl, onLayoutUpdate);
-    });
+  } else if (!hasCached) {
+    // Only add listeners if we didn't have cached color
+    imgEl.addEventListener(
+      "load",
+      () => {
+        handleImageLoad(imgEl, imageEmbedContainer, cardEl, onLayoutUpdate);
+      },
+      { once: true },
+    );
     // On error, still add cover-ready so cover shows (even if broken)
-    imgEl.addEventListener("error", () => {
-      cardEl.classList.add("cover-ready");
-      if (onLayoutUpdate) onLayoutUpdate();
-    });
+    imgEl.addEventListener(
+      "error",
+      () => {
+        cardEl.classList.add("cover-ready");
+        if (onLayoutUpdate) onLayoutUpdate();
+      },
+      { once: true },
+    );
+  } else {
+    // Had cached color, still need load handler for aspect ratio and layout
+    imgEl.addEventListener(
+      "load",
+      () => {
+        handleImageLoad(imgEl, imageEmbedContainer, cardEl, onLayoutUpdate);
+      },
+      { once: true },
+    );
+    // Also need error handler in case image fails to load
+    imgEl.addEventListener(
+      "error",
+      () => {
+        cardEl.classList.add("cover-ready");
+        if (onLayoutUpdate) onLayoutUpdate();
+      },
+      { once: true },
+    );
   }
 }
 
@@ -80,15 +167,27 @@ export function handleJsxImageRef(
   imgEl: HTMLImageElement | null,
   updateLayoutRef: RefObject<(() => void) | null>,
 ): void {
-  if (!imgEl || !imgEl.complete || imgEl.naturalWidth === 0) return;
+  if (!imgEl) return;
 
   const cardEl = imgEl.closest(".card") as HTMLElement;
-  if (!cardEl || cardEl.classList.contains("cover-ready")) return; // Already handled
+  if (!cardEl) return;
 
   const imageEmbedEl = imgEl.closest(".image-embed") as HTMLElement;
   if (!imageEmbedEl) return;
 
-  handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
+  // Apply cached color immediately to prevent flash on re-render
+  if (imgEl.src && !cardEl.classList.contains("cover-ready")) {
+    applyCachedAmbientColor(imgEl.src, imageEmbedEl, cardEl);
+  }
+
+  // Handle already-loaded images
+  if (
+    imgEl.complete &&
+    imgEl.naturalWidth > 0 &&
+    !cardEl.classList.contains("cover-ready")
+  ) {
+    handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
+  }
 }
 
 /**
@@ -120,7 +219,7 @@ export function handleJsxImageError(
 ): void {
   const imgEl = e.currentTarget as HTMLImageElement;
   const cardEl = imgEl.closest(".card") as HTMLElement;
-  if (!cardEl) return;
+  if (!cardEl || cardEl.classList.contains("cover-ready")) return;
 
   cardEl.classList.add("cover-ready");
   if (updateLayoutRef.current) updateLayoutRef.current();

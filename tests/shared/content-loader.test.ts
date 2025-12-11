@@ -2,8 +2,8 @@ import { TFile, App } from "obsidian";
 import {
   loadImageForEntry,
   loadImagesForEntries,
-  loadSnippetForEntry,
-  loadSnippetsForEntries,
+  loadTextPreviewForEntry,
+  loadTextPreviewsForEntries,
 } from "../../src/shared/content-loader";
 
 // Mock image utilities
@@ -13,8 +13,8 @@ jest.mock("../../src/utils/image", () => ({
   extractEmbedImages: jest.fn(),
 }));
 
-// Mock preview utility
-jest.mock("../../src/utils/preview", () => ({
+// Mock text-preview utility
+jest.mock("../../src/utils/text-preview", () => ({
   loadFilePreview: jest.fn(),
 }));
 
@@ -50,7 +50,7 @@ describe("content-loader", () => {
     mockImageUtils.extractEmbedImages.mockResolvedValue([]);
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    mockPreviewUtils = require("../../src/utils/preview");
+    mockPreviewUtils = require("../../src/utils/text-preview");
     mockPreviewUtils.loadFilePreview.mockResolvedValue("preview text");
   });
 
@@ -310,36 +310,36 @@ describe("content-loader", () => {
     });
   });
 
-  describe("loadSnippetForEntry", () => {
+  describe("loadTextPreviewForEntry", () => {
     it("should skip if path already in cache", async () => {
-      const snippetCache: Record<string, string> = {
-        "test/file.md": "cached snippet",
+      const textPreviewCache: Record<string, string> = {
+        "test/file.md": "cached text preview",
       };
 
-      await loadSnippetForEntry(
+      await loadTextPreviewForEntry(
         "test/file.md",
         mockFile,
         mockApp,
         null,
         true,
         false,
-        snippetCache,
+        textPreviewCache,
       );
 
       expect(mockPreviewUtils.loadFilePreview).not.toHaveBeenCalled();
     });
 
-    it("should load snippet via loadFilePreview for .md files", async () => {
-      const snippetCache: Record<string, string> = {};
+    it("should load text preview via loadFilePreview for .md files", async () => {
+      const textPreviewCache: Record<string, string> = {};
 
-      await loadSnippetForEntry(
+      await loadTextPreviewForEntry(
         "test/file.md",
         mockFile,
         mockApp,
         "preview property",
         true,
         false,
-        snippetCache,
+        textPreviewCache,
       );
 
       expect(mockPreviewUtils.loadFilePreview).toHaveBeenCalledWith(
@@ -350,20 +350,20 @@ describe("content-loader", () => {
         undefined,
         undefined,
       );
-      expect(snippetCache["test/file.md"]).toBe("preview text");
+      expect(textPreviewCache["test/file.md"]).toBe("preview text");
     });
 
     it("should pass optional fileName and titleString parameters", async () => {
-      const snippetCache: Record<string, string> = {};
+      const textPreviewCache: Record<string, string> = {};
 
-      await loadSnippetForEntry(
+      await loadTextPreviewForEntry(
         "test/file.md",
         mockFile,
         mockApp,
         "preview property",
         true,
         true,
-        snippetCache,
+        textPreviewCache,
         "myFile",
         "My Title",
       );
@@ -379,28 +379,28 @@ describe("content-loader", () => {
     });
 
     it("should return empty string for non-.md files", async () => {
-      const snippetCache: Record<string, string> = {};
+      const textPreviewCache: Record<string, string> = {};
 
       const pdfFile = new TFile();
       pdfFile.path = "document.pdf";
       pdfFile.extension = "pdf";
 
-      await loadSnippetForEntry(
+      await loadTextPreviewForEntry(
         "document.pdf",
         pdfFile,
         mockApp,
         null,
         true,
         false,
-        snippetCache,
+        textPreviewCache,
       );
 
       expect(mockPreviewUtils.loadFilePreview).not.toHaveBeenCalled();
-      expect(snippetCache["document.pdf"]).toBe("");
+      expect(textPreviewCache["document.pdf"]).toBe("");
     });
 
     it("should catch errors and store empty string", async () => {
-      const snippetCache: Record<string, string> = {};
+      const textPreviewCache: Record<string, string> = {};
 
       mockPreviewUtils.loadFilePreview.mockRejectedValue(
         new Error("Test error"),
@@ -409,25 +409,25 @@ describe("content-loader", () => {
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      await loadSnippetForEntry(
+      await loadTextPreviewForEntry(
         "test/file.md",
         mockFile,
         mockApp,
         null,
         true,
         false,
-        snippetCache,
+        textPreviewCache,
       );
 
-      expect(snippetCache["test/file.md"]).toBe("");
+      expect(textPreviewCache["test/file.md"]).toBe("");
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
   });
 
-  describe("loadSnippetsForEntries", () => {
+  describe("loadTextPreviewsForEntries", () => {
     it("should process multiple entries in parallel", async () => {
-      const snippetCache: Record<string, string> = {};
+      const textPreviewCache: Record<string, string> = {};
 
       const file1 = new TFile();
       file1.path = "file1.md";
@@ -437,7 +437,7 @@ describe("content-loader", () => {
       file2.path = "file2.md";
       file2.extension = "md";
 
-      await loadSnippetsForEntries(
+      await loadTextPreviewsForEntries(
         [
           { path: "file1.md", file: file1, textPreviewData: "preview1" },
           { path: "file2.md", file: file2, textPreviewData: "preview2" },
@@ -445,12 +445,12 @@ describe("content-loader", () => {
         true,
         false,
         mockApp,
-        snippetCache,
+        textPreviewCache,
       );
 
       expect(mockPreviewUtils.loadFilePreview).toHaveBeenCalledTimes(2);
-      expect(snippetCache["file1.md"]).toBe("preview text");
-      expect(snippetCache["file2.md"]).toBe("preview text");
+      expect(textPreviewCache["file1.md"]).toBe("preview text");
+      expect(textPreviewCache["file2.md"]).toBe("preview text");
     });
   });
 });

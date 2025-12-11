@@ -32,11 +32,13 @@ import {
   getListSeparator,
   isSlideshowEnabled,
   isSlideshowIndicatorEnabled,
+  isThumbnailScrubbingDisabled,
+  getSlideshowMaxImages,
   getUrlIcon,
 } from "../utils/style-settings";
 import { getPropertyLabel, normalizePropertyName } from "../utils/property";
 import { findLinksInText, type ParsedLink } from "../utils/link-parser";
-import { handleImageZoomClick } from "../shared/image-zoom-handler";
+import { handleImageViewerClick } from "../shared/image-viewer-handler";
 import {
   getFileExtInfo,
   getFileTypeIcon,
@@ -47,6 +49,7 @@ import type { Settings } from "../types";
 import {
   createSlideshowNavigator,
   setupImagePreload,
+  setupSwipeGestures,
 } from "../shared/slideshow-utils";
 import { handleArrowNavigation, isArrowKey } from "../shared/keyboard-nav";
 
@@ -109,8 +112,8 @@ declare module "obsidian" {
 
 export class SharedCardRenderer {
   private propertyObservers: ResizeObserver[] = [];
-  private zoomCleanupFns: Map<HTMLElement, () => void> = new Map();
-  private zoomedClones: Map<HTMLElement, HTMLElement> = new Map();
+  private viewerCleanupFns: Map<HTMLElement, () => void> = new Map();
+  private viewerClones: Map<HTMLElement, HTMLElement> = new Map();
   private slideshowCleanups: (() => void)[] = [];
   private cardScopes: Scope[] = [];
   private cardAbortControllers: AbortController[] = [];
@@ -148,15 +151,15 @@ export class SharedCardRenderer {
 
     // Skip zoom cleanup unless close-on-click is enabled (preserve by default)
     if (document.body.classList.contains("dynamic-views-zoom-close-on-click")) {
-      this.zoomedClones.forEach((clone) => {
+      this.viewerClones.forEach((clone) => {
         clone.remove();
       });
-      this.zoomedClones.clear();
+      this.viewerClones.clear();
 
-      this.zoomCleanupFns.forEach((cleanup) => {
+      this.viewerCleanupFns.forEach((cleanup) => {
         cleanup();
       });
-      this.zoomCleanupFns.clear();
+      this.viewerCleanupFns.clear();
     }
   }
 
@@ -316,14 +319,20 @@ export class SharedCardRenderer {
 
     cardEl.setAttribute("data-path", card.path);
 
+    // Edge case: if openFileAction is "title" but title is hidden, treat as "card"
+    const effectiveOpenFileAction =
+      settings.openFileAction === "title" && !settings.showTitle
+        ? "card"
+        : settings.openFileAction;
+
     // Only make card draggable when openFileAction is 'card'
-    if (settings.openFileAction === "card") {
+    if (effectiveOpenFileAction === "card") {
       cardEl.setAttribute("draggable", "true");
     }
     // Only show pointer cursor when entire card is clickable
     cardEl.classList.toggle(
       "clickable-card",
-      settings.openFileAction === "card",
+      effectiveOpenFileAction === "card",
     );
 
     // Create AbortController for event listener cleanup
@@ -420,7 +429,7 @@ export class SharedCardRenderer {
     cardEl.addEventListener("click", (e) => {
       // Only handle card-level clicks when openFileAction is 'card'
       // When openFileAction is 'title', the title link handles its own clicks
-      if (settings.openFileAction === "card") {
+      if (effectiveOpenFileAction === "card") {
         const target = e.target as HTMLElement;
         // Don't open if clicking on links, tags, path segments, or images (when zoom enabled)
         const isLink = target.tagName === "A" || target.closest("a");
@@ -450,7 +459,7 @@ export class SharedCardRenderer {
     });
 
     // Handle hover for page preview (only on card when openFileAction is 'card')
-    if (settings.openFileAction === "card") {
+    if (effectiveOpenFileAction === "card") {
       cardEl.addEventListener("mouseover", (e) => {
         this.app.workspace.trigger("hover-link", {
           event: e,
@@ -998,31 +1007,17 @@ export class SharedCardRenderer {
         // Add file format indicator before title text (for Badge mode float:left)
         const extInfo = getFileExtInfo(card.path, isFullname);
         const extNoDot = extInfo?.ext.slice(1) || "";
-        let extEl: HTMLElement | null = null;
         if (extInfo) {
-          extEl = titleEl.createSpan({
+          titleEl.createSpan({
             cls: "card-title-ext",
             text: extInfo.ext,
             attr: { "data-ext": extNoDot },
           });
-
-          // Make extension clickable/draggable when openFileAction is 'title'
-          if (settings.openFileAction === "title") {
-            extEl.addClass("clickable");
-            extEl.setAttribute("draggable", "true");
-            extEl.addEventListener("click", (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const newLeaf = e.metaKey || e.ctrlKey;
-              void this.app.workspace.openLinkText(card.path, "", newLeaf);
-            });
-            extEl.addEventListener("dragstart", handleDrag);
-          }
         }
 
         // Add title text
         let textEl: HTMLElement | null = null;
-        if (settings.openFileAction === "title") {
+        if (effectiveOpenFileAction === "title") {
           // Render as clickable, draggable link
           const link = titleEl.createEl("a", {
             cls: "internal-link",
@@ -1186,10 +1181,12 @@ export class SharedCardRenderer {
       );
 
       if (hasImage) {
+        const maxSlideshow = getSlideshowMaxImages();
+        const slideshowUrls = imageUrls.slice(0, maxSlideshow);
         const shouldShowSlideshow =
           isSlideshowEnabled() &&
           (position === "top" || position === "bottom") &&
-          imageUrls.length >= 2;
+          slideshowUrls.length >= 2;
 
         if (shouldShowSlideshow) {
           const slideshowEl = coverWrapper.createDiv(
@@ -1197,7 +1194,7 @@ export class SharedCardRenderer {
           );
           this.renderSlideshow(
             slideshowEl,
-            imageUrls,
+            slideshowUrls,
             format,
             position,
             settings,
@@ -1311,7 +1308,7 @@ export class SharedCardRenderer {
     }
 
     // Determine if card-content will have children
-    const hasTextPreview = settings.showTextPreview && card.snippet;
+    const hasTextPreview = settings.showTextPreview && card.textPreview;
     const hasThumbnailInContent =
       format === "thumbnail" &&
       (position === "left" || position === "right") &&
@@ -1322,9 +1319,10 @@ export class SharedCardRenderer {
       const contentContainer = cardEl.createDiv("card-content");
 
       if (hasTextPreview) {
-        contentContainer.createDiv({
+        const wrapper = contentContainer.createDiv("card-text-preview-wrapper");
+        wrapper.createDiv({
           cls: "card-text-preview",
-          text: card.snippet,
+          text: card.textPreview,
         });
       }
 
@@ -1384,7 +1382,7 @@ export class SharedCardRenderer {
       format === "thumbnail" &&
       (position === "left" || position === "right") &&
       settings.showTextPreview &&
-      card.snippet;
+      card.textPreview;
 
     const thumbnailEl = needsThumbnailStacking
       ? (cardEl.querySelector(".card-thumbnail") as HTMLElement)
@@ -1410,7 +1408,12 @@ export class SharedCardRenderer {
           const shouldStack = cardWidth < thumbnailWidth * 3;
 
           if (shouldStack && !isStacked) {
-            cardEl.insertBefore(thumbnailEl, contentEl);
+            // Left: thumbnail above content, Right: thumbnail below content
+            if (cardEl.classList.contains("card-thumbnail-left")) {
+              cardEl.insertBefore(thumbnailEl, contentEl);
+            } else {
+              contentEl.after(thumbnailEl);
+            }
             cardEl.classList.add("thumbnail-stack");
             isStacked = true;
           } else if (!shouldStack && isStacked) {
@@ -1453,12 +1456,12 @@ export class SharedCardRenderer {
     imageEmbedContainer.addEventListener(
       "click",
       (e) => {
-        handleImageZoomClick(
+        handleImageViewerClick(
           e,
           cardEl?.getAttribute("data-path") || "",
           this.app,
-          this.zoomCleanupFns,
-          this.zoomedClones,
+          this.viewerCleanupFns,
+          this.viewerClones,
         );
       },
       { signal },
@@ -1550,6 +1553,9 @@ export class SharedCardRenderer {
       },
       { signal },
     );
+
+    // Setup swipe gestures
+    setupSwipeGestures(slideshowEl, navigate, signal);
   }
 
   /**
@@ -1570,12 +1576,12 @@ export class SharedCardRenderer {
     imageEmbedContainer.addEventListener(
       "click",
       (e) => {
-        handleImageZoomClick(
+        handleImageViewerClick(
           e,
           cardEl.getAttribute("data-path") || "",
           this.app,
-          this.zoomCleanupFns,
-          this.zoomedClones,
+          this.viewerCleanupFns,
+          this.viewerClones,
         );
       },
       signal ? { signal } : undefined,
@@ -1597,6 +1603,57 @@ export class SharedCardRenderer {
         imageEmbedContainer,
         cardEl,
         this.updateLayoutRef.current || undefined,
+      );
+    }
+
+    // Thumbnail scrubbing (desktop only, max 10 images)
+    if (
+      format === "thumbnail" &&
+      imageUrls.length > 1 &&
+      !this.app.isMobile &&
+      !isThumbnailScrubbingDisabled()
+    ) {
+      const scrubbableUrls = imageUrls.slice(0, 10);
+      imageEl.classList.add("multi-image");
+
+      // Preload on hover
+      if (signal) {
+        setupImagePreload(cardEl, scrubbableUrls, signal);
+      }
+
+      imageEl.addEventListener(
+        "mousemove",
+        (e) => {
+          const rect = imageEl.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const index = Math.max(
+            0,
+            Math.min(
+              Math.floor((x / rect.width) * scrubbableUrls.length),
+              scrubbableUrls.length - 1,
+            ),
+          );
+          if (imgEl.src !== scrubbableUrls[index]) {
+            imgEl.src = scrubbableUrls[index];
+            imageEmbedContainer.style.setProperty(
+              "--cover-image-url",
+              `url("${scrubbableUrls[index]}")`,
+            );
+          }
+        },
+        signal ? { signal } : undefined,
+      );
+
+      imageEl.addEventListener(
+        "mouseleave",
+        () => {
+          imgEl.src = scrubbableUrls[0];
+          imageEmbedContainer.style.setProperty(
+            "--cover-image-url",
+            `url("${scrubbableUrls[0]}")`,
+          );
+        },
+        signal ? { signal } : undefined,
       );
     }
   }
@@ -2621,25 +2678,42 @@ export class SharedCardRenderer {
       const content2 = field2.querySelector(".property-content") as HTMLElement;
 
       // Measure inline labels if present
-      const label1 = field1.querySelector(
+      const inlineLabel1 = field1.querySelector(
         ".property-label-inline",
       ) as HTMLElement;
-      const label2 = field2.querySelector(
+      const inlineLabel2 = field2.querySelector(
         ".property-label-inline",
       ) as HTMLElement;
 
-      // Total width = content width + label width + gap (if inline label exists)
+      // Measure above labels if present (need max of label vs content width)
+      const aboveLabel1 = field1.querySelector(
+        ".property-label",
+      ) as HTMLElement;
+      const aboveLabel2 = field2.querySelector(
+        ".property-label",
+      ) as HTMLElement;
+
+      // Total width = content width + inline label width + gap (if inline label exists)
+      // For above labels, use max of label width vs content width
       let width1 = content1 ? content1.scrollWidth : 0;
       let width2 = content2 ? content2.scrollWidth : 0;
+
+      // Account for above labels - field must fit the wider of label or content
+      if (aboveLabel1) {
+        width1 = Math.max(width1, aboveLabel1.scrollWidth);
+      }
+      if (aboveLabel2) {
+        width2 = Math.max(width2, aboveLabel2.scrollWidth);
+      }
 
       // Add inline label width + gap between label and wrapper
       // Read gap from CSS variable (var(--size-4-1), typically 4px)
       const inlineLabelGap = parseFloat(getComputedStyle(field1).gap) || 4;
-      if (label1) {
-        width1 += label1.scrollWidth + inlineLabelGap;
+      if (inlineLabel1) {
+        width1 += inlineLabel1.scrollWidth + inlineLabelGap;
       }
-      if (label2) {
-        width2 += label2.scrollWidth + inlineLabelGap;
+      if (inlineLabel2) {
+        width2 += inlineLabel2.scrollWidth + inlineLabelGap;
       }
 
       // Use cardProperties.clientWidth directly - it already accounts for

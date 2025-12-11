@@ -217,7 +217,7 @@ export function datacoreResultToCardData(
   settings: Settings,
   sortMethod: string,
   isShuffled: boolean,
-  snippet?: string,
+  textPreview?: string,
   imageUrl?: string | string[],
   hasImageAvailable?: boolean,
 ): CardData {
@@ -275,7 +275,7 @@ export function datacoreResultToCardData(
     ctime,
     mtime,
     folderPath,
-    snippet,
+    textPreview,
     imageUrl,
     hasImageAvailable: hasImageAvailable || false,
   };
@@ -380,7 +380,7 @@ export function basesEntryToCardData(
   settings: Settings,
   sortMethod: string,
   isShuffled: boolean,
-  snippet?: string,
+  textPreview?: string,
   imageUrl?: string | string[],
   hasImageAvailable?: boolean,
 ): CardData {
@@ -494,7 +494,7 @@ export function basesEntryToCardData(
     ctime,
     mtime,
     folderPath,
-    snippet,
+    textPreview,
     imageUrl,
     hasImageAvailable: hasImageAvailable || false,
   };
@@ -613,7 +613,7 @@ export function transformDatacoreResults(
   settings: Settings,
   sortMethod: string,
   isShuffled: boolean,
-  snippets: Record<string, string>,
+  textPreviews: Record<string, string>,
   images: Record<string, string | string[]>,
   hasImageAvailable: Record<string, boolean>,
 ): CardData[] {
@@ -635,7 +635,7 @@ export function transformDatacoreResults(
         settings,
         sortMethod,
         isShuffled,
-        snippets[p.$path],
+        textPreviews[p.$path],
         images[p.$path],
         hasImageAvailable[p.$path],
       );
@@ -651,7 +651,7 @@ export function transformBasesEntries(
   settings: Settings,
   sortMethod: string,
   isShuffled: boolean,
-  snippets: Record<string, string>,
+  textPreviews: Record<string, string>,
   images: Record<string, string | string[]>,
   hasImageAvailable: Record<string, boolean>,
 ): CardData[] {
@@ -668,7 +668,7 @@ export function transformBasesEntries(
       settings,
       sortMethod,
       isShuffled,
-      snippets[entry.file.path],
+      textPreviews[entry.file.path],
       images[entry.file.path],
       hasImageAvailable[entry.file.path],
     );

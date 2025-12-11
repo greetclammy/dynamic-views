@@ -11,7 +11,7 @@ interface CardViewProps {
   viewMode: "card" | "masonry";
   sortMethod: string;
   isShuffled: boolean;
-  snippets: Record<string, string>;
+  textPreviews: Record<string, string>;
   images: Record<string, string | string[]>;
   hasImageAvailable: Record<string, boolean>;
   focusableCardIndex: number;
@@ -30,7 +30,7 @@ export function CardView({
   viewMode,
   sortMethod,
   isShuffled,
-  snippets,
+  textPreviews,
   images,
   hasImageAvailable,
   focusableCardIndex,
@@ -49,7 +49,7 @@ export function CardView({
     settings,
     sortMethod,
     isShuffled,
-    snippets,
+    textPreviews,
     images,
     hasImageAvailable,
   );

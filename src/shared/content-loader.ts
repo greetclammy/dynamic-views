@@ -4,7 +4,18 @@ import {
   resolveInternalImagePaths,
   extractEmbedImages,
 } from "../utils/image";
-import { loadFilePreview } from "../utils/preview";
+import { loadFilePreview } from "../utils/text-preview";
+
+/**
+ * Entry with text preview loading data
+ */
+export interface TextPreviewEntry {
+  path: string;
+  file: TFile;
+  textPreviewData: unknown;
+  fileName?: string;
+  titleString?: string;
+}
 
 /**
  * Loads images for an entry
@@ -27,8 +38,8 @@ export async function loadImageForEntry(
   imageCache: Record<string, string | string[]>,
   hasImageCache: Record<string, boolean>,
 ): Promise<void> {
-  // Skip if already in cache
-  if (path in imageCache) {
+  // Skip if already checked (hasImageCache tracks both success and failure)
+  if (path in hasImageCache) {
     return;
   }
 
@@ -66,9 +77,14 @@ export async function loadImageForEntry(
       // Store as array if multiple, string if single
       imageCache[path] = validImages.length > 1 ? validImages : validImages[0];
       hasImageCache[path] = true;
+    } else {
+      // Mark as checked but no images available
+      hasImageCache[path] = false;
     }
   } catch (error) {
     console.error(`Failed to load image for ${path}:`, error);
+    // Mark as checked to prevent infinite retry loops
+    hasImageCache[path] = false;
   }
 }
 
@@ -108,7 +124,7 @@ export async function loadImagesForEntries(
 }
 
 /**
- * Loads text snippet/preview for an entry
+ * Loads text preview for an entry
  * Handles text preview property, fallback to content, and caching
  *
  * @param path - File path for the entry
@@ -117,30 +133,30 @@ export async function loadImagesForEntries(
  * @param textPreviewData - Text preview property value
  * @param fallbackToContent - Whether to fall back to file content if no text preview
  * @param omitFirstLine - Whether to omit first line from preview
- * @param snippetCache - Cache object to store loaded snippets
+ * @param textPreviewCache - Cache object to store loaded text previews
  * @param fileName - Optional file name for title comparison (Datacore only)
  * @param titleString - Optional title string for first line comparison (Datacore only)
  */
-export async function loadSnippetForEntry(
+export async function loadTextPreviewForEntry(
   path: string,
   file: TFile,
   app: App,
   textPreviewData: unknown,
   fallbackToContent: boolean,
   omitFirstLine: boolean,
-  snippetCache: Record<string, string>,
+  textPreviewCache: Record<string, string>,
   fileName?: string,
   titleString?: string,
 ): Promise<void> {
   // Skip if already in cache
-  if (path in snippetCache) {
+  if (path in textPreviewCache) {
     return;
   }
 
   try {
     if (file.extension === "md") {
       // Use shared utility for preview loading
-      snippetCache[path] = await loadFilePreview(
+      textPreviewCache[path] = await loadFilePreview(
         file,
         app,
         textPreviewData,
@@ -152,46 +168,40 @@ export async function loadSnippetForEntry(
         titleString,
       );
     } else {
-      snippetCache[path] = "";
+      textPreviewCache[path] = "";
     }
   } catch (error) {
-    console.error(`Failed to load snippet for ${path}:`, error);
-    snippetCache[path] = "";
+    console.error(`Failed to load text preview for ${path}:`, error);
+    textPreviewCache[path] = "";
   }
 }
 
 /**
- * Loads snippets for multiple entries in parallel
+ * Loads text previews for multiple entries in parallel
  *
  * @param entries - Array of entries with path, file, and textPreviewData
  * @param fallbackToContent - Whether to fall back to file content if no text preview
  * @param omitFirstLine - Whether to omit first line from preview
  * @param app - Obsidian app instance
- * @param snippetCache - Cache object to store loaded snippets
+ * @param textPreviewCache - Cache object to store loaded text previews
  */
-export async function loadSnippetsForEntries(
-  entries: Array<{
-    path: string;
-    file: TFile;
-    textPreviewData: unknown;
-    fileName?: string;
-    titleString?: string;
-  }>,
+export async function loadTextPreviewsForEntries(
+  entries: TextPreviewEntry[],
   fallbackToContent: boolean,
   omitFirstLine: boolean,
   app: App,
-  snippetCache: Record<string, string>,
+  textPreviewCache: Record<string, string>,
 ): Promise<void> {
   await Promise.all(
     entries.map(async (entry) => {
-      await loadSnippetForEntry(
+      await loadTextPreviewForEntry(
         entry.path,
         entry.file,
         app,
         entry.textPreviewData,
         fallbackToContent,
         omitFirstLine,
-        snippetCache,
+        textPreviewCache,
         entry.fileName,
         entry.titleString,
       );

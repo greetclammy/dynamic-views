@@ -95,20 +95,6 @@ settings:
         description: Hide gradient fade on titles, subtitles, and properties when they can be scrolled horizontally
         type: class-toggle
     -
-        id: dynamic-views-cover-gap-setting
-        title: Cover gap setting
-        description: Which setting controls the gap between covers and card elements
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-cover-gap-element-spacing
-        options:
-            -
-                label: Card element spacing
-                value: dynamic-views-cover-gap-element-spacing
-            -
-                label: Card padding
-                value: dynamic-views-cover-gap-card-padding
-    -
         id: dynamic-views-card-border-radius
         title: Card border radius
         description: Corner roundness of cards
@@ -197,7 +183,7 @@ settings:
     -
         id: dynamic-views-cover-background
         title: Cover background
-        description: Background style for Contain mode
+        description: Background style for Contain fit and placeholders
         type: class-select
         allowEmpty: false
         default: dynamic-views-cover-bg-ambient
@@ -259,6 +245,36 @@ settings:
         type: variable-text
         default: 150px
     -
+        id: dynamic-views-cover-border-radius
+        title: Cover border radius
+        description: Corner roundness of cover images
+        type: variable-number-slider
+        default: 0
+        min: 0
+        max: 32
+        step: 1
+        format: px
+    -
+        id: dynamic-views-cover-inset
+        title: Cover inset
+        description: Distance from card edge to cover
+        type: variable-number-slider
+        default: 0
+        min: 0
+        max: 32
+        step: 1
+        format: px
+    -
+        id: dynamic-views-cover-gap
+        title: Cover gap
+        description: Gap between cover and card content
+        type: variable-number-slider
+        default: 12
+        min: 0
+        max: 32
+        step: 1
+        format: px
+    -
         id: datacore-heading
         title: Datacore
         type: heading
@@ -305,15 +321,15 @@ settings:
         description: Hide expand width button in toolbar
         type: class-toggle
     -
-        id: image-zoom-heading
-        title: Image zoom
+        id: image-viewer-heading
+        title: Image viewer
         type: heading
         level: 2
         collapsed: true
     -
         id: dynamic-views-image-zoom-disabled
-        title: Disable image zoom
-        description: Disable the image zoom feature entirely
+        title: Disable image viewer
+        description: Disable the image viewer feature entirely
         type: class-toggle
     -
         id: dynamic-views-zoom-disabled
@@ -321,15 +337,10 @@ settings:
         description: Disable pinch-to-zoom and pan gestures on enlarged images
         type: class-toggle
     -
-        id: dynamic-views-zoom-sensitivity
-        title: Zoom sensitivity
-        description: Set how quickly images zoom
-        type: variable-number-slider
-        default: 0.08
-        min: 0.01
-        max: 1
-        step: 0.01
-        format: ''
+        id: dynamic-views-scroll-zoom-disabled
+        title: Require Ctrl to scroll zoom
+        description: Only allow scroll zoom when holding Ctrl (desktop)
+        type: class-toggle
     -
         id: dynamic-views-zoom-fullscreen
         title: Fullscreen zoom (desktop)
@@ -339,9 +350,29 @@ settings:
     -
         id: dynamic-views-zoom-close-on-click
         title: Close when losing focus (desktop)
-        description: Close zoomed images when tab loses focus
+        description: Close zoomed images when tab loses focus (handled via JS, no CSS rule)
         type: class-toggle
         default: false
+    -
+        id: dynamic-views-zoom-sensitivity
+        title: Zoom sensitivity (desktop)
+        description: Set how quickly images zoom on desktop
+        type: variable-number-slider
+        default: 0.08
+        min: 0.01
+        max: 1
+        step: 0.01
+        format: ''
+    -
+        id: dynamic-views-zoom-sensitivity-mobile
+        title: Zoom sensitivity (mobile)
+        description: Set how quickly images zoom on mobile
+        type: variable-number-slider
+        default: 0.5
+        min: 0.01
+        max: 1
+        step: 0.01
+        format: ''
     -
         id: properties-heading
         title: Properties
@@ -680,6 +711,22 @@ settings:
         description: Hide indicator icon when card has multiple images
         type: class-toggle
     -
+        id: dynamic-views-hide-slideshow-arrows
+        title: Hide navigation arrows
+        description: Hide left/right arrows on slideshow covers (use swipe gestures instead)
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-slideshow-max-images
+        title: Maximum slideshow images
+        description: Limit number of images in cover slideshows
+        type: variable-number-slider
+        default: 10
+        min: 2
+        max: 24
+        step: 1
+        format: ''
+    -
         id: subtitle
         title: Subtitle
         type: heading
@@ -801,7 +848,7 @@ settings:
         description: Visual appearance of tags
         type: class-select
         allowEmpty: false
-        default: dynamic-views-tag-style-fill
+        default: dynamic-views-tag-style-outline
         options:
             -
                 label: Outline
@@ -827,7 +874,7 @@ settings:
         description: Theme color preset for Outline, Fill, and Plaintext tag styles
         type: class-select
         allowEmpty: false
-        default: dynamic-views-tag-color-muted
+        default: dynamic-views-tag-color-faint
         options:
             -
                 label: Faint
@@ -1012,6 +1059,18 @@ settings:
         id: dynamic-views-show-thumbnail-placeholder
         title: Show placeholder for files with no images
         description: Show empty thumbnail placeholder for files without images
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-disable-thumbnail-scrubbing
+        title: Disable thumbnail scrubbing
+        description: Disable scrubbing through multiple images on hover
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-hide-thumbnail-shadow
+        title: Hide scrubbing shadow
+        description: Hide the shadow below thumbnails with multiple images
         type: class-toggle
         default: false
     -
@@ -1287,6 +1346,7 @@ body {
 .bases-view[data-view-type="dynamic-views-masonry"] {
   --bases-view-padding: var(--dynamic-views-card-padding-container, 12px);
   --bases-embed-padding: var(--size-4-1) 1px;
+  background-color: var(--dynamic-views-view-background);
 }
 
 /* ============================================
@@ -1397,7 +1457,7 @@ body {
 }
 
 /* Helper classes set width variables (applied to section) */
-.dc-wide {
+.datacore-wide {
   --container-datacorejsx-width: min(calc(1.75 * var(--file-line-width)), 100%);
   --container-datacorejsx-max-width: min(
     calc(1.75 * var(--file-line-width)),
@@ -1405,22 +1465,22 @@ body {
   );
 }
 
-.dc-max {
+.datacore-max {
   --container-datacorejsx-width: 100%;
   --container-datacorejsx-max-width: 100%;
 }
 
 /* Constrain element wrappers to normal width (Reading View) */
-.markdown-preview-view.dc-wide
+.markdown-preview-view.datacore-wide
   .markdown-preview-sizer
   > *:not(.el-pre):not(:has(.block-language-datacorejsx)),
-.markdown-preview-view.dc-max
+.markdown-preview-view.datacore-max
   .markdown-preview-sizer
   > *:not(.el-pre):not(:has(.block-language-datacorejsx)),
-.markdown-reading-view.dc-wide
+.markdown-reading-view.datacore-wide
   .markdown-reading-sizer
   > *:not(.el-pre):not(:has(.block-language-datacorejsx)),
-.markdown-reading-view.dc-max
+.markdown-reading-view.datacore-max
   .markdown-reading-sizer
   > *:not(.el-pre):not(:has(.block-language-datacorejsx)) {
   max-width: var(--file-line-width, 45rem) !important;
@@ -1429,13 +1489,13 @@ body {
 }
 
 /* Expand sizer in wide and max modes (Reading View) */
-.markdown-preview-view.dc-wide .markdown-preview-sizer,
-.markdown-reading-view.dc-wide .markdown-reading-sizer {
+.markdown-preview-view.datacore-wide .markdown-preview-sizer,
+.markdown-reading-view.datacore-wide .markdown-reading-sizer {
   max-width: min(calc(1.75 * var(--file-line-width)), 96vw) !important;
 }
 
-.markdown-preview-view.dc-max .markdown-preview-sizer,
-.markdown-reading-view.dc-max .markdown-reading-sizer {
+.markdown-preview-view.datacore-max .markdown-preview-sizer,
+.markdown-reading-view.datacore-max .markdown-reading-sizer {
   max-width: 96vw !important;
 }
 
@@ -1443,17 +1503,17 @@ body {
 /* Only expand the specific code block wrapper below */
 
 /* Allow code block to overflow in wide/max modes */
-.markdown-source-view.dc-wide .cm-contentContainer,
-.markdown-source-view.dc-max .cm-contentContainer,
-.markdown-source-view.dc-wide .cm-content,
-.markdown-source-view.dc-max .cm-content {
+.markdown-source-view.datacore-wide .cm-contentContainer,
+.markdown-source-view.datacore-max .cm-contentContainer,
+.markdown-source-view.datacore-wide .cm-content,
+.markdown-source-view.datacore-max .cm-content {
   overflow: visible !important;
 }
 
 /* Reading View wrappers */
 /* Wide mode: expand wrapper (sizer already expanded above) */
-.markdown-preview-view.dc-wide .el-pre:has(.block-language-datacorejsx),
-.markdown-reading-view.dc-wide .el-pre:has(.block-language-datacorejsx) {
+.markdown-preview-view.datacore-wide .el-pre:has(.block-language-datacorejsx),
+.markdown-reading-view.datacore-wide .el-pre:has(.block-language-datacorejsx) {
   max-width: var(--container-datacorejsx-max-width) !important;
   width: var(--container-datacorejsx-width) !important;
   margin-left: auto !important;
@@ -1461,14 +1521,14 @@ body {
 }
 
 /* Max mode: expand sizer, then expand wrapper */
-.markdown-preview-view.dc-max .el-pre:has(.block-language-datacorejsx),
-.markdown-reading-view.dc-max .el-pre:has(.block-language-datacorejsx) {
+.markdown-preview-view.datacore-max .el-pre:has(.block-language-datacorejsx),
+.markdown-reading-view.datacore-max .el-pre:has(.block-language-datacorejsx) {
   max-width: var(--container-datacorejsx-max-width) !important;
   width: var(--container-datacorejsx-width) !important;
 }
 
 /* Live Preview: .cm-preview-code-block - use positioning to break out */
-.markdown-source-view.dc-wide
+.markdown-source-view.datacore-wide
   .cm-preview-code-block:has(.block-language-datacorejsx) {
   width: min(calc(1.75 * var(--file-line-width)), 96vw) !important;
   max-width: min(calc(1.75 * var(--file-line-width)), 96vw) !important;
@@ -1476,7 +1536,7 @@ body {
   margin-right: auto !important;
 }
 
-.markdown-source-view.dc-max
+.markdown-source-view.datacore-max
   .cm-preview-code-block:has(.block-language-datacorejsx) {
   width: 96vw !important;
   max-width: 96vw !important;
@@ -1485,12 +1545,12 @@ body {
 }
 
 /* Expand datacore block when wide/max active */
-.markdown-preview-view.dc-wide .block-language-datacorejsx,
-.markdown-preview-view.dc-max .block-language-datacorejsx,
-.markdown-reading-view.dc-wide .block-language-datacorejsx,
-.markdown-reading-view.dc-max .block-language-datacorejsx,
-.markdown-source-view.dc-wide .block-language-datacorejsx,
-.markdown-source-view.dc-max .block-language-datacorejsx {
+.markdown-preview-view.datacore-wide .block-language-datacorejsx,
+.markdown-preview-view.datacore-max .block-language-datacorejsx,
+.markdown-reading-view.datacore-wide .block-language-datacorejsx,
+.markdown-reading-view.datacore-max .block-language-datacorejsx,
+.markdown-source-view.datacore-wide .block-language-datacorejsx,
+.markdown-source-view.datacore-max .block-language-datacorejsx {
   width: var(--container-datacorejsx-width) !important;
   max-width: var(--container-datacorejsx-max-width) !important;
   margin: 0 auto !important;
@@ -1506,8 +1566,8 @@ body {
   max-width: var(--container-datacorejsx-max-width);
   margin: 0 auto;
   transition:
-    width 0.3s ease,
-    max-width 0.3s ease;
+    width var(--anim-duration-moderate) ease,
+    max-width var(--anim-duration-moderate) ease;
 }
 
 .dynamic-views {
@@ -1516,6 +1576,20 @@ body {
   box-sizing: border-box;
   min-height: 270px;
   overflow: visible;
+  --shadow-s-light-mode:
+    0px 1px 2px rgba(0, 0, 0, 0.028), 0px 3.4px 6.7px rgba(0, 0, 0, 0.042),
+    0px 15px 30px rgba(0, 0, 0, 0.07);
+  --shadow-s-dark-mode:
+    0px 1px 2px rgba(255, 255, 255, 0.028),
+    0px 3.4px 6.7px rgba(255, 255, 255, 0.042),
+    0px 15px 30px rgba(255, 255, 255, 0.07);
+  --shadow-l-light-mode:
+    0px 1.8px 7.3px rgba(0, 0, 0, 0.071), 0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+    0px 15px 30px rgba(0, 0, 0, 0.1);
+  --shadow-l-dark-mode:
+    0px 1.8px 7.3px rgba(255, 255, 255, 0.071),
+    0px 6.3px 24.7px rgba(255, 255, 255, 0.112),
+    0px 15px 30px rgba(255, 255, 255, 0.1);
 }
 
 /* ============================================
@@ -1615,7 +1689,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   font-size: 0.9em;
   color: var(--text-normal);
   box-shadow: none;
@@ -1648,7 +1722,7 @@ body {
 .dynamic-views .view-option {
   padding: 8px 12px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color var(--anim-duration-fast);
   font-size: 0.9em;
   display: flex;
   align-items: center;
@@ -1676,7 +1750,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   color: var(--text-normal);
   box-shadow: none;
   height: 30px;
@@ -1719,7 +1793,7 @@ body {
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color var(--anim-duration-fast);
   font-size: 0.9em;
 }
 
@@ -1744,10 +1818,10 @@ body {
   border-radius: 6px;
   cursor: pointer;
   transition:
-    background-color 0.2s,
-    opacity 0.2s,
-    transform 0.2s ease,
-    margin 0.3s ease;
+    background-color var(--anim-duration-fast),
+    opacity var(--anim-duration-fast),
+    transform var(--anim-duration-fast) ease,
+    margin var(--anim-duration-moderate) ease;
 }
 
 @media (hover: hover) {
@@ -1832,7 +1906,7 @@ body {
   padding: 8px;
   cursor: pointer;
   border-radius: 6px;
-  transition: background-color 0.2s;
+  transition: background-color var(--anim-duration-fast);
 }
 
 .limit-reset-button:hover {
@@ -1865,7 +1939,7 @@ body {
   padding: 8px;
   cursor: pointer;
   border-radius: 6px;
-  transition: background-color 0.2s;
+  transition: background-color var(--anim-duration-fast);
 }
 
 .dynamic-views .limit-dropdown-menu .bases-toolbar-menu-item:hover {
@@ -1885,7 +1959,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -1918,7 +1992,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   box-shadow: none;
   height: 30px;
   width: 30px;
@@ -1945,7 +2019,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   box-shadow: none;
   height: 30px;
   width: 30px;
@@ -1972,7 +2046,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -1998,7 +2072,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -2024,7 +2098,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -2050,7 +2124,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -2184,8 +2258,8 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
   cursor: pointer;
   font-size: 0.9em;
   transition:
-    background-color 0.2s,
-    border-color 0.2s;
+    background-color var(--anim-duration-fast),
+    border-color var(--anim-duration-fast);
 }
 
 .query-btn:hover {
@@ -2365,7 +2439,7 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
 .dynamic-views .settings-section-header .chevron {
   width: 16px;
   height: 16px;
-  transition: transform 0.2s ease;
+  transition: transform var(--anim-duration-fast) ease;
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -2439,7 +2513,7 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
   right: 0;
   bottom: 0;
   background-color: var(--background-modifier-border);
-  transition: 0.3s;
+  transition: var(--anim-duration-moderate);
   border-radius: 24px;
 }
 
@@ -2451,7 +2525,7 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
   left: 3px;
   bottom: 3px;
   background-color: var(--background-primary);
-  transition: 0.3s;
+  transition: var(--anim-duration-moderate);
   border-radius: 50%;
 }
 
@@ -2474,9 +2548,9 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 .dynamic-views .search-controls {
   flex: 1;
   transition:
-    opacity 0.3s ease,
-    flex 0.3s ease,
-    margin 0.3s ease;
+    opacity var(--anim-duration-moderate) ease,
+    flex var(--anim-duration-moderate) ease,
+    margin var(--anim-duration-moderate) ease;
   overflow: hidden;
   margin: 0 -3px;
   max-width: 400px;
@@ -2515,7 +2589,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   background-color: transparent;
   color: var(--text-normal);
   font-size: 0.9em;
-  transition: all 0.2s;
+  transition: all var(--anim-duration-fast);
   height: 30px;
   box-sizing: border-box;
   line-height: 1;
@@ -2532,8 +2606,8 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   color: var(--text-muted);
   opacity: 0.7;
   transition:
-    opacity 0.2s,
-    color 0.2s;
+    opacity var(--anim-duration-fast),
+    color var(--anim-duration-fast);
   display: block;
 }
 
@@ -2568,7 +2642,6 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  background-color: var(--dynamic-views-view-background);
 }
 
 /* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
@@ -2611,33 +2684,20 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 }
 
 /* Grid mode: push bottom properties to bottom of card */
-.bases-view[data-view-type="dynamic-views-grid"]
-  .dynamic-views-grid
-  .card
-  .card-content
-  ~ .card-properties-bottom,
 .dynamic-views
   .dynamic-views-grid
   .card
   .card-content
   ~ .card-properties-bottom,
-.bases-view[data-view-type="dynamic-views-grid"]
-  .dynamic-views-grid
-  .card
-  .card-title
-  ~ .card-properties-bottom,
 .dynamic-views .dynamic-views-grid .card .card-title ~ .card-properties-bottom {
   margin-top: auto;
+  padding-top: var(--dynamic-views-element-spacing, 8px);
 }
 
-/* Grid mode: only-child needs padding-top since owl selector doesn't apply */
-.bases-view[data-view-type="dynamic-views-grid"]
-  .dynamic-views-grid
-  .card
-  .card-properties-bottom:only-child,
+/* Grid mode: only-child pushes to bottom but needs no padding (no sibling above) */
 .dynamic-views .dynamic-views-grid .card .card-properties-bottom:only-child {
   margin-top: auto;
-  padding-top: var(--dynamic-views-element-spacing, 8px);
+  padding-top: 0;
 }
 
 /* Group containers in grid - use subgrid to maintain grid layout */
@@ -2691,8 +2751,9 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   break-inside: avoid;
   page-break-inside: avoid;
   transition:
-    border-color 0.2s,
-    box-shadow var(--anim-duration-fast) ease-in-out;
+    border-color var(--anim-duration-fast),
+    box-shadow var(--anim-duration-fast) ease-in-out,
+    background-color var(--anim-duration-moderate) ease;
 }
 
 /* Disable container-type and position: relative on ALL ancestors when zoomed */
@@ -2756,7 +2817,8 @@ body:not(.dynamic-views-image-zoom-disabled)
   top: var(--masonry-top);
   transition:
     box-shadow var(--anim-duration-fast) ease-in-out,
-    border-color 0.2s;
+    border-color var(--anim-duration-fast),
+    background-color var(--anim-duration-moderate) ease;
 }
 
 /* Global spacing between card elements (exclude cover-format cards which use flexbox gap) */
@@ -2773,15 +2835,14 @@ body.dynamic-views-card-background-custom .dynamic-views .card {
   background-color: var(--dynamic-views-card-background-custom-color, #1e1e1e);
 }
 
-/* Ambient background: Cards WITH images only */
+/* Ambient background: Cards WITH images only (requires cover-ready to avoid flash) */
 body.dynamic-views-ambient-background
   .dynamic-views
-  .card.image-format-cover:has(.card-cover),
+  .card.image-format-cover.cover-ready:has(.card-cover),
 body.dynamic-views-ambient-background
   .dynamic-views
-  .card.image-format-thumbnail:has(.card-thumbnail) {
+  .card.image-format-thumbnail.cover-ready:has(.card-thumbnail) {
   background-color: var(--ambient-color, var(--background-primary-alt));
-  transition: background-color 0.3s ease;
 }
 
 /* Text color adjustments for ambient card backgrounds */
@@ -2813,7 +2874,7 @@ body.dynamic-views-ambient-background
   --dynamic-views-title-color: #dcddde;
 }
 
-/* Snippet container flexbox in grid mode to push properties to bottom */
+/* Text preview container flexbox in grid mode to push properties to bottom */
 .dc-wide .dynamic-views .dynamic-views-grid .card-content,
 .dc-max .dynamic-views .dynamic-views-grid .card-content {
   flex-grow: 1;
@@ -3071,21 +3132,14 @@ body.dynamic-views-subtitle-divider .dynamic-views .card-subtitle {
   flex-direction: column;
 }
 
-/* Thumbnail positioning (controlled by body class from Style Settings) */
+/* Thumbnail left: reverse row to place thumbnail on left */
 .dynamic-views .card.card-thumbnail-left .card-content {
   flex-direction: row-reverse;
 }
 
-.dynamic-views .card.card-thumbnail-right .card-content {
-  flex-direction: row;
-}
-
-/* Thumbnail top/bottom/stacked: margins for vertical positioning */
-.dynamic-views
-  .card:is(.card-thumbnail-top, .card-thumbnail-bottom, .thumbnail-stack)
-  .card-thumbnail {
-  margin-top: var(--dynamic-views-element-spacing, 8px);
-  margin-bottom: var(--dynamic-views-element-spacing, 8px);
+.dynamic-views .card-text-preview-wrapper {
+  flex: 1;
+  min-width: 0;
 }
 
 .dynamic-views .card-text-preview {
@@ -3095,8 +3149,6 @@ body.dynamic-views-subtitle-divider .dynamic-views .card-subtitle {
     --dynamic-views-text-preview-font-size,
     var(--bases-table-font-size)
   );
-  flex: 1;
-  min-width: 0;
   display: -webkit-box;
   -webkit-line-clamp: var(--dynamic-views-text-preview-lines, 5);
   -webkit-box-orient: vertical;
@@ -3122,19 +3174,10 @@ body.dynamic-views-open-on-title .dynamic-views .property-content {
   cursor: text;
 }
 
-/* Title link and extension: selectable text */
-body.dynamic-views-open-on-title .dynamic-views .card-title a,
-body.dynamic-views-open-on-title .dynamic-views .card-title-ext.clickable {
+/* Title link: selectable text */
+body.dynamic-views-open-on-title .dynamic-views .card-title a {
   user-select: text;
   -webkit-user-select: text;
-}
-
-/* Badge mode: enable selection when open-on-title */
-body.dynamic-views-open-on-title.dynamic-views-file-type-badge
-  .dynamic-views
-  .card-title-ext.clickable {
-  pointer-events: auto;
-  cursor: text;
 }
 
 .dynamic-views .card-thumbnail {
@@ -3173,26 +3216,32 @@ body.dynamic-views-show-thumbnail-placeholder
 body.dynamic-views-show-thumbnail-placeholder
   .dynamic-views
   .card-thumbnail-placeholder.multi-image {
-  box-shadow: 0 3px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-l-light-mode);
 }
 
 .theme-dark .dynamic-views .card-thumbnail.multi-image,
 body.dynamic-views-show-thumbnail-placeholder.theme-dark
   .dynamic-views
   .card-thumbnail-placeholder.multi-image {
-  box-shadow: 0 3px 18px rgba(255, 255, 255, 0.45);
+  box-shadow: var(--shadow-l-dark-mode);
 }
 
 .is-mobile .dynamic-views .card-thumbnail.multi-image,
 body.dynamic-views-show-thumbnail-placeholder.is-mobile
   .dynamic-views
-  .card-thumbnail-placeholder.multi-image,
-.is-mobile.theme-dark .dynamic-views .card-thumbnail.multi-image,
-body.dynamic-views-show-thumbnail-placeholder.is-mobile.theme-dark
-  .dynamic-views
   .card-thumbnail-placeholder.multi-image {
   box-shadow: none;
   pointer-events: none;
+}
+
+/* Hide multi-image thumbnail shadow when setting enabled */
+body.dynamic-views-hide-thumbnail-shadow
+  .dynamic-views
+  .card-thumbnail.multi-image,
+body.dynamic-views-hide-thumbnail-shadow.dynamic-views-show-thumbnail-placeholder
+  .dynamic-views
+  .card-thumbnail-placeholder.multi-image {
+  box-shadow: none;
 }
 
 .dynamic-views .card-thumbnail .image-embed {
@@ -3279,11 +3328,14 @@ body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
   inset: 0;
 }
 
-/* Fullscreen zoom: fixed positioning over entire viewport */
+/* Fullscreen zoom: fixed positioning over entire viewport
+   Mobile always uses fullscreen mode (forced via JS regardless of setting) */
 body:not(.dynamic-views-image-zoom-disabled).dynamic-views-zoom-fullscreen
   .dynamic-views
   .image-embed.is-zoomed,
 body:not(.dynamic-views-image-zoom-disabled).dynamic-views-zoom-fullscreen
+  > .image-embed.is-zoomed,
+body:not(.dynamic-views-image-zoom-disabled).is-mobile
   > .image-embed.is-zoomed {
   background: var(--background-modifier-cover);
   position: fixed;
@@ -3334,13 +3386,12 @@ body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
   max-width: 90%;
 }
 
-/* Cover-specific zoom override (higher specificity needed) */
+/* Cover-specific zoom override (higher specificity needed for covers nested in cards) */
 body:not(.dynamic-views-image-zoom-disabled)
   .dynamic-views
   .card.image-format-cover
   .card-cover
-  .image-embed.is-zoomed,
-body:not(.dynamic-views-image-zoom-disabled) > .image-embed.is-zoomed {
+  .image-embed.is-zoomed {
   cursor: zoom-out;
   display: flex;
   align-items: center;
@@ -3375,9 +3426,7 @@ body:not(.dynamic-views-image-zoom-disabled).dynamic-views-zoom-fullscreen
   .dynamic-views
   .card.image-format-cover
   .card-cover
-  .image-embed.is-zoomed,
-body:not(.dynamic-views-image-zoom-disabled).dynamic-views-zoom-fullscreen
-  > .image-embed.is-zoomed {
+  .image-embed.is-zoomed {
   background: var(--background-modifier-cover) !important;
   position: fixed !important;
 }
@@ -3387,8 +3436,7 @@ body:not(.dynamic-views-image-zoom-disabled)
   .card.image-format-cover
   .card-cover
   .image-embed.is-zoomed
-  img,
-body:not(.dynamic-views-image-zoom-disabled) > .image-embed.is-zoomed img {
+  img {
   padding: 0;
   margin: 0;
   width: auto;
@@ -3406,9 +3454,6 @@ body:not(.dynamic-views-image-zoom-disabled):not(.is-mobile)
   .card.image-format-cover
   .card-cover
   .image-embed.is-zoomed
-  img,
-body:not(.dynamic-views-image-zoom-disabled):not(.is-mobile)
-  > .image-embed.is-zoomed
   img {
   max-height: 90vh;
   max-width: 90vw;
@@ -3494,28 +3539,27 @@ body.dynamic-views-cover-bg-blur
 /* Ambient background (default) */
 .dynamic-views .card.card-cover-contain.image-format-cover .card-cover {
   background-color: var(--ambient-color, var(--background-secondary));
-  transition: background-color 0.3s ease;
+  transition: background-color var(--anim-duration-moderate) ease;
 }
 
-/* Plain background */
+/* Plain background: default to --background-primary */
 body.dynamic-views-cover-bg-plain
   .dynamic-views
   .card.card-cover-contain.image-format-cover
   .card-cover {
-  background-color: var(
-    --dynamic-views-card-background-default,
-    var(--background-primary)
-  );
+  background-color: var(--background-primary);
 }
 
-body.dynamic-views-cover-bg-plain.dynamic-views-card-background-tinted
+/* Plain background + Custom/Transparent card = --bases-cards-cover-background */
+body.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
+  .dynamic-views
+  .card.card-cover-contain.image-format-cover
+  .card-cover,
+body.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
   .dynamic-views
   .card.card-cover-contain.image-format-cover
   .card-cover {
-  background-color: var(
-    --dynamic-views-card-background-tinted,
-    var(--background-primary-alt)
-  );
+  background-color: var(--bases-cards-cover-background);
 }
 
 /* Transparent background */
@@ -3593,63 +3637,94 @@ body.dynamic-views-masonry-fixed-cover-height
   ) !important;
 }
 
-/* Masonry contain mode OFF: hide cover until dimensions known */
+/* Masonry contain mode: hide cover until dimensions known (exclude placeholders) */
 [data-view-type="dynamic-views-masonry"]
   .card.card-cover-contain:not(.cover-ready).card-cover-top
-  .card-cover-wrapper,
+  .card-cover-wrapper:not(.card-cover-wrapper-placeholder),
 [data-view-type="dynamic-views-masonry"]
   .card.card-cover-contain:not(.cover-ready).card-cover-bottom
-  .card-cover-wrapper {
+  .card-cover-wrapper:not(.card-cover-wrapper-placeholder) {
   display: none;
 }
 
-/* Masonry contain mode ON: show immediately (no waiting) */
+/* Masonry contain mode ON: show immediately (no waiting) - exclude placeholders */
 body.dynamic-views-masonry-fixed-cover-height
   [data-view-type="dynamic-views-masonry"]
   .card.card-cover-contain:not(.cover-ready).card-cover-top
-  .card-cover-wrapper,
+  .card-cover-wrapper:not(.card-cover-wrapper-placeholder),
 body.dynamic-views-masonry-fixed-cover-height
   [data-view-type="dynamic-views-masonry"]
   .card.card-cover-contain:not(.cover-ready).card-cover-bottom
-  .card-cover-wrapper {
+  .card-cover-wrapper:not(.card-cover-wrapper-placeholder) {
+  display: block;
+}
+
+/* Masonry contain mode ON + placeholder enabled for masonry: show placeholder */
+body.dynamic-views-masonry-fixed-cover-height.dynamic-views-show-cover-placeholder-masonry
+  [data-view-type="dynamic-views-masonry"]
+  .card.card-cover-contain:not(.cover-ready).card-cover-top
+  .card-cover-wrapper.card-cover-wrapper-placeholder,
+body.dynamic-views-masonry-fixed-cover-height.dynamic-views-show-cover-placeholder-masonry
+  [data-view-type="dynamic-views-masonry"]
+  .card.card-cover-contain:not(.cover-ready).card-cover-bottom
+  .card-cover-wrapper.card-cover-wrapper-placeholder,
+body.dynamic-views-masonry-fixed-cover-height.dynamic-views-show-cover-placeholder-both
+  [data-view-type="dynamic-views-masonry"]
+  .card.card-cover-contain:not(.cover-ready).card-cover-top
+  .card-cover-wrapper.card-cover-wrapper-placeholder,
+body.dynamic-views-masonry-fixed-cover-height.dynamic-views-show-cover-placeholder-both
+  [data-view-type="dynamic-views-masonry"]
+  .card.card-cover-contain:not(.cover-ready).card-cover-bottom
+  .card-cover-wrapper.card-cover-wrapper-placeholder {
   display: block;
 }
 
 /* ==================== CARD COVER FORMAT - FLEXBOX SYSTEM ==================== */
 
-/* Base card setup: flexbox with gap for element spacing */
+/* Base card setup for cover format */
 .dynamic-views .card.image-format-cover {
   position: relative;
   overflow: hidden;
   padding: var(--dynamic-views-card-padding, 12px); /* Card edge padding */
   display: flex;
   flex-direction: column;
-  gap: var(
-    --dynamic-views-element-spacing,
-    8px
-  ); /* Element spacing - default */
+  gap: var(--dynamic-views-element-spacing, 8px); /* Default element spacing */
 }
 
-/* Cover gap setting: Use card padding for gap between cover and content */
-body.dynamic-views-cover-gap-card-padding
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover-wrapper {
-  margin-bottom: calc(
-    var(--dynamic-views-card-padding, 12px) -
-      var(--dynamic-views-element-spacing, 8px)
-  );
+/* Cards with actual cover (not placeholder): no flexbox gap (margins control spacing) */
+.dynamic-views
+  .card.image-format-cover:has(
+    .card-cover-wrapper:not(.card-cover-wrapper-placeholder)
+  ) {
+  gap: 0;
 }
 
-body.dynamic-views-cover-gap-card-padding
+/* Cards with visible placeholder: also no flexbox gap */
+/* Grid view placeholders (default or explicit grid setting) */
+body:not(.dynamic-views-show-cover-placeholder-masonry):not(
+    .dynamic-views-show-cover-placeholder-both
+  ):not(.dynamic-views-show-cover-placeholder-none)
   .dynamic-views
-  .card.card-cover-bottom.image-format-cover
-  .card-cover-wrapper {
-  margin-bottom: 0;
-  margin-top: calc(
-    var(--dynamic-views-card-padding, 12px) -
-      var(--dynamic-views-element-spacing, 8px)
-  );
+  .dynamic-views-grid
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder),
+body.dynamic-views-show-cover-placeholder-grid
+  .dynamic-views
+  .dynamic-views-grid
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder),
+body.dynamic-views-show-cover-placeholder-both
+  .dynamic-views
+  .dynamic-views-grid
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder),
+/* Masonry view placeholders */
+body.dynamic-views-show-cover-placeholder-masonry
+  .dynamic-views
+  .dynamic-views-masonry
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder),
+body.dynamic-views-show-cover-placeholder-both
+  .dynamic-views
+  .dynamic-views-masonry
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder) {
+  gap: 0;
 }
 
 /* Card content flex setup */
@@ -3658,22 +3733,134 @@ body.dynamic-views-cover-gap-card-padding
   gap: var(--dynamic-views-element-spacing, 8px);
 }
 
+/* Element spacing for cards with actual cover (replaces flexbox gap) */
+/* Use lobotomized owl pattern: margin-top on all children after the first */
+.dynamic-views
+  .card.image-format-cover:has(
+    .card-cover-wrapper:not(.card-cover-wrapper-placeholder)
+  )
+  > *
+  + *:not(.card-cover-wrapper) {
+  margin-top: var(--dynamic-views-element-spacing, 8px);
+}
+
+/* Element spacing for cards with visible placeholder */
+/* Grid view (default or explicit setting) */
+body:not(.dynamic-views-show-cover-placeholder-masonry):not(
+    .dynamic-views-show-cover-placeholder-both
+  ):not(.dynamic-views-show-cover-placeholder-none)
+  .dynamic-views
+  .dynamic-views-grid
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
+  > *
+  + *:not(.card-cover-wrapper),
+body.dynamic-views-show-cover-placeholder-grid
+  .dynamic-views
+  .dynamic-views-grid
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
+  > *
+  + *:not(.card-cover-wrapper),
+body.dynamic-views-show-cover-placeholder-both
+  .dynamic-views
+  .dynamic-views-grid
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
+  > *
+  + *:not(.card-cover-wrapper),
+/* Masonry view */
+body.dynamic-views-show-cover-placeholder-masonry
+  .dynamic-views
+  .dynamic-views-masonry
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
+  > *
+  + *:not(.card-cover-wrapper),
+body.dynamic-views-show-cover-placeholder-both
+  .dynamic-views
+  .dynamic-views-masonry
+  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
+  > *
+  + *:not(.card-cover-wrapper) {
+  margin-top: var(--dynamic-views-element-spacing, 8px);
+}
+
 /* ==================== COVER WRAPPER POSITIONING ==================== */
 
+/* Placeholder positioning with negative margins to bleed to edges */
+.dynamic-views
+  .card.card-cover-top.image-format-cover
+  .card-cover-wrapper.card-cover-wrapper-placeholder {
+  order: -999;
+  margin: calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    )
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    )
+    var(--dynamic-views-cover-gap, 8px)
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    );
+}
+
+.dynamic-views
+  .card.card-cover-bottom.image-format-cover
+  .card-cover-wrapper.card-cover-wrapper-placeholder {
+  order: 999;
+  margin: auto
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    )
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    )
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    );
+}
+
 /* Cover-top: wrapper at start with negative margins to bleed to edges */
-.dynamic-views .card.card-cover-top.image-format-cover .card-cover-wrapper {
+.dynamic-views
+  .card.card-cover-top.image-format-cover
+  .card-cover-wrapper:not(.card-cover-wrapper-placeholder) {
   order: -999; /* First */
-  margin: calc(var(--dynamic-views-card-padding, 12px) * -1)
-    calc(var(--dynamic-views-card-padding, 12px) * -1) 0
-    calc(var(--dynamic-views-card-padding, 12px) * -1); /* Bleed to top/left/right edges */
+  margin: calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    )
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    )
+    var(--dynamic-views-cover-gap, 8px)
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    ); /* Bleed to top/left/right edges, gap to content at bottom */
 }
 
 /* Cover-bottom: wrapper at end with negative margins to bleed to edges */
-.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover-wrapper {
+.dynamic-views
+  .card.card-cover-bottom.image-format-cover
+  .card-cover-wrapper:not(.card-cover-wrapper-placeholder) {
   order: 999; /* Last */
-  margin: 0 calc(var(--dynamic-views-card-padding, 12px) * -1)
-    calc(var(--dynamic-views-card-padding, 12px) * -1)
-    calc(var(--dynamic-views-card-padding, 12px) * -1); /* Bleed to bottom/left/right edges */
+  margin: var(--dynamic-views-cover-gap, 8px)
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    )
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    )
+    calc(
+      var(--dynamic-views-cover-inset, 0px) -
+        var(--dynamic-views-card-padding, 12px)
+    ); /* Gap to content at top, bleed to bottom/left/right edges */
 }
 
 /* ==================== COVER-ONLY CARDS ==================== */
@@ -3713,30 +3900,12 @@ body.dynamic-views-cover-gap-card-padding
   margin: 0;
 }
 
-/* Cover-only: full border radius on cover */
-.dynamic-views
-  .card.card-cover-top.image-format-cover:not(:has(.card-title)):not(
-    :has(.card-title-container)
-  ):not(:has(.card-subtitle)):not(:has(.card-content)):not(
-    :has(.card-properties-top)
-  ):not(:has(.card-properties-bottom))
-  .card-cover,
-.dynamic-views
-  .card.card-cover-bottom.image-format-cover:not(:has(.card-title)):not(
-    :has(.card-title-container)
-  ):not(:has(.card-subtitle)):not(:has(.card-content)):not(
-    :has(.card-properties-top)
-  ):not(:has(.card-properties-bottom))
-  .card-cover {
-  border-radius: var(--dynamic-views-card-border-radius, 8px);
-}
-
 /* Cover-left: wrapper positioned at padding-box edges */
 .dynamic-views .card.card-cover-left.image-format-cover .card-cover-wrapper {
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  top: var(--dynamic-views-cover-inset, 0px);
+  left: var(--dynamic-views-cover-inset, 0px);
+  bottom: var(--dynamic-views-cover-inset, 0px);
   right: auto !important;
   width: var(--dynamic-views-side-cover-width, 200px);
 }
@@ -3744,9 +3913,9 @@ body.dynamic-views-cover-gap-card-padding
 /* Cover-right: wrapper positioned at padding-box edges */
 .dynamic-views .card.card-cover-right.image-format-cover .card-cover-wrapper {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: var(--dynamic-views-cover-inset, 0px);
+  right: var(--dynamic-views-cover-inset, 0px);
+  bottom: var(--dynamic-views-cover-inset, 0px);
   left: auto !important;
   width: var(--dynamic-views-side-cover-width, 200px);
 }
@@ -3763,16 +3932,9 @@ body.dynamic-views-cover-gap-card-padding
   overflow: hidden;
 }
 
-/* Cover-top: top border radius */
-.dynamic-views .card.card-cover-top.image-format-cover .card-cover {
-  border-radius: var(--dynamic-views-card-border-radius, 8px)
-    var(--dynamic-views-card-border-radius, 8px) 0 0;
-}
-
-/* Cover-bottom: bottom border radius */
-.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover {
-  border-radius: 0 0 var(--dynamic-views-card-border-radius, 8px)
-    var(--dynamic-views-card-border-radius, 8px);
+/* All covers: border radius */
+.dynamic-views .card.image-format-cover .card-cover {
+  border-radius: var(--dynamic-views-cover-border-radius, 0);
 }
 
 /* Cover-left/right: full height */
@@ -3782,18 +3944,6 @@ body.dynamic-views-cover-gap-card-padding
   height: 100%;
   position: relative;
   overflow: hidden;
-}
-
-/* Cover-left: left border radius */
-.dynamic-views .card.card-cover-left.image-format-cover .card-cover {
-  border-radius: var(--dynamic-views-card-border-radius, 8px) 0 0
-    var(--dynamic-views-card-border-radius, 8px);
-}
-
-/* Cover-right: right border radius */
-.dynamic-views .card.card-cover-right.image-format-cover .card-cover {
-  border-radius: 0 var(--dynamic-views-card-border-radius, 8px)
-    var(--dynamic-views-card-border-radius, 8px) 0;
 }
 
 /* Image element inside cover */
@@ -3818,9 +3968,11 @@ body.dynamic-views-cover-gap-card-padding
 
 /* ==================== COVER PLACEHOLDERS ==================== */
 
-/* Hide placeholder by default */
+/* Placeholder base styles: hidden by default, with border radius and default background */
 .dynamic-views .card.image-format-cover .card-cover-placeholder {
   display: none;
+  border-radius: var(--dynamic-views-cover-border-radius, 0);
+  background-color: var(--background-primary);
 }
 
 /* Show placeholder in grid view by default (when no Style Settings class present) */
@@ -3967,33 +4119,6 @@ body.dynamic-views-show-cover-placeholder-both
   display: block;
   width: 100%;
   height: 100%;
-}
-
-/* Placeholder border radius matching card position */
-.dynamic-views .card.card-cover-top.image-format-cover .card-cover-placeholder {
-  border-radius: var(--dynamic-views-card-border-radius, 8px)
-    var(--dynamic-views-card-border-radius, 8px) 0 0;
-}
-
-.dynamic-views
-  .card.card-cover-bottom.image-format-cover
-  .card-cover-placeholder {
-  border-radius: 0 0 var(--dynamic-views-card-border-radius, 8px)
-    var(--dynamic-views-card-border-radius, 8px);
-}
-
-.dynamic-views
-  .card.card-cover-left.image-format-cover
-  .card-cover-placeholder {
-  border-radius: var(--dynamic-views-card-border-radius, 8px) 0 0
-    var(--dynamic-views-card-border-radius, 8px);
-}
-
-.dynamic-views
-  .card.card-cover-right.image-format-cover
-  .card-cover-placeholder {
-  border-radius: 0 var(--dynamic-views-card-border-radius, 8px)
-    var(--dynamic-views-card-border-radius, 8px) 0;
 }
 
 /* Hide placeholder-only wrappers when placeholder shouldn't show */
@@ -4332,23 +4457,23 @@ body.dynamic-views-show-cover-placeholder-both
 
 /* Placeholder color mappings - organized by cover background type */
 
-/* Plain cover background + Tinted card = --background-primary */
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-plain.dynamic-views-card-background-tinted
+/* Plain cover background: default to --background-primary */
+body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-plain
   .dynamic-views
   .dynamic-views-grid
   .card.image-format-cover
   .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-tinted
+body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain
   .dynamic-views
   .dynamic-views-grid
   .card.image-format-cover
   .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-plain.dynamic-views-card-background-tinted
+body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-plain
   .dynamic-views
   .dynamic-views-masonry
   .card.image-format-cover
   .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-tinted
+body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain
   .dynamic-views
   .dynamic-views-masonry
   .card.image-format-cover
@@ -4356,31 +4481,43 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dyna
   background-color: var(--background-primary);
 }
 
-/* Plain cover background + non-Tinted card = --bases-cards-cover-background */
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-plain:not(
-    .dynamic-views-card-background-tinted
-  )
+/* Plain cover background + Custom/Transparent card = --bases-cards-cover-background */
+body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
   .dynamic-views
   .dynamic-views-grid
   .card.image-format-cover
   .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain:not(
-    .dynamic-views-card-background-tinted
-  )
+body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
   .dynamic-views
   .dynamic-views-grid
   .card.image-format-cover
   .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-plain:not(
-    .dynamic-views-card-background-tinted
-  )
+body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
   .dynamic-views
   .dynamic-views-masonry
   .card.image-format-cover
   .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain:not(
-    .dynamic-views-card-background-tinted
-  )
+body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
+  .dynamic-views
+  .dynamic-views-masonry
+  .card.image-format-cover
+  .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
+  .dynamic-views
+  .dynamic-views-grid
+  .card.image-format-cover
+  .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
+  .dynamic-views
+  .dynamic-views-grid
+  .card.image-format-cover
+  .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
+  .dynamic-views
+  .dynamic-views-masonry
+  .card.image-format-cover
+  .card-cover-placeholder,
+body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
   .dynamic-views
   .dynamic-views-masonry
   .card.image-format-cover
@@ -4612,19 +4749,19 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
 }
 
 .dynamic-views .slideshow-exit-left {
-  animation: slideshow-exit-left 0.3s ease forwards;
+  animation: slideshow-exit-left var(--anim-duration-moderate) ease forwards;
 }
 
 .dynamic-views .slideshow-exit-right {
-  animation: slideshow-exit-right 0.3s ease forwards;
+  animation: slideshow-exit-right var(--anim-duration-moderate) ease forwards;
 }
 
 .dynamic-views .slideshow-enter-left {
-  animation: slideshow-enter-left 0.3s ease forwards;
+  animation: slideshow-enter-left var(--anim-duration-moderate) ease forwards;
 }
 
 .dynamic-views .slideshow-enter-right {
-  animation: slideshow-enter-right 0.3s ease forwards;
+  animation: slideshow-enter-right var(--anim-duration-moderate) ease forwards;
 }
 
 /* Navigation arrows */
@@ -4641,7 +4778,7 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
   cursor: pointer;
   z-index: 3;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--anim-duration-fast) ease;
 }
 
 .dynamic-views .slideshow-nav-left {
@@ -4677,16 +4814,16 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
   color: var(--color-base-100);
 }
 
-/* Mobile: Always show arrows and larger touch targets */
+/* Mobile: Hide nav arrows (use swipe gestures instead) */
 .is-mobile .dynamic-views .slideshow-nav-left,
 .is-mobile .dynamic-views .slideshow-nav-right {
-  opacity: 1;
+  display: none;
 }
 
-.is-mobile .dynamic-views .slideshow-nav-left svg,
-.is-mobile .dynamic-views .slideshow-nav-right svg {
-  width: 24px;
-  height: 24px;
+/* Hide nav arrows when setting enabled */
+body.dynamic-views-hide-slideshow-arrows .dynamic-views .slideshow-nav-left,
+body.dynamic-views-hide-slideshow-arrows .dynamic-views .slideshow-nav-right {
+  display: none;
 }
 
 /* Slideshow indicator */
@@ -4701,7 +4838,7 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
   height: 20px;
   z-index: 3;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--anim-duration-fast) ease;
 }
 
 /* Hide slideshow indicator when toggle is on */
@@ -4908,11 +5045,6 @@ body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
   display: inline;
 }
 
-body:not(.dynamic-views-tag-style-theme) .dynamic-views .list-properties .tag {
-  display: inline-block;
-  cursor: pointer;
-}
-
 /* Tag style: Outline (default) - reset all theme styles, apply only plugin styles */
 body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-properties .tag,
 body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-subtitle .tag,
@@ -4920,11 +5052,11 @@ body:not(.dynamic-views-tag-style-theme) .dynamic-views .list-properties .tag {
   all: unset;
   --tag-text-color: var(--text-muted);
   border-radius: var(--pill-radius);
-  border: 1px solid color-mix(in srgb, var(--tag-text-color) 40%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
   color: var(--tag-text-color);
   font-size: 0.875em;
   line-height: 1;
-  padding: 0.25em 0.65em;
+  padding: calc(0.25em - 1px) calc(0.65em - 1px);
   cursor: pointer;
 }
 
@@ -4948,6 +5080,7 @@ body.dynamic-views-tag-style-fill .dynamic-views .card-properties .tag,
 body.dynamic-views-tag-style-fill .dynamic-views .card-subtitle .tag,
 body.dynamic-views-tag-style-fill .dynamic-views .list-properties .tag {
   border: none;
+  padding: 0.25em 0.65em;
   background-color: color-mix(in srgb, var(--tag-text-color) 10%, transparent);
   color: var(--tag-text-color);
 }
@@ -4983,11 +5116,16 @@ body.dynamic-views-tag-style-plaintext
   text-decoration: underline;
 }
 
-/* Tag color presets (muted is default, set in base style) */
+/* Tag color presets (faint is default) */
 body.dynamic-views-tag-color-faint:not(.dynamic-views-tag-style-theme)
   .dynamic-views
   .tag {
   --tag-text-color: var(--text-faint);
+}
+body.dynamic-views-tag-color-muted:not(.dynamic-views-tag-style-theme)
+  .dynamic-views
+  .tag {
+  --tag-text-color: var(--text-muted);
 }
 body.dynamic-views-tag-color-normal:not(.dynamic-views-tag-style-theme)
   .dynamic-views
@@ -6698,17 +6836,26 @@ body.dynamic-views-no-fade-truncated-text
   min-width: 0;
 }
 
-.dynamic-views .dynamic-views-masonry .card .card-content ~ .card-properties,
-.dynamic-views .dynamic-views-masonry .card .card-title ~ .card-properties {
-  margin-top: auto;
-}
-
-/* Masonry: only-child needs padding-top since owl selector doesn't apply */
-.dynamic-views .dynamic-views-masonry .card .card-properties:only-child {
+/* Masonry mode: push bottom properties to bottom of card */
+.dynamic-views
+  .dynamic-views-masonry
+  .card
+  .card-content
+  ~ .card-properties-bottom,
+.dynamic-views
+  .dynamic-views-masonry
+  .card
+  .card-title
+  ~ .card-properties-bottom {
   margin-top: auto;
   padding-top: var(--dynamic-views-element-spacing, 8px);
 }
 
+/* Masonry: only-child pushes to bottom but needs no padding (no sibling above) */
+.dynamic-views .dynamic-views-masonry .card .card-properties-bottom:only-child {
+  margin-top: auto;
+  padding-top: 0;
+}
 /* ============================================
    VIEW-SPECIFIC STYLES: LIST VIEW
    ============================================ */
@@ -6846,8 +6993,8 @@ body.dynamic-views-no-fade-truncated-text
     position: relative;
     border-radius: 6px;
     transition:
-      background-color 0.2s,
-      opacity 0.2s;
+      background-color var(--anim-duration-fast),
+      opacity var(--anim-duration-fast);
   }
 
   .create-note-button-compact {
@@ -6859,7 +7006,7 @@ body.dynamic-views-no-fade-truncated-text
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all var(--anim-duration-fast);
     height: 30px;
     width: 30px;
     box-sizing: border-box;
@@ -6893,8 +7040,8 @@ body.dynamic-views-no-fade-truncated-text
   }
 
   /* Switch to single column at narrow widths */
-  .dc-wide .dynamic-views .dynamic-views-grid,
-  .dc-max .dynamic-views .dynamic-views-grid,
+  .datacore-wide .dynamic-views .dynamic-views-grid,
+  .datacore-max .dynamic-views .dynamic-views-grid,
   .bases-view[data-view-type="dynamic-views-grid"] .dynamic-views-grid {
     display: flex;
     flex-direction: column;
@@ -6910,9 +7057,9 @@ body.dynamic-views-no-fade-truncated-text
     flex-wrap: wrap;
   }
 
-  /* Compact breakpoint: move thumbnails below text snippets */
-  .dynamic-views .card-content,
-  .bases-view .card-content {
+  /* Compact breakpoint: move thumbnails below text previews (only for stacked thumbnails) */
+  .dynamic-views .card.thumbnail-stack .card-content,
+  .bases-view .card.thumbnail-stack .card-content {
     flex-direction: column;
   }
 

@@ -7,8 +7,15 @@ import {
   DefaultViewSettings,
 } from "../types";
 import { DEFAULT_SETTINGS } from "../constants";
+import {
+  BATCH_SIZE,
+  PANE_MULTIPLIER,
+  ROWS_PER_COLUMN,
+  MAX_BATCH_SIZE,
+} from "../shared/constants";
 import { PersistenceManager } from "../persistence";
 import { CardView } from "./card-view";
+import { cleanupAllCardObservers } from "../shared/card-renderer";
 import { MasonryView } from "./masonry-view";
 import { ListView } from "./list-view";
 import { Toolbar } from "./toolbar";
@@ -20,7 +27,7 @@ import {
 } from "../utils/query-sync";
 import { getPaneType } from "../utils/randomize";
 import {
-  loadSnippetsForEntries,
+  loadTextPreviewsForEntries,
   loadImagesForEntries,
 } from "../shared/content-loader";
 import {
@@ -76,77 +83,6 @@ export function View({
 
   // Access PersistenceManager from plugin
   const persistenceManager = plugin.persistenceManager;
-
-  // Markdown stripping patterns - compiled once for performance
-  const markdownPatterns = dc.useMemo(
-    () => [
-      /```[\s\S]*?```/g, // Code blocks
-      /%%[\s\S]*?%%/g, // Obsidian comments
-      /`[^`]+`/g, // Inline code
-      /!\[.*?\]\([^)]+\)/g, // Images
-      /!\[\[.*?\]\]/g, // Wiki embeds
-      /#[\w\-/]+(?=\s|$)/g, // Tags
-      /\*\*\*((?:(?!\*\*\*).)+)\*\*\*/g, // Bold italic
-      /\*\*((?:(?!\*\*).)+)\*\*/g, // Bold
-      /\*((?:(?!\*).)+)\*/g, // Italic
-      /__((?:(?!__).)+)__/g, // Bold underscores
-      /_((?:(?!_).)+)_/g, // Italic underscores
-      /~~((?:(?!~~).)+)~~/g, // Strikethrough
-      /==((?:(?!==).)+)==/g, // Highlight
-      /\[([^\]]+)\]\([^)]+\)/g, // Links
-      /\[\[[^\]|]+\|([^\]]+)\]\]/g, // Wiki links with display
-      /\[\[([^\]]+)\]\]/g, // Wiki links
-      /^[-*+]\s+/gm, // Bullet list markers
-      /^#{1,6}\s+.+$/gm, // Heading lines (full removal)
-      /^\s*(?:[-_*])\s*(?:[-_*])\s*(?:[-_*])[\s\-_*]*$/gm, // Horizontal rules
-      /^\s*\|.*\|.*$/gm, // Tables
-      /\^\[[^\]]*?]/g, // Inline footnotes
-      /\[\^[^\]]+]/g, // Footnote references
-      /^\s*\[\^[^\]]+]:.*$/gm, // Footnote definitions
-      /<([a-z][a-z0-9]*)\b[^>]*>(.*?)<\/\1>/gi, // HTML tag pairs
-      /<[^>]+>/g, // Remaining HTML tags
-    ],
-    [],
-  );
-
-  const stripMarkdownSyntax = dc.useCallback(
-    (text: string) => {
-      if (!text || text.trim().length === 0) return "";
-
-      // First pass: remove callout title lines only
-      text = text.replace(/^>\s*\[![\w-]+\][+-]?.*$/gm, "");
-      // Second pass: strip > prefix from remaining blockquote lines
-      text = text.replace(/^>\s?/gm, "");
-
-      let result = text;
-
-      // Apply each pattern
-      markdownPatterns.forEach((pattern) => {
-        result = result.replace(
-          pattern,
-          (match: string, ...groups: string[]) => {
-            // Special handling for HTML tag pairs - return content (group 2)
-            if (match.match(/<[a-z][a-z0-9]*\b[^>]*>.*?<\//i)) {
-              return groups[1] || "";
-            }
-
-            // For patterns with capture groups, return the captured content
-            if (groups.length > 0 && groups[0] !== undefined) {
-              for (let i = 0; i < groups.length - 2; i++) {
-                if (groups[i] !== undefined) {
-                  return groups[i];
-                }
-              }
-            }
-            return "";
-          },
-        );
-      });
-
-      return result;
-    },
-    [markdownPatterns],
-  );
 
   // Helper: get persisted settings
   const getPersistedSettings = dc.useCallback((): Settings => {
@@ -315,7 +251,7 @@ export function View({
   const [isPinned, setIsPinned] = dc.useState(false);
   const [queryError, setQueryError] = dc.useState<string | null>(null);
   const [displayedCount, setDisplayedCount] = dc.useState(
-    app.isMobile ? 25 : 50,
+    app.isMobile ? BATCH_SIZE * 0.5 : BATCH_SIZE,
   );
   const [focusableCardIndex, setFocusableCardIndex] = dc.useState(0);
   const [isResultsScrolled, setIsResultsScrolled] = dc.useState(false);
@@ -346,6 +282,11 @@ export function View({
     height: 0,
     left: 0,
   });
+
+  // Cleanup ResizeObservers on unmount
+  dc.useEffect(() => {
+    return () => cleanupAllCardObservers();
+  }, []);
 
   // Persist UI state changes
   dc.useEffect(() => {
@@ -684,35 +625,55 @@ export function View({
     currentFilePath,
   ]);
 
-  // State to store file snippets and images
-  const [snippets, setSnippets] = dc.useState({});
-  const [images, setImages] = dc.useState({});
-  const [hasImageAvailable, setHasImageAvailable] = dc.useState({});
+  // State to store file text previews and images
+  const [textPreviews, setTextPreviews] = dc.useState<Record<string, string>>(
+    {},
+  );
+  const [images, setImages] = dc.useState<Record<string, string | string[]>>(
+    {},
+  );
+  const [hasImageAvailable, setHasImageAvailable] = dc.useState<
+    Record<string, boolean>
+  >({});
 
   // Load file contents asynchronously (only for displayed items)
   dc.useEffect(() => {
     // Skip entirely if both previews and thumbnails are off
     if (!settings.showTextPreview && settings.imageFormat === "none") {
-      setSnippets({});
+      setTextPreviews({});
       setImages({});
       setHasImageAvailable({});
       return;
     }
 
-    const loadSnippets = async () => {
-      const newSnippets: Record<string, string> = {};
+    const loadTextPreviews = async () => {
+      const newTextPreviews: Record<string, string> = {};
       const newImages: Record<string, string | string[]> = {};
       const newHasImageAvailable: Record<string, boolean> = {};
 
-      // Prepare entries for snippet loading
+      // Get current result paths for cache preservation
+      const currentPaths = new Set(
+        sorted.slice(0, displayedCount).map((p) => p.$path),
+      );
+
+      // Prepare entries for text preview loading
       if (settings.showTextPreview) {
-        const snippetEntries = sorted
+        // Copy existing cached entries that are still in results
+        for (const path of currentPaths) {
+          const cached = textPreviews[path];
+          if (cached !== undefined) {
+            newTextPreviews[path] = cached;
+          }
+        }
+
+        const textPreviewEntries = sorted
           .slice(0, displayedCount)
+          .filter((p) => !(p.$path in newTextPreviews)) // Skip already cached
           .map((p) => {
             try {
               const file = app.vault.getAbstractFileByPath(p.$path);
               if (!(file instanceof TFile)) {
-                newSnippets[p.$path] = "(File not found)";
+                newTextPreviews[p.$path] = "(File not found)";
                 return null;
               }
 
@@ -771,25 +732,38 @@ export function View({
                 p.$path,
                 e instanceof Error ? e.message : e,
               );
-              newSnippets[p.$path] = "(Error reading file)";
+              newTextPreviews[p.$path] = "(Error reading file)";
               return null;
             }
           })
           .filter((e): e is NonNullable<typeof e> => e !== null);
 
-        await loadSnippetsForEntries(
-          snippetEntries,
+        await loadTextPreviewsForEntries(
+          textPreviewEntries,
           settings.fallbackToContent,
           settings.omitFirstLine,
           app,
-          newSnippets,
+          newTextPreviews,
         );
       }
 
       // Prepare entries for image loading
       if (settings.imageFormat !== "none") {
+        // Copy existing cached entries that are still in results
+        for (const path of currentPaths) {
+          const cachedImage = images[path];
+          if (cachedImage !== undefined) {
+            newImages[path] = cachedImage;
+          }
+          const cachedHasImage = hasImageAvailable[path];
+          if (cachedHasImage !== undefined) {
+            newHasImageAvailable[path] = cachedHasImage;
+          }
+        }
+
         const imageEntries = sorted
           .slice(0, displayedCount)
+          .filter((p) => !(p.$path in newHasImageAvailable)) // Skip already checked
           .map((p) => {
             try {
               const file = app.vault.getAbstractFileByPath(p.$path);
@@ -824,16 +798,15 @@ export function View({
         );
       }
 
-      setSnippets(newSnippets);
+      setTextPreviews(newTextPreviews);
       setImages(newImages);
       setHasImageAvailable(newHasImageAvailable);
     };
 
-    void loadSnippets();
+    void loadTextPreviews();
   }, [
     sorted,
     displayedCount,
-    stripMarkdownSyntax,
     settings.showTextPreview,
     settings.imageFormat,
     settings,
@@ -862,35 +835,52 @@ export function View({
     }
 
     // Setup masonry layout function using shared logic
+    let isUpdatingLayout = false;
+    let pendingLayoutUpdate = false;
     const updateLayout = () => {
       const container = containerRef.current;
       if (!container) return;
+      // Guard against reentrant calls - queue update if one is in progress
+      if (isUpdatingLayout) {
+        pendingLayoutUpdate = true;
+        return;
+      }
+      isUpdatingLayout = true;
 
-      const cards = Array.from(
-        container.querySelectorAll<HTMLElement>(".card"),
-      );
-      if (cards.length === 0) return;
+      try {
+        const cards = Array.from(
+          container.querySelectorAll<HTMLElement>(".card"),
+        );
+        if (cards.length === 0) return;
 
-      const containerWidth = container.clientWidth;
-      if (containerWidth < 100) return;
+        const containerWidth = container.clientWidth;
+        if (containerWidth < 100) return;
 
-      const cardSize = settings.cardSize;
-      const minColumns = getMinMasonryColumns();
-      const gap = getCardSpacing();
+        const cardSize = settings.cardSize;
+        const minColumns = getMinMasonryColumns();
+        const gap = getCardSpacing();
 
-      // Calculate and apply layout using shared masonry logic
-      const result = calculateMasonryLayout({
-        cards,
-        containerWidth,
-        cardSize,
-        minColumns,
-        gap,
-      });
+        // Calculate and apply layout using shared masonry logic
+        const result = calculateMasonryLayout({
+          cards,
+          containerWidth,
+          cardSize,
+          minColumns,
+          gap,
+        });
 
-      applyMasonryLayout(container, cards, result);
+        applyMasonryLayout(container, cards, result);
 
-      // Update column count for infinite scroll batching
-      columnCountRef.current = result.columns;
+        // Update column count for infinite scroll batching
+        columnCountRef.current = result.columns;
+      } finally {
+        isUpdatingLayout = false;
+        // Process any queued update
+        if (pendingLayoutUpdate) {
+          pendingLayoutUpdate = false;
+          requestAnimationFrame(updateLayout);
+        }
+      }
     };
 
     // Store update function for external calls (shuffle, image load)
@@ -1021,16 +1011,11 @@ export function View({
 
     // console.log('[InfiniteScroll] Setting up infinite scroll system');
 
-    // Configuration: preload distance multipliers
-    const DESKTOP_VIEWPORT_MULTIPLIER = 2; // Load when within 2x viewport height from bottom
-    const MOBILE_VIEWPORT_MULTIPLIER = Math.max(
-      1,
-      DESKTOP_VIEWPORT_MULTIPLIER * 0.5,
-    ); // Mobile: 0.5x of desktop, minimum 1x
+    // PANE_MULTIPLIER imported from shared/constants
 
     // Find the element that actually scrolls
     let element: HTMLElement | null = containerRef.current;
-    let scrollableElement: HTMLElement | Window | null = null;
+    let scrollableElement: HTMLElement | null = null;
 
     while (element && !scrollableElement) {
       const style = window.getComputedStyle(element);
@@ -1044,10 +1029,8 @@ export function View({
     }
 
     if (!scrollableElement) {
-      scrollableElement = window;
-      // console.log('[InfiniteScroll] Using window as scroll container');
-    } else {
-      // console.log('[InfiniteScroll] Using element as scroll container:', scrollableElement.className);
+      // No scrollable ancestor found - skip infinite scroll setup
+      return;
     }
 
     // Core batch loading function
@@ -1073,31 +1056,14 @@ export function View({
         return false; // All items loaded
       }
 
-      // Calculate distance from bottom using the scrollable element we already found
-      let scrollTop: number, editorHeight: number, scrollHeight: number;
-
-      if (scrollableElement === window) {
-        scrollTop = window.scrollY || document.documentElement.scrollTop;
-        editorHeight = window.innerHeight;
-        scrollHeight = document.documentElement.scrollHeight;
-      } else if (scrollableElement instanceof HTMLElement) {
-        // TypeScript narrowing: must be HTMLElement here
-        scrollTop = scrollableElement.scrollTop;
-        editorHeight = scrollableElement.clientHeight;
-        scrollHeight = scrollableElement.scrollHeight;
-      } else {
-        // Fallback if somehow scrollableElement is null (shouldn't happen)
-        return false;
-      }
-
-      const distanceFromBottom = scrollHeight - (scrollTop + editorHeight);
+      // Calculate distance from bottom
+      const scrollTop = scrollableElement.scrollTop;
+      const clientHeight = scrollableElement.clientHeight;
+      const scrollHeight = scrollableElement.scrollHeight;
+      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
 
       // Calculate threshold
-      const threshold =
-        editorHeight *
-        (app.isMobile
-          ? MOBILE_VIEWPORT_MULTIPLIER
-          : DESKTOP_VIEWPORT_MULTIPLIER);
+      const threshold = clientHeight * PANE_MULTIPLIER;
 
       // console.log(`[InfiniteScroll] Metrics: scrollTop=${scrollTop.toFixed(0)}px, editorHeight=${editorHeight}px, scrollHeight=${scrollHeight}px, distance=${distanceFromBottom.toFixed(0)}px, threshold=${threshold.toFixed(0)}px`);
 
@@ -1112,14 +1078,10 @@ export function View({
       isLoadingRef.current = true;
 
       const currentCols = columnCountRef.current || 2;
-      const rowsPerColumn = 10;
-      const batchSize = Math.min(
-        currentCols * rowsPerColumn,
-        7 * rowsPerColumn,
-      );
+      const batchSize = Math.min(currentCols * ROWS_PER_COLUMN, MAX_BATCH_SIZE);
       const newCount = Math.min(currentCount + batchSize, totalLength!);
 
-      // console.log(`[InfiniteScroll] Loading batch: ${currentCount} → ${newCount} (${batchSize} items, ${currentCols} cols × ${rowsPerColumn} rows)`);
+      // console.log(`[InfiniteScroll] Loading batch: ${currentCount} → ${newCount} (${batchSize} items, ${currentCols} cols × ${ROWS_PER_COLUMN} rows)`);
 
       displayedCountRef.current = newCount;
       setDisplayedCount(newCount);
@@ -1223,13 +1185,13 @@ export function View({
       // Only apply to sections that contain a dynamic view
       if (section.querySelector(".dynamic-views")) {
         // Remove all width helper classes
-        section.classList.remove("dc-wide", "dc-max");
+        section.classList.remove("datacore-wide", "datacore-max");
 
         // Apply new helper class (Minimal pattern)
         if (nextMode === "wide") {
-          section.classList.add("dc-wide");
+          section.classList.add("datacore-wide");
         } else if (nextMode === "max") {
-          section.classList.add("dc-max");
+          section.classList.add("datacore-max");
         }
       }
     });
@@ -1294,7 +1256,7 @@ export function View({
   const handleSearchChange = dc.useCallback(
     (query: string) => {
       setSearchQuery(query);
-      setDisplayedCount(app.isMobile ? 25 : 50);
+      setDisplayedCount(app.isMobile ? BATCH_SIZE * 0.5 : BATCH_SIZE);
     },
     [app.isMobile],
   );
@@ -1547,7 +1509,7 @@ export function View({
       viewMode,
       sortMethod,
       isShuffled,
-      snippets,
+      textPreviews,
       images,
       hasImageAvailable,
       focusableCardIndex,
