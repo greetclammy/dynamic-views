@@ -47,7 +47,7 @@ import {
   calculateMasonryLayout,
   applyMasonryLayout,
 } from "../utils/masonry-layout";
-import type { DatacoreAPI, DatacoreFile } from "../types/datacore";
+import type { DatacoreAPI, DatacoreFile } from "./types";
 import { resolveTimestampProperty } from "../shared/data-transform";
 import { setupSwipeInterception } from "../bases/swipe-interceptor";
 

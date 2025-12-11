@@ -6,7 +6,7 @@
 import { TFile, type App, type BasesEntry } from "obsidian";
 import type { CardData } from "./card-renderer";
 import type { Settings } from "../types";
-import type { DatacoreAPI, DatacoreFile } from "../types/datacore";
+import type { DatacoreAPI, DatacoreFile } from "../datacore/types";
 import {
   getFirstDatacorePropertyValue,
   getFirstBasesPropertyValue,

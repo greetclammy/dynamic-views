@@ -1,6 +1,6 @@
 import type { Settings } from "../types";
 import { getFirstDatacorePropertyValue } from "../utils/property";
-import type { DatacoreAPI, DatacoreFile } from "../types/datacore";
+import type { DatacoreAPI, DatacoreFile } from "./types";
 import type { App } from "obsidian";
 import { datacoreResultToCardData } from "../shared/data-transform";
 import type { CardData } from "../shared/card-renderer";

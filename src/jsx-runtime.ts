@@ -2,7 +2,7 @@
 // This module provides h() and Fragment() that delegate to Datacore's bundled Preact
 // All JSX compiled by esbuild will use these functions
 
-import type { ComponentType, VNode } from "./types/datacore";
+import type { ComponentType, VNode } from "./datacore/types";
 
 // Store reference to Datacore's Preact h and Fragment
 let datacoreH:

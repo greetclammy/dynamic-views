@@ -6,7 +6,7 @@
 import type { App } from "obsidian";
 import { TFile, TFolder, setIcon, Menu } from "obsidian";
 import type { Settings } from "../types";
-import type { RefObject } from "../types/datacore";
+import type { RefObject } from "../datacore/types";
 import {
   showTagHashPrefix,
   showTimestampIcon,
@@ -1050,19 +1050,23 @@ function Card({
     app.dragManager.onDragStart(e, dragData);
   };
 
+  // Create AbortController for scroll listener cleanup (before return so child refs can access it)
+  cleanupCardScrollListeners(card.path);
+  const scrollController = new AbortController();
+  cardScrollAbortControllers.set(card.path, scrollController);
+
   return (
     <div
       className={cardClasses.join(" ")}
       data-path={card.path}
       ref={(cardEl: HTMLElement | null) => {
         if (!cardEl) return;
-        // Cleanup previous scroll listeners for this card
-        cleanupCardScrollListeners(card.path);
-        // Create AbortController for scroll listener cleanup
-        const controller = new AbortController();
-        cardScrollAbortControllers.set(card.path, controller);
         // Setup scroll gradients for property fields (setupScrollGradients has internal double RAF)
-        setupScrollGradients(cardEl, updateScrollGradient, controller.signal);
+        setupScrollGradients(
+          cardEl,
+          updateScrollGradient,
+          scrollController.signal,
+        );
       }}
       draggable={effectiveOpenFileAction === "card"}
       onDragStart={effectiveOpenFileAction === "card" ? handleDrag : undefined}
@@ -1176,8 +1180,7 @@ function Card({
               "dynamic-views-title-overflow-scroll",
             );
             if (isScrollMode) {
-              const signal = cardScrollAbortControllers.get(card.path)?.signal;
-              setupElementScrollGradient(el, signal);
+              setupElementScrollGradient(el, scrollController.signal);
             } else {
               requestAnimationFrame(() => {
                 requestAnimationFrame(() => truncateTitleWithExtension(el));
@@ -1194,10 +1197,7 @@ function Card({
                   "dynamic-views-title-overflow-scroll",
                 );
                 if (isScrollMode) {
-                  const signal = cardScrollAbortControllers.get(
-                    card.path,
-                  )?.signal;
-                  setupElementScrollGradient(el, signal);
+                  setupElementScrollGradient(el, scrollController.signal);
                 } else {
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => truncateTitleWithExtension(el));
@@ -1268,19 +1268,21 @@ function Card({
           className="card-subtitle"
           ref={(el: HTMLElement | null) => {
             if (!el) return;
-            const signal = cardScrollAbortControllers.get(card.path)?.signal;
             const isScrollMode = document.body.classList.contains(
               "dynamic-views-subtitle-overflow-scroll",
             );
             if (isScrollMode) {
-              setupElementScrollGradient(el, signal);
+              setupElementScrollGradient(el, scrollController.signal);
             }
             // Setup scroll gradients for inner wrapper (works in wrap mode too)
             const subtitleWrapper = el.querySelector(
               ".property-content-wrapper",
             ) as HTMLElement;
             if (subtitleWrapper) {
-              setupElementScrollGradient(subtitleWrapper, signal);
+              setupElementScrollGradient(
+                subtitleWrapper,
+                scrollController.signal,
+              );
             }
           }}
         >

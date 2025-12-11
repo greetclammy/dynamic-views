@@ -1,6 +1,6 @@
 import { ViewMode, Settings, WidthMode } from "../types";
 import { Settings as SettingsPanel } from "./settings";
-import type { DatacoreAPI } from "../types/datacore";
+import type { DatacoreAPI } from "./types";
 import type { App } from "obsidian";
 import { setupClickOutside } from "../utils/dropdown-position";
 
@@ -1121,7 +1121,6 @@ export function Toolbar({
             {showSettings ? (
               <SettingsPanel
                 dc={dc}
-                app={app}
                 settings={settings}
                 onSettingsChange={onSettingsChange}
                 menuRef={settingsMenuRef}

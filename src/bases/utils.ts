@@ -1,5 +1,5 @@
 /**
- * Shared utilities for Bases views (card-view and masonry-view)
+ * Shared utilities for Bases views (grid-view and masonry-view)
  * Eliminates code duplication between view implementations
  */
 
@@ -121,6 +121,64 @@ export function setupStyleSettingsObserver(
 /** Interface for Bases config sort method */
 interface BasesConfigWithSort {
   getSort(): Array<{ property: string; direction: string }> | null;
+  getDisplayName(property: string): string;
+}
+
+/** Interface for group data with entries */
+interface GroupData {
+  entries: BasesEntry[];
+  hasKey(): boolean;
+  key?: unknown;
+}
+
+/**
+ * Process groups with shuffle logic applied
+ * Extracts and optionally reorders entries within each group based on shuffle state
+ */
+export function processGroups<T extends GroupData>(
+  groupedData: T[],
+  isShuffled: boolean,
+  shuffledOrder: string[],
+): Array<{ group: T; entries: BasesEntry[] }> {
+  return groupedData.map((group) => {
+    let groupEntries = [...group.entries];
+    if (isShuffled && shuffledOrder.length > 0) {
+      groupEntries = groupEntries.sort((a, b) => {
+        const indexA = shuffledOrder.indexOf(a.file.path);
+        const indexB = shuffledOrder.indexOf(b.file.path);
+        return indexA - indexB;
+      });
+    }
+    return { group, entries: groupEntries };
+  });
+}
+
+/**
+ * Render group header if group has a key
+ * Creates the heading element with property label and value
+ */
+export function renderGroupHeader(
+  groupEl: HTMLElement,
+  group: { hasKey(): boolean; key?: unknown },
+  config: BasesConfigWithSort,
+): void {
+  if (!group.hasKey()) return;
+
+  const headerEl = groupEl.createDiv("bases-group-heading");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+  const groupBy = (config as any).groupBy;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  if (groupBy?.property) {
+    const propertyEl = headerEl.createDiv("bases-group-property");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+    const propertyName = config.getDisplayName(groupBy.property);
+    propertyEl.setText(propertyName);
+  }
+
+  const valueEl = headerEl.createDiv("bases-group-value");
+  const keyValue = group.key?.toString() || "";
+  valueEl.setText(keyValue);
 }
 
 /**

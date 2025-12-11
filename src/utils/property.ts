@@ -3,7 +3,7 @@
  */
 
 import type { App, BasesEntry } from "obsidian";
-import type { DatacoreFile, DatacoreDate } from "../types/datacore";
+import type { DatacoreFile, DatacoreDate } from "../datacore/types";
 
 /**
  * Type declarations for undocumented Bases API

@@ -1,7 +1,7 @@
 import type { Settings } from "../types";
 import { CardRenderer } from "../shared/card-renderer";
 import { transformDatacoreResults } from "../shared/data-transform";
-import type { DatacoreAPI, DatacoreFile } from "../types/datacore";
+import type { DatacoreAPI, DatacoreFile } from "./types";
 import type { App } from "obsidian";
 
 interface CardViewProps {

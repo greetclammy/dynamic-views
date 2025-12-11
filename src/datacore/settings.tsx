@@ -1,10 +1,8 @@
 import { Settings as SettingsType } from "../types";
-import type { DatacoreAPI } from "../types/datacore";
-import type { App } from "obsidian";
+import type { DatacoreAPI } from "./types";
 
 interface SettingsProps {
   dc: DatacoreAPI;
-  app: App;
   settings: SettingsType;
   onSettingsChange: (settings: Partial<SettingsType>) => void;
   menuRef?: { current: HTMLDivElement | null };
@@ -90,7 +88,6 @@ const handleKeyboardActivate = (action: () => void) => (e: unknown) => {
 
 export function Settings({
   dc,
-  app,
   settings,
   onSettingsChange,
   menuRef,

@@ -2853,6 +2853,25 @@ body:not(.dynamic-views-image-zoom-disabled)
   margin-top: var(--dynamic-views-element-spacing, 8px);
 }
 
+/* Fix spacing when title hidden: properties-top visually precedes card-content due to flexbox order,
+   but the owl selector above applies margin based on DOM order, not visual order */
+.dynamic-views
+  .card:not(:has(.card-title)):not(:has(.card-title-container)):has(
+    .card-properties-top
+  )
+  .card-content {
+  margin-top: var(--dynamic-views-element-spacing, 8px);
+}
+
+/* Remove owl-pattern margin from properties-top when it's visually first (title hidden) */
+.dynamic-views
+  .card:not(:has(.card-title)):not(:has(.card-title-container)):not(
+    :has(.card-subtitle)
+  )
+  .card-properties-top {
+  margin-top: 0;
+}
+
 /* Card background options */
 body.dynamic-views-card-background-transparent .dynamic-views .card {
   background-color: transparent;

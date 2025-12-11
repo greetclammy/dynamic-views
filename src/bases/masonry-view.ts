@@ -27,7 +27,9 @@ import {
   setupStyleSettingsObserver,
   getSortMethod,
   loadContentForEntries,
-} from "./bases-utils";
+  processGroups,
+  renderGroupHeader,
+} from "./utils";
 import type DynamicViewsPlugin from "../../main";
 import type { Settings } from "../types";
 
@@ -62,6 +64,10 @@ export class DynamicViewsMasonryView extends BasesView {
   private lastGroupContainer: HTMLElement | null = null;
   // Render version to cancel stale async renders
   private renderVersion: number = 0;
+  // AbortController for async content loading
+  private abortController: AbortController | null = null;
+  // Timeout ID for masonry layout delay
+  private layoutTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   // Style Settings compatibility - must be own property (not prototype)
   setSettings = (): void => {
@@ -126,6 +132,12 @@ export class DynamicViewsMasonryView extends BasesView {
       this.renderVersion++;
       const currentVersion = this.renderVersion;
 
+      // Abort any previous async content loading
+      if (this.abortController) {
+        this.abortController.abort();
+      }
+      this.abortController = new AbortController();
+
       // Reset focusable card index to prevent out-of-bounds when card count changes
       this.focusableCardIndex = 0;
 
@@ -174,7 +186,11 @@ export class DynamicViewsMasonryView extends BasesView {
       this.lastSortMethod = sortMethod;
 
       // Process groups and apply shuffle within groups if enabled
-      const processedGroups = this.processGroups(groupedData);
+      const processedGroups = processGroups(
+        groupedData,
+        this.isShuffled,
+        this.shuffledOrder,
+      );
 
       // Collect visible entries across all groups (up to displayedCount)
       const visibleEntries: BasesEntry[] = [];
@@ -200,8 +216,11 @@ export class DynamicViewsMasonryView extends BasesView {
         this.hasImageAvailable,
       );
 
-      // Abort if a newer render started while we were loading
-      if (this.renderVersion !== currentVersion) {
+      // Abort if a newer render started or if aborted while we were loading
+      if (
+        this.renderVersion !== currentVersion ||
+        this.abortController?.signal.aborted
+      ) {
         return;
       }
 
@@ -242,7 +261,7 @@ export class DynamicViewsMasonryView extends BasesView {
         const groupEl = this.masonryContainer.createDiv("dynamic-views-group");
 
         // Render group header if key exists
-        this.renderGroupHeader(groupEl, processedGroup.group);
+        renderGroupHeader(groupEl, processedGroup.group, this.config);
 
         // Render cards in this group
         const cards = transformBasesEntries(
@@ -277,7 +296,7 @@ export class DynamicViewsMasonryView extends BasesView {
       // Initial layout calculation
       if (this.updateLayoutRef.current) {
         // Delay to allow images to start loading
-        setTimeout(() => {
+        this.layoutTimeoutId = setTimeout(() => {
           if (this.updateLayoutRef.current) {
             this.updateLayoutRef.current();
           }
@@ -395,47 +414,6 @@ export class DynamicViewsMasonryView extends BasesView {
     });
   }
 
-  /** Process groups with shuffle logic applied */
-  private processGroups<
-    T extends { entries: BasesEntry[]; hasKey(): boolean; key?: unknown },
-  >(groupedData: T[]): Array<{ group: T; entries: BasesEntry[] }> {
-    return groupedData.map((group) => {
-      let groupEntries = [...group.entries];
-      if (this.isShuffled && this.shuffledOrder.length > 0) {
-        groupEntries = groupEntries.sort((a, b) => {
-          const indexA = this.shuffledOrder.indexOf(a.file.path);
-          const indexB = this.shuffledOrder.indexOf(b.file.path);
-          return indexA - indexB;
-        });
-      }
-      return { group, entries: groupEntries };
-    });
-  }
-
-  /** Render group header if group has a key */
-  private renderGroupHeader(
-    groupEl: HTMLElement,
-    group: { hasKey(): boolean; key?: unknown },
-  ): void {
-    if (!group.hasKey()) return;
-
-    const headerEl = groupEl.createDiv("bases-group-heading");
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const groupBy = (this.config as any).groupBy;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (groupBy?.property) {
-      const propertyEl = headerEl.createDiv("bases-group-property");
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-      const propertyName = this.config.getDisplayName(groupBy.property);
-      propertyEl.setText(propertyName);
-    }
-
-    const valueEl = headerEl.createDiv("bases-group-value");
-    const keyValue = group.key?.toString() || "";
-    valueEl.setText(keyValue);
-  }
-
   private async appendBatch(
     totalEntries: number,
     settings: Settings,
@@ -445,12 +423,17 @@ export class DynamicViewsMasonryView extends BasesView {
 
     // Increment render version to cancel any stale onDataUpdated renders
     this.renderVersion++;
+    const currentVersion = this.renderVersion;
 
     const groupedData = this.data.groupedData;
     const sortMethod = getSortMethod(this.config);
 
     // Process groups with shuffle logic
-    const processedGroups = this.processGroups(groupedData);
+    const processedGroups = processGroups(
+      groupedData,
+      this.isShuffled,
+      this.shuffledOrder,
+    );
 
     // Capture state at start - these may change during async operations
     const prevCount = this.previousDisplayedCount;
@@ -493,6 +476,11 @@ export class DynamicViewsMasonryView extends BasesView {
       this.hasImageAvailable,
     );
 
+    // Abort if renderVersion changed during loading
+    if (this.renderVersion !== currentVersion) {
+      return;
+    }
+
     // Render new cards, handling group boundaries
     // Use captured prevCount/currCount to avoid race conditions
     let displayedSoFar = 0;
@@ -534,7 +522,7 @@ export class DynamicViewsMasonryView extends BasesView {
         groupEl = this.masonryContainer.createDiv("dynamic-views-group");
 
         // Render group header if key exists
-        this.renderGroupHeader(groupEl, processedGroup.group);
+        renderGroupHeader(groupEl, processedGroup.group, this.config);
 
         // Update last group tracking
         this.lastGroupKey = currentGroupKey;
@@ -697,6 +685,10 @@ export class DynamicViewsMasonryView extends BasesView {
 
   onunload(): void {
     this.swipeAbortController?.abort();
+    this.abortController?.abort();
+    if (this.layoutTimeoutId) {
+      clearTimeout(this.layoutTimeoutId);
+    }
     this.cardRenderer.cleanup();
   }
 

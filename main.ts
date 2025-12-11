@@ -7,18 +7,18 @@ import {
   TFile,
 } from "obsidian";
 import { PersistenceManager } from "./src/persistence";
-import { View } from "./src/components/view";
+import { View } from "./src/datacore/view";
 import { setDatacorePreact } from "./src/jsx-runtime";
 import { getAvailablePath } from "./src/utils/file";
 import "./src/jsx-runtime"; // Ensure h and Fragment are globally available
-import { DynamicViewsCardView, cardViewOptions } from "./src/bases/card-view";
+import { DynamicViewsCardView, cardViewOptions } from "./src/bases/grid-view";
 import {
   DynamicViewsMasonryView,
   masonryViewOptions,
 } from "./src/bases/masonry-view";
 import { DynamicViewsSettingTab } from "./src/settings-tab";
 import { setPluginInstance } from "./src/shared/settings-schema";
-import type { DatacoreAPI } from "./src/types/datacore";
+import type { DatacoreAPI } from "./src/datacore/types";
 import {
   openRandomFile,
   toggleShuffleActiveView,

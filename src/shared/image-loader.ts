@@ -1,5 +1,5 @@
 import { extractAverageColor, getColorTheme } from "../utils/image-color";
-import type { RefObject } from "../types/datacore";
+import type { RefObject } from "../datacore/types";
 
 // Cache ambient colors and aspect ratio by image URL to avoid flash on re-render
 const ambientColorCache = new Map<

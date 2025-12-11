@@ -1,6 +1,6 @@
 import { CardView } from "./card-view";
 import type { Settings } from "../types";
-import type { DatacoreAPI, DatacoreFile } from "../types/datacore";
+import type { DatacoreAPI, DatacoreFile } from "./types";
 import type { App } from "obsidian";
 
 interface MasonryViewProps {
