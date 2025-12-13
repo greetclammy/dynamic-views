@@ -1,17 +1,14 @@
 # Dynamic Views
 
-Elegant card views for [Bases](https://help.obsidian.md/bases) and [Datacore](https://obsidian.md/plugins?id=datacore).
-
-> [!NOTE]  
-> Looking for a princpial plugin maintainer. Get equal seat at the helm, author credit, the sole funding link, and eternal user gratitude.
-
-### Masonry
-
-<img src="https://github.com/user-attachments/assets/a5997474-03ac-4c5c-a0bf-c9c302954d63" />
+Elegant grid and masonry card views for [Bases](https://help.obsidian.md/bases) and [Datacore](https://obsidian.md/plugins?id=datacore).
 
 ### Grid
 
 <img src="https://github.com/user-attachments/assets/4643b0da-97b0-4428-8779-012dc69d7069" />
+
+### Masonry
+
+<img src="https://github.com/user-attachments/assets/a5997474-03ac-4c5c-a0bf-c9c302954d63" />
 
 ### Datacore view
 
@@ -57,27 +54,7 @@ Note: to get updates for _Dynamic Views_, you will have to check for and install
 3. Reload plugins or app.
 4. Enable _Dynamic Views_ in Obsidian settings > Community plugins > Installed plugins.
 
-## 💡 Tips
-
-In a Datacore view:
-
-- `@pages and` is automatically prepended to each query — need not add it in query editor.
-- Press Ctrl/Cmd when hovering over card to bring up page preview.
-- Hover over thumbnails that have shadow to view up to first seven images in note, or to animate GIFs.
-- Right click (long press on mobile) on card title to open link context menu.
-- Card title can be drag and dropped to another note or open tabs.
-- Press on thumbnail to enlarge it (if [Image Toolkit](https://obsidian.md/plugins?id=obsidian-image-toolkit) or [snippet](https://forum.obsidian.md/t/image-zoom-click-hold-to-expand-images/5164) is enabled).
-- Search filter accepts #tags (use -#tag to exclude).
-- File path and tags in cards are horizontally scrollable.
-- In case of errors, edit your query at top of code block in Source view.
-- Explore settings to configure things to your liking.
-- Cards can be keyboard navigated with arrows keys.
-
 ## ⭐️ Support
 
 - [Report bugs](https://github.com/greetclammy/dynamic-views/issues)
 - [Request features](https://github.com/greetclammy/dynamic-views/issues)
-- [Contribute improvements](https://github.com/greetclammy/dynamic-views/pulls)
-- Discuss on:
-  - [r/ObsidianMD](https://www.reddit.com/r/ObsidianMD/comments/1ordkkf/working_on_an_alternative_card_view_for_bases_and/)
-  - [GitHub discussions](https://github.com/greetclammy/dynamic-views/discussions)
