@@ -517,6 +517,56 @@ describe("data-transform", () => {
       expect(result).toBe("test/folder/file.md");
     });
 
+    it("should resolve file path property with space variant", () => {
+      const mockEntry: any = {
+        file: { path: "test/folder/file.md" },
+      };
+
+      const mockCardData: any = {
+        path: "test/folder/file.md",
+        folderPath: "test/folder",
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const result = resolveBasesProperty(
+        mockApp,
+        "file path",
+        mockEntry,
+        mockCardData,
+        mockSettings,
+      );
+
+      expect(result).toBe("test/folder/file.md");
+    });
+
+    it("should return null for empty file.path", () => {
+      const mockEntry: any = {
+        file: { path: "" },
+      };
+
+      const mockCardData: any = {
+        path: "",
+        folderPath: "",
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const result = resolveBasesProperty(
+        mockApp,
+        "file.path",
+        mockEntry,
+        mockCardData,
+        mockSettings,
+      );
+
+      expect(result).toBeNull();
+    });
+
     it("should resolve file.tags property", () => {
       mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue({
         tags: [{ tag: "#tag1" }, { tag: "#tag2" }],
@@ -601,6 +651,66 @@ describe("data-transform", () => {
       );
 
       expect(result).toBe("test/folder/file.md");
+    });
+
+    it("should resolve file path property with space variant", () => {
+      const mockPage: any = {
+        $path: "test/folder/file.md",
+        value: jest.fn(),
+      };
+
+      const mockCardData: any = {
+        path: "test/folder/file.md",
+        folderPath: "test/folder",
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = resolveDatacoreProperty(
+        "file path",
+        mockPage,
+        mockCardData,
+        mockSettings,
+        mockDC,
+      );
+
+      expect(result).toBe("test/folder/file.md");
+    });
+
+    it("should return null for empty file.path", () => {
+      const mockPage: any = {
+        $path: "",
+        value: jest.fn(),
+      };
+
+      const mockCardData: any = {
+        path: "",
+        folderPath: "",
+        tags: [],
+        yamlTags: [],
+        ctime: 1000000,
+        mtime: 2000000,
+      };
+
+      const mockDC: any = {
+        coerce: { string: (val: any) => String(val) },
+      };
+
+      const result = resolveDatacoreProperty(
+        "file.path",
+        mockPage,
+        mockCardData,
+        mockSettings,
+        mockDC,
+      );
+
+      expect(result).toBeNull();
     });
 
     it("should resolve tags property", () => {

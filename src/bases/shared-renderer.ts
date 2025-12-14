@@ -684,6 +684,7 @@ export class SharedCardRenderer {
         { ...settings, propertyLabels: "hide" },
         shouldHideMissingProperties(),
         shouldHideEmptyProperties(),
+        signal,
       );
 
       // Setup scroll gradients if scroll mode is enabled
@@ -922,7 +923,7 @@ export class SharedCardRenderer {
     }
 
     // Properties - 4-field rendering with 2-row layout
-    this.renderProperties(cardEl, card, entry, settings);
+    this.renderProperties(cardEl, card, entry, settings, signal);
 
     // Card-level responsive behaviors (single ResizeObserver)
     const breakpoint =
@@ -1246,6 +1247,7 @@ export class SharedCardRenderer {
     card: CardData,
     entry: BasesEntry,
     settings: Settings,
+    signal: AbortSignal,
   ): void {
     // Get all 14 property names
     const props = [
@@ -1401,6 +1403,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const field2El = row1El.createDiv("property-field property-field-2");
@@ -1414,6 +1417,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       // Check actual rendered content
@@ -1478,6 +1482,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const field4El = row2El.createDiv("property-field property-field-4");
@@ -1491,6 +1496,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       // Check actual rendered content
@@ -1555,6 +1561,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const field6El = row3El.createDiv("property-field property-field-6");
@@ -1568,6 +1575,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const has5 =
@@ -1625,6 +1633,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const field8El = row4El.createDiv("property-field property-field-8");
@@ -1638,6 +1647,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const has7 =
@@ -1695,6 +1705,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const field10El = row5El.createDiv("property-field property-field-10");
@@ -1708,6 +1719,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const has9 =
@@ -1766,6 +1778,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const field12El = row6El.createDiv("property-field property-field-12");
@@ -1779,6 +1792,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const has11 =
@@ -1838,6 +1852,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const field14El = row7El.createDiv("property-field property-field-14");
@@ -1851,6 +1866,7 @@ export class SharedCardRenderer {
           settings,
           hideMissing,
           hideEmpty,
+          signal,
         );
 
       const has13 =
@@ -1924,6 +1940,7 @@ export class SharedCardRenderer {
     settings: Settings,
     hideMissing: boolean,
     hideEmpty: boolean,
+    signal: AbortSignal,
   ): void {
     if (propertyName === "") {
       return;
@@ -2097,64 +2114,78 @@ export class SharedCardRenderer {
         // Make filename segment draggable
         if (isLastSegment) {
           segmentEl.draggable = true;
-          segmentEl.addEventListener("dragstart", (e: DragEvent) => {
-            const file = this.app.vault.getAbstractFileByPath(card.path);
-            if (!(file instanceof TFile)) return;
-            const dragData = this.app.dragManager.dragFile(e, file);
-            this.app.dragManager.onDragStart(e, dragData);
-          });
+          segmentEl.addEventListener(
+            "dragstart",
+            (e: DragEvent) => {
+              e.stopPropagation();
+              const file = this.app.vault.getAbstractFileByPath(card.path);
+              if (!(file instanceof TFile)) return;
+              const dragData = this.app.dragManager.dragFile(e, file);
+              this.app.dragManager.onDragStart(e, dragData);
+            },
+            { signal },
+          );
         }
 
         // Make clickable
         const cumulativePath = segments.slice(0, idx + 1).join("/");
-        segmentEl.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (isLastSegment) {
-            // Last segment is filename - open the file
-            const file = this.app.vault.getAbstractFileByPath(card.path);
-            if (file instanceof TFile) {
-              void this.app.workspace.getLeaf(false).openFile(file);
-            }
-          } else {
-            // Folder segment - reveal in file explorer
-            const fileExplorer =
-              this.app.internalPlugins?.plugins?.["file-explorer"];
-            if (fileExplorer?.instance?.revealInFolder) {
-              const folderFile =
-                this.app.vault.getAbstractFileByPath(cumulativePath);
-              if (folderFile) {
-                fileExplorer.instance.revealInFolder(folderFile);
+        segmentEl.addEventListener(
+          "click",
+          (e) => {
+            e.stopPropagation();
+            if (isLastSegment) {
+              // Last segment is filename - open the file
+              const file = this.app.vault.getAbstractFileByPath(card.path);
+              if (file instanceof TFile) {
+                const newLeaf = e.metaKey || e.ctrlKey;
+                void this.app.workspace.getLeaf(newLeaf).openFile(file);
+              }
+            } else {
+              // Folder segment - reveal in file explorer
+              const fileExplorer =
+                this.app.internalPlugins?.plugins?.["file-explorer"];
+              if (fileExplorer?.instance?.revealInFolder) {
+                const folderFile =
+                  this.app.vault.getAbstractFileByPath(cumulativePath);
+                if (folderFile) {
+                  fileExplorer.instance.revealInFolder(folderFile);
+                }
               }
             }
-          }
-        });
+          },
+          { signal },
+        );
 
         // Add context menu for all segments
-        segmentEl.addEventListener("contextmenu", (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          if (isLastSegment) {
-            // Filename segment - show file context menu
-            const file = this.app.vault.getAbstractFileByPath(card.path);
-            if (file instanceof TFile) {
-              showFileContextMenu(e, this.app, file, card.path);
+        segmentEl.addEventListener(
+          "contextmenu",
+          (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (isLastSegment) {
+              // Filename segment - show file context menu
+              const file = this.app.vault.getAbstractFileByPath(card.path);
+              if (file instanceof TFile) {
+                showFileContextMenu(e, this.app, file, card.path);
+              }
+            } else {
+              // Folder segment - show folder context menu
+              const folderFile =
+                this.app.vault.getAbstractFileByPath(cumulativePath);
+              if (folderFile instanceof TFolder) {
+                const menu = new Menu();
+                this.app.workspace.trigger(
+                  "file-menu",
+                  menu,
+                  folderFile,
+                  "file-explorer",
+                );
+                menu.showAtMouseEvent(e);
+              }
             }
-          } else {
-            // Folder segment - show folder context menu
-            const folderFile =
-              this.app.vault.getAbstractFileByPath(cumulativePath);
-            if (folderFile instanceof TFolder) {
-              const menu = new Menu();
-              this.app.workspace.trigger(
-                "file-menu",
-                menu,
-                folderFile,
-                "file-explorer",
-              );
-              menu.showAtMouseEvent(e);
-            }
-          }
-        });
+          },
+          { signal },
+        );
 
         if (idx < segments.length - 1) {
           span.createSpan({ cls: "path-separator", text: "/" });

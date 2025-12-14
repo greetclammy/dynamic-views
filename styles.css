@@ -3118,11 +3118,10 @@ body.dynamic-views-file-type-none .dynamic-views .card-title-icon {
 
 @media (hover: hover) {
   /* Underline title on hover when open action is "press on title" */
-  body.dynamic-views-open-on-title .dynamic-views .card-title a:hover,
   body.dynamic-views-open-on-title
     .dynamic-views
     .card-title
-    .card-title-link:hover {
+    :is(a, .card-title-link):hover {
     text-decoration: underline;
     color: var(--text-normal);
   }
@@ -3131,12 +3130,7 @@ body.dynamic-views-file-type-none .dynamic-views .card-title-icon {
   body.dynamic-views-file-type-ext
     .dynamic-views
     .card-title
-    a:hover
-    .card-title-ext-suffix,
-  body.dynamic-views-file-type-ext
-    .dynamic-views
-    .card-title
-    .card-title-link:hover
+    :is(a, .card-title-link):hover
     .card-title-ext-suffix {
     text-decoration: underline;
     text-decoration-color: var(--_title-color);
@@ -6100,74 +6094,74 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
   body.dynamic-views-open-on-title.dynamic-views-title-color-faint
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: var(--text-muted);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-muted
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: var(--text-normal);
   }
   /* Normal - no hover color change */
   body.dynamic-views-open-on-title.dynamic-views-title-color-accent
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: var(--text-accent-hover);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-red
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: color-mix(in hsl, var(--color-red), white 15%);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-orange
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: color-mix(in hsl, var(--color-orange), white 15%);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-yellow
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: color-mix(in hsl, var(--color-yellow), white 15%);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-green
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: color-mix(in hsl, var(--color-green), white 15%);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-cyan
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: color-mix(in hsl, var(--color-cyan), white 15%);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-blue
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: color-mix(in hsl, var(--color-blue), white 15%);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-purple
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: color-mix(in hsl, var(--color-purple), white 15%);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-pink
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: color-mix(in hsl, var(--color-pink), white 15%);
   }
   body.dynamic-views-open-on-title.dynamic-views-title-color-custom
     .dynamic-views
     .card-title
-    a:hover {
+    :is(a, .card-title-link):hover {
     color: var(
       --dynamic-views-title-color-custom-hover,
       var(--dynamic-views-title-color-custom, var(--text-normal))

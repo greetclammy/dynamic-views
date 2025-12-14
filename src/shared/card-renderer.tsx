@@ -865,6 +865,7 @@ function renderProperty(
   ) {
     // Drag handler for filename segment
     const handleFilenameDrag = (e: DragEvent) => {
+      e.stopPropagation();
       const file = app.vault.getAbstractFileByPath(card.path);
       if (!(file instanceof TFile)) return;
       const dragData = app.dragManager.dragFile(e, file);
@@ -882,8 +883,7 @@ function renderProperty(
                 .split("/")
                 .filter((f) => f)
                 .map((segment, idx, array): JSX.Element => {
-                  const allParts = resolvedValue.split("/").filter((f) => f);
-                  const cumulativePath = allParts.slice(0, idx + 1).join("/");
+                  const cumulativePath = array.slice(0, idx + 1).join("/");
                   const isLastSegment = idx === array.length - 1;
                   const segmentClass = isLastSegment
                     ? "path-segment filename-segment"
@@ -1474,6 +1474,7 @@ function Card({
                       hoverParent: { hoverPopover: null },
                       targetEl: e.currentTarget,
                       linktext: card.path,
+                      sourcePath: card.path,
                     });
                   }}
                 >
