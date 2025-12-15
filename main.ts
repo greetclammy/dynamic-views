@@ -112,7 +112,7 @@ export default class DynamicViewsPlugin extends Plugin {
 
     // Sync overlay opacity from --background-modifier-cover (only if zoom not disabled)
     if (
-      !document.body.classList.contains("dynamic-views-image-zoom-disabled")
+      !document.body.classList.contains("dynamic-views-image-viewer-disabled")
     ) {
       this.syncOverlayOpacity();
     }
@@ -121,7 +121,9 @@ export default class DynamicViewsPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("css-change", () => {
         if (
-          !document.body.classList.contains("dynamic-views-image-zoom-disabled")
+          !document.body.classList.contains(
+            "dynamic-views-image-viewer-disabled",
+          )
         ) {
           this.syncOverlayOpacity();
         }
@@ -167,9 +169,11 @@ export default class DynamicViewsPlugin extends Plugin {
         "Open random file from bases view",
         async (evt: MouseEvent) => {
           // Close any zoomed images
-          document.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {
-            el.classList.remove("is-zoomed");
-          });
+          document
+            .querySelectorAll(".dynamic-views-image-embed.is-zoomed")
+            .forEach((el) => {
+              el.classList.remove("is-zoomed");
+            });
           const defaultInNewTab =
             this.persistenceManager.getGlobalSettings().openRandomInNewTab;
           await openRandomFile(this.app, getPaneType(evt, defaultInNewTab));
@@ -180,9 +184,11 @@ export default class DynamicViewsPlugin extends Plugin {
     if (settings.showShuffleInRibbon) {
       this.addRibbonIcon("shuffle", "Shuffle bases view", () => {
         // Close any zoomed images
-        document.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {
-          el.classList.remove("is-zoomed");
-        });
+        document
+          .querySelectorAll(".dynamic-views-image-embed.is-zoomed")
+          .forEach((el) => {
+            el.classList.remove("is-zoomed");
+          });
         toggleShuffleActiveView(this.app);
       });
     }
@@ -193,9 +199,11 @@ export default class DynamicViewsPlugin extends Plugin {
       name: "Open random file from bases view",
       callback: async () => {
         // Close any zoomed images
-        document.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {
-          el.classList.remove("is-zoomed");
-        });
+        document
+          .querySelectorAll(".dynamic-views-image-embed.is-zoomed")
+          .forEach((el) => {
+            el.classList.remove("is-zoomed");
+          });
         const openInNewPane =
           this.persistenceManager.getGlobalSettings().openRandomInNewTab;
         await openRandomFile(this.app, openInNewPane);
@@ -207,9 +215,11 @@ export default class DynamicViewsPlugin extends Plugin {
       name: "Shuffle bases view",
       callback: () => {
         // Close any zoomed images
-        document.querySelectorAll(".image-embed.is-zoomed").forEach((el) => {
-          el.classList.remove("is-zoomed");
-        });
+        document
+          .querySelectorAll(".dynamic-views-image-embed.is-zoomed")
+          .forEach((el) => {
+            el.classList.remove("is-zoomed");
+          });
         toggleShuffleActiveView(this.app);
       },
     });

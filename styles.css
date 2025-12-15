@@ -337,34 +337,34 @@ settings:
         level: 2
         collapsed: true
     -
-        id: dynamic-views-image-zoom-disabled
+        id: dynamic-views-image-viewer-disabled
         title: Disable image viewer
-        description: Disable the image viewer feature entirely
+        description: Disable image viewer feature
         type: class-toggle
     -
         id: dynamic-views-zoom-disabled
-        title: Disable pinch/gesture zoom
-        description: Disable pinch-to-zoom and pan gestures on enlarged images
+        title: Disable pan & zoom
+        description: Disable pinch-to-zoom and pan gestures
         type: class-toggle
     -
         id: dynamic-views-scroll-zoom-disabled
-        title: Require Ctrl to scroll zoom
-        description: Only allow scroll zoom when holding Ctrl (desktop)
+        title: Hold Ctrl/Cmd to scroll zoom
+        description: Only scroll zoom when holding Ctrl/Cmd
         type: class-toggle
     -
-        id: dynamic-views-zoom-fullscreen
-        title: Fullscreen zoom (desktop)
-        description: Open zoomed images in fullscreen
+        id: dynamic-views-image-viewer-fullscreen
+        title: Open in fullscreen (desktop)
+        description: Open images in fullscreen on desktop
         type: class-toggle
         default: false
     -
-        id: dynamic-views-zoom-close-on-click
+        id: dynamic-views-image-viewer-close-on-click
         title: Close when losing focus (desktop)
-        description: Close zoomed images when tab loses focus (handled via JS, no CSS rule)
+        description: Close image viewer when clicking outside (desktop only)
         type: class-toggle
         default: false
     -
-        id: dynamic-views-zoom-sensitivity
+        id: dynamic-views-zoom-sensitivity-desktop
         title: Zoom sensitivity (desktop)
         description: Set how quickly images zoom on desktop
         type: variable-number-slider
@@ -2809,28 +2809,28 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 }
 
 /* Disable container-type and position: relative on ALL ancestors when zoomed */
-body:not(.dynamic-views-image-zoom-disabled) .dynamic-views:has(.is-zoomed),
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled) .dynamic-views:has(.is-zoomed),
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views-grid:has(.is-zoomed),
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views-masonry:has(.is-zoomed),
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .masonry-container:has(.is-zoomed) {
   position: static !important;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .card:has(.is-zoomed) {
   container-type: normal !important;
   position: static !important;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .card:has(.is-zoomed)
   .card-cover,
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .card:has(.is-zoomed)
   .card-thumbnail {
@@ -3106,6 +3106,14 @@ body.dynamic-views-file-type-icon .dynamic-views .card-title-icon {
 body.dynamic-views-file-type-none .dynamic-views .card-title-ext,
 body.dynamic-views-file-type-none .dynamic-views .card-title-icon {
   display: none;
+}
+
+/* Trim outer leading for consistent visual spacing on title text elements */
+.dynamic-views .card-title a,
+.dynamic-views .card-title .card-title-link,
+.dynamic-views .card-title .card-title-text {
+  line-height: var(--line-height-tight);
+  text-box: trim-both cap text;
 }
 
 .dynamic-views .card-title a,
@@ -3384,21 +3392,21 @@ body.dynamic-views-hide-thumbnail-shadow.dynamic-views-show-thumbnail-placeholde
 }
 
 /* Thumbnail expand on click - Toggle mode */
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .card-thumbnail
   img {
   cursor: zoom-in;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .card-thumbnail
   .dynamic-views-image-embed {
   cursor: zoom-in;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .card.image-format-cover
   .card-cover
@@ -3406,13 +3414,13 @@ body:not(.dynamic-views-image-zoom-disabled)
   cursor: zoom-in;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .dynamic-views-image-embed {
   pointer-events: auto;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .dynamic-views-image-embed
   img {
@@ -3421,23 +3429,23 @@ body:not(.dynamic-views-image-zoom-disabled)
 }
 
 /* When image viewer disabled, images inherit card cursor (overrides third-party plugins like Image Toolkit) */
-body.dynamic-views-image-zoom-disabled
+body.dynamic-views-image-viewer-disabled
   .dynamic-views
   .dynamic-views-image-embed,
-body.dynamic-views-image-zoom-disabled
+body.dynamic-views-image-viewer-disabled
   .dynamic-views
   .dynamic-views-image-embed
   img {
   cursor: inherit !important;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .dynamic-views-image-embed.is-zoomed,
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   > .dynamic-views-image-embed.is-zoomed,
-body:not(.dynamic-views-image-zoom-disabled)
-  .workspace-leaf-content
+body:not(.dynamic-views-image-viewer-disabled)
+  .view-content
   > .dynamic-views-image-embed.is-zoomed {
   cursor: zoom-out;
   display: flex;
@@ -3454,44 +3462,64 @@ body:not(.dynamic-views-image-zoom-disabled)
   bottom: 0;
 }
 
-/* Default (constrained to tab): absolute positioning within pane */
-body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
+/* Constrained mode (desktop only, fullscreen toggle off): view-content needs relative positioning */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
+    .dynamic-views-image-viewer-fullscreen
+  )
+  .view-content {
+  position: relative;
+}
+
+/* Constrained mode: overlay styling (desktop, fullscreen toggle off) */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
+    .dynamic-views-image-viewer-fullscreen
+  )
   .dynamic-views
   .dynamic-views-image-embed.is-zoomed,
-body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
-  .workspace-leaf-content
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
+    .dynamic-views-image-viewer-fullscreen
+  )
   > .dynamic-views-image-embed.is-zoomed {
   background: color-mix(
     in srgb,
     var(--background-primary) var(--dynamic-views-overlay-opacity, 90%),
     transparent
   );
-  position: absolute;
-  inset: 0;
 }
 
-/* Fullscreen zoom: fixed positioning over entire viewport
-   Mobile always uses fullscreen mode (forced via JS regardless of setting) */
-body:not(.dynamic-views-image-zoom-disabled).dynamic-views-zoom-fullscreen
+/* Hide mobile navbar when fullscreen image viewer is active (mobile is always fullscreen) */
+body.is-mobile:has(.is-zoomed) .mobile-navbar {
+  display: none;
+}
+
+/* Fullscreen image viewer: mobile (always) or desktop with toggle on */
+body:not(.dynamic-views-image-viewer-disabled).is-mobile
   .dynamic-views
   .dynamic-views-image-embed.is-zoomed,
-body:not(.dynamic-views-image-zoom-disabled).dynamic-views-zoom-fullscreen
+body:not(.dynamic-views-image-viewer-disabled).is-mobile
   > .dynamic-views-image-embed.is-zoomed,
-body:not(.dynamic-views-image-zoom-disabled).is-mobile
+body:not(
+    .dynamic-views-image-viewer-disabled
+  ).dynamic-views-image-viewer-fullscreen:not(.is-mobile)
+  .dynamic-views
+  .dynamic-views-image-embed.is-zoomed,
+body:not(
+    .dynamic-views-image-viewer-disabled
+  ).dynamic-views-image-viewer-fullscreen:not(.is-mobile)
   > .dynamic-views-image-embed.is-zoomed {
   background: var(--background-modifier-cover);
   position: fixed;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .dynamic-views-image-embed.is-zoomed
   img,
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   > .dynamic-views-image-embed.is-zoomed
   img,
-body:not(.dynamic-views-image-zoom-disabled)
-  .workspace-leaf-content
+body:not(.dynamic-views-image-viewer-disabled)
+  .view-content
   > .dynamic-views-image-embed.is-zoomed
   img {
   padding: 0;
@@ -3505,25 +3533,53 @@ body:not(.dynamic-views-image-zoom-disabled)
   border-radius: 0;
 }
 
-/* Desktop only: limit zoomed images to 90% viewport */
-body:not(.dynamic-views-image-zoom-disabled):not(.is-mobile)
+/* Limit zoomed images to 90% viewport (desktop) / 80% (mobile) */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
   .dynamic-views
   .dynamic-views-image-embed.is-zoomed
   img,
-body:not(.dynamic-views-image-zoom-disabled):not(.is-mobile)
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
   > .dynamic-views-image-embed.is-zoomed
   img,
-body:not(.dynamic-views-image-zoom-disabled):not(.is-mobile)
-  .workspace-leaf-content
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
+  .view-content
   > .dynamic-views-image-embed.is-zoomed
   img {
   max-height: 90vh;
+}
+/* Mobile: limit height to 85vh */
+body:not(.dynamic-views-image-viewer-disabled).is-mobile
+  .dynamic-views
+  .dynamic-views-image-embed.is-zoomed
+  img,
+body:not(.dynamic-views-image-viewer-disabled).is-mobile
+  > .dynamic-views-image-embed.is-zoomed
+  img,
+body:not(.dynamic-views-image-viewer-disabled).is-mobile
+  .view-content
+  > .dynamic-views-image-embed.is-zoomed
+  img {
+  max-height: 85vh;
+}
+/* Desktop: also limit width */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
+  .dynamic-views
+  .dynamic-views-image-embed.is-zoomed
+  img,
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
+  > .dynamic-views-image-embed.is-zoomed
+  img,
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
+  .view-content
+  > .dynamic-views-image-embed.is-zoomed
+  img {
   max-width: 90vw;
 }
 
-/* Default (constrained): limit to 90% of pane (not viewport) */
-body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
-  .workspace-leaf-content
+/* Constrained mode (desktop, toggle off): limit to 90% of view */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
+    .dynamic-views-image-viewer-fullscreen
+  )
   > .dynamic-views-image-embed.is-zoomed
   img {
   max-height: 90%;
@@ -3531,7 +3587,7 @@ body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
 }
 
 /* Cover-specific zoom override (higher specificity needed for covers nested in cards) */
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .card.image-format-cover
   .card-cover
@@ -3551,8 +3607,10 @@ body:not(.dynamic-views-image-zoom-disabled)
   bottom: 0;
 }
 
-/* Default (constrained): absolute positioning for covers */
-body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
+/* Constrained mode (desktop, toggle off): absolute positioning for covers */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
+    .dynamic-views-image-viewer-fullscreen
+  )
   .dynamic-views
   .card.image-format-cover
   .card-cover
@@ -3565,8 +3623,15 @@ body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
   position: absolute !important;
 }
 
-/* Fullscreen: fixed positioning for covers */
-body:not(.dynamic-views-image-zoom-disabled).dynamic-views-zoom-fullscreen
+/* Fullscreen: fixed positioning for covers (mobile always, desktop with toggle) */
+body:not(.dynamic-views-image-viewer-disabled).is-mobile
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover
+  .dynamic-views-image-embed.is-zoomed,
+body:not(
+    .dynamic-views-image-viewer-disabled
+  ).dynamic-views-image-viewer-fullscreen:not(.is-mobile)
   .dynamic-views
   .card.image-format-cover
   .card-cover
@@ -3575,7 +3640,7 @@ body:not(.dynamic-views-image-zoom-disabled).dynamic-views-zoom-fullscreen
   position: fixed !important;
 }
 
-body:not(.dynamic-views-image-zoom-disabled)
+body:not(.dynamic-views-image-viewer-disabled)
   .dynamic-views
   .card.image-format-cover
   .card-cover
@@ -3592,19 +3657,38 @@ body:not(.dynamic-views-image-zoom-disabled)
   border-radius: 0;
 }
 
-/* Desktop only: limit zoomed cover images to 90% viewport */
-body:not(.dynamic-views-image-zoom-disabled):not(.is-mobile)
+/* Limit zoomed cover images to 90% viewport (desktop) / 80% (mobile) */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
   .dynamic-views
   .card.image-format-cover
   .card-cover
   .dynamic-views-image-embed.is-zoomed
   img {
   max-height: 90vh;
+}
+/* Mobile: limit height to 85vh */
+body:not(.dynamic-views-image-viewer-disabled).is-mobile
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover
+  .dynamic-views-image-embed.is-zoomed
+  img {
+  max-height: 85vh;
+}
+/* Desktop: also limit width */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover
+  .dynamic-views-image-embed.is-zoomed
+  img {
   max-width: 90vw;
 }
 
-/* Default (constrained): limit cover images to 90% of pane */
-body:not(.dynamic-views-image-zoom-disabled):not(.dynamic-views-zoom-fullscreen)
+/* Constrained mode (desktop, toggle off): limit cover images to 90% of view */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
+    .dynamic-views-image-viewer-fullscreen
+  )
   .dynamic-views
   .card.image-format-cover
   .card-cover
@@ -5015,13 +5099,13 @@ body.dynamic-views-hide-slideshow-indicator
 
 /* Mobile: Larger indicator */
 .is-mobile .dynamic-views .slideshow-indicator {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
 }
 
 .is-mobile .dynamic-views .slideshow-indicator svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 /* Base properties container styles */
@@ -5031,11 +5115,13 @@ body.dynamic-views-hide-slideshow-indicator
     var(--font-ui-small)
   );
   color: var(--text-faint);
-  min-height: 24px;
   line-height: 1.4;
   white-space: nowrap;
   min-width: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Timestamp wrapper - flex container for icon positioning */
@@ -5350,16 +5436,8 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
 }
 
 /* ============================================
-   4-FIELD PROPERTIES SYSTEM
+   PROPERTY ROW SYSTEM
    ============================================ */
-
-.dynamic-views .card-properties.properties-4field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  grid-template-columns: unset;
-  min-height: auto;
-}
 
 .dynamic-views .property-row {
   display: flex;
@@ -6162,9 +6240,10 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .dynamic-views
     .card-title
     :is(a, .card-title-link):hover {
-    color: var(
-      --dynamic-views-title-color-custom-hover,
-      var(--dynamic-views-title-color-custom, var(--text-normal))
+    color: color-mix(
+      in hsl,
+      var(--dynamic-views-title-color-custom, var(--text-normal)),
+      white 15%
     );
   }
 
@@ -6228,9 +6307,10 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .dynamic-views
     .card-subtitle
     a:hover {
-    color: var(
-      --dynamic-views-subtitle-color-custom-hover,
-      var(--dynamic-views-subtitle-color-custom, var(--text-faint))
+    color: color-mix(
+      in hsl,
+      var(--dynamic-views-subtitle-color-custom, var(--text-faint)),
+      white 15%
     );
   }
 

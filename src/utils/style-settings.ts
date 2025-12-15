@@ -184,7 +184,10 @@ export function shouldHideEmptyProperties(): boolean {
  * Get zoom sensitivity from Style Settings (desktop)
  */
 export function getZoomSensitivity(): number {
-  return getCSSVariableAsNumber("--dynamic-views-zoom-sensitivity", 0.08);
+  return getCSSVariableAsNumber(
+    "--dynamic-views-zoom-sensitivity-desktop",
+    0.08,
+  );
 }
 
 /**
@@ -192,6 +195,13 @@ export function getZoomSensitivity(): number {
  */
 export function getZoomSensitivityMobile(): number {
   return getCSSVariableAsNumber("--dynamic-views-zoom-sensitivity-mobile", 0.5);
+}
+
+/**
+ * Check if scroll zoom requires Ctrl key
+ */
+export function isScrollZoomDisabled(): boolean {
+  return hasBodyClass("dynamic-views-scroll-zoom-disabled");
 }
 
 /**

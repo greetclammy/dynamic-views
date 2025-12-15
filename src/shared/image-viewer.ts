@@ -63,7 +63,7 @@ export function handleImageViewerClick(
   e.stopPropagation();
 
   const isViewerDisabled = document.body.classList.contains(
-    "dynamic-views-image-zoom-disabled",
+    "dynamic-views-image-viewer-disabled",
   );
   if (isViewerDisabled) {
     // When viewer disabled, only open file if openFileAction is "card"
@@ -123,14 +123,40 @@ function openImageViewer(
     return;
   }
 
-  // Append clone to appropriate container (mobile always fullscreen)
+  // Append clone to appropriate container based on fullscreen setting
+  // Mobile: always fullscreen. Desktop: fullscreen if toggle is on
+  const isMobile = app.isMobile;
   const isFullscreen =
-    app.isMobile ||
-    document.body.classList.contains("dynamic-views-zoom-fullscreen");
+    isMobile ||
+    document.body.classList.contains("dynamic-views-image-viewer-fullscreen");
+  let resizeObserver: ResizeObserver | null = null;
   if (!isFullscreen) {
-    const viewContainer = embedEl.closest(".workspace-leaf-content");
-    if (viewContainer) {
-      viewContainer.appendChild(cloneEl);
+    // Use workspace-leaf-content (stable across React re-renders) as observer target
+    const workspaceLeaf = embedEl.closest(".workspace-leaf-content");
+    if (workspaceLeaf) {
+      // Helper to update clone bounds - re-queries view-content each time
+      // since React may recreate it on re-render
+      const updateBounds = () => {
+        const viewContainer = workspaceLeaf.querySelector(".view-content");
+        if (viewContainer) {
+          const rect = viewContainer.getBoundingClientRect();
+          cloneEl.style.top = `${rect.top}px`;
+          cloneEl.style.left = `${rect.left}px`;
+          cloneEl.style.width = `${rect.width}px`;
+          cloneEl.style.height = `${rect.height}px`;
+        }
+      };
+
+      // Set fixed positioning with bounds matching the container
+      cloneEl.style.inset = "auto"; // Reset inset first
+      cloneEl.style.position = "fixed";
+      updateBounds();
+      // Append to body (not view-content) to survive React re-renders
+      document.body.appendChild(cloneEl);
+
+      // Update bounds when leaf resizes (stable element)
+      resizeObserver = new ResizeObserver(updateBounds);
+      resizeObserver.observe(workspaceLeaf);
     } else {
       document.body.appendChild(cloneEl);
     }
@@ -204,7 +230,6 @@ function openImageViewer(
     }
   };
 
-  const isMobile = document.body.classList.contains("is-mobile");
   if (isMobile) {
     cloneEl.addEventListener("touchstart", onTouchStart, { passive: true });
     cloneEl.addEventListener("touchend", onTouchEnd, { passive: true });
@@ -221,10 +246,13 @@ function openImageViewer(
     }
   };
 
-  // Document-level click closes viewer only if close-on-click enabled
+  // Document-level click closes viewer only if close-on-click enabled (desktop only)
   const onClickOutside = (e: Event) => {
     if (
-      !document.body.classList.contains("dynamic-views-zoom-close-on-click")
+      isMobile ||
+      !document.body.classList.contains(
+        "dynamic-views-image-viewer-close-on-click",
+      )
     ) {
       return;
     }
@@ -261,6 +289,9 @@ function openImageViewer(
     if (isMobile) {
       cloneEl.removeEventListener("touchstart", onTouchStart);
       cloneEl.removeEventListener("touchend", onTouchEnd);
+    }
+    if (resizeObserver) {
+      resizeObserver.disconnect();
     }
   });
 }

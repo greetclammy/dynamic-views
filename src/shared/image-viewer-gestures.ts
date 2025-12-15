@@ -2,10 +2,12 @@
  * Image viewer zoom/pan gestures using panzoom library
  */
 
+import { Keymap } from "obsidian";
 import Panzoom, { PanzoomObject } from "@panzoom/panzoom";
 import {
   getZoomSensitivity,
   getZoomSensitivityMobile,
+  isScrollZoomDisabled,
 } from "../utils/style-settings";
 
 /** Double-tap detection threshold in ms */
@@ -129,13 +131,12 @@ export function setupImageViewerGestures(
     // Enable wheel zoom on container
     // If scroll zoom disabled, only allow pinch (browser sets ctrlKey for trackpad pinch)
     // Desktop: only zoom when cursor is over the image (not the overlay)
-    const isScrollZoomDisabled = document.body.classList.contains(
-      "dynamic-views-scroll-zoom-disabled",
-    );
+    const scrollZoomDisabled = isScrollZoomDisabled();
     const wheelHandler = (e: WheelEvent) => {
       // Desktop: ignore wheel events on overlay (only zoom when cursor over image)
       if (!isMobile && e.target !== imgEl) return;
-      if (isScrollZoomDisabled && !e.ctrlKey) return;
+      // Require Mod key (Cmd on Mac, Ctrl on Windows/Linux) if scroll zoom disabled
+      if (scrollZoomDisabled && !Keymap.isModifier(e, "Mod")) return;
       panzoomInstance!.zoomWithWheel(e);
     };
     container.addEventListener("wheel", wheelHandler, WHEEL_OPTIONS);
@@ -203,15 +204,15 @@ export function setupImageViewerGestures(
   return () => {
     if (panzoomInstance) {
       const extContainer = container as HTMLElement & {
-        __pinchHandler?: (e: WheelEvent) => void;
+        __wheelHandler?: (e: WheelEvent) => void;
       };
-      if (extContainer.__pinchHandler) {
+      if (extContainer.__wheelHandler) {
         container.removeEventListener(
           "wheel",
-          extContainer.__pinchHandler,
+          extContainer.__wheelHandler,
           WHEEL_OPTIONS,
         );
-        delete extContainer.__pinchHandler;
+        delete extContainer.__wheelHandler;
       } else {
         container.removeEventListener(
           "wheel",

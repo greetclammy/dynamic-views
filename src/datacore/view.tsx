@@ -1,4 +1,5 @@
 import { App, TFile, Plugin, Keymap } from "obsidian";
+import type { PaneType } from "obsidian";
 import {
   Settings,
   UIState,
@@ -1795,11 +1796,11 @@ export function View({
   );
 
   const handleCardClick = dc.useCallback(
-    (path: string, newLeaf: boolean) => {
+    (path: string, paneType: PaneType | boolean) => {
       const file = app.vault.getAbstractFileByPath(path);
       if (file instanceof TFile) {
         if (settings.openFileAction === "card") {
-          void app.workspace.getLeaf(newLeaf).openFile(file);
+          void app.workspace.getLeaf(paneType).openFile(file);
         } else if (settings.openFileAction === "title") {
           // Only open on title click (handled in CardView)
         }

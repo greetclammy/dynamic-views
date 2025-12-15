@@ -11,6 +11,7 @@ import {
   BasesEntry,
   Scope,
   Menu,
+  Keymap,
 } from "obsidian";
 import { CardData } from "../shared/card-renderer";
 import { resolveBasesProperty } from "../shared/data-transform";
@@ -37,7 +38,7 @@ import {
 } from "../utils/style-settings";
 import { getPropertyLabel, normalizePropertyName } from "../utils/property";
 import { findLinksInText, type ParsedLink } from "../utils/link-parser";
-import { handleImageViewerClick } from "../shared/image-viewer-handler";
+import { handleImageViewerClick } from "../shared/image-viewer";
 import {
   getFileExtInfo,
   getFileTypeIcon,
@@ -160,8 +161,12 @@ export class SharedCardRenderer {
     this.cardAbortControllers.forEach((controller) => controller.abort());
     this.cardAbortControllers = [];
 
-    // Skip zoom cleanup unless close-on-click is enabled (preserve by default)
-    if (document.body.classList.contains("dynamic-views-zoom-close-on-click")) {
+    // Skip viewer cleanup unless close-on-click is enabled (preserve viewer by default)
+    if (
+      document.body.classList.contains(
+        "dynamic-views-image-viewer-close-on-click",
+      )
+    ) {
       this.viewerClones.forEach((clone) => {
         clone.remove();
       });
@@ -453,7 +458,7 @@ export class SharedCardRenderer {
           target.closest(".path-segment");
         const isImage = target.tagName === "IMG";
         const isZoomEnabled = !document.body.classList.contains(
-          "dynamic-views-image-zoom-disabled",
+          "dynamic-views-image-viewer-disabled",
         );
 
         if (
@@ -462,10 +467,10 @@ export class SharedCardRenderer {
           !isPathSegment &&
           !(isImage && isZoomEnabled)
         ) {
-          const newLeaf = e.metaKey || e.ctrlKey;
+          const paneType = Keymap.isModEvent(e);
           const file = this.app.vault.getAbstractFileByPath(card.path);
           if (file instanceof TFile) {
-            void this.app.workspace.getLeaf(newLeaf).openFile(file);
+            void this.app.workspace.getLeaf(paneType || false).openFile(file);
           }
         }
       }
@@ -579,8 +584,12 @@ export class SharedCardRenderer {
           link.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const newLeaf = e.metaKey || e.ctrlKey;
-            void this.app.workspace.openLinkText(card.path, "", newLeaf);
+            const paneType = Keymap.isModEvent(e);
+            void this.app.workspace.openLinkText(
+              card.path,
+              "",
+              paneType || false,
+            );
           });
 
           // Page preview on hover
@@ -591,6 +600,7 @@ export class SharedCardRenderer {
               hoverParent: hoverParent,
               targetEl: link,
               linktext: card.path,
+              sourcePath: card.path,
             });
           });
 
@@ -602,7 +612,7 @@ export class SharedCardRenderer {
         } else {
           // Render as plain text in a span for truncation
           const textSpan = titleEl.createSpan({
-            cls: "card-title-text-content",
+            cls: "card-title-text",
             text: displayTitle,
             attr: { "data-ext": extNoDot },
           });
@@ -654,6 +664,51 @@ export class SharedCardRenderer {
           )
         ) {
           setupElementScrollGradient(titleEl, signal);
+        }
+
+        // Sync container height to match text-box trimmed text
+        if (textEl) {
+          let lastWidth = 0;
+          let synced = false;
+
+          const syncHeight = () => {
+            if (synced) return;
+            synced = true;
+
+            // Clear previous height to measure natural container height
+            titleEl.style.height = "";
+            const textHeight = textEl.getBoundingClientRect().height;
+            const containerHeight = titleEl.getBoundingClientRect().height;
+
+            if (textHeight > 0) {
+              if (textHeight <= containerHeight) {
+                // Single/few lines: use text height (already trimmed by text-box)
+                console.log(`[titleSync] "${card.title.slice(0, 20)}" single-line: text=${textHeight.toFixed(1)} container=${containerHeight.toFixed(1)} -> ${textHeight.toFixed(1)}`);
+                titleEl.style.height = `${textHeight}px`;
+              } else {
+                // Multi-line clamped: text overflows container, apply fixed trim
+                const lineHeight = parseFloat(
+                  getComputedStyle(textEl).lineHeight,
+                );
+                const trimAmount = lineHeight * 0.1;
+                const newHeight = containerHeight - trimAmount;
+                console.log(`[titleSync] "${card.title.slice(0, 20)}" clamped: text=${textHeight.toFixed(1)} container=${containerHeight.toFixed(1)} -> ${newHeight.toFixed(1)}`);
+                titleEl.style.height = `${newHeight}px`;
+              }
+            }
+          };
+
+          const titleObserver = new ResizeObserver((entries) => {
+            const width = entries[0]?.contentRect.width ?? 0;
+            // Re-sync when width changes (line count may change)
+            if (width > 0 && width !== lastWidth) {
+              lastWidth = width;
+              synced = false;
+              requestAnimationFrame(syncHeight);
+            }
+          });
+          titleObserver.observe(titleEl);
+          this.propertyObservers.push(titleObserver);
         }
       }
 
@@ -1357,14 +1412,10 @@ export class SharedCardRenderer {
 
     // Create containers as needed
     const topPropertiesEl = hasTopRows
-      ? cardEl.createDiv(
-          "card-properties card-properties-top properties-4field",
-        )
+      ? cardEl.createDiv("card-properties card-properties-top")
       : null;
     const bottomPropertiesEl = hasBottomRows
-      ? cardEl.createDiv(
-          "card-properties card-properties-bottom properties-4field",
-        )
+      ? cardEl.createDiv("card-properties card-properties-bottom")
       : null;
 
     // Helper to get the right container for each row
@@ -2111,7 +2162,7 @@ export class SharedCardRenderer {
           : "path-segment file-path-segment";
         const segmentEl = span.createSpan({ cls: segmentClass, text: segment });
 
-        // Make filename segment draggable
+        // Make filename segment draggable and show page preview on hover
         if (isLastSegment) {
           segmentEl.draggable = true;
           segmentEl.addEventListener(
@@ -2125,6 +2176,20 @@ export class SharedCardRenderer {
             },
             { signal },
           );
+          segmentEl.addEventListener(
+            "mouseover",
+            (e: MouseEvent) => {
+              this.app.workspace.trigger("hover-link", {
+                event: e,
+                source: "dynamic-views",
+                hoverParent: { hoverPopover: null },
+                targetEl: segmentEl,
+                linktext: card.path,
+                sourcePath: card.path,
+              });
+            },
+            { signal },
+          );
         }
 
         // Make clickable
@@ -2133,23 +2198,14 @@ export class SharedCardRenderer {
           "click",
           (e) => {
             e.stopPropagation();
-            if (isLastSegment) {
-              // Last segment is filename - open the file
-              const file = this.app.vault.getAbstractFileByPath(card.path);
-              if (file instanceof TFile) {
-                const newLeaf = e.metaKey || e.ctrlKey;
-                void this.app.workspace.getLeaf(newLeaf).openFile(file);
-              }
-            } else {
-              // Folder segment - reveal in file explorer
-              const fileExplorer =
-                this.app.internalPlugins?.plugins?.["file-explorer"];
-              if (fileExplorer?.instance?.revealInFolder) {
-                const folderFile =
-                  this.app.vault.getAbstractFileByPath(cumulativePath);
-                if (folderFile) {
-                  fileExplorer.instance.revealInFolder(folderFile);
-                }
+            // Reveal in file explorer (filename uses full path, folder uses cumulative path)
+            const pathToReveal = isLastSegment ? card.path : cumulativePath;
+            const fileExplorer =
+              this.app.internalPlugins?.plugins?.["file-explorer"];
+            if (fileExplorer?.instance?.revealInFolder) {
+              const file = this.app.vault.getAbstractFileByPath(pathToReveal);
+              if (file) {
+                fileExplorer.instance.revealInFolder(file);
               }
             }
           },

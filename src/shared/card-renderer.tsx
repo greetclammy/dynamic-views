@@ -3,8 +3,8 @@
  * Works with both Bases and Datacore by accepting normalized card data
  */
 
-import type { App } from "obsidian";
-import { TFile, TFolder, setIcon, Menu } from "obsidian";
+import type { App, PaneType } from "obsidian";
+import { TFile, TFolder, setIcon, Menu, Keymap } from "obsidian";
 import type { Settings } from "../types";
 import type { RefObject } from "../datacore/types";
 import {
@@ -32,7 +32,7 @@ import {
   handleJsxImageError,
   handleImageLoad,
 } from "./image-loader";
-import { handleImageViewerClick } from "./image-viewer-handler";
+import { handleImageViewerClick } from "./image-viewer";
 import {
   createSlideshowNavigator,
   setupImagePreload,
@@ -79,7 +79,7 @@ function renderFileExt(extInfo: { ext: string } | null) {
  * Truncates title text while keeping extension visible at end.
  */
 function setupTitleTruncation(titleEl: HTMLElement, signal: AbortSignal): void {
-  const textEl = titleEl.querySelector<HTMLElement>(".card-title-text-content");
+  const textEl = titleEl.querySelector<HTMLElement>(".card-title-text");
   const extEl = titleEl.querySelector<HTMLElement>(".card-title-ext-suffix");
 
   if (!textEl) return;
@@ -175,8 +175,8 @@ function renderLink(link: ParsedLink, app: App): JSX.Element {
           onClick={(e: MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
-            const newLeaf = e.metaKey || e.ctrlKey;
-            void app.workspace.openLinkText(link.url, "", newLeaf);
+            const paneType = Keymap.isModEvent(e);
+            void app.workspace.openLinkText(link.url, "", paneType || false);
           }}
         >
           {link.caption}
@@ -193,8 +193,8 @@ function renderLink(link: ParsedLink, app: App): JSX.Element {
         onClick={(e: MouseEvent) => {
           e.preventDefault();
           e.stopPropagation();
-          const newLeaf = e.metaKey || e.ctrlKey;
-          void app.workspace.openLinkText(link.url, "", newLeaf);
+          const paneType = Keymap.isModEvent(e);
+          void app.workspace.openLinkText(link.url, "", paneType || false);
         }}
         onDragStart={(e: DragEvent) => {
           e.stopPropagation();
@@ -427,7 +427,7 @@ export interface CardRendererProps {
   containerRef: RefObject<HTMLElement | null>;
   updateLayoutRef: RefObject<(() => void) | null>;
   app: App;
-  onCardClick?: (path: string, newLeaf: boolean) => void;
+  onCardClick?: (path: string, paneType: PaneType | boolean) => void;
   onFocusChange?: (index: number) => void;
 }
 
@@ -911,6 +911,20 @@ function renderProperty(
                             }
                           }
                         }}
+                        onMouseOver={
+                          isLastSegment
+                            ? (e: MouseEvent) => {
+                                app.workspace.trigger("hover-link", {
+                                  event: e,
+                                  source: "dynamic-views",
+                                  hoverParent: { hoverPopover: null },
+                                  targetEl: e.currentTarget,
+                                  linktext: card.path,
+                                  sourcePath: card.path,
+                                });
+                              }
+                            : undefined
+                        }
                         onContextMenu={(e: MouseEvent) => {
                           e.stopPropagation();
                           e.preventDefault();
@@ -1120,7 +1134,7 @@ interface CardProps {
   containerRef: RefObject<HTMLElement | null>;
   updateLayoutRef: RefObject<(() => void) | null>;
   app: App;
-  onCardClick?: (path: string, newLeaf: boolean) => void;
+  onCardClick?: (path: string, paneType: PaneType | boolean) => void;
   onFocusChange?: (index: number) => void;
 }
 
@@ -1312,7 +1326,7 @@ function Card({
             target.closest(".path-segment");
           const isImage = target.tagName === "IMG";
           const isZoomEnabled = !document.body.classList.contains(
-            "dynamic-views-image-zoom-disabled",
+            "dynamic-views-image-viewer-disabled",
           );
 
           if (
@@ -1321,11 +1335,11 @@ function Card({
             !isPathSegment &&
             !(isImage && isZoomEnabled)
           ) {
-            const newLeaf = e.metaKey || e.ctrlKey;
+            const paneType = Keymap.isModEvent(e);
             if (onCardClick) {
-              onCardClick(card.path, newLeaf);
+              onCardClick(card.path, paneType || false);
             } else {
-              void app.workspace.openLinkText(card.path, "", newLeaf);
+              void app.workspace.openLinkText(card.path, "", paneType || false);
             }
           }
         }
@@ -1339,11 +1353,11 @@ function Card({
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           if (effectiveOpenFileAction === "card") {
-            const newLeaf = e.metaKey || e.ctrlKey;
+            const paneType = Keymap.isModEvent(e);
             if (onCardClick) {
-              onCardClick(card.path, newLeaf);
+              onCardClick(card.path, paneType || false);
             } else {
-              void app.workspace.openLinkText(card.path, "", newLeaf);
+              void app.workspace.openLinkText(card.path, "", paneType || false);
             }
           }
         } else if (isArrowKey(e.key)) {
@@ -1456,8 +1470,12 @@ function Card({
                   onDragStart={handleDrag}
                   onClick={(e: MouseEvent) => {
                     e.stopPropagation();
-                    const newLeaf = e.metaKey || e.ctrlKey;
-                    void app.workspace.openLinkText(card.path, "", newLeaf);
+                    const paneType = Keymap.isModEvent(e);
+                    void app.workspace.openLinkText(
+                      card.path,
+                      "",
+                      paneType || false,
+                    );
                   }}
                   onContextMenu={(e: MouseEvent) => {
                     e.stopPropagation();
@@ -1478,18 +1496,14 @@ function Card({
                     });
                   }}
                 >
-                  <span className="card-title-text-content">
-                    {displayTitle}
-                  </span>
+                  <span className="card-title-text">{displayTitle}</span>
                   {extNoDot && (
                     <span className="card-title-ext-suffix">.{extNoDot}</span>
                   )}
                 </span>
               ) : (
                 <>
-                  <span className="card-title-text-content">
-                    {displayTitle}
-                  </span>
+                  <span className="card-title-text">{displayTitle}</span>
                   {extNoDot && (
                     <span className="card-title-ext-suffix">.{extNoDot}</span>
                   )}
@@ -2291,12 +2305,12 @@ function Card({
         return (
           <>
             {topRows.length > 0 && (
-              <div className="card-properties card-properties-top properties-4field">
+              <div className="card-properties card-properties-top">
                 {topRows}
               </div>
             )}
             {bottomRows.length > 0 && (
-              <div className="card-properties card-properties-bottom properties-4field">
+              <div className="card-properties card-properties-bottom">
                 {bottomRows}
               </div>
             )}

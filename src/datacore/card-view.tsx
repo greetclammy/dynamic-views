@@ -1,6 +1,6 @@
 import type { Settings } from "../types";
 import { CardRenderer, type CardData } from "../shared/card-renderer";
-import type { App } from "obsidian";
+import type { App, PaneType } from "obsidian";
 
 interface CardViewProps {
   cards: CardData[];
@@ -13,7 +13,7 @@ interface CardViewProps {
   containerRef: { current: HTMLElement | null };
   updateLayoutRef: { current: (() => void) | null };
   app: App;
-  onCardClick?: (path: string, newLeaf: boolean) => void;
+  onCardClick?: (path: string, paneType: PaneType | boolean) => void;
   onFocusChange?: (index: number) => void;
 }
 
