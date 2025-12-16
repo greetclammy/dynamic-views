@@ -21,7 +21,7 @@ Add to note via Command palette > Dynamic Views: Insert query.
 - Native look and feel.
 - Fetch text preview from first few lines of notes.
 - Fetch image preview from note content or property.
-- View image previews in fullscreen image viewer.
+- Open image previews in fullscreen image viewer.
 - Display up to 14 properties in each card — either stacked or side-by-side.
 - Infinite scroll: cards load while scrolling rather than all at once.
 - Optimized performance.
