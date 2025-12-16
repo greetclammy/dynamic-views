@@ -19,12 +19,15 @@ Add to note via Command palette > Dynamic Views: Insert query.
 ## ⚡️ Features
 
 - Native look and feel.
-- Fetch image preview from note content or property.
 - Fetch text preview from first few lines of notes.
-- Infinite scroll: items load as you scroll rather than all at once.
+- Fetch image preview from note content or property.
+- View image previews in fullscreen image viewer.
+- Display up to 14 properties in each card — either stacked or side-by-side.
+- Infinite scroll: cards load as while scroll rather than all at once.
 - Optimized performance.
-- Fine-tuned customization, including [Style Settings](https://obsidian.md/plugins?id=obsidian-style-settings) support.
-- Full keyboard navigation.
+- Extensive customization options, including [Style Settings](https://obsidian.md/plugins?id=obsidian-style-settings) support.
+- Full keyboard navigation support.
+
 
 ## ✅ Install
 
