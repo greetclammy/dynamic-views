@@ -198,13 +198,6 @@ export function getZoomSensitivityMobile(): number {
 }
 
 /**
- * Check if scroll zoom requires Ctrl key
- */
-export function isScrollZoomDisabled(): boolean {
-  return hasBodyClass("dynamic-views-scroll-zoom-disabled");
-}
-
-/**
  * Check if slideshow is enabled (default behavior)
  * Returns false when user enables "Disable slideshow"
  */

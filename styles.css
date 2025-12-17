@@ -337,16 +337,11 @@ settings:
         description: Disable pinch-to-zoom and pan gestures
         type: class-toggle
     -
-        id: dynamic-views-scroll-zoom-disabled
-        title: Hold Ctrl/Cmd to scroll zoom
-        description: Only scroll zoom when holding Ctrl/Cmd
-        type: class-toggle
-    -
         id: dynamic-views-image-viewer-fullscreen
         title: Open in fullscreen (desktop)
         description: Open images in fullscreen on desktop
         type: class-toggle
-        default: false
+        default: true
     -
         id: dynamic-views-image-viewer-close-on-click
         title: Close when losing focus (desktop)
@@ -1350,6 +1345,8 @@ body {
   background-color: var(--dynamic-views-view-background);
 }
 
+/* Bases container - no scroll styling, parent handles scrolling */
+
 /* ============================================
    FOCUS & ACCESSIBILITY STYLES
    ============================================ */
@@ -1779,7 +1776,7 @@ body.dynamic-views-disable-toolbar-shadow
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--size-2-2);
   transition: all var(--anim-duration-fast);
   color: var(--text-normal);
   box-shadow: none;
@@ -1843,7 +1840,7 @@ body.dynamic-views-disable-toolbar-shadow
   position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--size-2-2);
   padding: 6px 8px;
   border-radius: 6px;
   cursor: pointer;
@@ -2382,7 +2379,7 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
 .dynamic-views .setting-item {
   display: flex !important;
   flex-direction: column !important;
-  gap: 4px;
+  gap: var(--size-2-2);
   align-items: flex-start !important;
   width: 100%;
   max-width: 100%;
@@ -2399,7 +2396,7 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
 .dynamic-views .setting-item-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--size-2-2);
   text-align: left !important;
 }
 
@@ -2685,7 +2682,11 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 /* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
 .bases-view[data-view-type="dynamic-views-grid"] .dynamic-views-grid .card,
-.dynamic-views .dynamic-views-grid .card {
+.dynamic-views .dynamic-views-grid .card,
+.workspace-leaf-content[data-type="bases"]
+  .dynamic-views
+  .dynamic-views-grid
+  .card {
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -2776,11 +2777,11 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 /* Group headers - span full grid width */
 .dynamic-views-grid .bases-group-heading {
   grid-column: 1 / -1;
-  padding: var(--size-4-1) 0 0;
+  padding: var(--size-2-2) 0 0;
 }
 
 .dynamic-views-masonry .bases-group-heading {
-  padding: var(--size-4-1) 0 var(--size-4-2);
+  padding: var(--size-2-2) 0 var(--size-4-2);
 }
 
 .dynamic-views .card {
@@ -3018,7 +3019,7 @@ body.dynamic-views-file-type-ext
 
 .dynamic-views .card-title-icon {
   float: left;
-  margin-right: var(--size-4-1);
+  margin-right: var(--size-2-2);
   display: none;
 }
 
@@ -3044,7 +3045,7 @@ body.dynamic-views-file-type-badge .dynamic-views .card-title-ext {
   pointer-events: none;
   cursor: default;
   float: left;
-  margin-right: var(--size-4-1);
+  margin-right: var(--size-2-2);
 }
 
 body.dynamic-views-file-type-badge .dynamic-views .card-title-ext::before {
@@ -3410,7 +3411,7 @@ body.dynamic-views-image-viewer-disabled
 /* Image viewer clone (appended to body with is-zoomed class) */
 body:not(.dynamic-views-image-viewer-disabled)
   > .dynamic-views-image-embed.is-zoomed {
-  cursor: zoom-out;
+  cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3430,11 +3431,16 @@ body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
     .dynamic-views-image-viewer-fullscreen
   )
   > .dynamic-views-image-embed.is-zoomed {
-  background: color-mix(
-    in srgb,
-    var(--background-primary) var(--dynamic-views-overlay-opacity, 90%),
-    transparent
-  );
+  background: var(--background-modifier-cover);
+  transition: background var(--anim-duration-fast) ease;
+}
+
+/* Constrained mode: solid background when maximized */
+body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
+    .dynamic-views-image-viewer-fullscreen
+  )
+  > .dynamic-views-image-embed.is-zoomed.is-maximized {
+  background: var(--background-primary);
 }
 
 /* Hide mobile navbar when fullscreen image viewer is active (mobile is always fullscreen) */
@@ -3451,6 +3457,17 @@ body:not(
   > .dynamic-views-image-embed.is-zoomed {
   background: var(--background-modifier-cover);
   position: fixed;
+  transition: background var(--anim-duration-fast) ease;
+}
+
+/* Fullscreen mode: solid background when maximized */
+body:not(.dynamic-views-image-viewer-disabled).is-mobile
+  > .dynamic-views-image-embed.is-zoomed.is-maximized,
+body:not(
+    .dynamic-views-image-viewer-disabled
+  ).dynamic-views-image-viewer-fullscreen:not(.is-mobile)
+  > .dynamic-views-image-embed.is-zoomed.is-maximized {
+  background: var(--background-primary);
 }
 
 body:not(.dynamic-views-image-viewer-disabled)
@@ -3467,22 +3484,17 @@ body:not(.dynamic-views-image-viewer-disabled)
   border-radius: 0;
 }
 
-/* Limit zoomed images to 90% viewport (desktop) / 85vh (mobile) */
+/* Limit zoomed images to 90% viewport (desktop) / 80vh (mobile) */
 body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
   > .dynamic-views-image-embed.is-zoomed
   img {
   max-height: 90vh;
+  max-width: 90vw;
 }
 body:not(.dynamic-views-image-viewer-disabled).is-mobile
   > .dynamic-views-image-embed.is-zoomed
   img {
   max-height: 80vh;
-}
-/* Desktop: also limit width */
-body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile)
-  > .dynamic-views-image-embed.is-zoomed
-  img {
-  max-width: 90vw;
 }
 
 /* Constrained mode (desktop, toggle off): limit to 90% of view */
@@ -4808,11 +4820,11 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
 }
 
 .dynamic-views .slideshow-nav-left {
-  left: 4px;
+  left: var(--size-2-2);
 }
 
 .dynamic-views .slideshow-nav-right {
-  right: 4px;
+  right: var(--size-2-2);
 }
 
 /* Show arrows on hover */
@@ -4918,7 +4930,7 @@ body.dynamic-views-hide-slideshow-indicator
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--size-2-2);
 }
 
 /* Timestamp wrapper - flex container for icon positioning */
@@ -4932,10 +4944,11 @@ body.dynamic-views-hide-slideshow-indicator
 .dynamic-views .timestamp-icon {
   display: inline-flex;
   flex-shrink: 0;
+  align-self: center;
   opacity: 0.7;
   width: 1em;
   height: 1em;
-  margin-right: var(--size-4-1);
+  margin-right: var(--size-2-2);
 }
 
 /* Edge positioning is default: even fields show icon on right ONLY in side-by-side */
@@ -4953,7 +4966,7 @@ body.dynamic-views-hide-slideshow-indicator
   .timestamp-icon {
   order: 2;
   margin-right: 0;
-  margin-left: var(--size-4-1);
+  margin-left: var(--size-2-2);
 }
 
 /* Hide icon when "hide" option selected */
@@ -4963,8 +4976,9 @@ body.dynamic-views-timestamp-icon-hide .dynamic-views .timestamp-icon {
 
 /* When icon is on right for all fields */
 body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
+  order: 2;
   margin-right: 0;
-  margin-left: var(--size-4-1);
+  margin-left: var(--size-2-2);
 }
 
 /* Center positioning: odd fields show icon on right ONLY in side-by-side */
@@ -4983,7 +4997,7 @@ body.dynamic-views-timestamp-icon-center
   .timestamp-icon {
   order: 2;
   margin-right: 0;
-  margin-left: var(--size-4-1);
+  margin-left: var(--size-2-2);
 }
 
 /* Center positioning: even fields show icon on left ONLY in side-by-side */
@@ -5001,7 +5015,7 @@ body.dynamic-views-timestamp-icon-center
   )
   .timestamp-icon {
   order: 0;
-  margin-right: var(--size-4-1);
+  margin-right: var(--size-2-2);
   margin-left: 0;
 }
 
@@ -5020,13 +5034,8 @@ body.dynamic-views-timestamp-icon-left
   )
   .timestamp-icon {
   order: 0;
-  margin-right: var(--size-4-1);
+  margin-right: var(--size-2-2);
   margin-left: 0;
-}
-
-/* Right positioning: all icons on right */
-body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
-  order: 2;
 }
 
 .dynamic-views .timestamp-icon svg {
@@ -5038,7 +5047,7 @@ body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
 .dynamic-views .tags-wrapper {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--size-2-2);
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 0;
@@ -5239,7 +5248,7 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
 .dynamic-views .property-row {
   display: flex;
   flex-direction: column;
-  gap: var(--size-4-1);
+  gap: var(--size-2-2);
   width: 100%;
   min-width: 0;
 }
@@ -5333,7 +5342,7 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
   .property-label-inline {
   order: 0;
   padding-left: 0;
-  padding-right: var(--size-4-1);
+  padding-right: var(--size-2-2);
 }
 
 /* Right alignment for full-row properties with inline labels - value only */
@@ -5361,7 +5370,7 @@ body.dynamic-views-full-row-align-right
 
 /* Gap between inline property label and content */
 .dynamic-views .property-field:has(.property-label-inline) {
-  gap: var(--size-4-1);
+  gap: var(--size-2-2);
 }
 
 /* Vertical layout when property labels are on top */
@@ -6425,7 +6434,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .property-field-13
   )
   .property-label-inline {
-  padding-right: var(--size-4-1);
+  padding-right: var(--size-2-2);
 }
 
 /* Even fields (right side) - label padding and order */
@@ -6441,7 +6450,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .property-field-14
   )
   .property-label-inline {
-  padding-left: var(--size-4-1);
+  padding-left: var(--size-2-2);
   order: 2;
 }
 
@@ -6497,7 +6506,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 .dynamic-views .property-content {
   display: flex;
   align-items: center;
-  gap: var(--size-4-1);
+  gap: var(--size-2-2);
   flex-shrink: 0;
   white-space: nowrap;
   min-height: var(--dynamic-views-property-content-height, 20px);
@@ -6669,7 +6678,7 @@ body.dynamic-views-paired-prop-align-left
   .property-label-inline {
   order: 0;
   padding-left: 0;
-  padding-right: var(--size-4-1);
+  padding-right: var(--size-2-2);
 }
 
 /* Stacked layout */
@@ -6929,11 +6938,11 @@ body.dynamic-views-no-fade-truncated-text
 
 .dynamic-views .list-properties {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--size-2-2);
   align-items: center;
   flex-wrap: wrap;
   font-size: 0.9em;
-  margin-left: 8px;
+  margin-left: var(--size-4-2);
 }
 
 .dynamic-views .list-properties.list-path {
@@ -7006,7 +7015,7 @@ body.dynamic-views-no-fade-truncated-text
   .results-count-wrapper-compact {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--size-2-2);
     cursor: pointer;
     padding: 6px 8px;
     position: relative;
@@ -7097,7 +7106,7 @@ body.dynamic-views-no-fade-truncated-text
   /* Settings panel responsive */
   .dynamic-views .setting-item-text {
     flex-direction: column !important;
-    gap: 4px;
+    gap: var(--size-2-2);
   }
 
   .dynamic-views .setting-item-text .setting-item-info {
@@ -7163,7 +7172,7 @@ body.dynamic-views-no-fade-truncated-text
   width: 100%;
   margin-top: 20px;
   margin-bottom: 0;
-  padding: 4px 0;
+  padding: var(--size-2-2) 0;
   overflow: visible;
 }
 
@@ -7171,7 +7180,7 @@ body.dynamic-views-no-fade-truncated-text
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--size-4-2);
   line-height: 1;
 }
 

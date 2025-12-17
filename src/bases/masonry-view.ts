@@ -39,15 +39,8 @@ import type { Settings } from "../types";
 
 export const MASONRY_VIEW_TYPE = "dynamic-views-masonry";
 
-// Module-level storage for first visible card - survives view instance recreation
-// Keyed by leaf.id (stable across tab switches)
-interface SavedScrollState {
-  path: string;
-  offset: number;
-  width: number;
-  height: number;
-}
-const savedScrollState = new Map<string, SavedScrollState>();
+// Simple scroll restoration: stores scrollTop by leafId
+const scrollPositions = new Map<string, number>();
 
 export class DynamicViewsMasonryView extends BasesView {
   readonly type = MASONRY_VIEW_TYPE;
@@ -91,10 +84,6 @@ export class DynamicViewsMasonryView extends BasesView {
   private lastLayoutResult: MasonryLayoutResult | null = null;
   // Skip ResizeObserver after incremental layout (height change is expected)
   private skipNextResize: boolean = false;
-  // Track scroll state for restoration
-  private savedState: SavedScrollState | null = null;
-  // Flag to skip scroll save during tab switch (prevents corrupted saves)
-  private isTabSwitching: boolean = false;
 
   /** Calculate batch size based on current column count */
   private getBatchSize(settings: Settings): number {
@@ -136,12 +125,12 @@ export class DynamicViewsMasonryView extends BasesView {
 
   constructor(controller: QueryController, scrollEl: HTMLElement) {
     super(controller);
-    // Store scroll parent reference for scroll preservation across tab switches
+    // Store scroll parent reference
     this.scrollEl = scrollEl;
-    // Get stable leaf ID for scroll position storage
+    // Get stable leaf ID
     const leaf = this.app.workspace.getLeaf();
     this.leafId = (leaf as unknown as { id: string })?.id ?? "";
-    // Create container inside scroll parent (critical for embedded views)
+    // Create container inside scroll parent
     this.containerEl = scrollEl.createDiv({
       cls: "dynamic-views dynamic-views-bases-container",
     });
@@ -183,93 +172,48 @@ export class DynamicViewsMasonryView extends BasesView {
     );
     this.register(cleanupKeyboard);
 
-    // Listen for tab switches to prevent scroll save during reset
+    // Hide/show scroll container on tab switch to prevent flash
     this.registerEvent(
-      this.app.workspace.on("active-leaf-change", () => {
-        this.isTabSwitching = true;
-        // Re-enable after scroll reset completes
-        setTimeout(() => {
-          this.isTabSwitching = false;
-        }, 100);
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        const leafId = (leaf as unknown as { id: string })?.id;
+        if (leafId === this.leafId) {
+          // Switching TO - restore scroll then show
+          const saved = scrollPositions.get(this.leafId);
+          if (saved !== undefined && saved > 0) {
+            this.scrollEl.scrollTop = saved;
+          }
+          this.scrollEl.style.visibility = "";
+          this.scrollEl.style.overflow = "";
+        } else {
+          // Switching AWAY - hide to prevent flash
+          this.scrollEl.style.visibility = "hidden";
+          this.scrollEl.style.overflow = "hidden";
+        }
       }),
     );
 
-    // Track first visible card on scroll (more reliable than pixel position)
-    const scrollSaveHandler = () => {
-      // Skip save during tab switch (scroll resets to 0 during switch, would corrupt saved position)
-      if (
-        !this.masonryContainer ||
-        this.scrollEl.scrollTop === 0 ||
-        this.isTabSwitching
-      )
+    // Dedicated scroll tracking for scroll preservation
+    const scrollTrackingHandler = () => {
+      const currentSaved = scrollPositions.get(this.leafId) ?? 0;
+      const newScroll = this.scrollEl.scrollTop;
+
+      // Detect sudden reset (Obsidian tab switch) and restore
+      if (newScroll < currentSaved * 0.1 && currentSaved > 100) {
+        this.scrollEl.scrollTop = currentSaved;
         return;
-
-      // Find topmost-leftmost visible card
-      const cards =
-        this.masonryContainer.querySelectorAll<HTMLElement>(".card");
-      const scrollTop = this.scrollEl.scrollTop;
-      const viewportBottom = scrollTop + this.scrollEl.clientHeight;
-
-      let firstVisible: { path: string; top: number; left: number } | null =
-        null;
-
-      for (const card of cards) {
-        const rect = card.getBoundingClientRect();
-        const containerRect = this.scrollEl.getBoundingClientRect();
-        const cardTop = rect.top - containerRect.top + scrollTop;
-        const cardBottom = cardTop + rect.height;
-
-        // Card is visible if any part is in viewport
-        if (cardBottom > scrollTop && cardTop < viewportBottom) {
-          const path = card.dataset.path;
-          if (path) {
-            if (
-              !firstVisible ||
-              cardTop < firstVisible.top ||
-              (cardTop === firstVisible.top && rect.left < firstVisible.left)
-            ) {
-              firstVisible = { path, top: cardTop, left: rect.left };
-            }
-          }
-        }
       }
 
-      if (firstVisible) {
-        const offset = scrollTop - firstVisible.top;
-        const state: SavedScrollState = {
-          path: firstVisible.path,
-          offset,
-          width: this.scrollEl.clientWidth,
-          height: this.scrollEl.clientHeight,
-        };
-        this.savedState = state;
-        if (this.leafId) {
-          savedScrollState.set(this.leafId, state);
-        }
-        console.log(
-          "MASONRY save - card:",
-          firstVisible.path,
-          "offset:",
-          offset,
-          "dims:",
-          state.width,
-          "x",
-          state.height,
-        );
+      // Normal tracking
+      if (newScroll >= currentSaved * 0.5 || currentSaved === 0) {
+        scrollPositions.set(this.leafId, newScroll);
       }
     };
-    this.scrollEl.addEventListener("scroll", scrollSaveHandler, {
+    this.scrollEl.addEventListener("scroll", scrollTrackingHandler, {
       passive: true,
     });
     this.register(() =>
-      this.scrollEl.removeEventListener("scroll", scrollSaveHandler),
+      this.scrollEl.removeEventListener("scroll", scrollTrackingHandler),
     );
-
-    // Restore savedState from Map for cross-tab-switch restoration
-    const saved = this.leafId ? savedScrollState.get(this.leafId) : null;
-    if (saved) {
-      this.savedState = saved;
-    }
   }
 
   onload(): void {
@@ -280,92 +224,18 @@ export class DynamicViewsMasonryView extends BasesView {
 
   onDataUpdated(): void {
     void (async () => {
-      // Guard: return early if data not yet initialized (race condition with MutationObserver)
+      // Guard: return early if data not yet initialized
       if (!this.data) {
         return;
       }
 
-      // Guard: skip if batch loading in progress to prevent race conditions
-      // The batch append will handle rendering new entries
+      // Guard: skip if batch loading in progress
       if (this.isLoading) {
         return;
       }
 
-      // Guard: skip full re-render if content already exists (returning to tab)
-      if (this.masonryContainer?.children.length && this.savedState) {
-        const dimsMatch =
-          this.scrollEl.clientWidth === this.savedState.width &&
-          this.scrollEl.clientHeight === this.savedState.height;
-
-        console.log(
-          "MASONRY onDataUpdated - hasContainer: true, savedCard:",
-          this.savedState.path,
-          "dimsMatch:",
-          dimsMatch,
-        );
-
-        // Hide scrollbar during restoration to prevent flicker
-        this.scrollEl.classList.add("dynamic-views-restoring-scroll");
-
-        if (dimsMatch) {
-          // Dims unchanged - positions valid, restore immediately with offset
-          const card = this.masonryContainer.querySelector<HTMLElement>(
-            `.card[data-path="${CSS.escape(this.savedState.path)}"]`,
-          );
-          if (card) {
-            const containerRect = this.scrollEl.getBoundingClientRect();
-            const cardRect = card.getBoundingClientRect();
-            const cardTop =
-              cardRect.top - containerRect.top + this.scrollEl.scrollTop;
-            const targetScroll = cardTop + this.savedState.offset;
-            this.scrollEl.scrollTop = targetScroll;
-          }
-          // Show scrollbar after restoration
-          requestAnimationFrame(() => {
-            this.scrollEl.classList.remove("dynamic-views-restoring-scroll");
-          });
-        } else {
-          // Dims changed - must recalculate layout before reading positions
-          // Use double RAF: first RAF waits for resize, second ensures layout applied
-          const savedPath = this.savedState.path;
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              if (!this.masonryContainer || !this.updateLayoutRef.current) {
-                this.scrollEl.classList.remove(
-                  "dynamic-views-restoring-scroll",
-                );
-                return;
-              }
-
-              // Call layout twice - first sets widths, second reads correct heights
-              this.updateLayoutRef.current();
-              void this.masonryContainer.offsetHeight; // Force reflow
-              this.updateLayoutRef.current();
-
-              const card = this.masonryContainer.querySelector<HTMLElement>(
-                `.card[data-path="${CSS.escape(savedPath)}"]`,
-              );
-              if (card) {
-                const containerRect = this.scrollEl.getBoundingClientRect();
-                const cardRect = card.getBoundingClientRect();
-                const cardTop =
-                  cardRect.top - containerRect.top + this.scrollEl.scrollTop;
-                const gap = getCardSpacing(this.containerEl);
-                const maxScroll =
-                  this.scrollEl.scrollHeight - this.scrollEl.clientHeight;
-                const targetScroll = Math.min(
-                  Math.floor(cardTop - gap),
-                  maxScroll,
-                );
-                this.scrollEl.scrollTop = targetScroll;
-              }
-              // Show scrollbar after restoration
-              this.scrollEl.classList.remove("dynamic-views-restoring-scroll");
-            });
-          });
-        }
-        return;
-      }
+      // Get saved scroll position for restoration after render
+      const savedScrollTop = scrollPositions.get(this.leafId) ?? 0;
 
       // Increment render version to cancel any in-flight stale renders
       this.renderVersion++;
@@ -450,8 +320,9 @@ export class DynamicViewsMasonryView extends BasesView {
         return;
       }
 
-      // Save scroll state before clearing DOM
-      const savedStateSnapshot = this.savedState;
+      // Preserve height during clear to prevent parent scroll reset
+      const currentHeight = this.containerEl.scrollHeight;
+      this.containerEl.style.minHeight = `${currentHeight}px`;
 
       // Clear and re-render
       this.containerEl.empty();
@@ -523,80 +394,21 @@ export class DynamicViewsMasonryView extends BasesView {
       // Track state for batch append
       this.previousDisplayedCount = displayedSoFar;
 
-      // Initial layout calculation (c59fe2d timing - no double RAF to prevent flash)
+      // Initial layout calculation
       if (this.updateLayoutRef.current) {
-        // Delay to allow images to start loading
-        this.layoutTimeoutId = setTimeout(() => {
-          if (this.updateLayoutRef.current) {
-            this.updateLayoutRef.current();
-          }
-          // Restore by scrolling to saved card AFTER layout
-          if (savedStateSnapshot && this.masonryContainer) {
-            const card = this.masonryContainer.querySelector<HTMLElement>(
-              `.card[data-path="${CSS.escape(savedStateSnapshot.path)}"]`,
-            );
-            console.log(
-              "MASONRY setTimeout restore - card found:",
-              !!card,
-              "path:",
-              savedStateSnapshot.path,
-            );
-            if (card) {
-              const containerRect = this.scrollEl.getBoundingClientRect();
-              const cardRect = card.getBoundingClientRect();
-              const cardTop =
-                cardRect.top - containerRect.top + this.scrollEl.scrollTop;
-
-              // Check if dimensions changed - determines restore strategy
-              const dimsMatch =
-                this.scrollEl.clientWidth === savedStateSnapshot.width &&
-                this.scrollEl.clientHeight === savedStateSnapshot.height;
-
-              // If dims match, use offset; if dims changed, scroll to card top with gap visible
-              const gap = getCardSpacing(this.containerEl);
-              const maxScroll =
-                this.scrollEl.scrollHeight - this.scrollEl.clientHeight;
-              const targetScroll = dimsMatch
-                ? cardTop + savedStateSnapshot.offset
-                : Math.min(Math.floor(cardTop - gap), maxScroll);
-
-              console.log(
-                "MASONRY setTimeout restore - cardTop:",
-                cardTop,
-                "dimsMatch:",
-                dimsMatch,
-                "target:",
-                targetScroll,
-              );
-              this.scrollEl.scrollTop = targetScroll;
-            }
-          }
-        }, 50);
-      } else if (savedStateSnapshot && this.masonryContainer) {
-        // Fallback: no layout function, try restore anyway
-        const card = this.masonryContainer.querySelector<HTMLElement>(
-          `.card[data-path="${CSS.escape(savedStateSnapshot.path)}"]`,
-        );
-        if (card) {
-          const containerRect = this.scrollEl.getBoundingClientRect();
-          const cardRect = card.getBoundingClientRect();
-          const cardTop =
-            cardRect.top - containerRect.top + this.scrollEl.scrollTop;
-
-          const dimsMatch =
-            this.scrollEl.clientWidth === savedStateSnapshot.width &&
-            this.scrollEl.clientHeight === savedStateSnapshot.height;
-          const gap = getCardSpacing(this.containerEl);
-          const maxScroll =
-            this.scrollEl.scrollHeight - this.scrollEl.clientHeight;
-          this.scrollEl.scrollTop = dimsMatch
-            ? cardTop + savedStateSnapshot.offset
-            : Math.min(Math.floor(cardTop - gap), maxScroll);
-        }
+        this.updateLayoutRef.current();
       }
 
       // Setup infinite scroll outside setTimeout (c59fe2d pattern)
       this.setupInfiniteScroll(allEntries.length, settings);
+
+      // Restore scroll position after render
+      if (savedScrollTop > 0) {
+        this.scrollEl.scrollTop = savedScrollTop;
+      }
+
+      // Remove height preservation now that scroll is restored
+      this.containerEl.style.minHeight = "";
     })();
   }
 
@@ -998,8 +810,7 @@ export class DynamicViewsMasonryView extends BasesView {
   }
 
   private setupInfiniteScroll(totalEntries: number, settings?: Settings): void {
-    // Find the actual scroll container (parent in Bases views)
-    const scrollContainer = this.containerEl.parentElement || this.containerEl;
+    const scrollContainer = this.scrollEl;
     // Clean up existing listeners (don't use this.register() since this method is called multiple times)
     if (this.scrollListener) {
       scrollContainer.removeEventListener("scroll", this.scrollListener);
@@ -1022,7 +833,7 @@ export class DynamicViewsMasonryView extends BasesView {
         return;
       }
 
-      // Calculate distance from bottom (use scrollContainer, not containerEl)
+      // Calculate distance from bottom
       const scrollTop = scrollContainer.scrollTop;
       const scrollHeight = scrollContainer.scrollHeight;
       const clientHeight = scrollContainer.clientHeight;
@@ -1058,7 +869,7 @@ export class DynamicViewsMasonryView extends BasesView {
       }
     };
 
-    // Create scroll handler with throttling
+    // Create scroll handler with throttling (scroll tracking is in constructor)
     this.scrollListener = () => {
       // Throttle: skip if cooldown active
       if (this.scrollThrottleTimeout !== null) {
@@ -1096,8 +907,7 @@ export class DynamicViewsMasonryView extends BasesView {
   }
 
   onunload(): void {
-    // Don't delete scroll position from Map - we need it for tab switch restoration
-    // Map entries are cleaned up when leaf is actually closed (not on tab switch)
+    scrollPositions.delete(this.leafId);
     this.swipeAbortController?.abort();
     this.abortController?.abort();
     if (this.layoutTimeoutId) {
@@ -1108,9 +918,7 @@ export class DynamicViewsMasonryView extends BasesView {
     }
     // Clean up scroll-related resources
     if (this.scrollListener) {
-      const scrollContainer =
-        this.containerEl.parentElement || this.containerEl;
-      scrollContainer.removeEventListener("scroll", this.scrollListener);
+      this.scrollEl.removeEventListener("scroll", this.scrollListener);
     }
     if (this.scrollThrottleTimeout !== null) {
       window.clearTimeout(this.scrollThrottleTimeout);

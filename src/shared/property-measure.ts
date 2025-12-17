@@ -63,7 +63,7 @@ export function measureSideBySideRow(
     }
 
     // Add inline label width + gap between label and wrapper
-    // Read gap from CSS variable (var(--size-4-1), typically 4px)
+    // Read gap from CSS variable (var(--size-2-2), typically 4px)
     const inlineLabelGap = parseFloat(getComputedStyle(field1).gap) || 4;
     if (inlineLabel1) {
       width1 += inlineLabel1.scrollWidth + inlineLabelGap;
