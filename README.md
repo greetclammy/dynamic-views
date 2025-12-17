@@ -16,7 +16,7 @@ Add to note via Command palette > Dynamic Views: Insert query.
 
 <img height="600" src="https://github.com/user-attachments/assets/b2541773-5fb8-4851-920c-ae2afa116fb5" />
 
-## ⚡️ Features
+## Features
 
 - Native look and feel.
 - Fetch text preview from first few lines of notes.
@@ -29,7 +29,7 @@ Add to note via Command palette > Dynamic Views: Insert query.
 - Full keyboard navigation support.
 
 
-## ✅ Install
+## Install
 
 > [!IMPORTANT]  
 > The plugin is in active development — things can break, or change drastically between releases.
@@ -57,7 +57,7 @@ Note: to get updates for _Dynamic Views_, you will have to check for and install
 3. Reload plugins or app.
 4. Enable _Dynamic Views_ in Obsidian settings > Community plugins > Installed plugins.
 
-## ⭐️ Support
+## Support
 
 - [Report bugs](https://github.com/greetclammy/dynamic-views/issues)
 - [Request features](https://github.com/greetclammy/dynamic-views/issues)
