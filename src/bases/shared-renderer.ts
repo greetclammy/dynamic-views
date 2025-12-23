@@ -28,6 +28,7 @@ import {
 import { getTimestampIcon } from "../shared/render-utils";
 import {
   showTagHashPrefix,
+  hideEmptyTagMarker,
   showTimestampIcon,
   getEmptyValueMarker,
   shouldHideMissingProperties,
@@ -58,7 +59,25 @@ import {
   setupSwipeGestures,
 } from "../shared/slideshow";
 import { handleArrowNavigation, isArrowKey } from "../shared/keyboard-nav";
+import {
+  shouldUseNotebookNavigator,
+  navigateToTagInNotebookNavigator,
+  navigateToFolderInNotebookNavigator,
+  revealFileInNotebookNavigator,
+} from "../utils/notebook-navigator";
 import { measurePropertyFields } from "../shared/property-measure";
+
+/**
+ * Check if a property is a tag property (tags or file tags)
+ */
+function isTagProperty(propertyName: string | undefined): boolean {
+  return (
+    propertyName === "tags" ||
+    propertyName === "note.tags" ||
+    propertyName === "file.tags" ||
+    propertyName === "file tags"
+  );
+}
 
 /**
  * Truncate title text to fit within container with ellipsis.
@@ -580,168 +599,142 @@ export class SharedCardRenderer {
       this.app.dragManager.onDragStart(e, dragData);
     };
 
-    // Title - render as link when openFileAction is 'title', otherwise plain text
-    if (settings.showTitle || card.hasValidUrl) {
-      const containerEl = cardEl.createDiv(
-        card.hasValidUrl ? "card-title-container" : "card-title",
+    // Helper to render title content into a container
+    const renderTitleContent = (titleEl: HTMLElement) => {
+      // Only strip extension when titleProperty is file.fullname
+      const normalized = normalizePropertyName(
+        this.app,
+        settings.titleProperty || "",
       );
+      const isFullname = normalized === "file.fullname";
+      const displayTitle = isFullname
+        ? stripExtFromTitle(card.title, card.path, true)
+        : card.title;
 
-      if (settings.showTitle) {
-        const titleEl = card.hasValidUrl
-          ? containerEl.createDiv("card-title")
-          : containerEl;
-
-        // Only strip extension when titleProperty is file.fullname
-        const normalized = normalizePropertyName(
-          this.app,
-          settings.titleProperty || "",
-        );
-        const isFullname = normalized === "file.fullname";
-        const displayTitle = isFullname
-          ? stripExtFromTitle(card.title, card.path, true)
-          : card.title;
-
-        // Add file type icon first (hidden by default, shown via CSS when Icon mode selected)
-        const icon = getFileTypeIcon(card.path);
-        if (icon) {
-          const iconEl = titleEl.createSpan({ cls: "card-title-icon" });
-          setIcon(iconEl, icon);
-        }
-
-        // Add file format indicator before title text (for Badge mode float:left)
-        const extInfo = getFileExtInfo(card.path, isFullname);
-        const extNoDot = extInfo?.ext.slice(1) || "";
-        if (extInfo) {
-          titleEl.createSpan({
-            cls: "card-title-ext",
-            attr: { "data-ext": extNoDot },
-          });
-        }
-
-        // Add title text
-        let textEl: HTMLElement | null = null;
-        if (effectiveOpenFileAction === "title") {
-          // Render as clickable, draggable link
-          const link = titleEl.createEl("a", {
-            cls: "internal-link",
-            text: displayTitle,
-            attr: {
-              "data-href": card.path,
-              href: card.path,
-              draggable: "true",
-              "data-ext": extNoDot,
-              tabindex: "-1",
-            },
-          });
-          textEl = link;
-
-          link.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const paneType = Keymap.isModEvent(e);
-            void this.app.workspace.openLinkText(
-              card.path,
-              "",
-              paneType || false,
-            );
-          });
-
-          // Page preview on hover (mouseenter to prevent bubbling)
-          link.addEventListener("mouseenter", (e) => {
-            this.app.workspace.trigger("hover-link", {
-              event: e,
-              source: "bases",
-              hoverParent: { hoverPopover: null },
-              targetEl: link,
-              linktext: card.path,
-              sourcePath: card.path,
-            });
-          });
-
-          // Open context menu on right-click
-          link.addEventListener("contextmenu", handleContextMenu);
-
-          // Make title draggable when openFileAction is 'title'
-          link.addEventListener("dragstart", handleDrag);
-        } else {
-          // Render as plain text in a span for truncation
-          const textSpan = titleEl.createSpan({
-            cls: "card-title-text",
-            text: displayTitle,
-            attr: { "data-ext": extNoDot },
-          });
-          textEl = textSpan;
-        }
-
-        // Truncate title with ellipsis (skip in scroll mode)
-        if (
-          textEl &&
-          !document.body.classList.contains(
-            "dynamic-views-title-overflow-scroll",
-          )
-        ) {
-          // For masonry: wait until card is positioned (has width)
-          // For grid: double RAF is sufficient
-          const card = titleEl.closest(".card");
-          const isMasonry = card?.closest(".dynamic-views-masonry");
-
-          const doTruncate = () => {
-            truncateTitleWithExtension(titleEl, textEl);
-          };
-
-          if (isMasonry) {
-            // Poll until masonry layout applies width (masonry-positioned class)
-            // Limit to 100 attempts (~1.6s at 60fps) to prevent infinite loop
-            const waitForLayout = (attempts = 0) => {
-              if (card?.classList.contains("masonry-positioned")) {
-                requestAnimationFrame(doTruncate);
-              } else if (attempts < 100) {
-                requestAnimationFrame(() => waitForLayout(attempts + 1));
-              } else {
-                // Fallback: truncate anyway after timeout
-                requestAnimationFrame(doTruncate);
-              }
-            };
-            requestAnimationFrame(() => waitForLayout(0));
-          } else {
-            // Grid: double RAF ensures layout is complete
-            requestAnimationFrame(() => {
-              requestAnimationFrame(doTruncate);
-            });
-          }
-        }
-
-        // Setup scroll gradients for title if scroll mode is enabled
-        if (
-          document.body.classList.contains(
-            "dynamic-views-title-overflow-scroll",
-          )
-        ) {
-          setupElementScrollGradient(titleEl, signal);
-        }
+      // Add file type icon first (hidden by default, shown via CSS when Icon mode selected)
+      const icon = getFileTypeIcon(card.path);
+      if (icon) {
+        const iconEl = titleEl.createSpan({ cls: "card-title-icon" });
+        setIcon(iconEl, icon);
       }
 
-      if (card.hasValidUrl && card.urlValue) {
-        const iconEl = containerEl.createDiv(
-          "card-title-url-icon text-icon-button svg-icon",
-        );
-        iconEl.setAttribute("aria-label", card.urlValue);
-        setIcon(iconEl, getUrlIcon());
-
-        iconEl.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          window.open(card.urlValue!, "_blank", "noopener,noreferrer");
+      // Add file format indicator before title text (for Badge mode float:left)
+      const extInfo = getFileExtInfo(card.path, isFullname);
+      const extNoDot = extInfo?.ext.slice(1) || "";
+      if (extInfo) {
+        titleEl.createSpan({
+          cls: "card-title-ext",
+          attr: { "data-ext": extNoDot },
         });
       }
-    }
 
-    // Subtitle
-    if (settings.subtitleProperty && card.subtitle) {
-      const subtitleEl = cardEl.createDiv("card-subtitle");
+      // Add title text
+      let textEl: HTMLElement | null = null;
+      if (effectiveOpenFileAction === "title") {
+        // Render as clickable, draggable link
+        const link = titleEl.createEl("a", {
+          cls: "internal-link",
+          text: displayTitle,
+          attr: {
+            "data-href": card.path,
+            href: card.path,
+            draggable: "true",
+            "data-ext": extNoDot,
+            tabindex: "-1",
+          },
+        });
+        textEl = link;
+
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const paneType = Keymap.isModEvent(e);
+          void this.app.workspace.openLinkText(
+            card.path,
+            "",
+            paneType || false,
+          );
+        });
+
+        // Page preview on hover (mouseenter to prevent bubbling)
+        link.addEventListener("mouseenter", (e) => {
+          this.app.workspace.trigger("hover-link", {
+            event: e,
+            source: "bases",
+            hoverParent: { hoverPopover: null },
+            targetEl: link,
+            linktext: card.path,
+            sourcePath: card.path,
+          });
+        });
+
+        // Open context menu on right-click
+        link.addEventListener("contextmenu", handleContextMenu);
+
+        // Make title draggable when openFileAction is 'title'
+        link.addEventListener("dragstart", handleDrag);
+      } else {
+        // Render as plain text in a span for truncation
+        const textSpan = titleEl.createSpan({
+          cls: "card-title-text",
+          text: displayTitle,
+          attr: { "data-ext": extNoDot },
+        });
+        textEl = textSpan;
+      }
+
+      // Truncate title with ellipsis (skip in scroll mode)
+      if (
+        textEl &&
+        !document.body.classList.contains("dynamic-views-title-overflow-scroll")
+      ) {
+        // For masonry: wait until card is positioned (has width)
+        // For grid: double RAF is sufficient
+        const card = titleEl.closest(".card");
+        const isMasonry = card?.closest(".dynamic-views-masonry");
+
+        const doTruncate = () => {
+          truncateTitleWithExtension(titleEl, textEl);
+        };
+
+        if (isMasonry) {
+          // Poll until masonry layout applies width (masonry-positioned class)
+          // Limit to 100 attempts (~1.6s at 60fps) to prevent infinite loop
+          const waitForLayout = (attempts = 0) => {
+            if (card?.classList.contains("masonry-positioned")) {
+              requestAnimationFrame(doTruncate);
+            } else if (attempts < 100) {
+              requestAnimationFrame(() => waitForLayout(attempts + 1));
+            } else {
+              // Fallback: truncate anyway after timeout
+              requestAnimationFrame(doTruncate);
+            }
+          };
+          requestAnimationFrame(() => waitForLayout(0));
+        } else {
+          // Grid: double RAF ensures layout is complete
+          requestAnimationFrame(() => {
+            requestAnimationFrame(doTruncate);
+          });
+        }
+      }
+
+      // Setup scroll gradients for title if scroll mode is enabled
+      if (
+        document.body.classList.contains("dynamic-views-title-overflow-scroll")
+      ) {
+        setupElementScrollGradient(titleEl, signal);
+      }
+    };
+
+    // Helper to render subtitle content into a container
+    const renderSubtitleContent = (
+      subtitleEl: HTMLElement,
+      subtitleProperty: string,
+    ) => {
       this.renderPropertyContent(
         subtitleEl,
-        settings.subtitleProperty,
+        subtitleProperty,
         card.subtitle,
         card,
         entry,
@@ -766,6 +759,59 @@ export class SharedCardRenderer {
       ) as HTMLElement;
       if (subtitleWrapper) {
         setupElementScrollGradient(subtitleWrapper, signal);
+      }
+    };
+
+    // Check if title or subtitle will be rendered
+    const hasTitle = settings.showTitle;
+    const hasSubtitle = settings.subtitleProperty && card.subtitle;
+
+    // Title and Subtitle - wrapped in card-header when URL button present
+    if (card.hasValidUrl && card.urlValue) {
+      const headerEl = cardEl.createDiv("card-header");
+
+      // Only create card-title-group if there's content
+      if (hasTitle || hasSubtitle) {
+        const groupEl = headerEl.createDiv("card-title-group");
+
+        if (hasTitle) {
+          const titleEl = groupEl.createDiv("card-title");
+          renderTitleContent(titleEl);
+        }
+
+        if (hasSubtitle) {
+          const subtitleEl = groupEl.createDiv("card-subtitle");
+          renderSubtitleContent(subtitleEl, settings.subtitleProperty);
+        }
+      }
+
+      const iconEl = headerEl.createDiv(
+        "card-title-url-icon text-icon-button svg-icon",
+      );
+      iconEl.setAttribute("aria-label", card.urlValue);
+      setIcon(iconEl, getUrlIcon());
+
+      iconEl.addEventListener(
+        "click",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.open(card.urlValue!, "_blank", "noopener,noreferrer");
+        },
+        { signal },
+      );
+    } else if (hasTitle || hasSubtitle) {
+      // No URL button - wrap title and subtitle in card-title-group (only if content exists)
+      const groupEl = cardEl.createDiv("card-title-group");
+
+      if (hasTitle) {
+        const titleEl = groupEl.createDiv("card-title");
+        renderTitleContent(titleEl);
+      }
+
+      if (hasSubtitle) {
+        const subtitleEl = groupEl.createDiv("card-subtitle");
+        renderSubtitleContent(subtitleEl, settings.subtitleProperty);
       }
     }
 
@@ -843,7 +889,6 @@ export class SharedCardRenderer {
             ? parseFloat(settings.imageAspectRatio)
             : settings.imageAspectRatio || 1.0;
         const wrapperRatio = aspectRatio / (aspectRatio + 1);
-        const elementSpacing = 8; // Use CSS default value
 
         // Set wrapper ratio for potential CSS calc usage
         cardEl.style.setProperty(
@@ -855,7 +900,8 @@ export class SharedCardRenderer {
         const updateWrapperDimensions = () => {
           const cardWidth = cardEl.offsetWidth; // Border box width (includes padding)
           const targetWidth = Math.floor(wrapperRatio * cardWidth);
-          const paddingValue = targetWidth + elementSpacing;
+          // Cover is positioned at padding edge (right: 0), so card padding provides the gap
+          const paddingValue = targetWidth;
 
           // Set CSS custom properties on the card element
           cardEl.style.setProperty(
@@ -886,7 +932,7 @@ export class SharedCardRenderer {
               }
 
               const newTargetWidth = Math.floor(wrapperRatio * newCardWidth);
-              const newPaddingValue = newTargetWidth + elementSpacing;
+              const newPaddingValue = newTargetWidth;
 
               cardEl.style.setProperty(
                 "--dynamic-views-side-cover-width",
@@ -906,37 +952,13 @@ export class SharedCardRenderer {
       }
     }
 
-    // Thumbnail-top: direct child of card
-    if (
-      format === "thumbnail" &&
-      position === "top" &&
-      (hasImage || hasImageAvailable)
-    ) {
-      if (hasImage) {
-        const imageEl = cardEl.createDiv("card-thumbnail");
-        this.renderImage(
-          imageEl,
-          imageUrls,
-          format,
-          position,
-          settings,
-          cardEl,
-          signal,
-        );
-      } else {
-        cardEl.createDiv("card-thumbnail-placeholder");
-      }
-    }
-
     // Determine if card-content will have children
     const hasTextPreview = settings.showTextPreview && card.textPreview;
-    const hasThumbnailInContent =
-      format === "thumbnail" &&
-      (position === "left" || position === "right") &&
-      (hasImage || hasImageAvailable);
+    const hasThumbnail =
+      format === "thumbnail" && (hasImage || hasImageAvailable);
 
     // Only create card-content if it will have children
-    if (hasTextPreview || hasThumbnailInContent) {
+    if (hasTextPreview || hasThumbnail) {
       const contentContainer = cardEl.createDiv("card-content");
 
       if (hasTextPreview) {
@@ -947,13 +969,14 @@ export class SharedCardRenderer {
         });
       }
 
-      if (hasThumbnailInContent && format === "thumbnail") {
+      // Thumbnail (all positions now inside card-content)
+      if (hasThumbnail) {
         if (hasImage) {
           const imageEl = contentContainer.createDiv("card-thumbnail");
           this.renderImage(
             imageEl,
             imageUrls,
-            format,
+            "thumbnail",
             position,
             settings,
             cardEl,
@@ -962,28 +985,6 @@ export class SharedCardRenderer {
         } else {
           contentContainer.createDiv("card-thumbnail-placeholder");
         }
-      }
-    }
-
-    // Thumbnail-bottom: direct child of card
-    if (
-      format === "thumbnail" &&
-      position === "bottom" &&
-      (hasImage || hasImageAvailable)
-    ) {
-      if (hasImage) {
-        const imageEl = cardEl.createDiv("card-thumbnail");
-        this.renderImage(
-          imageEl,
-          imageUrls,
-          format,
-          position,
-          settings,
-          cardEl,
-          signal,
-        );
-      } else {
-        cardEl.createDiv("card-thumbnail-placeholder");
       }
     }
 
@@ -1349,6 +1350,7 @@ export class SharedCardRenderer {
     // Pre-compute hide toggles (avoid repeated classList checks)
     const hideMissing = shouldHideMissingProperties();
     const hideEmpty = shouldHideEmptyProperties();
+    const hideEmptyTags = hideEmptyTagMarker();
 
     // Check if any row has content
     // Show row if property is configured, UNLESS labels hidden AND hideMissingProperties enabled
@@ -1499,7 +1501,8 @@ export class SharedCardRenderer {
         if (prop2Set) {
           const shouldHide =
             (values[1] === null && hideMissing) ||
-            (values[1] === "" && hideEmpty);
+            (values[1] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[1]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field2El.createDiv("property-content");
             const markerSpan =
@@ -1513,7 +1516,8 @@ export class SharedCardRenderer {
         if (prop1Set) {
           const shouldHide =
             (values[0] === null && hideMissing) ||
-            (values[0] === "" && hideEmpty);
+            (values[0] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[0]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field1El.createDiv("property-content");
             const markerSpan =
@@ -1578,7 +1582,8 @@ export class SharedCardRenderer {
         if (prop4Set) {
           const shouldHide =
             (values[3] === null && hideMissing) ||
-            (values[3] === "" && hideEmpty);
+            (values[3] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[3]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field4El.createDiv("property-content");
             const markerSpan =
@@ -1592,7 +1597,8 @@ export class SharedCardRenderer {
         if (prop3Set) {
           const shouldHide =
             (values[2] === null && hideMissing) ||
-            (values[2] === "" && hideEmpty);
+            (values[2] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[2]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field3El.createDiv("property-content");
             const markerSpan =
@@ -1653,7 +1659,8 @@ export class SharedCardRenderer {
         if (prop6Set) {
           const shouldHide =
             (values[5] === null && hideMissing) ||
-            (values[5] === "" && hideEmpty);
+            (values[5] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[5]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field6El.createDiv("property-content");
             const markerSpan =
@@ -1665,7 +1672,8 @@ export class SharedCardRenderer {
         if (prop5Set) {
           const shouldHide =
             (values[4] === null && hideMissing) ||
-            (values[4] === "" && hideEmpty);
+            (values[4] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[4]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field5El.createDiv("property-content");
             const markerSpan =
@@ -1725,7 +1733,8 @@ export class SharedCardRenderer {
         if (prop8Set) {
           const shouldHide =
             (values[7] === null && hideMissing) ||
-            (values[7] === "" && hideEmpty);
+            (values[7] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[7]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field8El.createDiv("property-content");
             const markerSpan =
@@ -1737,7 +1746,8 @@ export class SharedCardRenderer {
         if (prop7Set) {
           const shouldHide =
             (values[6] === null && hideMissing) ||
-            (values[6] === "" && hideEmpty);
+            (values[6] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[6]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field7El.createDiv("property-content");
             const markerSpan =
@@ -1798,7 +1808,8 @@ export class SharedCardRenderer {
         if (prop10Set) {
           const shouldHide =
             (values[9] === null && hideMissing) ||
-            (values[9] === "" && hideEmpty);
+            (values[9] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[9]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field10El.createDiv("property-content");
             const markerSpan =
@@ -1810,7 +1821,8 @@ export class SharedCardRenderer {
         if (prop9Set) {
           const shouldHide =
             (values[8] === null && hideMissing) ||
-            (values[8] === "" && hideEmpty);
+            (values[8] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[8]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field9El.createDiv("property-content");
             const markerSpan =
@@ -1872,7 +1884,8 @@ export class SharedCardRenderer {
         if (prop12Set) {
           const shouldHide =
             (values[11] === null && hideMissing) ||
-            (values[11] === "" && hideEmpty);
+            (values[11] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[11]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field12El.createDiv("property-content");
             const markerSpan =
@@ -1884,7 +1897,8 @@ export class SharedCardRenderer {
         if (prop11Set) {
           const shouldHide =
             (values[10] === null && hideMissing) ||
-            (values[10] === "" && hideEmpty);
+            (values[10] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[10]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field11El.createDiv("property-content");
             const markerSpan =
@@ -1946,7 +1960,8 @@ export class SharedCardRenderer {
         if (prop14Set) {
           const shouldHide =
             (values[13] === null && hideMissing) ||
-            (values[13] === "" && hideEmpty);
+            (values[13] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[13]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field14El.createDiv("property-content");
             const markerSpan =
@@ -1958,7 +1973,8 @@ export class SharedCardRenderer {
         if (prop13Set) {
           const shouldHide =
             (values[12] === null && hideMissing) ||
-            (values[12] === "" && hideEmpty);
+            (values[12] === "" && hideEmpty) ||
+            (isTagProperty(effectiveProps[12]) && hideEmptyTags);
           if (!shouldHide) {
             const placeholderContent = field13El.createDiv("property-content");
             const markerSpan =
@@ -2063,8 +2079,11 @@ export class SharedCardRenderer {
     // Content container (actual property value)
     const propertyContent = contentWrapper.createDiv("property-content");
 
-    // If no value, show placeholder
+    // If no value, show placeholder (or hide for tags when setting enabled)
     if (!stringValue) {
+      if (isTagProperty(propertyName) && hideEmptyTagMarker()) {
+        return;
+      }
       const markerSpan = propertyContent.createSpan("empty-value-marker");
       markerSpan.textContent = getEmptyValueMarker();
       return;
@@ -2124,14 +2143,24 @@ export class SharedCardRenderer {
           text: showHashPrefix ? "#" + tag : tag,
           href: "#",
         });
-        tagEl.addEventListener("click", (e) => {
-          e.preventDefault();
-          const searchPlugin =
-            this.plugin.app.internalPlugins.plugins["global-search"];
-          if (searchPlugin?.instance?.openGlobalSearch) {
-            searchPlugin.instance.openGlobalSearch("tag:" + tag);
-          }
-        });
+        tagEl.addEventListener(
+          "click",
+          (e) => {
+            e.preventDefault();
+            if (
+              shouldUseNotebookNavigator(this.app, "tag") &&
+              navigateToTagInNotebookNavigator(this.app, tag)
+            ) {
+              return;
+            }
+            const searchPlugin =
+              this.plugin.app.internalPlugins.plugins["global-search"];
+            if (searchPlugin?.instance?.openGlobalSearch) {
+              searchPlugin.instance.openGlobalSearch("tag:" + tag);
+            }
+          },
+          { signal },
+        );
       });
     } else if (
       (propertyName === "file.tags" || propertyName === "file tags") &&
@@ -2146,14 +2175,24 @@ export class SharedCardRenderer {
           text: showHashPrefix ? "#" + tag : tag,
           href: "#",
         });
-        tagEl.addEventListener("click", (e) => {
-          e.preventDefault();
-          const searchPlugin =
-            this.plugin.app.internalPlugins.plugins["global-search"];
-          if (searchPlugin?.instance?.openGlobalSearch) {
-            searchPlugin.instance.openGlobalSearch("tag:" + tag);
-          }
-        });
+        tagEl.addEventListener(
+          "click",
+          (e) => {
+            e.preventDefault();
+            if (
+              shouldUseNotebookNavigator(this.app, "tag") &&
+              navigateToTagInNotebookNavigator(this.app, tag)
+            ) {
+              return;
+            }
+            const searchPlugin =
+              this.plugin.app.internalPlugins.plugins["global-search"];
+            if (searchPlugin?.instance?.openGlobalSearch) {
+              searchPlugin.instance.openGlobalSearch("tag:" + tag);
+            }
+          },
+          { signal },
+        );
       });
     } else if (
       (propertyName === "file.path" ||
@@ -2194,14 +2233,38 @@ export class SharedCardRenderer {
           "click",
           (e) => {
             e.stopPropagation();
-            // Reveal in file explorer (filename uses full path, folder uses cumulative path)
+            if (isLastSegment) {
+              // Filename segment - reveal file
+              if (shouldUseNotebookNavigator(this.app, "file")) {
+                const file = this.app.vault.getAbstractFileByPath(card.path);
+                if (
+                  file instanceof TFile &&
+                  revealFileInNotebookNavigator(this.app, file)
+                ) {
+                  return;
+                }
+              }
+            } else {
+              // Folder segment - navigate to folder
+              if (shouldUseNotebookNavigator(this.app, "folder")) {
+                const folder =
+                  this.app.vault.getAbstractFileByPath(cumulativePath);
+                if (
+                  folder instanceof TFolder &&
+                  navigateToFolderInNotebookNavigator(this.app, folder)
+                ) {
+                  return;
+                }
+              }
+            }
+            // Fallback to file explorer
             const pathToReveal = isLastSegment ? card.path : cumulativePath;
             const fileExplorer =
               this.app.internalPlugins?.plugins?.["file-explorer"];
             if (fileExplorer?.instance?.revealInFolder) {
-              const file = this.app.vault.getAbstractFileByPath(pathToReveal);
-              if (file) {
-                fileExplorer.instance.revealInFolder(file);
+              const target = this.app.vault.getAbstractFileByPath(pathToReveal);
+              if (target) {
+                fileExplorer.instance.revealInFolder(target);
               }
             }
           },
@@ -2259,36 +2322,55 @@ export class SharedCardRenderer {
 
         // Make clickable - reveal folder in file explorer
         const cumulativePath = folders.slice(0, idx + 1).join("/");
-        segmentEl.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const fileExplorer =
-            this.app.internalPlugins?.plugins?.["file-explorer"];
-          if (fileExplorer?.instance?.revealInFolder) {
-            const folderFile =
-              this.app.vault.getAbstractFileByPath(cumulativePath);
-            if (folderFile) {
-              fileExplorer.instance.revealInFolder(folderFile);
+        segmentEl.addEventListener(
+          "click",
+          (e) => {
+            e.stopPropagation();
+            if (shouldUseNotebookNavigator(this.app, "folder")) {
+              const folderObj =
+                this.app.vault.getAbstractFileByPath(cumulativePath);
+              if (
+                folderObj instanceof TFolder &&
+                navigateToFolderInNotebookNavigator(this.app, folderObj)
+              ) {
+                return;
+              }
             }
-          }
-        });
+            // Fallback to file explorer
+            const fileExplorer =
+              this.app.internalPlugins?.plugins?.["file-explorer"];
+            if (fileExplorer?.instance?.revealInFolder) {
+              const folderFile =
+                this.app.vault.getAbstractFileByPath(cumulativePath);
+              if (folderFile) {
+                fileExplorer.instance.revealInFolder(folderFile);
+              }
+            }
+          },
+          { signal },
+        );
 
         // Add context menu for folder segments
-        segmentEl.addEventListener("contextmenu", (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          const folderFile =
-            this.app.vault.getAbstractFileByPath(cumulativePath);
-          if (folderFile instanceof TFolder) {
-            const menu = new Menu();
-            this.app.workspace.trigger(
-              "file-menu",
-              menu,
-              folderFile,
-              "file-explorer",
-            );
-            menu.showAtMouseEvent(e);
-          }
-        });
+        segmentEl.addEventListener(
+          "contextmenu",
+          (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const folderFile =
+              this.app.vault.getAbstractFileByPath(cumulativePath);
+            if (folderFile instanceof TFolder) {
+              const menu = new Menu();
+              this.app.workspace.trigger(
+                "file-menu",
+                menu,
+                folderFile,
+                "file-explorer",
+              );
+              menu.showAtMouseEvent(e);
+            }
+          },
+          { signal },
+        );
 
         if (idx < folders.length - 1) {
           span.createSpan({ cls: "path-separator", text: "/" });

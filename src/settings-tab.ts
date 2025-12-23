@@ -229,6 +229,39 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
               }),
           ),
       )
+      .addSetting((s) =>
+        s
+          .setName("Reveal in Notebook Navigator")
+          .then((s) => {
+            const desc = s.descEl;
+            desc.empty();
+            desc.appendText(
+              "When pressing tags or file path segments, reveal in ",
+            );
+            desc.createEl("a", {
+              text: "Notebook Navigator",
+              href: "obsidian://show-plugin?id=notebook-navigator",
+            });
+            desc.appendText(" instead of the default file explorer.");
+          })
+          .addDropdown((dropdown) =>
+            dropdown
+              .addOption("files-folders", "Files & folders")
+              .addOption("tags", "Tags")
+              .addOption("all", "Files, folders & tags")
+              .addOption("disable", "Disable")
+              .setValue(settings.revealInNotebookNavigator)
+              .onChange(async (value) => {
+                await this.plugin.persistenceManager.setGlobalSettings({
+                  revealInNotebookNavigator: value as
+                    | "disable"
+                    | "files-folders"
+                    | "tags"
+                    | "all",
+                });
+              }),
+          ),
+      )
       // Smart timestamp toggle (sub-settings in separate container below)
       .addSetting((s) => {
         smartTimestampSetting = s;

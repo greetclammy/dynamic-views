@@ -60,9 +60,13 @@ describe("serializeGroupKey", () => {
       expect(serializeGroupKey({ data: "" })).toBe("");
     });
 
-    it("should stringify arrays in .data", () => {
+    it("should return undefined for empty arrays in .data", () => {
+      expect(serializeGroupKey({ data: [] })).toBeUndefined();
+    });
+
+    it("should join primitive arrays in .data with comma separator", () => {
       const result = serializeGroupKey({ data: [1, 2, 3] });
-      expect(result).toBe("[1,2,3]");
+      expect(result).toBe("1, 2, 3");
     });
 
     it("should stringify nested objects in .data", () => {
@@ -74,13 +78,14 @@ describe("serializeGroupKey", () => {
   describe("Bases date Value objects", () => {
     it("should format Date object to ISO string", () => {
       const date = new Date("2024-06-15T10:30:00Z");
-      const result = serializeGroupKey({ date, time: true });
+      const result = serializeGroupKey({ date });
       expect(result).toBe("2024-06-15T10:30:00.000Z");
     });
 
-    it("should format date-only Date object", () => {
+    it("should format Date object with additional properties to ISO string", () => {
+      // Additional properties like `time` are ignored - only .date matters
       const date = new Date("2024-06-15T00:00:00Z");
-      const result = serializeGroupKey({ date, time: false });
+      const result = serializeGroupKey({ date, time: false, extra: "ignored" });
       expect(result).toBe("2024-06-15T00:00:00.000Z");
     });
   });
@@ -90,9 +95,24 @@ describe("serializeGroupKey", () => {
       expect(serializeGroupKey({ key: "value" })).toBe('{"key":"value"}');
     });
 
-    it("should stringify arrays", () => {
-      expect(serializeGroupKey([1, 2, 3])).toBe("[1,2,3]");
-      expect(serializeGroupKey(["a", "b"])).toBe('["a","b"]');
+    it("should return undefined for empty arrays", () => {
+      expect(serializeGroupKey([])).toBeUndefined();
+    });
+
+    it("should join string arrays with comma separator", () => {
+      expect(serializeGroupKey(["a", "b", "c"])).toBe("a, b, c");
+    });
+
+    it("should join number arrays with comma separator", () => {
+      expect(serializeGroupKey([1, 2, 3])).toBe("1, 2, 3");
+    });
+
+    it("should extract .data from arrays of Bases Value objects (tags)", () => {
+      const tags = [
+        { icon: "lucide-text", data: "#tag1" },
+        { icon: "lucide-text", data: "#tag2" },
+      ];
+      expect(serializeGroupKey(tags)).toBe("#tag1, #tag2");
     });
   });
 
@@ -109,6 +129,27 @@ describe("serializeGroupKey", () => {
       expect(serializeGroupKey({ data: null })).toBeUndefined();
       // Object with .data that contains a value should extract it
       expect(serializeGroupKey({ data: "extracted" })).toBe("extracted");
+    });
+
+    it("should handle mixed primitive types in arrays", () => {
+      expect(serializeGroupKey([1, "two", true])).toBe("1, two, true");
+    });
+
+    it("should recursively process nested .data properties", () => {
+      expect(serializeGroupKey({ data: { data: "nested" } })).toBe("nested");
+    });
+
+    it("should convert NaN to string", () => {
+      expect(serializeGroupKey(NaN)).toBe("NaN");
+    });
+
+    it("should convert Infinity to string", () => {
+      expect(serializeGroupKey(Infinity)).toBe("Infinity");
+    });
+
+    it("should handle arrays with null elements", () => {
+      // Arrays with null stringify to JSON
+      expect(serializeGroupKey([1, null, 3])).toBe("[1,null,3]");
     });
   });
 });

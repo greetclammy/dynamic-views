@@ -9,6 +9,7 @@ import type { Settings } from "../types";
 import type { RefObject } from "../datacore/types";
 import {
   showTagHashPrefix,
+  hideEmptyTagMarker,
   showTimestampIcon,
   getEmptyValueMarker,
   shouldHideMissingProperties,
@@ -48,6 +49,12 @@ import {
   setupElementScrollGradient,
 } from "./scroll-gradient";
 import { handleArrowNavigation, isArrowKey } from "./keyboard-nav";
+import {
+  shouldUseNotebookNavigator,
+  navigateToTagInNotebookNavigator,
+  navigateToFolderInNotebookNavigator,
+  revealFileInNotebookNavigator,
+} from "../utils/notebook-navigator";
 import { measurePropertyFields } from "./property-measure";
 
 /**
@@ -700,8 +707,18 @@ function renderProperty(
       </span>
     ) : null;
 
-  // If no value, show placeholder
+  // If no value, show placeholder (or hide for tags when setting enabled)
   if (!resolvedValue) {
+    // Hide empty tags/file-tags when setting enabled
+    if (
+      hideEmptyTagMarker() &&
+      (propertyName === "tags" ||
+        propertyName === "note.tags" ||
+        propertyName === "file.tags" ||
+        propertyName === "file tags")
+    ) {
+      return null;
+    }
     return (
       <>
         {labelAbove}
@@ -824,6 +841,12 @@ function renderProperty(
                     className="tag"
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
+                      if (
+                        shouldUseNotebookNavigator(app, "tag") &&
+                        navigateToTagInNotebookNavigator(app, tag)
+                      ) {
+                        return;
+                      }
                       const searchPlugin =
                         app.internalPlugins.plugins["global-search"];
                       if (searchPlugin?.instance?.openGlobalSearch) {
@@ -862,6 +885,12 @@ function renderProperty(
                     className="tag"
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
+                      if (
+                        shouldUseNotebookNavigator(app, "tag") &&
+                        navigateToTagInNotebookNavigator(app, tag)
+                      ) {
+                        return;
+                      }
                       const searchPlugin =
                         app.internalPlugins.plugins["global-search"];
                       if (searchPlugin?.instance?.openGlobalSearch) {
@@ -922,13 +951,40 @@ function renderProperty(
                         }
                         onClick={(e: MouseEvent) => {
                           e.stopPropagation();
+                          if (isLastSegment) {
+                            // Filename segment - reveal file
+                            if (shouldUseNotebookNavigator(app, "file")) {
+                              const file = app.vault.getAbstractFileByPath(
+                                card.path,
+                              );
+                              if (
+                                file instanceof TFile &&
+                                revealFileInNotebookNavigator(app, file)
+                              ) {
+                                return;
+                              }
+                            }
+                          } else {
+                            // Folder segment - navigate to folder
+                            if (shouldUseNotebookNavigator(app, "folder")) {
+                              const folder =
+                                app.vault.getAbstractFileByPath(cumulativePath);
+                              if (
+                                folder instanceof TFolder &&
+                                navigateToFolderInNotebookNavigator(app, folder)
+                              ) {
+                                return;
+                              }
+                            }
+                          }
+                          // Fallback to file explorer
                           const fileExplorer =
                             app.internalPlugins?.plugins?.["file-explorer"];
                           if (fileExplorer?.instance?.revealInFolder) {
-                            const folder =
+                            const target =
                               app.vault.getAbstractFileByPath(cumulativePath);
-                            if (folder) {
-                              fileExplorer.instance.revealInFolder(folder);
+                            if (target) {
+                              fileExplorer.instance.revealInFolder(target);
                             }
                           }
                         }}
@@ -1243,6 +1299,120 @@ function Card({
   const scrollController = new AbortController();
   cardScrollAbortControllers.set(card.path, scrollController);
 
+  // Cache scroll mode checks (avoid repeated DOM queries in ref callbacks)
+  const isTitleScrollMode = document.body.classList.contains(
+    "dynamic-views-title-overflow-scroll",
+  );
+  const isSubtitleScrollMode = document.body.classList.contains(
+    "dynamic-views-subtitle-overflow-scroll",
+  );
+
+  // Helper function to render title JSX
+  const renderTitle = () => {
+    if (!settings.showTitle) return null;
+
+    return (
+      <div
+        className="card-title"
+        ref={(el: HTMLElement | null) => {
+          if (!el) return;
+          if (isTitleScrollMode) {
+            setupElementScrollGradient(el, scrollController.signal);
+          } else {
+            setupTitleTruncation(el, scrollController.signal);
+          }
+        }}
+      >
+        {renderFileTypeIcon(card.path)}
+        {renderFileExt(extInfo)}
+        {effectiveOpenFileAction === "title" ? (
+          <span
+            className="card-title-link"
+            data-href={card.path}
+            tabIndex={-1}
+            draggable={true}
+            onDragStart={handleDrag}
+            onClick={(e: MouseEvent) => {
+              e.stopPropagation();
+              const paneType = Keymap.isModEvent(e);
+              void app.workspace.openLinkText(card.path, "", paneType || false);
+            }}
+            onContextMenu={(e: MouseEvent) => {
+              e.stopPropagation();
+              e.preventDefault();
+              const file = app.vault.getAbstractFileByPath(card.path);
+              if (file instanceof TFile) {
+                showFileContextMenu(e, app, file, card.path);
+              }
+            }}
+            onMouseOver={(e: MouseEvent) => {
+              app.workspace.trigger("hover-link", {
+                event: e,
+                source: "file-explorer",
+                hoverParent: { hoverPopover: null },
+                targetEl: e.currentTarget,
+                linktext: card.path,
+                sourcePath: card.path,
+              });
+            }}
+          >
+            <span className="card-title-text">{displayTitle}</span>
+            {extNoDot && (
+              <span className="card-title-ext-suffix">.{extNoDot}</span>
+            )}
+          </span>
+        ) : (
+          <>
+            <span className="card-title-text">{displayTitle}</span>
+            {extNoDot && (
+              <span className="card-title-ext-suffix">.{extNoDot}</span>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Helper function to render subtitle JSX
+  const renderSubtitle = () => {
+    if (!settings.subtitleProperty || !card.subtitle) return null;
+
+    return (
+      <div
+        className="card-subtitle"
+        ref={(el: HTMLElement | null) => {
+          if (!el) return;
+          if (isSubtitleScrollMode) {
+            setupElementScrollGradient(el, scrollController.signal);
+          }
+          const subtitleWrapper = el.querySelector(
+            ".property-content-wrapper",
+          ) as HTMLElement;
+          if (subtitleWrapper) {
+            setupElementScrollGradient(
+              subtitleWrapper,
+              scrollController.signal,
+            );
+          }
+        }}
+      >
+        {renderProperty(
+          settings.subtitleProperty,
+          null,
+          card.subtitle,
+          { ...settings, propertyLabels: "hide" },
+          card,
+          app,
+          timeIcon,
+        )}
+      </div>
+    );
+  };
+
+  // Check if title or subtitle will be rendered
+  const hasTitle = settings.showTitle;
+  const hasSubtitle = settings.subtitleProperty && card.subtitle;
+
   return (
     <div
       className={cardClasses.join(" ")}
@@ -1436,154 +1606,49 @@ function Card({
         cursor: effectiveOpenFileAction === "card" ? "pointer" : "default",
       }}
     >
-      {/* Title */}
-      {(settings.showTitle || card.hasValidUrl) && (
-        <div
-          className={card.hasValidUrl ? "card-title-container" : "card-title"}
-          ref={(el: HTMLElement | null) => {
-            if (!el || card.hasValidUrl) return;
-            const isScrollMode = document.body.classList.contains(
-              "dynamic-views-title-overflow-scroll",
-            );
-            if (isScrollMode) {
-              setupElementScrollGradient(el, scrollController.signal);
-            } else {
-              setupTitleTruncation(el, scrollController.signal);
-            }
-          }}
-        >
-          {settings.showTitle && (
-            <div
-              className={card.hasValidUrl ? "card-title" : undefined}
-              ref={(el: HTMLElement | null) => {
-                if (!el || !card.hasValidUrl) return;
-                const isScrollMode = document.body.classList.contains(
-                  "dynamic-views-title-overflow-scroll",
-                );
-                if (isScrollMode) {
-                  setupElementScrollGradient(el, scrollController.signal);
-                } else {
-                  setupTitleTruncation(el, scrollController.signal);
-                }
-              }}
-            >
-              {renderFileTypeIcon(card.path)}
-              {renderFileExt(extInfo)}
-              {effectiveOpenFileAction === "title" ? (
-                <span
-                  className="card-title-link"
-                  data-href={card.path}
-                  tabIndex={-1}
-                  draggable={true}
-                  onDragStart={handleDrag}
-                  onClick={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    const paneType = Keymap.isModEvent(e);
-                    void app.workspace.openLinkText(
-                      card.path,
-                      "",
-                      paneType || false,
-                    );
-                  }}
-                  onContextMenu={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const file = app.vault.getAbstractFileByPath(card.path);
-                    if (file instanceof TFile) {
-                      showFileContextMenu(e, app, file, card.path);
-                    }
-                  }}
-                  onMouseOver={(e: MouseEvent) => {
-                    app.workspace.trigger("hover-link", {
-                      event: e,
-                      source: "file-explorer",
-                      hoverParent: { hoverPopover: null },
-                      targetEl: e.currentTarget,
-                      linktext: card.path,
-                      sourcePath: card.path,
-                    });
-                  }}
-                >
-                  <span className="card-title-text">{displayTitle}</span>
-                  {extNoDot && (
-                    <span className="card-title-ext-suffix">.{extNoDot}</span>
-                  )}
-                </span>
-              ) : (
-                <>
-                  <span className="card-title-text">{displayTitle}</span>
-                  {extNoDot && (
-                    <span className="card-title-ext-suffix">.{extNoDot}</span>
-                  )}
-                </>
-              )}
+      {/* Title and Subtitle - wrapped in card-header when URL button present */}
+      {card.hasValidUrl && card.urlValue ? (
+        <div className="card-header">
+          {(hasTitle || hasSubtitle) && (
+            <div className="card-title-group">
+              {renderTitle()}
+              {renderSubtitle()}
             </div>
           )}
-          {card.hasValidUrl && card.urlValue && (
-            <span
-              className="card-title-url-icon text-icon-button"
-              aria-label={card.urlValue}
-              onClick={(e: MouseEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.open(card.urlValue!, "_blank", "noopener,noreferrer");
-              }}
+          <span
+            className="card-title-url-icon text-icon-button"
+            aria-label={card.urlValue}
+            onClick={(e: MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(card.urlValue!, "_blank", "noopener,noreferrer");
+            }}
+          >
+            <svg
+              className="svg-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <svg
-                className="svg-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
-                <path d="m21 3-9 9"></path>
-                <path d="M15 3h6v6"></path>
-              </svg>
-            </span>
-          )}
+              <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
+              <path d="m21 3-9 9"></path>
+              <path d="M15 3h6v6"></path>
+            </svg>
+          </span>
         </div>
-      )}
-
-      {/* Subtitle */}
-      {settings.subtitleProperty && card.subtitle && (
-        <div
-          className="card-subtitle"
-          ref={(el: HTMLElement | null) => {
-            if (!el) return;
-            const isScrollMode = document.body.classList.contains(
-              "dynamic-views-subtitle-overflow-scroll",
-            );
-            if (isScrollMode) {
-              setupElementScrollGradient(el, scrollController.signal);
-            }
-            // Setup scroll gradients for inner wrapper (works in wrap mode too)
-            const subtitleWrapper = el.querySelector(
-              ".property-content-wrapper",
-            ) as HTMLElement;
-            if (subtitleWrapper) {
-              setupElementScrollGradient(
-                subtitleWrapper,
-                scrollController.signal,
-              );
-            }
-          }}
-        >
-          {renderProperty(
-            settings.subtitleProperty,
-            null,
-            card.subtitle,
-            { ...settings, propertyLabels: "hide" },
-            card,
-            app,
-            timeIcon,
-          )}
-        </div>
+      ) : (
+        (hasTitle || hasSubtitle) && (
+          <div className="card-title-group">
+            {renderTitle()}
+            {renderSubtitle()}
+          </div>
+        )
       )}
 
       {/* Covers: wrapped in card-cover-wrapper for flexbox positioning */}
@@ -1673,7 +1738,6 @@ function Card({
                 ? parseFloat(settings.imageAspectRatio)
                 : settings.imageAspectRatio || 1.0;
             const wrapperRatio = aspectRatio / (aspectRatio + 1);
-            const elementSpacing = 8; // Use CSS default value
 
             // Set wrapper ratio for potential CSS calc usage
             cardEl.style.setProperty(
@@ -1685,7 +1749,8 @@ function Card({
             const updateWrapperDimensions = () => {
               const cardWidth = cardEl.offsetWidth; // Border box width (includes padding)
               const targetWidth = Math.floor(wrapperRatio * cardWidth);
-              const paddingValue = targetWidth + elementSpacing;
+              // Cover is positioned at padding edge (right: 0), so card padding provides the gap
+              const paddingValue = targetWidth;
 
               // Set CSS custom properties on the card element
               cardEl.style.setProperty(
@@ -1718,7 +1783,7 @@ function Card({
                 }
 
                 const newTargetWidth = Math.floor(wrapperRatio * newCardWidth);
-                const newPaddingValue = newTargetWidth + elementSpacing;
+                const newPaddingValue = newTargetWidth;
 
                 cardEl.style.setProperty(
                   "--dynamic-views-side-cover-width",
@@ -1738,94 +1803,18 @@ function Card({
           return null;
         })()}
 
-      {/* Thumbnail-top: between title and text preview */}
-      {format === "thumbnail" &&
-        position === "top" &&
-        (imageArray.length > 0 || card.hasImageAvailable) &&
-        (imageArray.length > 0 ? (
-          <div
-            className={`card-thumbnail ${enableScrubbing ? "multi-image" : ""}`}
-            onMouseMove={
-              enableScrubbing
-                ? (e: MouseEvent) => {
-                    const rect = (
-                      e.currentTarget as HTMLElement
-                    ).getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const section = Math.floor(
-                      (x / rect.width) * imageArray.length,
-                    );
-                    const newIndex = Math.max(
-                      0,
-                      Math.min(section, imageArray.length - 1),
-                    );
-                    const imgEl = (
-                      e.currentTarget as HTMLElement
-                    ).querySelector("img");
-                    const newSrc = imageArray[newIndex];
-                    if (imgEl && newSrc) {
-                      const currentSrc = imgEl.src;
-                      if (currentSrc !== newSrc) {
-                        imgEl.src = newSrc;
-                      }
-                    }
-                  }
-                : undefined
-            }
-            onMouseLeave={
-              enableScrubbing
-                ? (e: MouseEvent) => {
-                    const imgEl = (
-                      e.currentTarget as HTMLElement
-                    ).querySelector("img");
-                    const firstSrc = imageArray[0];
-                    if (imgEl && firstSrc) {
-                      imgEl.src = firstSrc;
-                    }
-                  }
-                : undefined
-            }
-          >
-            <div
-              className="dynamic-views-image-embed"
-              style={{ "--cover-image-url": `url("${imageArray[0] || ""}")` }}
-              onClick={(e: MouseEvent) => {
-                handleImageViewerClick(
-                  e,
-                  card.path,
-                  app,
-                  viewerCleanupFns,
-                  viewerClones,
-                  effectiveOpenFileAction,
-                );
-              }}
-            >
-              <img
-                src={imageArray[0] || ""}
-                alt=""
-                ref={(imgEl: HTMLImageElement | null) =>
-                  handleJsxImageRef(imgEl, updateLayoutRef)
-                }
-                onLoad={(e: Event) => handleJsxImageLoad(e, updateLayoutRef)}
-                onError={(e: Event) => handleJsxImageError(e, updateLayoutRef)}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="card-thumbnail-placeholder"></div>
-        ))}
-
       {/* Content container - only render if it will have children */}
       {((settings.showTextPreview && card.textPreview) ||
         (format === "thumbnail" &&
-          (position === "left" || position === "right") &&
           (imageArray.length > 0 || card.hasImageAvailable))) && (
         <div className="card-content">
           {settings.showTextPreview && card.textPreview && (
-            <div className="card-text-preview">{card.textPreview}</div>
+            <div className="card-text-preview-wrapper">
+              <div className="card-text-preview">{card.textPreview}</div>
+            </div>
           )}
+          {/* Thumbnail (all positions now inside card-content) */}
           {format === "thumbnail" &&
-            (position === "left" || position === "right") &&
             (imageArray.length > 0 ? (
               <div
                 className={`card-thumbnail ${enableScrubbing ? "multi-image" : ""}`}
@@ -1908,83 +1897,6 @@ function Card({
         </div>
       )}
 
-      {/* Thumbnail-bottom: after text preview */}
-      {format === "thumbnail" &&
-        position === "bottom" &&
-        (imageArray.length > 0 || card.hasImageAvailable) &&
-        (imageArray.length > 0 ? (
-          <div
-            className={`card-thumbnail ${enableScrubbing ? "multi-image" : ""}`}
-            onMouseMove={
-              enableScrubbing
-                ? (e: MouseEvent) => {
-                    const rect = (
-                      e.currentTarget as HTMLElement
-                    ).getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const section = Math.floor(
-                      (x / rect.width) * imageArray.length,
-                    );
-                    const newIndex = Math.max(
-                      0,
-                      Math.min(section, imageArray.length - 1),
-                    );
-                    const imgEl = (
-                      e.currentTarget as HTMLElement
-                    ).querySelector("img");
-                    const newSrc = imageArray[newIndex];
-                    if (imgEl && newSrc) {
-                      const currentSrc = imgEl.src;
-                      if (currentSrc !== newSrc) {
-                        imgEl.src = newSrc;
-                      }
-                    }
-                  }
-                : undefined
-            }
-            onMouseLeave={
-              enableScrubbing
-                ? (e: MouseEvent) => {
-                    const imgEl = (
-                      e.currentTarget as HTMLElement
-                    ).querySelector("img");
-                    const firstSrc = imageArray[0];
-                    if (imgEl && firstSrc) {
-                      imgEl.src = firstSrc;
-                    }
-                  }
-                : undefined
-            }
-          >
-            <div
-              className="dynamic-views-image-embed"
-              style={{ "--cover-image-url": `url("${imageArray[0] || ""}")` }}
-              onClick={(e: MouseEvent) => {
-                handleImageViewerClick(
-                  e,
-                  card.path,
-                  app,
-                  viewerCleanupFns,
-                  viewerClones,
-                  effectiveOpenFileAction,
-                );
-              }}
-            >
-              <img
-                src={imageArray[0] || ""}
-                alt=""
-                ref={(imgEl: HTMLImageElement | null) =>
-                  handleJsxImageRef(imgEl, updateLayoutRef)
-                }
-                onLoad={(e: Event) => handleJsxImageLoad(e, updateLayoutRef)}
-                onError={(e: Event) => handleJsxImageError(e, updateLayoutRef)}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="card-thumbnail-placeholder"></div>
-        ))}
-
       {/* Properties - 14-field rendering with 7-row layout, split by position */}
       {(() => {
         // Check if any row has content
@@ -2041,12 +1953,7 @@ function Card({
 
         const row1 = row1HasContent && (
           <div
-            className={`property-row property-row-1${settings.propertyGroup1SideBySide ? " property-row-sidebyside" : ""}${
-              (card.property1 === null && card.property2 !== null) ||
-              (card.property1 !== null && card.property2 === null)
-                ? " property-row-single"
-                : ""
-            }`}
+            className={`property-row property-row-1${settings.propertyGroup1SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div className="property-field property-field-1">
               {card.propertyName1 &&
@@ -2075,12 +1982,7 @@ function Card({
 
         const row2 = row2HasContent && (
           <div
-            className={`property-row property-row-2${settings.propertyGroup2SideBySide ? " property-row-sidebyside" : ""}${
-              (card.property3 === null && card.property4 !== null) ||
-              (card.property3 !== null && card.property4 === null)
-                ? " property-row-single"
-                : ""
-            }`}
+            className={`property-row property-row-2${settings.propertyGroup2SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div className="property-field property-field-3">
               {card.propertyName3 &&
@@ -2109,12 +2011,7 @@ function Card({
 
         const row3 = row3HasContent && (
           <div
-            className={`property-row property-row-3${settings.propertyGroup3SideBySide ? " property-row-sidebyside" : ""}${
-              (card.property5 === null && card.property6 !== null) ||
-              (card.property5 !== null && card.property6 === null)
-                ? " property-row-single"
-                : ""
-            }`}
+            className={`property-row property-row-3${settings.propertyGroup3SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div className="property-field property-field-5">
               {card.propertyName5 &&
@@ -2143,12 +2040,7 @@ function Card({
 
         const row4 = row4HasContent && (
           <div
-            className={`property-row property-row-4${settings.propertyGroup4SideBySide ? " property-row-sidebyside" : ""}${
-              (card.property7 === null && card.property8 !== null) ||
-              (card.property7 !== null && card.property8 === null)
-                ? " property-row-single"
-                : ""
-            }`}
+            className={`property-row property-row-4${settings.propertyGroup4SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div className="property-field property-field-7">
               {card.propertyName7 &&
@@ -2177,12 +2069,7 @@ function Card({
 
         const row5 = row5HasContent && (
           <div
-            className={`property-row property-row-5${settings.propertyGroup5SideBySide ? " property-row-sidebyside" : ""}${
-              (card.property9 === null && card.property10 !== null) ||
-              (card.property9 !== null && card.property10 === null)
-                ? " property-row-single"
-                : ""
-            }`}
+            className={`property-row property-row-5${settings.propertyGroup5SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div className="property-field property-field-9">
               {card.propertyName9 &&
@@ -2211,12 +2098,7 @@ function Card({
 
         const row6 = row6HasContent && (
           <div
-            className={`property-row property-row-6${settings.propertyGroup6SideBySide ? " property-row-sidebyside" : ""}${
-              (card.property11 === null && card.property12 !== null) ||
-              (card.property11 !== null && card.property12 === null)
-                ? " property-row-single"
-                : ""
-            }`}
+            className={`property-row property-row-6${settings.propertyGroup6SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div className="property-field property-field-11">
               {card.propertyName11 &&
@@ -2245,12 +2127,7 @@ function Card({
 
         const row7 = row7HasContent && (
           <div
-            className={`property-row property-row-7${settings.propertyGroup7SideBySide ? " property-row-sidebyside" : ""}${
-              (card.property13 === null && card.property14 !== null) ||
-              (card.property13 !== null && card.property14 === null)
-                ? " property-row-single"
-                : ""
-            }`}
+            className={`property-row property-row-7${settings.propertyGroup7SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div className="property-field property-field-13">
               {card.propertyName13 &&

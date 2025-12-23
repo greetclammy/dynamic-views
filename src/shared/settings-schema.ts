@@ -749,5 +749,6 @@ export function readBasesSettings(
         : defaultViewSettings.imageAspectRatio;
     })(),
     preventSidebarSwipe: globalSettings.preventSidebarSwipe, // From global settings
+    revealInNotebookNavigator: globalSettings.revealInNotebookNavigator, // From global settings
   };
 }

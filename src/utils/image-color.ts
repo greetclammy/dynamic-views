@@ -1,9 +1,4 @@
 /**
- * Extract average color from an image
- * Used for ambient color letterbox backgrounds
- */
-
-/**
  * Extract the average color from an image element
  * @param img - HTMLImageElement to analyze
  * @returns RGB color string in format "rgb(r, g, b)"

@@ -90,6 +90,13 @@ export function showTagHashPrefix(): boolean {
 }
 
 /**
+ * Check if empty value marker should be hidden for tags
+ */
+export function hideEmptyTagMarker(): boolean {
+  return hasBodyClass("dynamic-views-hide-empty-tag-marker");
+}
+
+/**
  * Get card spacing from CSS variable
  * For Bases files, returns user-configured value; for embeds, returns Obsidian default
  */
@@ -236,14 +243,6 @@ export function isCoverBackgroundAmbient(): boolean {
 }
 
 /**
- * Check if ambient color extraction is needed (for cache invalidation)
- * Returns true if either Card background: Ambient or Cover background: Ambient is enabled
- */
-export function isAmbientColorNeeded(): boolean {
-  return isCardBackgroundAmbient() || isCoverBackgroundAmbient();
-}
-
-/**
  * Get maximum number of images for slideshow
  * Returns slider value (default 10, min 2, max 24)
  */
@@ -265,61 +264,6 @@ export function getUrlIcon(): string {
     icon = icon.slice(7);
   }
   return icon;
-}
-
-/**
- * Type for Style Settings color cache
- */
-export interface StyleSettingsColorCache {
-  titleColor?: { light?: string; dark?: string };
-  textPreviewColor?: { light?: string; dark?: string };
-  tagsColor?: { light?: string; dark?: string };
-  timestampColor?: { light?: string; dark?: string };
-  propertyColor?: { light?: string; dark?: string };
-}
-
-/**
- * Apply custom colors from Style Settings to a card element
- * Used for ambient card backgrounds to apply themed text colors
- * @param cardEl - Card element to apply colors to
- * @param theme - 'light' or 'dark' theme based on ambient color
- * @param cache - Style Settings color cache with custom colors
- */
-export function applyCustomColors(
-  cardEl: HTMLElement,
-  theme: "light" | "dark",
-  cache: StyleSettingsColorCache,
-): void {
-  if (cache.titleColor?.[theme]) {
-    cardEl.style.setProperty(
-      "--dynamic-views-title-color",
-      cache.titleColor[theme],
-    );
-  }
-  if (cache.textPreviewColor?.[theme]) {
-    cardEl.style.setProperty(
-      "--dynamic-views-text-preview-color",
-      cache.textPreviewColor[theme],
-    );
-  }
-  if (cache.tagsColor?.[theme]) {
-    cardEl.style.setProperty(
-      "--dynamic-views-tags-color",
-      cache.tagsColor[theme],
-    );
-  }
-  if (cache.timestampColor?.[theme]) {
-    cardEl.style.setProperty(
-      "--dynamic-views-timestamp-color",
-      cache.timestampColor[theme],
-    );
-  }
-  if (cache.propertyColor?.[theme]) {
-    cardEl.style.setProperty(
-      "--dynamic-views-property-color",
-      cache.propertyColor[theme],
-    );
-  }
 }
 
 /**

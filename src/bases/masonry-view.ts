@@ -339,6 +339,7 @@ export class DynamicViewsMasonryView extends BasesView {
           this.masonryContainer,
           processedGroup.group,
           this.config,
+          this.app,
         );
 
         // Create group container for cards
@@ -643,6 +644,7 @@ export class DynamicViewsMasonryView extends BasesView {
           this.masonryContainer,
           processedGroup.group,
           this.config,
+          this.app,
         );
 
         // New group - create container for cards

@@ -13,23 +13,20 @@ import {
 /** Long-press detection threshold in ms */
 const LONG_PRESS_THRESHOLD = 500;
 
-/** Double-press detection threshold in ms (desktop: mouse/trackpad) */
-const DOUBLE_PRESS_THRESHOLD = 300;
-
 /** Mobile vertical pan ratio - ~26% viewport visible at pan limit (matches Obsidian native) */
 const MOBILE_VERTICAL_PAN_RATIO = 3.85;
 
 /** Wheel event listener options (stored for proper cleanup) */
 const WHEEL_OPTIONS: AddEventListenerOptions = { passive: false };
 
+/** Movement threshold in pixels to distinguish click from pan/drag */
+const MOVE_THRESHOLD = 5;
+
 // Store cleanup functions for event listeners (Map for explicit lifecycle control)
 const viewerListenerCleanups = new Map<HTMLElement, () => void>();
 
-// WeakMap for wheel handlers (keyed by container element)
-const containerWheelHandlers = new WeakMap<
-  HTMLElement,
-  (e: WheelEvent) => void
->();
+// Map for wheel handlers (keyed by container element, uses explicit lifecycle control)
+const containerWheelHandlers = new Map<HTMLElement, (e: WheelEvent) => void>();
 
 /**
  * Force cleanup all viewers - call on view destruction
@@ -146,12 +143,11 @@ function setupImageViewerGestures(
   isMobile: boolean,
 ): () => void {
   let panzoomInstance: PanzoomObject | null = null;
-  let doublePressHandler: ((e: MouseEvent) => void) | null = null;
-  let contextmenuHandler: ((e: MouseEvent) => void) | null = null;
+  let spacebarHandler: ((e: KeyboardEvent) => void) | null = null;
   let loadHandler: (() => void) | null = null;
   let errorHandler: (() => void) | null = null;
   let pointerdownHandler: ((e: PointerEvent) => void) | null = null;
-  let pointermoveHandler: (() => void) | null = null;
+  let pointermoveHandler: ((e: PointerEvent) => void) | null = null;
   let pointerupHandler: (() => void) | null = null;
   let resizeHandler: (() => void) | null = null;
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -365,13 +361,6 @@ function setupImageViewerGestures(
       }
     }
 
-    // Right-click: prevent default context menu, no action
-    contextmenuHandler = (e: MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    imgEl.addEventListener("contextmenu", contextmenuHandler);
-
     // Clear long-press timer helper
     const clearLongPress = () => {
       if (longPressTimer) {
@@ -387,37 +376,36 @@ function setupImageViewerGestures(
       function getContainScale(): number {
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
-        const imgWidth = imgEl.clientWidth;
-        const imgHeight = imgEl.clientHeight;
+        const imgWidth = imgEl.clientWidth || 1; // Avoid division by zero
+        const imgHeight = imgEl.clientHeight || 1;
         return Math.min(containerWidth / imgWidth, containerHeight / imgHeight);
       }
 
-      // Double-press detection via click timing (more reliable than native dblclick)
-      let lastPressTime = 0;
-      doublePressHandler = (e: MouseEvent) => {
-        if (e.target !== imgEl) return;
+      // Spacebar to toggle maximize
+      spacebarHandler = (e: KeyboardEvent) => {
+        if (e.code !== "Space") return;
+        e.preventDefault();
         e.stopPropagation();
-        const now = Date.now();
-        if (now - lastPressTime < DOUBLE_PRESS_THRESHOLD) {
-          lastPressTime = 0; // Reset to prevent triple-press triggering
-          if (isMaximized) {
-            setMaximized(false);
-            panzoomInstance?.reset();
-          } else {
-            const containScale = getContainScale();
-            setMaximized(true, containScale);
-            panzoomInstance?.zoom(containScale, { animate: true });
-          }
+        if (isMaximized) {
+          setMaximized(false);
+          panzoomInstance?.reset();
         } else {
-          lastPressTime = now;
+          const containScale = getContainScale();
+          setMaximized(true, containScale);
+          panzoomInstance?.zoom(containScale, { animate: true });
         }
       };
-      container.addEventListener("click", doublePressHandler, true);
+      document.addEventListener("keydown", spacebarHandler, true);
 
       // Long-press via pointer events on container (panzoom stops propagation on imgEl)
+      let longPressStartX = 0;
+      let longPressStartY = 0;
+
       pointerdownHandler = (e: PointerEvent) => {
         // Only primary pointer, left mouse button, and target is the image
         if (!e.isPrimary || e.button !== 0 || e.target !== imgEl) return;
+        longPressStartX = e.clientX;
+        longPressStartY = e.clientY;
         longPressTimer = setTimeout(() => {
           if (isMaximized) {
             // Reset to initial maximized position (containScale, centered)
@@ -427,15 +415,30 @@ function setupImageViewerGestures(
             panzoomInstance?.reset();
           }
           longPressTimer = null;
+          // Flag to prevent click-to-dismiss after long press
+          container.dataset.longPressTriggered = "true";
         }, LONG_PRESS_THRESHOLD);
       };
       container.addEventListener("pointerdown", pointerdownHandler, true);
 
-      // Cancel long-press on move (user is panning, not long-pressing)
-      pointermoveHandler = clearLongPress;
+      // Cancel long-press on move beyond threshold (user is panning, not long-pressing)
+      pointermoveHandler = (e: PointerEvent) => {
+        if (
+          Math.abs(e.clientX - longPressStartX) > MOVE_THRESHOLD ||
+          Math.abs(e.clientY - longPressStartY) > MOVE_THRESHOLD
+        ) {
+          clearLongPress();
+        }
+      };
       container.addEventListener("pointermove", pointermoveHandler, true);
 
-      pointerupHandler = clearLongPress;
+      pointerupHandler = () => {
+        clearLongPress();
+        // Clear long press flag after click event has fired
+        setTimeout(() => {
+          delete container.dataset.longPressTriggered;
+        }, 0);
+      };
       container.addEventListener("pointerup", pointerupHandler, true);
     }
   }
@@ -471,11 +474,8 @@ function setupImageViewerGestures(
       }
       panzoomInstance.destroy();
     }
-    if (doublePressHandler) {
-      container.removeEventListener("click", doublePressHandler, true);
-    }
-    if (contextmenuHandler) {
-      imgEl.removeEventListener("contextmenu", contextmenuHandler);
+    if (spacebarHandler) {
+      document.removeEventListener("keydown", spacebarHandler, true);
     }
     if (longPressTimer) {
       clearTimeout(longPressTimer);
@@ -605,6 +605,11 @@ function openImageViewer(
     "dynamic-views-zoom-disabled",
   );
 
+  // Check dismiss setting once, applies regardless of panzoom state
+  const isDismissDisabled = document.body.classList.contains(
+    "dynamic-views-image-viewer-disable-dismiss-on-click",
+  );
+
   // Wrap gesture setup in try-catch to prevent orphaned clone on error
   try {
     if (!isPinchZoomDisabled) {
@@ -622,21 +627,88 @@ function openImageViewer(
       } else {
         viewerCleanupFns.set(cloneEl, gestureCleanup);
       }
-    } else {
-      // When panzoom disabled, still allow clicking image to close
+    } else if (!isMobile) {
+      // Desktop only: trackpad pinch to maximize/restore (when panzoom disabled)
+      const onPinchWheel = (e: WheelEvent) => {
+        if (!e.ctrlKey) return;
+        e.preventDefault();
+
+        if (e.deltaY < 0) {
+          cloneEl.classList.add("is-maximized");
+        } else if (e.deltaY > 0) {
+          cloneEl.classList.remove("is-maximized");
+        }
+      };
+      cloneEl.addEventListener("wheel", onPinchWheel, { passive: false });
+
+      // Desktop only: spacebar to toggle maximize (when panzoom disabled)
+      const onSpacebar = (e: KeyboardEvent) => {
+        if (e.code !== "Space") return;
+        e.preventDefault();
+        e.stopPropagation();
+        cloneEl.classList.toggle("is-maximized");
+      };
+      document.addEventListener("keydown", onSpacebar, true);
+
+      const existingGestureCleanup = viewerCleanupFns.get(cloneEl);
+      viewerCleanupFns.set(cloneEl, () => {
+        existingGestureCleanup?.();
+        cloneEl.removeEventListener("wheel", onPinchWheel);
+        document.removeEventListener("keydown", onSpacebar, true);
+      });
+    }
+
+    // Prevent context menu on image
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    imgEl.addEventListener("contextmenu", onContextMenu);
+
+    // Track pointer movement to distinguish click from pan
+    let pointerMoved = false;
+    let startX = 0;
+    let startY = 0;
+
+    const onPointerDown = (e: PointerEvent) => {
+      pointerMoved = false;
+      startX = e.clientX;
+      startY = e.clientY;
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (
+        Math.abs(e.clientX - startX) > MOVE_THRESHOLD ||
+        Math.abs(e.clientY - startY) > MOVE_THRESHOLD
+      ) {
+        pointerMoved = true;
+      }
+    };
+
+    // Click-to-dismiss (unless disabled) - works with or without panzoom
+    if (!isDismissDisabled) {
+      imgEl.addEventListener("pointerdown", onPointerDown);
+      imgEl.addEventListener("pointermove", onPointerMove);
+
       const onImageClick = (e: MouseEvent) => {
+        if (pointerMoved) return;
+        if (cloneEl.dataset.longPressTriggered) return;
         e.stopPropagation();
         closeImageViewer(cloneEl, viewerCleanupFns, viewerClones);
       };
-      // Prevent context menu when panzoom disabled
-      const onContextMenu = (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-      };
       imgEl.addEventListener("click", onImageClick);
-      imgEl.addEventListener("contextmenu", onContextMenu);
+
+      const existingCleanup = viewerCleanupFns.get(cloneEl);
       viewerCleanupFns.set(cloneEl, () => {
+        existingCleanup?.();
+        imgEl.removeEventListener("pointerdown", onPointerDown);
+        imgEl.removeEventListener("pointermove", onPointerMove);
         imgEl.removeEventListener("click", onImageClick);
+        imgEl.removeEventListener("contextmenu", onContextMenu);
+      });
+    } else {
+      const existingCleanup = viewerCleanupFns.get(cloneEl);
+      viewerCleanupFns.set(cloneEl, () => {
+        existingCleanup?.();
         imgEl.removeEventListener("contextmenu", onContextMenu);
       });
     }

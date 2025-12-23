@@ -103,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   modifiedTimeProperty: "",
   cardSize: 400,
   preventSidebarSwipe: "disabled",
+  revealInNotebookNavigator: "disable",
 };
 
 export const DEFAULT_UI_STATE = {

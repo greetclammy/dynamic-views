@@ -320,7 +320,7 @@ export class DynamicViewsCardView extends BasesView {
         const groupEntries = processedGroup.entries.slice(0, entriesToDisplay);
 
         // Render group header to feed container (sibling to card group, matching vanilla)
-        renderGroupHeader(feedEl, processedGroup.group, this.config);
+        renderGroupHeader(feedEl, processedGroup.group, this.config, this.app);
 
         // Create group container for cards
         const groupEl = feedEl.createDiv(
@@ -543,6 +543,7 @@ export class DynamicViewsCardView extends BasesView {
           this.feedContainerRef.current,
           processedGroup.group,
           this.config,
+          this.app,
         );
 
         // New group - create container for cards

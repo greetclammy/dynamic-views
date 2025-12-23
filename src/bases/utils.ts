@@ -15,6 +15,10 @@ import {
   loadImagesForEntries,
 } from "../shared/content-loader";
 import { setupSwipeInterception } from "./swipe-interceptor";
+import {
+  shouldUseNotebookNavigator,
+  navigateToTagInNotebookNavigator,
+} from "../utils/notebook-navigator";
 import type { Settings } from "../types";
 
 /** CSS selector for embedded view detection - centralized for maintainability */
@@ -116,6 +120,49 @@ export function serializeGroupKey(key: unknown): string | undefined {
   if (typeof key === "number" || typeof key === "boolean") return String(key);
 
   if (typeof key === "object" && key !== null) {
+    // Check if array-like (Bases uses proxy arrays that fail Array.isArray)
+    const isArrayLike =
+      Array.isArray(key) ||
+      (typeof (key as ArrayLike<unknown>).length === "number" &&
+        !("data" in key) &&
+        !("date" in key));
+
+    // Handle arrays of Bases Value objects (e.g., tags: [{icon, data: "#tag1"}, ...])
+    if (isArrayLike) {
+      // Avoid copying if already an array
+      const arr = Array.isArray(key)
+        ? key
+        : Array.from(key as ArrayLike<unknown>);
+      if (arr.length === 0) return undefined;
+      // Extract .data from each element that has it
+      const extracted = arr.map((item): unknown => {
+        if (item && typeof item === "object" && "data" in item) {
+          return (item as { data: unknown }).data;
+        }
+        return item;
+      });
+      // If all elements are strings/primitives after extraction, join them
+      if (extracted.every((v) => typeof v === "string")) {
+        return extracted.join(", ");
+      }
+      if (
+        extracted.every(
+          (v) =>
+            typeof v === "string" ||
+            typeof v === "number" ||
+            typeof v === "boolean",
+        )
+      ) {
+        return extracted.map(String).join(", ");
+      }
+      // Complex array - stringify
+      try {
+        return JSON.stringify(extracted);
+      } catch {
+        // Fall through
+      }
+    }
+
     // Handle Bases date Value objects (e.g., {date: Date, time: boolean})
     if ("date" in key && (key as { date: unknown }).date instanceof Date) {
       return (key as { date: Date }).date.toISOString();
@@ -128,11 +175,9 @@ export function serializeGroupKey(key: unknown): string | undefined {
       if (typeof data === "string") return data;
       if (typeof data === "number" || typeof data === "boolean")
         return String(data);
-      // For complex data (arrays, nested objects), stringify the data portion
-      try {
-        return JSON.stringify(data);
-      } catch {
-        // Fall through to full object stringify
+      // Recursively process .data (handles arrays of Value objects inside .data)
+      if (typeof data === "object" && data !== null) {
+        return serializeGroupKey(data);
       }
     }
   }
@@ -179,6 +224,105 @@ export function processGroups<T extends GroupData>(
 }
 
 /**
+ * Check if value is a tag array (array of Value objects with # prefixed data)
+ * Bases proxy arrays have .data containing the actual array
+ */
+function isTagArray(key: unknown): boolean {
+  if (!key || typeof key !== "object") return false;
+
+  // Bases proxy has .data property containing the actual array
+  if (!("data" in key)) return false;
+
+  const data = (key as { data: unknown }).data;
+  if (!data || !Array.isArray(data) || data.length === 0) return false;
+
+  // Check if first item has .data starting with #
+  const first: unknown = data[0];
+  if (first && typeof first === "object" && "data" in first) {
+    const itemData = (first as { data: unknown }).data;
+    return typeof itemData === "string" && itemData.startsWith("#");
+  }
+  return false;
+}
+
+/**
+ * Render group value with rich HTML matching vanilla Bases structure
+ * Handles tags, dates, and primitives
+ */
+function renderGroupValue(valueEl: HTMLElement, key: unknown, app: App): void {
+  // Tags: render as clickable tag elements
+  if (isTagArray(key)) {
+    // Bases proxy has .data containing the actual array
+    const dataArr = (key as { data: unknown[] }).data;
+    const arr = Array.isArray(dataArr) ? dataArr : Array.from(dataArr);
+    const container = valueEl.createDiv("value-list-container");
+
+    // Create tag elements
+    arr.forEach((item) => {
+      if (item && typeof item === "object" && "data" in item) {
+        const data = (item as { data: unknown }).data;
+        if (typeof data === "string" && data.startsWith("#")) {
+          const element = container.createSpan("value-list-element");
+          element.createEl("a", {
+            cls: "tag",
+            text: data.slice(1), // Remove # prefix
+            href: "#",
+          });
+        }
+      }
+    });
+
+    // Event delegation: single listener on container handles all tag clicks
+    container.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      if (!target.hasClass("tag")) return;
+      e.preventDefault();
+
+      const tagText = target.textContent ?? "";
+      // Use Notebook Navigator if configured for tags
+      if (
+        shouldUseNotebookNavigator(app, "tag") &&
+        navigateToTagInNotebookNavigator(app, tagText)
+      ) {
+        return;
+      }
+      // Fallback to global search
+      const searchPlugin = (
+        app as unknown as {
+          internalPlugins: {
+            plugins: {
+              "global-search"?: {
+                instance?: { openGlobalSearch?: (query: string) => void };
+              };
+            };
+          };
+        }
+      ).internalPlugins.plugins["global-search"];
+      if (searchPlugin?.instance?.openGlobalSearch) {
+        searchPlugin.instance.openGlobalSearch("tag:" + tagText);
+      }
+    });
+    return;
+  }
+
+  // Dates: format as timestamp
+  if (
+    key &&
+    typeof key === "object" &&
+    "date" in key &&
+    (key as { date: unknown }).date instanceof Date
+  ) {
+    const date = (key as { date: Date }).date;
+    valueEl.setText(date.toLocaleDateString());
+    return;
+  }
+
+  // Fallback: use serialized string
+  const keyValue = serializeGroupKey(key) ?? "";
+  valueEl.setText(keyValue);
+}
+
+/**
  * Render group header if group has a key
  * Creates the heading element with property label and value
  * Header is rendered as sibling to card group (matching vanilla Bases structure)
@@ -187,6 +331,7 @@ export function renderGroupHeader(
   containerEl: HTMLElement,
   group: { hasKey(): boolean; key?: unknown },
   config: BasesConfigWithSort,
+  app: App,
 ): void {
   if (!group.hasKey()) return;
 
@@ -199,9 +344,7 @@ export function renderGroupHeader(
   }
 
   const valueEl = headerEl.createDiv("bases-group-value");
-  // Use serializeGroupKey for display - handles primitives cleanly
-  const keyValue = serializeGroupKey(group.key) ?? "";
-  valueEl.setText(keyValue);
+  renderGroupValue(valueEl, group.key, app);
 }
 
 /**

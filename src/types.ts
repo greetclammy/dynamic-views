@@ -63,6 +63,7 @@ export interface Settings {
   modifiedTimeProperty: string;
   cardSize: number;
   preventSidebarSwipe: "disabled" | "base-files" | "all-views";
+  revealInNotebookNavigator: "disable" | "files-folders" | "tags" | "all";
 }
 
 export interface UIState {
