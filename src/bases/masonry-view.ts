@@ -415,6 +415,10 @@ export class DynamicViewsMasonryView extends BasesView {
 
       try {
         const containerWidth = this.masonryContainer.clientWidth;
+        // Skip layout when container collapsed (happens during tab switch)
+        if (containerWidth === 0) {
+          return;
+        }
         const gap = getCardSpacing(this.containerEl);
 
         // Check grouped mode via class (source of truth set in onDataUpdated)
@@ -895,8 +899,8 @@ export class DynamicViewsMasonryView extends BasesView {
 
     // Shared load check function
     const checkAndLoad = () => {
-      // Skip if already loading
-      if (this.isLoading) {
+      // Skip if container disconnected or already loading
+      if (!scrollContainer.isConnected || this.isLoading) {
         return;
       }
 

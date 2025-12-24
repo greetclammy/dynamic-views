@@ -58,13 +58,6 @@ export function getMinGridColumns(): number {
 }
 
 /**
- * Check if card background is enabled
- */
-export function hasCardBackground(): boolean {
-  return hasBodyClass("dynamic-views-card-background");
-}
-
-/**
  * Check if timestamp icon should be shown
  * Returns true for all icon positions (left, right, inner, outer)
  * Returns false only when explicitly hidden

@@ -511,7 +511,7 @@ settings:
     -
         id: dynamic-views-hide-empty-properties
         title: Hide empty properties
-        description: Do not display a property if its value is empty.
+        description: Do not display a property if its value is empty. Does not affect tag properties.
         type: class-toggle
         default: false
     -
@@ -3590,7 +3590,11 @@ body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
     .dynamic-views-image-viewer-fullscreen
   )
   > .dynamic-views-image-embed.is-zoomed {
-  background: color-mix(in srgb, var(--background-primary) 40%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--background-primary) calc(var(--overlay-opacity, 0.4) * 100%),
+    transparent
+  );
   transition: background var(--anim-duration-fast) ease;
 }
 
@@ -5295,7 +5299,7 @@ body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-properties .tag,
 body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-subtitle .tag,
 body:not(.dynamic-views-tag-style-theme) .dynamic-views .list-properties .tag {
   all: unset;
-  --tag-text-color: var(--text-muted);
+  --tag-text-color: var(--text-faint);
   border-radius: var(--pill-radius);
   border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
   color: var(--tag-text-color);
@@ -6132,6 +6136,10 @@ body.dynamic-views-subtitle-color-custom .dynamic-views .card-subtitle {
 /* Text preview color presets */
 body.dynamic-views-text-preview-color-faint .dynamic-views .card-text-preview {
   --dynamic-views-text-preview-color: var(--text-faint);
+}
+
+body.dynamic-views-text-preview-color-muted .dynamic-views .card-text-preview {
+  --dynamic-views-text-preview-color: var(--text-muted);
 }
 
 body.dynamic-views-text-preview-color-normal .dynamic-views .card-text-preview {

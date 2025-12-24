@@ -1,5 +1,12 @@
 import { SCROLL_TOLERANCE } from "./constants";
 
+/** Gradient class names */
+const GRADIENT_CLASSES = [
+  "scroll-gradient-left",
+  "scroll-gradient-right",
+  "scroll-gradient-both",
+] as const;
+
 /**
  * Creates a throttled version of a function
  * Uses requestAnimationFrame for smooth 60fps throttling
@@ -19,47 +26,58 @@ function throttleRAF<T extends (...args: unknown[]) => void>(
 }
 
 /**
+ * Determines the appropriate gradient class based on scroll position
+ * Returns null if no gradient needed (not scrollable or at both ends)
+ */
+function getGradientClass(
+  scrollLeft: number,
+  scrollWidth: number,
+  clientWidth: number,
+): string | null {
+  const atStart = scrollLeft <= SCROLL_TOLERANCE;
+  const atEnd = scrollLeft + clientWidth >= scrollWidth - SCROLL_TOLERANCE;
+
+  if (atStart && !atEnd) return "scroll-gradient-right";
+  if (atEnd && !atStart) return "scroll-gradient-left";
+  if (!atStart && !atEnd) return "scroll-gradient-both";
+  return null;
+}
+
+/**
+ * Sets the appropriate gradient class on an element, removing others
+ * Uses classList.toggle(class, force) which handles no-ops efficiently
+ */
+function setGradientClasses(
+  element: HTMLElement,
+  targetClass: string | null,
+): void {
+  for (const cls of GRADIENT_CLASSES) {
+    element.classList.toggle(cls, cls === targetClass);
+  }
+}
+
+/**
  * Updates scroll gradient classes for a simple scrollable element
  * Used for elements that are both the scrolling container and gradient target
  *
  * @param element - The scrollable element that receives gradient classes
  */
 export function updateElementScrollGradient(element: HTMLElement): void {
-  const scrollWidth = element.scrollWidth;
-  const clientWidth = element.clientWidth;
-  const isScrollable = scrollWidth > clientWidth;
-
-  // Determine target class (null if not scrollable)
-  let targetClass: string | null = null;
-  if (isScrollable) {
-    const scrollLeft = element.scrollLeft;
-    const atStart = scrollLeft <= SCROLL_TOLERANCE;
-    const atEnd = scrollLeft + clientWidth >= scrollWidth - SCROLL_TOLERANCE;
-
-    targetClass =
-      atStart && !atEnd
-        ? "scroll-gradient-right"
-        : atEnd && !atStart
-          ? "scroll-gradient-left"
-          : !atStart && !atEnd
-            ? "scroll-gradient-both"
-            : null;
+  // Guard: skip if element disconnected or not measured
+  if (!element.isConnected || element.clientWidth === 0) {
+    return;
   }
 
-  // Only modify classes if state changed (minimizes DOM mutations)
-  const classes = [
-    "scroll-gradient-left",
-    "scroll-gradient-right",
-    "scroll-gradient-both",
-  ];
-  for (const cls of classes) {
-    const hasClass = element.classList.contains(cls);
-    if (cls === targetClass && !hasClass) {
-      element.addClass(cls);
-    } else if (cls !== targetClass && hasClass) {
-      element.removeClass(cls);
-    }
-  }
+  const isScrollable = element.scrollWidth > element.clientWidth;
+  const targetClass = isScrollable
+    ? getGradientClass(
+        element.scrollLeft,
+        element.scrollWidth,
+        element.clientWidth,
+      )
+    : null;
+
+  setGradientClasses(element, targetClass);
 }
 
 /**
@@ -69,6 +87,11 @@ export function updateElementScrollGradient(element: HTMLElement): void {
  * @param element - The property field element (parent container)
  */
 export function updateScrollGradient(element: HTMLElement): void {
+  // Guard: skip if element disconnected
+  if (!element.isConnected) {
+    return;
+  }
+
   // With wrapper structure: wrapper always scrolls and receives gradients
   const wrapper = element.querySelector(
     ".property-content-wrapper",
@@ -79,8 +102,8 @@ export function updateScrollGradient(element: HTMLElement): void {
     return;
   }
 
-  // Skip if element not visible/measured - don't clear existing gradients with invalid data
-  if (wrapper.clientWidth === 0) {
+  // Skip if elements not visible/measured - don't clear existing gradients with invalid data
+  if (wrapper.clientWidth === 0 || content.clientWidth === 0) {
     return;
   }
 
@@ -88,15 +111,10 @@ export function updateScrollGradient(element: HTMLElement): void {
   const isScrollable = content.scrollWidth > wrapper.clientWidth;
 
   if (!isScrollable) {
-    // Only remove classes if they exist (minimizes DOM mutations)
-    if (wrapper.classList.contains("scroll-gradient-left"))
-      wrapper.removeClass("scroll-gradient-left");
-    if (wrapper.classList.contains("scroll-gradient-right"))
-      wrapper.removeClass("scroll-gradient-right");
-    if (wrapper.classList.contains("scroll-gradient-both"))
-      wrapper.removeClass("scroll-gradient-both");
-    if (element.classList.contains("is-scrollable"))
+    setGradientClasses(wrapper, null);
+    if (element.classList.contains("is-scrollable")) {
       element.removeClass("is-scrollable");
+    }
     return;
   }
 
@@ -105,8 +123,13 @@ export function updateScrollGradient(element: HTMLElement): void {
     element.addClass("is-scrollable");
   }
 
-  // Use shared logic for gradient updates
-  updateElementScrollGradient(wrapper);
+  // Calculate and apply gradient class
+  const targetClass = getGradientClass(
+    wrapper.scrollLeft,
+    wrapper.scrollWidth,
+    wrapper.clientWidth,
+  );
+  setGradientClasses(wrapper, targetClass);
 }
 
 /**

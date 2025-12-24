@@ -80,7 +80,21 @@ function isTagProperty(propertyName: string | undefined): boolean {
 }
 
 /**
+ * Check if a property is a file property (intrinsic, cannot be missing)
+ */
+function isFileProperty(propertyName: string | undefined): boolean {
+  if (!propertyName) return false;
+  const normalized = propertyName.toLowerCase();
+  return normalized.startsWith("file.") || normalized.startsWith("file ");
+}
+
+/**
  * Determine if a field should be collapsed based on hide settings
+ *
+ * Settings independence:
+ * - hideMissing: only applies to YAML properties (file properties can't be missing)
+ * - hideEmpty: only applies to non-tag properties
+ * - hideEmptyTags: only applies to tag properties
  */
 function shouldCollapseField(
   value: string | null,
@@ -89,10 +103,24 @@ function shouldCollapseField(
   hideEmpty: boolean,
   hideEmptyTags: boolean,
 ): boolean {
+  const isTag = isTagProperty(propertyName);
+  const isFile = isFileProperty(propertyName);
+
+  // Tag properties: hideEmptyTags controls collapse, hideMissing only for YAML tags
+  if (isTag) {
+    // YAML tags can be missing; file tags cannot
+    if (!isFile && value === null && hideMissing) return true;
+    return !value && hideEmptyTags;
+  }
+
+  // File properties: cannot be missing, only hideEmpty applies
+  if (isFile) {
+    return value === "" && hideEmpty;
+  }
+
+  // YAML non-tag properties: both hideMissing and hideEmpty apply
   if (value === null && hideMissing) return true;
   if (value === "" && hideEmpty) return true;
-  // Tag properties return null (not "") when empty, so check both
-  if (!value && isTagProperty(propertyName) && hideEmptyTags) return true;
   return false;
 }
 
@@ -2142,7 +2170,8 @@ export class SharedCardRenderer {
       typeof resolvedValue === "string" ? resolvedValue : null;
 
     // Hide missing properties if toggle enabled (stringValue is null for missing properties)
-    if (stringValue === null && hideMissing) {
+    // File properties can never be "missing" - they always exist
+    if (stringValue === null && hideMissing && !isFileProperty(propertyName)) {
       return;
     }
 

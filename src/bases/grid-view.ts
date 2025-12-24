@@ -610,8 +610,8 @@ export class DynamicViewsCardView extends BasesView {
 
     // Shared load check function
     const checkAndLoad = () => {
-      // Skip if already loading
-      if (this.isLoading) {
+      // Skip if container disconnected or already loading
+      if (!scrollContainer.isConnected || this.isLoading) {
         return;
       }
 

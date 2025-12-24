@@ -456,8 +456,14 @@ export function getPropertyLabel(propertyName: string): string {
   if (mappedLabel) return mappedLabel;
 
   // Strip note. prefix from YAML properties
+  // (note.formula.one → formula.one, preserving the actual property name)
   if (propertyName.startsWith("note.")) {
     return propertyName.slice(5); // Remove "note."
+  }
+
+  // Strip formula. prefix from formula properties
+  if (propertyName.startsWith("formula.")) {
+    return propertyName.slice(8); // Remove "formula."
   }
 
   // For custom properties, use exact capitalization as-is

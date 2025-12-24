@@ -8,6 +8,17 @@ import type { App, EventRef } from "obsidian";
 // Shared scroll positions across all views (keyed by leafId)
 const scrollPositions = new Map<string, number>();
 
+/** Runtime-only properties on WorkspaceLeaf not exposed in public types */
+interface LeafRuntimeProps {
+  id?: string;
+  parent?: unknown;
+}
+
+/** Safely access runtime-only leaf properties */
+function getLeafProps(leaf: unknown): LeafRuntimeProps {
+  return (leaf ?? {}) as LeafRuntimeProps;
+}
+
 // Time-based reset detection threshold
 const RESET_DETECTION_WINDOW_MS = 200;
 
@@ -31,6 +42,9 @@ export class ScrollPreservation {
   private scrollHandler: (() => void) | null = null;
 
   constructor(config: ScrollPreservationConfig) {
+    if (!config.leafId) {
+      throw new Error("ScrollPreservation: leafId cannot be empty");
+    }
     this.leafId = config.leafId;
     this.scrollEl = config.scrollEl;
     this.app = config.app;
@@ -38,8 +52,7 @@ export class ScrollPreservation {
     // Setup active-leaf-change handler
     config.registerEvent(
       config.app.workspace.on("active-leaf-change", (leaf) => {
-        // Cast required: WorkspaceLeaf.id exists at runtime but isn't in public types
-        const leafId = (leaf as unknown as { id: string })?.id;
+        const leafId = getLeafProps(leaf).id;
         if (leafId === this.leafId) {
           this.handleSwitchTo();
         } else {
@@ -61,9 +74,10 @@ export class ScrollPreservation {
   }
 
   private handleSwitchTo(): void {
+    if (!this.scrollEl.isConnected) return;
     this.lastSwitchToTime = Date.now();
-    const saved = scrollPositions.get(this.leafId);
-    if (saved !== undefined && saved > 0) {
+    const saved = scrollPositions.get(this.leafId) ?? 0;
+    if (saved > 0) {
       this.scrollEl.scrollTop = saved;
     }
     this.scrollEl.style.visibility = "";
@@ -71,14 +85,22 @@ export class ScrollPreservation {
   }
 
   private handleSwitchAway(newLeaf: unknown): void {
-    // Find this view's leaf to compare parents using reference equality
-    // (parent.id doesn't exist in Obsidian types - use object identity instead)
-    const thisLeaf = this.app.workspace.getLeafById(this.leafId);
-    const thisParent = (thisLeaf as unknown as { parent?: unknown })?.parent;
-    const newParent = (newLeaf as { parent?: unknown })?.parent;
+    if (!this.scrollEl.isConnected) return;
 
-    // Only hide if switching tabs within same pane, not when focus moves to split pane
-    if (thisParent !== newParent) return;
+    // Compare parent containers using reference equality to detect same-pane tab switches
+    const thisLeaf = this.app.workspace.getLeafById(this.leafId);
+    const thisParent = getLeafProps(thisLeaf).parent;
+    const newParent = getLeafProps(newLeaf).parent;
+
+    // Skip if focus moved to different pane (split view) - only hide for same-pane tab switches
+    const isSamePaneSwitch = thisParent === newParent;
+    if (!isSamePaneSwitch) return;
+
+    // Save scroll position before hiding (if not already reset by container collapse)
+    const currentScroll = this.scrollEl.scrollTop;
+    if (currentScroll > 0) {
+      scrollPositions.set(this.leafId, currentScroll);
+    }
 
     // Hide during tab switch to prevent visual artifacts. If view is destroyed before
     // handleSwitchTo can restore visibility, DOM removal handles cleanup automatically.
@@ -94,6 +116,7 @@ export class ScrollPreservation {
       scheduled = true;
       requestAnimationFrame(() => {
         scheduled = false;
+        if (!this.scrollEl.isConnected) return;
 
         const currentSaved = scrollPositions.get(this.leafId) ?? 0;
         const newScroll = this.scrollEl.scrollTop;
@@ -106,11 +129,19 @@ export class ScrollPreservation {
           newScroll < currentSaved * RESET_THRESHOLD_RATIO &&
           currentSaved > MIN_RESET_POSITION
         ) {
+          console.log(
+            `// post-switch reset detected: new=${newScroll} saved=${currentSaved}`,
+          );
           this.scrollEl.scrollTop = currentSaved;
           return;
         }
 
-        // Always track current scroll position (symmetric - saves both up and down)
+        // Don't save when container collapsed (masonry collapses to 0×0 during tab switch)
+        if (this.scrollEl.scrollHeight <= this.scrollEl.clientHeight) {
+          return;
+        }
+
+        // Track current scroll position
         scrollPositions.set(this.leafId, newScroll);
       });
     };
@@ -118,6 +149,7 @@ export class ScrollPreservation {
 
   /** Restore scroll position after render (re-reads from map for freshness) */
   restoreAfterRender(): void {
+    if (!this.scrollEl.isConnected) return;
     const saved = scrollPositions.get(this.leafId) ?? 0;
     if (saved > 0) {
       this.scrollEl.scrollTop = saved;

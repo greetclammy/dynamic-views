@@ -1,7 +1,6 @@
 import {
   getMinMasonryColumns,
   getMinGridColumns,
-  hasCardBackground,
   showTimestampIcon,
   getTagStyle,
   getCardSpacing,
@@ -106,23 +105,6 @@ describe("style-settings", () => {
       } as CSSStyleDeclaration);
 
       expect(getMinGridColumns()).toBe(1.5);
-    });
-  });
-
-  describe("hasCardBackground", () => {
-    it("should return false by default", () => {
-      expect(hasCardBackground()).toBe(false);
-    });
-
-    it("should return true when class is present", () => {
-      mockClassList.add("dynamic-views-card-background");
-      expect(hasCardBackground()).toBe(true);
-    });
-
-    it("should return false when class is removed", () => {
-      mockClassList.add("dynamic-views-card-background");
-      mockClassList.delete("dynamic-views-card-background");
-      expect(hasCardBackground()).toBe(false);
     });
   });
 

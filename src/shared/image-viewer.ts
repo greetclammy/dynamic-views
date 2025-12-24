@@ -567,6 +567,21 @@ function openImageViewer(
   const isFullscreen =
     isMobile ||
     document.body.classList.contains("dynamic-views-image-viewer-fullscreen");
+
+  // For constrained mode, extract opacity from theme's cover color
+  if (!isFullscreen) {
+    const coverColor = getComputedStyle(document.body)
+      .getPropertyValue("--background-modifier-cover")
+      .trim();
+    const match = coverColor.match(/[\d.]+(?=\s*\)$)/); // Extract last number (alpha)
+    if (match) {
+      const opacity = parseFloat(match[0]);
+      if (opacity >= 0 && opacity <= 1) {
+        cloneEl.style.setProperty("--overlay-opacity", String(opacity));
+      }
+    }
+  }
+
   let resizeObserver: ResizeObserver | null = null;
   if (!isFullscreen) {
     // Use workspace-leaf (stable across React re-renders) as observer target
