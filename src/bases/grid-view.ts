@@ -79,6 +79,10 @@ export class DynamicViewsCardView extends BasesView {
   private abortController: AbortController | null = null;
   // Guard against reentrant ResizeObserver callbacks (#13)
   private isUpdatingColumns: boolean = false;
+  // Track last data hash to detect actual data changes
+  private lastDataHash: string = "";
+  // Track last column count to avoid unnecessary CSS reflow
+  private lastColumnCount: number = 0;
 
   /** Calculate initial card count based on container dimensions */
   private calculateInitialCount(settings: Settings): number {
@@ -200,6 +204,17 @@ export class DynamicViewsCardView extends BasesView {
       const groupedData = this.data.groupedData;
       const allEntries = this.data.data;
 
+      // Check if data actually changed - skip re-render if not (prevents tab switch flash)
+      const dataHash = allEntries.map((e: BasesEntry) => e.file.path).join(",");
+      if (
+        dataHash === this.lastDataHash &&
+        this.feedContainerRef.current?.children.length
+      ) {
+        this.scrollPreservation.restoreAfterRender();
+        return;
+      }
+      this.lastDataHash = dataHash;
+
       // Read settings from Bases config
       const settings = readBasesSettings(
         this.config,
@@ -225,6 +240,7 @@ export class DynamicViewsCardView extends BasesView {
       );
 
       // Set CSS variables for grid layout
+      this.lastColumnCount = cols;
       this.containerEl.style.setProperty("--grid-columns", String(cols));
       this.containerEl.style.setProperty(
         "--dynamic-views-image-aspect-ratio",
@@ -385,7 +401,19 @@ export class DynamicViewsCardView extends BasesView {
               Math.floor((containerWidth + gap) / (cardSize + gap)),
             );
 
-            this.containerEl.style.setProperty("--grid-columns", String(cols));
+            // Only update if changed
+            if (cols !== this.lastColumnCount) {
+              // Save scroll before CSS change, restore after (prevents reflow reset)
+              const scrollBefore = this.scrollEl.scrollTop;
+              this.lastColumnCount = cols;
+              this.containerEl.style.setProperty(
+                "--grid-columns",
+                String(cols),
+              );
+              if (scrollBefore > 0) {
+                this.scrollEl.scrollTop = scrollBefore;
+              }
+            }
           } finally {
             this.isUpdatingColumns = false;
           }

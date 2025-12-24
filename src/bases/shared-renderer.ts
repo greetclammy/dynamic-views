@@ -28,11 +28,11 @@ import {
 import { getTimestampIcon } from "../shared/render-utils";
 import {
   showTagHashPrefix,
-  hideEmptyTagField,
+  getHideEmptyMode,
+  type HideEmptyMode,
   showTimestampIcon,
   getEmptyValueMarker,
   shouldHideMissingProperties,
-  shouldHideEmptyProperties,
   getListSeparator,
   isSlideshowEnabled,
   isSlideshowIndicatorEnabled,
@@ -66,61 +66,44 @@ import {
   revealFileInNotebookNavigator,
 } from "../utils/notebook-navigator";
 import { measurePropertyFields } from "../shared/property-measure";
-
-/**
- * Check if a property is a tag property (tags or file tags)
- */
-function isTagProperty(propertyName: string | undefined): boolean {
-  return (
-    propertyName === "tags" ||
-    propertyName === "note.tags" ||
-    propertyName === "file.tags" ||
-    propertyName === "file tags"
-  );
-}
-
-/**
- * Check if a property is a file property (intrinsic, cannot be missing)
- */
-function isFileProperty(propertyName: string | undefined): boolean {
-  if (!propertyName) return false;
-  const normalized = propertyName.toLowerCase();
-  return normalized.startsWith("file.") || normalized.startsWith("file ");
-}
+import {
+  isTagProperty,
+  isFileProperty,
+  isFormulaProperty,
+} from "../shared/property-helpers";
 
 /**
  * Determine if a field should be collapsed based on hide settings
  *
- * Settings independence:
- * - hideMissing: only applies to YAML properties (file properties can't be missing)
- * - hideEmpty: only applies to non-tag properties
- * - hideEmptyTags: only applies to tag properties
+ * Settings:
+ * - hideMissing: only applies to YAML properties (file/formula/tag can't be missing)
+ * - hideEmptyMode: applies to all property types uniformly
  */
 function shouldCollapseField(
   value: string | null,
   propertyName: string,
   hideMissing: boolean,
-  hideEmpty: boolean,
-  hideEmptyTags: boolean,
+  hideEmptyMode: HideEmptyMode,
+  propertyLabels: "hide" | "inline" | "above",
 ): boolean {
   const isTag = isTagProperty(propertyName);
   const isFile = isFileProperty(propertyName);
+  const isFormula = isFormulaProperty(propertyName);
 
-  // Tag properties: hideEmptyTags controls collapse, hideMissing only for YAML tags
-  if (isTag) {
-    // YAML tags can be missing; file tags cannot
-    if (!isFile && value === null && hideMissing) return true;
-    return !value && hideEmptyTags;
+  // Empty handling (applies to all property types uniformly)
+  const isEmpty = value === "" || (isTag && !value);
+  if (isEmpty) {
+    if (hideEmptyMode === "all") return true;
+    if (hideEmptyMode === "labels-hidden" && propertyLabels === "hide")
+      return true;
+    return false; // "show" mode
   }
 
-  // File properties: cannot be missing, only hideEmpty applies
-  if (isFile) {
-    return value === "" && hideEmpty;
+  // Missing handling (only YAML properties can be "missing")
+  if (value === null && !isFile && !isFormula && !isTag) {
+    return hideMissing;
   }
 
-  // YAML non-tag properties: both hideMissing and hideEmpty apply
-  if (value === null && hideMissing) return true;
-  if (value === "" && hideEmpty) return true;
   return false;
 }
 
@@ -779,7 +762,7 @@ export class SharedCardRenderer {
         entry,
         { ...settings, propertyLabels: "hide" },
         shouldHideMissingProperties(),
-        shouldHideEmptyProperties(),
+        getHideEmptyMode(),
         signal,
       );
 
@@ -1386,11 +1369,9 @@ export class SharedCardRenderer {
       prop ? resolveBasesProperty(this.app, prop, entry, card, settings) : null,
     );
 
-    // Pre-compute hide toggles (avoid repeated classList checks)
+    // Pre-compute hide settings (avoid repeated classList checks)
     const hideMissing = shouldHideMissingProperties();
-    const hideEmpty = shouldHideEmptyProperties();
-    const hideEmptyTags =
-      hideEmptyTagField() && settings.propertyLabels === "hide";
+    const hideEmptyMode = getHideEmptyMode();
 
     // Check if any row has content
     // Show row if property is configured, UNLESS labels hidden AND hideMissingProperties enabled
@@ -1505,7 +1486,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1519,7 +1500,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1542,8 +1523,8 @@ export class SharedCardRenderer {
               values[1],
               effectiveProps[1],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field2El.addClass("property-field-collapsed");
@@ -1563,8 +1544,8 @@ export class SharedCardRenderer {
               values[0],
               effectiveProps[0],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field1El.addClass("property-field-collapsed");
@@ -1597,7 +1578,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1611,7 +1592,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1634,8 +1615,8 @@ export class SharedCardRenderer {
               values[3],
               effectiveProps[3],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field4El.addClass("property-field-collapsed");
@@ -1655,8 +1636,8 @@ export class SharedCardRenderer {
               values[2],
               effectiveProps[2],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field3El.addClass("property-field-collapsed");
@@ -1689,7 +1670,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1703,7 +1684,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1724,8 +1705,8 @@ export class SharedCardRenderer {
               values[5],
               effectiveProps[5],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field6El.addClass("property-field-collapsed");
@@ -1745,8 +1726,8 @@ export class SharedCardRenderer {
               values[4],
               effectiveProps[4],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field5El.addClass("property-field-collapsed");
@@ -1779,7 +1760,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1793,7 +1774,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1814,8 +1795,8 @@ export class SharedCardRenderer {
               values[7],
               effectiveProps[7],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field8El.addClass("property-field-collapsed");
@@ -1835,8 +1816,8 @@ export class SharedCardRenderer {
               values[6],
               effectiveProps[6],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field7El.addClass("property-field-collapsed");
@@ -1869,7 +1850,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1883,7 +1864,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1905,8 +1886,8 @@ export class SharedCardRenderer {
               values[9],
               effectiveProps[9],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field10El.addClass("property-field-collapsed");
@@ -1926,8 +1907,8 @@ export class SharedCardRenderer {
               values[8],
               effectiveProps[8],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field9El.addClass("property-field-collapsed");
@@ -1960,7 +1941,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1974,7 +1955,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -1997,8 +1978,8 @@ export class SharedCardRenderer {
               values[11],
               effectiveProps[11],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field12El.addClass("property-field-collapsed");
@@ -2018,8 +1999,8 @@ export class SharedCardRenderer {
               values[10],
               effectiveProps[10],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field11El.addClass("property-field-collapsed");
@@ -2052,7 +2033,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -2066,7 +2047,7 @@ export class SharedCardRenderer {
           entry,
           settings,
           hideMissing,
-          hideEmpty,
+          hideEmptyMode,
           signal,
         );
 
@@ -2089,8 +2070,8 @@ export class SharedCardRenderer {
               values[13],
               effectiveProps[13],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field14El.addClass("property-field-collapsed");
@@ -2110,8 +2091,8 @@ export class SharedCardRenderer {
               values[12],
               effectiveProps[12],
               hideMissing,
-              hideEmpty,
-              hideEmptyTags,
+              hideEmptyMode,
+              settings.propertyLabels,
             )
           ) {
             field13El.addClass("property-field-collapsed");
@@ -2158,7 +2139,7 @@ export class SharedCardRenderer {
     entry: BasesEntry,
     settings: Settings,
     hideMissing: boolean,
-    hideEmpty: boolean,
+    hideEmptyMode: HideEmptyMode,
     signal: AbortSignal,
   ): void {
     if (propertyName === "") {
@@ -2170,38 +2151,27 @@ export class SharedCardRenderer {
       typeof resolvedValue === "string" ? resolvedValue : null;
 
     // Hide missing properties if toggle enabled (stringValue is null for missing properties)
-    // File properties can never be "missing" - they always exist
-    if (stringValue === null && hideMissing && !isFileProperty(propertyName)) {
+    // File/formula/tag properties can never be "missing" - they always exist or are computed
+    if (
+      stringValue === null &&
+      hideMissing &&
+      !isFileProperty(propertyName) &&
+      !isFormulaProperty(propertyName) &&
+      !isTagProperty(propertyName)
+    ) {
       return;
     }
 
-    // Hide empty properties if toggle enabled (stringValue is '' for empty properties)
-    if (stringValue === "" && hideEmpty) {
-      return;
-    }
-
-    // Early return for empty special properties when labels are hidden AND hideEmpty enabled
-    if (settings.propertyLabels === "hide" && hideEmpty) {
+    // Check if this is an empty property that should be hidden based on dropdown mode
+    const isEmpty =
+      stringValue === "" || (isTagProperty(propertyName) && !stringValue);
+    if (isEmpty) {
+      if (hideEmptyMode === "all") return;
       if (
-        (propertyName === "tags" || propertyName === "note.tags") &&
-        card.yamlTags.length === 0
-      ) {
+        hideEmptyMode === "labels-hidden" &&
+        settings.propertyLabels === "hide"
+      )
         return;
-      }
-      if (
-        (propertyName === "file.tags" || propertyName === "file tags") &&
-        card.tags.length === 0
-      ) {
-        return;
-      }
-      if (
-        (propertyName === "file.path" ||
-          propertyName === "path" ||
-          propertyName === "file path") &&
-        card.folderPath.length === 0
-      ) {
-        return;
-      }
     }
 
     // Render label if property labels are enabled
@@ -2214,17 +2184,6 @@ export class SharedCardRenderer {
     if (settings.propertyLabels === "inline") {
       const labelSpan = container.createSpan("property-label-inline");
       labelSpan.textContent = getPropertyLabel(propertyName) + " ";
-    }
-
-    // Early return for empty tag fields when labels hidden - before creating wrapper divs
-    // so container remains empty and field can be collapsed
-    if (
-      !stringValue &&
-      isTagProperty(propertyName) &&
-      hideEmptyTagField() &&
-      settings.propertyLabels === "hide"
-    ) {
-      return;
     }
 
     // Wrapper for scrolling content (gradients applied here)

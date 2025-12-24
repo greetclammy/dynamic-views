@@ -9,11 +9,10 @@ import type { Settings } from "../types";
 import type { RefObject } from "../datacore/types";
 import {
   showTagHashPrefix,
-  hideEmptyTagField,
+  getHideEmptyMode,
   showTimestampIcon,
   getEmptyValueMarker,
   shouldHideMissingProperties,
-  shouldHideEmptyProperties,
   getListSeparator,
   isSlideshowEnabled,
   isSlideshowIndicatorEnabled,
@@ -49,6 +48,11 @@ import {
   setupElementScrollGradient,
 } from "./scroll-gradient";
 import { handleArrowNavigation, isArrowKey } from "./keyboard-nav";
+import {
+  isTagProperty,
+  isFileProperty,
+  isFormulaProperty,
+} from "./property-helpers";
 import {
   shouldUseNotebookNavigator,
   navigateToTagInNotebookNavigator,
@@ -460,6 +464,43 @@ export interface CardRendererProps {
 }
 
 /**
+ * Determine if a property field should be collapsed (hidden entirely)
+ * Pure function - all settings passed as parameters for predictable behavior
+ */
+function shouldCollapseField(
+  propertyName: string | undefined,
+  resolvedValue: unknown,
+  propertyLabels: "hide" | "inline" | "above",
+  hideEmptyMode: "show" | "labels-hidden" | "all",
+  hideMissing: boolean,
+): boolean {
+  // No property configured - collapse if labels hidden (for layout)
+  if (!propertyName) {
+    return propertyLabels === "hide";
+  }
+
+  const stringValue = typeof resolvedValue === "string" ? resolvedValue : null;
+  const isTag = isTagProperty(propertyName);
+  const isFile = isFileProperty(propertyName);
+  const isFormula = isFormulaProperty(propertyName);
+
+  // Empty handling
+  const isEmpty = stringValue === "" || (isTag && !stringValue);
+  if (isEmpty) {
+    if (hideEmptyMode === "all") return true;
+    if (hideEmptyMode === "labels-hidden" && propertyLabels === "hide")
+      return true;
+  }
+
+  // Missing handling (null value, not empty string)
+  if (stringValue === null && !isFile && !isFormula && !isTag) {
+    return hideMissing;
+  }
+
+  return false;
+}
+
+/**
  * Helper function to render property content based on display type
  */
 function renderPropertyContent(
@@ -671,7 +712,7 @@ function CoverSlideshow({
 function renderProperty(
   propertyName: string,
   propertyValue: unknown,
-  resolvedValue: string,
+  resolvedValue: string | null,
   settings: Settings,
   card: CardData,
   app: App,
@@ -682,13 +723,28 @@ function renderProperty(
   }
 
   // Hide missing properties if toggle enabled (resolvedValue is null for missing properties)
-  if (resolvedValue === null && shouldHideMissingProperties()) {
+  // File/formula/tag properties can never be "missing"
+  const isTag = isTagProperty(propertyName);
+  const isFile = isFileProperty(propertyName);
+  const isFormula = isFormulaProperty(propertyName);
+
+  if (
+    resolvedValue === null &&
+    shouldHideMissingProperties() &&
+    !isFile &&
+    !isFormula &&
+    !isTag
+  ) {
     return null;
   }
 
-  // Hide empty properties if toggle enabled (resolvedValue is '' for empty properties)
-  if (resolvedValue === "" && shouldHideEmptyProperties()) {
-    return null;
+  // Check if this is an empty property that should be hidden based on dropdown mode
+  const isEmpty = resolvedValue === "" || (isTag && !resolvedValue);
+  const hideEmptyMode = getHideEmptyMode();
+  if (isEmpty) {
+    if (hideEmptyMode === "all") return null;
+    if (hideEmptyMode === "labels-hidden" && settings.propertyLabels === "hide")
+      return null;
   }
 
   // Render label above if enabled
@@ -707,19 +763,8 @@ function renderProperty(
       </span>
     ) : null;
 
-  // If no value, show placeholder (or hide for tags when labels hidden and setting enabled)
+  // If no value, show placeholder
   if (!resolvedValue) {
-    // Hide empty tags/file-tags when labels hidden and setting enabled
-    if (
-      hideEmptyTagField() &&
-      settings.propertyLabels === "hide" &&
-      (propertyName === "tags" ||
-        propertyName === "note.tags" ||
-        propertyName === "file.tags" ||
-        propertyName === "file tags")
-    ) {
-      return null;
-    }
     return (
       <>
         {labelAbove}
@@ -1060,6 +1105,9 @@ export function CardRenderer({
   onCardClick,
   onFocusChange,
 }: CardRendererProps): unknown {
+  // DEBUG: Log when CardRenderer renders
+  console.log(`// CardRenderer render: propertyLabels=${settings.propertyLabels}`);
+
   return (
     <div
       ref={(el: HTMLElement | null) => {
@@ -1217,6 +1265,11 @@ function Card({
   onCardClick,
   onFocusChange,
 }: CardProps): unknown {
+  // DEBUG: Log when Card renders and what settings.propertyLabels is
+  console.log(
+    `// Card render: ${card.path.split("/").pop()}, propertyLabels=${settings.propertyLabels}`,
+  );
+
   // Edge case: if openFileAction is "title" but title is hidden, treat as "card"
   const effectiveOpenFileAction =
     settings.openFileAction === "title" && !settings.showTitle
@@ -1900,41 +1953,148 @@ function Card({
 
       {/* Properties - 14-field rendering with 7-row layout, split by position */}
       {(() => {
+        // Read settings once for all fields
+        const hideEmptyMode = getHideEmptyMode();
+        const hideMissing = shouldHideMissingProperties();
+        const { propertyLabels } = settings;
+
+        // Pre-compute collapse states for all fields
+        const collapse = [
+          shouldCollapseField(
+            card.propertyName1,
+            card.property1,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName2,
+            card.property2,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName3,
+            card.property3,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName4,
+            card.property4,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName5,
+            card.property5,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName6,
+            card.property6,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName7,
+            card.property7,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName8,
+            card.property8,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName9,
+            card.property9,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName10,
+            card.property10,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName11,
+            card.property11,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName12,
+            card.property12,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName13,
+            card.property13,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+          shouldCollapseField(
+            card.propertyName14,
+            card.property14,
+            propertyLabels,
+            hideEmptyMode,
+            hideMissing,
+          ),
+        ];
+
         // Check if any row has content
         // When labels are enabled, show row if property is configured (even if value is empty)
         // When labels are hidden, only show row if value exists
         const row1HasContent =
-          settings.propertyLabels !== "hide"
+          propertyLabels !== "hide"
             ? card.propertyName1 !== undefined ||
               card.propertyName2 !== undefined
             : card.property1 !== null || card.property2 !== null;
         const row2HasContent =
-          settings.propertyLabels !== "hide"
+          propertyLabels !== "hide"
             ? card.propertyName3 !== undefined ||
               card.propertyName4 !== undefined
             : card.property3 !== null || card.property4 !== null;
         const row3HasContent =
-          settings.propertyLabels !== "hide"
+          propertyLabels !== "hide"
             ? card.propertyName5 !== undefined ||
               card.propertyName6 !== undefined
             : card.property5 !== null || card.property6 !== null;
         const row4HasContent =
-          settings.propertyLabels !== "hide"
+          propertyLabels !== "hide"
             ? card.propertyName7 !== undefined ||
               card.propertyName8 !== undefined
             : card.property7 !== null || card.property8 !== null;
         const row5HasContent =
-          settings.propertyLabels !== "hide"
+          propertyLabels !== "hide"
             ? card.propertyName9 !== undefined ||
               card.propertyName10 !== undefined
             : card.property9 !== null || card.property10 !== null;
         const row6HasContent =
-          settings.propertyLabels !== "hide"
+          propertyLabels !== "hide"
             ? card.propertyName11 !== undefined ||
               card.propertyName12 !== undefined
             : card.property11 !== null || card.property12 !== null;
         const row7HasContent =
-          settings.propertyLabels !== "hide"
+          propertyLabels !== "hide"
             ? card.propertyName13 !== undefined ||
               card.propertyName14 !== undefined
             : card.property13 !== null || card.property14 !== null;
@@ -1956,7 +2116,9 @@ function Card({
           <div
             className={`property-row property-row-1${settings.propertyGroup1SideBySide ? " property-row-sidebyside" : ""}`}
           >
-            <div className="property-field property-field-1">
+            <div
+              className={`property-field property-field-1${collapse[0] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName1 &&
                 renderPropertyContent(
                   card.propertyName1,
@@ -1967,7 +2129,9 @@ function Card({
                   app,
                 )}
             </div>
-            <div className="property-field property-field-2">
+            <div
+              className={`property-field property-field-2${collapse[1] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName2 &&
                 renderPropertyContent(
                   card.propertyName2,
@@ -1985,7 +2149,9 @@ function Card({
           <div
             className={`property-row property-row-2${settings.propertyGroup2SideBySide ? " property-row-sidebyside" : ""}`}
           >
-            <div className="property-field property-field-3">
+            <div
+              className={`property-field property-field-3${collapse[2] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName3 &&
                 renderPropertyContent(
                   card.propertyName3,
@@ -1996,7 +2162,9 @@ function Card({
                   app,
                 )}
             </div>
-            <div className="property-field property-field-4">
+            <div
+              className={`property-field property-field-4${collapse[3] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName4 &&
                 renderPropertyContent(
                   card.propertyName4,
@@ -2014,7 +2182,9 @@ function Card({
           <div
             className={`property-row property-row-3${settings.propertyGroup3SideBySide ? " property-row-sidebyside" : ""}`}
           >
-            <div className="property-field property-field-5">
+            <div
+              className={`property-field property-field-5${collapse[4] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName5 &&
                 renderPropertyContent(
                   card.propertyName5,
@@ -2025,7 +2195,9 @@ function Card({
                   app,
                 )}
             </div>
-            <div className="property-field property-field-6">
+            <div
+              className={`property-field property-field-6${collapse[5] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName6 &&
                 renderPropertyContent(
                   card.propertyName6,
@@ -2043,7 +2215,9 @@ function Card({
           <div
             className={`property-row property-row-4${settings.propertyGroup4SideBySide ? " property-row-sidebyside" : ""}`}
           >
-            <div className="property-field property-field-7">
+            <div
+              className={`property-field property-field-7${collapse[6] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName7 &&
                 renderPropertyContent(
                   card.propertyName7,
@@ -2054,7 +2228,9 @@ function Card({
                   app,
                 )}
             </div>
-            <div className="property-field property-field-8">
+            <div
+              className={`property-field property-field-8${collapse[7] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName8 &&
                 renderPropertyContent(
                   card.propertyName8,
@@ -2072,7 +2248,9 @@ function Card({
           <div
             className={`property-row property-row-5${settings.propertyGroup5SideBySide ? " property-row-sidebyside" : ""}`}
           >
-            <div className="property-field property-field-9">
+            <div
+              className={`property-field property-field-9${collapse[8] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName9 &&
                 renderPropertyContent(
                   card.propertyName9,
@@ -2083,7 +2261,9 @@ function Card({
                   app,
                 )}
             </div>
-            <div className="property-field property-field-10">
+            <div
+              className={`property-field property-field-10${collapse[9] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName10 &&
                 renderPropertyContent(
                   card.propertyName10,
@@ -2101,7 +2281,9 @@ function Card({
           <div
             className={`property-row property-row-6${settings.propertyGroup6SideBySide ? " property-row-sidebyside" : ""}`}
           >
-            <div className="property-field property-field-11">
+            <div
+              className={`property-field property-field-11${collapse[10] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName11 &&
                 renderPropertyContent(
                   card.propertyName11,
@@ -2112,7 +2294,9 @@ function Card({
                   app,
                 )}
             </div>
-            <div className="property-field property-field-12">
+            <div
+              className={`property-field property-field-12${collapse[11] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName12 &&
                 renderPropertyContent(
                   card.propertyName12,
@@ -2130,7 +2314,9 @@ function Card({
           <div
             className={`property-row property-row-7${settings.propertyGroup7SideBySide ? " property-row-sidebyside" : ""}`}
           >
-            <div className="property-field property-field-13">
+            <div
+              className={`property-field property-field-13${collapse[12] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName13 &&
                 renderPropertyContent(
                   card.propertyName13,
@@ -2141,7 +2327,9 @@ function Card({
                   app,
                 )}
             </div>
-            <div className="property-field property-field-14">
+            <div
+              className={`property-field property-field-14${collapse[13] ? " property-field-collapsed" : ""}`}
+            >
               {card.propertyName14 &&
                 renderPropertyContent(
                   card.propertyName14,

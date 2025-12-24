@@ -83,10 +83,17 @@ export function showTagHashPrefix(): boolean {
 }
 
 /**
- * Check if empty tag field should be hidden when labels are not shown
+ * Empty properties display mode from dropdown setting
  */
-export function hideEmptyTagField(): boolean {
-  return hasBodyClass("dynamic-views-hide-empty-tag-field");
+export type HideEmptyMode = "show" | "labels-hidden" | "all";
+
+/**
+ * Get empty properties display mode from Style Settings dropdown
+ */
+export function getHideEmptyMode(): HideEmptyMode {
+  if (hasBodyClass("dynamic-views-hide-empty-show")) return "show";
+  if (hasBodyClass("dynamic-views-hide-empty-all")) return "all";
+  return "labels-hidden"; // default
 }
 
 /**
@@ -170,14 +177,6 @@ export function getEmptyValueMarker(): string {
  */
 export function shouldHideMissingProperties(): boolean {
   return hasBodyClass("dynamic-views-hide-missing-properties");
-}
-
-/**
- * Check if empty properties should be hidden
- * Returns true if properties with empty values should not be displayed
- */
-export function shouldHideEmptyProperties(): boolean {
-  return hasBodyClass("dynamic-views-hide-empty-properties");
 }
 
 /**

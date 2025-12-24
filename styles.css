@@ -505,15 +505,26 @@ settings:
     -
         id: dynamic-views-hide-missing-properties
         title: Hide missing properties
-        description: Do not display a property if a file does not have it.
+        description: Hides YAML properties that don't exist in note frontmatter
         type: class-toggle
         default: false
     -
         id: dynamic-views-hide-empty-properties
-        title: Hide empty properties
-        description: Do not display a property if its value is empty. Does not affect tag properties.
-        type: class-toggle
-        default: false
+        title: Empty properties
+        description: How to display properties with empty values
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-hide-empty-labels-hidden
+        options:
+            -
+                label: Show markers
+                value: dynamic-views-hide-empty-show
+            -
+                label: Hide if labels hidden
+                value: dynamic-views-hide-empty-labels-hidden
+            -
+                label: Hide all
+                value: dynamic-views-hide-empty-all
     -
         id: dynamic-views-full-row-property-alignment
         title: Full-row property alignment
@@ -907,12 +918,6 @@ settings:
         format: hsl-split
         default-light: '#'
         default-dark: '#'
-    -
-        id: dynamic-views-hide-empty-tag-field
-        title: Hide empty tag field
-        description: Show nothing when the property label is hidden and there are no tags
-        type: class-toggle
-        default: true
     -
         id: text-preview-heading
         title: Text preview

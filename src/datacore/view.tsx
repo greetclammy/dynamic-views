@@ -1831,6 +1831,7 @@ export function View({
 
   const handleSettingsChange = dc.useCallback(
     (newSettings: Partial<Settings>) => {
+      console.log("// handleSettingsChange called:", newSettings);
       setSettings((prev) => ({ ...prev, ...newSettings }));
     },
     [],
@@ -1893,6 +1894,8 @@ export function View({
 
   // Render appropriate view component
   const renderView = (): JSX.Element => {
+    console.log(`// renderView called: propertyLabels=${settings.propertyLabels}`);
+
     // Slice allCards to displayedCount for rendering
     const cards = allCards.slice(0, Math.min(displayedCount, allCards.length));
 

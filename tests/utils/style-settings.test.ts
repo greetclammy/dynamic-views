@@ -9,7 +9,7 @@ import {
   getListSeparator,
   getEmptyValueMarker,
   shouldHideMissingProperties,
-  shouldHideEmptyProperties,
+  getHideEmptyMode,
   getUrlIcon,
 } from "../../src/utils/style-settings";
 
@@ -331,14 +331,19 @@ describe("style-settings", () => {
     });
   });
 
-  describe("shouldHideEmptyProperties", () => {
-    it("should return false by default", () => {
-      expect(shouldHideEmptyProperties()).toBe(false);
+  describe("getHideEmptyMode", () => {
+    it("should return labels-hidden by default", () => {
+      expect(getHideEmptyMode()).toBe("labels-hidden");
     });
 
-    it("should return true when class is present", () => {
-      mockClassList.add("dynamic-views-hide-empty-properties");
-      expect(shouldHideEmptyProperties()).toBe(true);
+    it("should return show when show class is present", () => {
+      mockClassList.add("dynamic-views-hide-empty-show");
+      expect(getHideEmptyMode()).toBe("show");
+    });
+
+    it("should return all when all class is present", () => {
+      mockClassList.add("dynamic-views-hide-empty-all");
+      expect(getHideEmptyMode()).toBe("all");
     });
   });
 
