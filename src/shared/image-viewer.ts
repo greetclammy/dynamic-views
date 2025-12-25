@@ -151,6 +151,7 @@ function setupImageViewerGestures(
   let pointermoveHandler: ((e: PointerEvent) => void) | null = null;
   let pointerupHandler: (() => void) | null = null;
   let pointercancelHandler: (() => void) | null = null;
+  let contextmenuHandler: ((e: MouseEvent) => void) | null = null;
   let resizeHandler: (() => void) | null = null;
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
   let isMaximized = false;
@@ -453,6 +454,21 @@ function setupImageViewerGestures(
       // Handle pointer cancel (system gesture, browser scroll) same as pointerup
       pointercancelHandler = pointerupHandler;
       container.addEventListener("pointercancel", pointercancelHandler, true);
+
+      // Right-click to reset zoom/pan (same as long-press)
+      contextmenuHandler = (e: MouseEvent) => {
+        if (e.target !== imgEl) return;
+        e.preventDefault();
+        clearLongPress(); // Abort any pending long-press timer
+
+        if (isMaximized) {
+          resetDesktopPan();
+          panzoomInstance?.zoom(getContainScale(), { animate: true });
+        } else {
+          panzoomInstance?.reset();
+        }
+      };
+      container.addEventListener("contextmenu", contextmenuHandler, true);
     }
   }
 
@@ -508,6 +524,9 @@ function setupImageViewerGestures(
         pointercancelHandler,
         true,
       );
+    }
+    if (contextmenuHandler) {
+      container.removeEventListener("contextmenu", contextmenuHandler, true);
     }
     if (loadHandler) {
       imgEl.removeEventListener("load", loadHandler);

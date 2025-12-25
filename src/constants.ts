@@ -92,7 +92,6 @@ export const DEFAULT_SETTINGS: Settings = {
   imageAspectRatio: 1.0,
   listMarker: "bullet",
   randomizeAction: "shuffle",
-  thumbnailCacheSize: "balanced",
   queryHeight: 0,
   openFileAction: "card",
   openRandomInNewTab: true,

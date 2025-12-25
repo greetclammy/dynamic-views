@@ -5,7 +5,7 @@
 
 import { BasesView, BasesEntry, QueryController } from "obsidian";
 import { CardData } from "../shared/card-renderer";
-import { clearImageMetadataCache } from "../shared/image-loader";
+import { reapplyAmbientColors } from "../shared/image-loader";
 import { transformBasesEntries } from "../shared/data-transform";
 import {
   readBasesSettings,
@@ -85,6 +85,8 @@ export class DynamicViewsCardView extends BasesView {
   private lastColumnCount: number = 0;
   // RAF ID for debounced resize handling (double-RAF)
   private resizeRafId: number | null = null;
+  // Track if any batch append occurred (for end indicator)
+  private hasBatchAppended: boolean = false;
 
   /** Calculate initial card count based on container dimensions */
   private calculateInitialCount(settings: Settings): number {
@@ -145,11 +147,14 @@ export class DynamicViewsCardView extends BasesView {
       this.plugin,
       this.updateLayoutRef,
     );
+
+    // Get global settings for feature flags
+    const globalSettings = this.plugin.persistenceManager.getGlobalSettings();
+
     // Placeholder - calculated dynamically on first render
     this.displayedCount = 0;
 
     // Setup swipe interception on mobile if enabled
-    const globalSettings = this.plugin.persistenceManager.getGlobalSettings();
     this.swipeAbortController = setupBasesSwipeInterception(
       this.containerEl,
       this.app,
@@ -159,7 +164,7 @@ export class DynamicViewsCardView extends BasesView {
     // Watch for Dynamic Views Style Settings changes only
     const disconnectObserver = setupStyleSettingsObserver(
       () => this.onDataUpdated(),
-      clearImageMetadataCache,
+      reapplyAmbientColors,
     );
     this.register(disconnectObserver);
 
@@ -191,6 +196,14 @@ export class DynamicViewsCardView extends BasesView {
 
   onDataUpdated(): void {
     void (async () => {
+      console.log("[grid-view] onDataUpdated START", {
+        currentCSSCols:
+          this.containerEl.style.getPropertyValue("--grid-columns"),
+        containerWidth: this.containerEl.clientWidth,
+        lastColumnCount: this.lastColumnCount,
+        isConnected: this.containerEl.isConnected,
+      });
+
       // Guard: return early if data not yet initialized (race condition with MutationObserver)
       if (!this.data) {
         return;
@@ -227,18 +240,42 @@ export class DynamicViewsCardView extends BasesView {
 
       // Check if data or settings changed - skip re-render if not (prevents tab switch flash)
       // Use null byte delimiter (cannot appear in file paths) to avoid hash collisions
+      const groupByProperty = hasGroupBy(this.config)
+        ? this.config.groupBy?.property
+        : undefined;
       const renderHash =
         allEntries.map((e: BasesEntry) => e.file.path).join("\0") +
         "\0\0" +
-        JSON.stringify(settings);
+        JSON.stringify(settings) +
+        "\0\0" +
+        (groupByProperty ?? "");
       if (
         renderHash === this.lastRenderHash &&
         this.feedContainerRef.current?.children.length
       ) {
+        // Restore column CSS (may be lost on tab switch)
+        const currentCSSCols =
+          this.containerEl.style.getPropertyValue("--grid-columns");
+        console.log("[grid-view] early return path", {
+          lastColumnCount: this.lastColumnCount,
+          currentCSSCols,
+          containerWidth: this.containerEl.clientWidth,
+          feedChildren: this.feedContainerRef.current?.children.length,
+        });
+        this.containerEl.style.setProperty(
+          "--grid-columns",
+          String(this.lastColumnCount),
+        );
         this.scrollPreservation.restoreAfterRender();
         return;
       }
+      const prevHash = this.lastRenderHash;
       this.lastRenderHash = renderHash;
+      console.log("[grid-view] full render path", {
+        containerWidth: this.containerEl.clientWidth,
+        hashChanged: renderHash !== prevHash,
+        hadChildren: !!this.feedContainerRef.current?.children.length,
+      });
 
       // Calculate initial count dynamically on first render
       if (this.displayedCount === 0) {
@@ -248,6 +285,11 @@ export class DynamicViewsCardView extends BasesView {
       // Update card size before calculating columns
       this.currentCardSize = settings.cardSize;
       const cols = this.calculateColumnCount();
+      console.log("[grid-view] setting columns", {
+        cols,
+        containerWidth: this.containerEl.clientWidth,
+        cardSize: settings.cardSize,
+      });
 
       // Set CSS variables for grid layout
       this.lastColumnCount = cols;
@@ -317,13 +359,13 @@ export class DynamicViewsCardView extends BasesView {
       this.previousDisplayedCount = 0;
       this.lastGroupKey = undefined;
       this.lastGroupContainer = null;
+      this.hasBatchAppended = false;
 
       // Cleanup card renderer observers before re-rendering
       this.cardRenderer.cleanup();
 
       // Check if grouping is active and toggle is-grouped class
-      const isGrouped =
-        hasGroupBy(this.config) && !!this.config.groupBy?.property;
+      const isGrouped = !!groupByProperty;
       this.containerEl.toggleClass("is-grouped", isGrouped);
 
       // Create cards feed container
@@ -392,7 +434,9 @@ export class DynamicViewsCardView extends BasesView {
 
       // Setup ResizeObserver for dynamic grid updates (double-RAF debounce)
       if (!this.resizeObserver) {
-        this.resizeObserver = new ResizeObserver(() => {
+        this.resizeObserver = new ResizeObserver((entries) => {
+          const width = entries[0]?.contentRect.width ?? 0;
+          console.log("[grid-view] ResizeObserver fired", { width });
           if (this.resizeRafId !== null) cancelAnimationFrame(this.resizeRafId);
           this.resizeRafId = requestAnimationFrame(() => {
             this.resizeRafId = requestAnimationFrame(() => {
@@ -444,8 +488,8 @@ export class DynamicViewsCardView extends BasesView {
     entry: BasesEntry,
     index: number,
     settings: Settings,
-  ): void {
-    this.cardRenderer.renderCard(container, card, entry, settings, {
+  ): HTMLElement {
+    return this.cardRenderer.renderCard(container, card, entry, settings, {
       index,
       focusableCardIndex: this.focusableCardIndex,
       containerRef: this.feedContainerRef,
@@ -530,6 +574,8 @@ export class DynamicViewsCardView extends BasesView {
 
     // Abort if renderVersion changed during loading
     if (this.renderVersion !== currentVersion) {
+      this.containerEl.querySelector(".dynamic-views-end-indicator")?.remove();
+      this.isLoading = false;
       return;
     }
 
@@ -624,6 +670,9 @@ export class DynamicViewsCardView extends BasesView {
     // to ensure consistency even if this.displayedCount changed during async
     this.previousDisplayedCount = currCount;
 
+    // Mark that batch append occurred (for end indicator)
+    this.hasBatchAppended = true;
+
     // Clear loading flag and re-setup infinite scroll
     this.isLoading = false;
     this.setupInfiniteScroll(totalEntries, settings);
@@ -638,8 +687,11 @@ export class DynamicViewsCardView extends BasesView {
       this.scrollListener = null;
     }
 
-    // Skip if all items already displayed
+    // Show end indicator only after batch append completed all items
     if (this.displayedCount >= totalEntries) {
+      if (this.hasBatchAppended) {
+        this.showEndIndicator();
+      }
       return;
     }
 
@@ -708,6 +760,13 @@ export class DynamicViewsCardView extends BasesView {
 
     // Attach listener to scroll container
     scrollContainer.addEventListener("scroll", this.scrollListener);
+  }
+
+  /** Show end-of-content indicator when all items are displayed */
+  private showEndIndicator(): void {
+    // Avoid duplicates
+    if (this.containerEl.querySelector(".dynamic-views-end-indicator")) return;
+    this.containerEl.createDiv("dynamic-views-end-indicator");
   }
 
   onunload(): void {

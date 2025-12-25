@@ -64,6 +64,12 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
+        id: dynamic-views-hide-end-indicator
+        title: Hide end of view indicator
+        description: Do not show the horizontal rule at view bottom
+        type: class-toggle
+        default: false
+    -
         id: cards-heading
         title: Cards
         type: heading
@@ -145,8 +151,19 @@ settings:
         id: dynamic-views-ambient-background
         title: Ambient background
         description: Use ambient color from image as card background (only for cards with images)
-        type: class-toggle
-        default: false
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-ambient-bg-off
+        options:
+            -
+                label: Off
+                value: dynamic-views-ambient-bg-off
+            -
+                label: Subtle
+                value: dynamic-views-ambient-bg-subtle
+            -
+                label: Dramatic
+                value: dynamic-views-ambient-bg-dramatic
     -
         id: dynamic-views-no-fade-truncated-text
         title: Don't fade truncated text
@@ -1396,7 +1413,6 @@ body {
 
 .dynamic-views .card:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--background-modifier-border-focus);
 }
 
 /* ============================================
@@ -2708,18 +2724,6 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   overflow: hidden;
 }
 
-/* Grid mode: side covers use overflow visible, rely on wrapper positioning */
-.bases-view[data-view-type="dynamic-views-grid"]
-  .dynamic-views-grid
-  .card.card-cover-left.image-format-cover,
-.bases-view[data-view-type="dynamic-views-grid"]
-  .dynamic-views-grid
-  .card.card-cover-right.image-format-cover,
-.dynamic-views .dynamic-views-grid .card.card-cover-left.image-format-cover,
-.dynamic-views .dynamic-views-grid .card.card-cover-right.image-format-cover {
-  overflow: visible;
-}
-
 /* Card element ordering for flexbox layout */
 .dynamic-views .card .card-title,
 .dynamic-views .card .card-header {
@@ -2873,22 +2877,45 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 }
 
 .dynamic-views .card {
-  --_border-enabled: var(--dynamic-views-card-border, 1);
   position: relative;
   container-type: inline-size;
   box-sizing: border-box;
-  border: calc(var(--_border-enabled) * 1px) solid
-    var(--dynamic-views-card-border-color, var(--background-modifier-border));
+  border: none;
   border-radius: var(--dynamic-views-card-border-radius, 8px);
+  overflow: hidden; /* Clip covers at rounded corners */
   padding: var(--dynamic-views-card-padding, 8px);
   margin: var(--size-4-2) 0;
   background-color: var(--background-primary-alt);
   break-inside: avoid;
   page-break-inside: avoid;
   transition:
-    border-color var(--anim-duration-fast),
     box-shadow var(--anim-duration-fast) ease-in-out,
     background-color var(--anim-duration-moderate) ease;
+}
+
+/* Border as pseudo-element so it appears on top of covers */
+.dynamic-views .card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px
+    var(--dynamic-views-card-border-color, var(--background-modifier-border));
+  pointer-events: none;
+}
+
+/* Fade-in animation for batch-appended cards */
+.dynamic-views .card.card-fade-in {
+  animation: cardFadeIn var(--anim-duration-fast) ease-out;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Card spacing setting - Bases files only */
@@ -2901,9 +2928,39 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   cursor: pointer;
 }
 
-/* Hide card border */
-body.dynamic-views-hide-card-border .dynamic-views .card {
-  border: none;
+/* Hide card border - explicit setting */
+body.dynamic-views-hide-card-border .dynamic-views .card::after {
+  box-shadow: none;
+}
+
+/* Hide border on cards WITH ambient color */
+body.dynamic-views-ambient-bg-subtle
+  .dynamic-views
+  .card[data-ambient-theme]::after,
+body.dynamic-views-ambient-bg-dramatic
+  .dynamic-views
+  .card[data-ambient-theme]::after {
+  box-shadow: none;
+}
+
+/* Focus ring - appears after hiding rules to win via cascade */
+body .dynamic-views .card:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--background-modifier-border-focus);
+  pointer-events: none;
+  z-index: 10;
+}
+
+body.dynamic-views-ambient-bg-subtle .dynamic-views .card:focus-visible::after,
+body.dynamic-views-ambient-bg-dramatic
+  .dynamic-views
+  .card:focus-visible::after {
+  box-shadow:
+    inset 0 0 0 2px var(--background-modifier-border-focus),
+    inset 0 0 0 4px #d4d4d4;
 }
 
 /* Masonry container */
@@ -2913,12 +2970,21 @@ body.dynamic-views-hide-card-border .dynamic-views .card {
   contain: layout style;
 }
 
+/* Hide cards during resize to prevent visible overlap before layout recalculates */
+/* Works for both ungrouped (.masonry-container on same element) and grouped (nested .masonry-container) */
+.dynamic-views .masonry-container.masonry-resizing .card,
+.dynamic-views .masonry-resizing .masonry-container .card {
+  opacity: 0;
+}
+
 /* Hide cards until masonry positions them (prevents flash at 0,0) */
 /* Must match positioned cards' CSS context (position + containment) for accurate height measurement */
+/* height: auto overrides grid's height: 100% which causes incorrect 148px skeleton height */
 .dynamic-views .masonry-container .card:not(.masonry-positioned) {
   position: absolute;
   opacity: 0;
   width: var(--masonry-width, auto);
+  height: auto;
   contain: layout style paint;
 }
 
@@ -2926,12 +2992,12 @@ body.dynamic-views-hide-card-border .dynamic-views .card {
 .dynamic-views .card.masonry-positioned {
   position: absolute;
   width: var(--masonry-width);
+  height: auto;
   left: var(--masonry-left);
   top: var(--masonry-top);
   contain: layout style paint;
   transition:
     box-shadow var(--anim-duration-fast) ease-in-out,
-    border-color var(--anim-duration-fast),
     background-color var(--anim-duration-moderate) ease;
 }
 
@@ -2969,17 +3035,23 @@ body.dynamic-views-card-background-custom .dynamic-views .card {
 }
 
 /* Ambient background: Cards WITH images only (requires cover-ready to avoid flash) */
-body.dynamic-views-ambient-background
+body.dynamic-views-ambient-bg-subtle
   .dynamic-views
   .card.image-format-cover.cover-ready:has(.card-cover),
-body.dynamic-views-ambient-background
+body.dynamic-views-ambient-bg-subtle
+  .dynamic-views
+  .card.image-format-thumbnail.cover-ready:has(.card-thumbnail),
+body.dynamic-views-ambient-bg-dramatic
+  .dynamic-views
+  .card.image-format-cover.cover-ready:has(.card-cover),
+body.dynamic-views-ambient-bg-dramatic
   .dynamic-views
   .card.image-format-thumbnail.cover-ready:has(.card-thumbnail) {
   background-color: var(--ambient-color, var(--background-primary-alt));
 }
 
-/* Text color adjustments for ambient card backgrounds */
-body.dynamic-views-ambient-background
+/* Text color adjustments for ambient card backgrounds (dramatic only) */
+body.dynamic-views-ambient-bg-dramatic
   .dynamic-views
   .card[data-ambient-theme="light"] {
   --text-normal: #222222;
@@ -2987,7 +3059,7 @@ body.dynamic-views-ambient-background
   --text-faint: #666666;
 }
 
-body.dynamic-views-ambient-background
+body.dynamic-views-ambient-bg-dramatic
   .dynamic-views
   .card[data-ambient-theme="dark"] {
   --text-normal: #fafafa;
@@ -3028,11 +3100,12 @@ body.dynamic-views-ambient-background
 }
 
 @media (hover: hover) {
-  .card:hover {
-    border-color: var(
-      --dynamic-views-card-border-color-hover,
-      var(--background-modifier-border-focus)
-    );
+  .dynamic-views .card:hover::after {
+    box-shadow: inset 0 0 0 1px
+      var(
+        --dynamic-views-card-border-color-hover,
+        var(--background-modifier-border-focus)
+      );
   }
 }
 
@@ -3249,6 +3322,14 @@ body:not(.dynamic-views-subtitle-overflow-scroll)
   white-space: normal;
   flex-wrap: wrap;
 }
+/* Allow path segments to word-break in subtitle */
+body:not(.dynamic-views-subtitle-overflow-scroll)
+  .dynamic-views
+  .card-subtitle
+  .path-segment {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
 
 .dynamic-views .card-subtitle .property-content,
 .dynamic-views .card-subtitle .text-wrapper,
@@ -3401,6 +3482,18 @@ body.dynamic-views-open-on-title .dynamic-views .property-content {
 /* Title link: selectable text */
 body.dynamic-views-open-on-title .dynamic-views .card-title a,
 body.dynamic-views-open-on-title .dynamic-views .card-title .card-title-link {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Filename segment in file path property: selectable when openFileAction is 'title' */
+body.dynamic-views-open-on-title .dynamic-views .filename-segment {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Path separator: selectable when openFileAction is 'title' for full path copy */
+body.dynamic-views-open-on-title .dynamic-views .path-separator {
   user-select: text;
   -webkit-user-select: text;
 }
@@ -4066,6 +4159,12 @@ body.dynamic-views-show-cover-placeholder-none
 
 /* ==================== COVER WRAPPER POSITIONING ==================== */
 
+/* Cover wrapper: use cover-specific border-radius, card overflow:hidden clips at corners */
+.dynamic-views .card.image-format-cover .card-cover-wrapper {
+  border-radius: var(--dynamic-views-cover-border-radius, 0);
+  overflow: hidden;
+}
+
 /* Placeholder positioning with negative margins to bleed to edges */
 .dynamic-views
   .card.card-cover-top.image-format-cover
@@ -4122,7 +4221,7 @@ body.dynamic-views-show-cover-placeholder-none
     calc(
       var(--dynamic-views-cover-inset, 0px) -
         var(--dynamic-views-card-padding, 8px)
-    ); /* Bleed to top/left/right edges, gap to content at bottom */
+    );
 }
 
 /* Cover-bottom: wrapper at end with negative margins to bleed to edges */
@@ -4142,7 +4241,7 @@ body.dynamic-views-show-cover-placeholder-none
     calc(
       var(--dynamic-views-cover-inset, 0px) -
         var(--dynamic-views-card-padding, 8px)
-    ); /* Gap to content at top, bleed to bottom/left/right edges */
+    );
 }
 
 /* ==================== COVER-ONLY CARDS ==================== */
@@ -4182,7 +4281,7 @@ body.dynamic-views-show-cover-placeholder-none
   margin: 0;
 }
 
-/* Cover-left: wrapper positioned at padding-box edges */
+/* Cover-left: wrapper positioned at edges */
 .dynamic-views .card.card-cover-left.image-format-cover .card-cover-wrapper {
   position: absolute;
   top: var(--dynamic-views-cover-inset, 0px);
@@ -4192,7 +4291,7 @@ body.dynamic-views-show-cover-placeholder-none
   width: var(--dynamic-views-side-cover-width, 200px);
 }
 
-/* Cover-right: wrapper positioned at padding-box edges */
+/* Cover-right: wrapper positioned at edges */
 .dynamic-views .card.card-cover-right.image-format-cover .card-cover-wrapper {
   position: absolute;
   top: var(--dynamic-views-cover-inset, 0px);
@@ -5294,9 +5393,10 @@ body.dynamic-views-timestamp-icon-left
   white-space: pre;
 }
 
-/* Path segments must be inline for ellipsis to work across the whole path */
-.dynamic-views .path-wrapper > span {
-  display: inline;
+/* Path segment wrappers - inline-block needed for drag support on filename */
+.dynamic-views .path-wrapper > span,
+.dynamic-views .path-segment-wrapper {
+  display: inline-block;
 }
 
 /* Tag style: Outline (default) - reset all theme styles, apply only plugin styles */
@@ -5438,17 +5538,33 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
 }
 
 .dynamic-views .file-path-segment,
-.dynamic-views .folder-segment,
-.dynamic-views .filename-segment {
+.dynamic-views .folder-segment {
   color: inherit;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.dynamic-views .filename-segment {
+  color: inherit;
+  white-space: nowrap;
+  cursor: grab;
+  -webkit-user-drag: element;
+  user-drag: element;
 }
 
 .dynamic-views .file-path-segment:hover,
 .dynamic-views .folder-segment:hover,
 .dynamic-views .filename-segment:hover {
   text-decoration: underline;
+}
+
+.dynamic-views .filename-segment:focus-visible {
+  outline: 2px solid var(--background-modifier-border-focus);
+  outline-offset: 2px;
+}
+
+.dynamic-views .filename-segment:active {
+  cursor: grabbing;
 }
 
 .dynamic-views .path-separator {
@@ -7245,7 +7361,7 @@ body.dynamic-views-no-fade-truncated-text
   display: none;
 }
 
-@container (max-width: 700px) {
+@container (max-width: 700px) and (min-width: 1px) {
   .dynamic-views .controls-wrapper {
     padding: 3px 8px 8px;
   }
@@ -7477,4 +7593,19 @@ body.dynamic-views-no-fade-truncated-text
 }
 .dynamic-views-restoring-scroll::-webkit-scrollbar {
   display: none !important;
+}
+
+/* End of content indicator */
+.dynamic-views-end-indicator {
+  width: 100%;
+  margin-top: var(--size-4-4);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+body:not(.is-mobile) .dynamic-views-end-indicator {
+  padding-bottom: var(--size-4-6);
+}
+
+body.dynamic-views-hide-end-indicator .dynamic-views-end-indicator {
+  display: none;
 }

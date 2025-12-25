@@ -48,6 +48,7 @@ import {
   setupElementScrollGradient,
 } from "./scroll-gradient";
 import { handleArrowNavigation, isArrowKey } from "./keyboard-nav";
+
 import {
   isTagProperty,
   isFileProperty,
@@ -87,6 +88,18 @@ function renderFileExt(extInfo: { ext: string } | null) {
   if (!extInfo) return null;
   const extNoDot = extInfo.ext.slice(1);
   return <span className="card-title-ext" data-ext={extNoDot} />;
+}
+
+/**
+ * Create a drag handler for file elements (used by card-level and filename-segment drag)
+ */
+function createFileDragHandler(app: App, path: string) {
+  return (e: DragEvent) => {
+    const file = app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) return;
+    const dragData = app.dragManager.dragFile(e, file);
+    app.dragManager.onDragStart(e, dragData);
+  };
 }
 
 /**
@@ -950,13 +963,13 @@ function renderProperty(
       propertyName === "file path") &&
     resolvedValue
   ) {
-    // Drag handler for filename segment
+    // File path property: render as pure Preact JSX
+    const segments = resolvedValue.split("/").filter((f: string) => f);
+
+    // Drag handler for filename segment (wraps shared utility with stopPropagation)
     const handleFilenameDrag = (e: DragEvent) => {
       e.stopPropagation();
-      const file = app.vault.getAbstractFileByPath(card.path);
-      if (!(file instanceof TFile)) return;
-      const dragData = app.dragManager.dragFile(e, file);
-      app.dragManager.onDragStart(e, dragData);
+      createFileDragHandler(app, card.path)(e);
     };
 
     return (
@@ -966,101 +979,169 @@ function renderProperty(
         <div className="property-content-wrapper">
           <div className="property-content">
             <div className="path-wrapper">
-              {resolvedValue
-                .split("/")
-                .filter((f) => f)
-                .map((segment, idx, array): JSX.Element => {
-                  const cumulativePath = array.slice(0, idx + 1).join("/");
-                  const isLastSegment = idx === array.length - 1;
-                  const segmentClass = isLastSegment
-                    ? "path-segment filename-segment"
-                    : "path-segment file-path-segment";
-                  return (
+              {segments.map((segment: string, idx: number) => {
+                const isLastSegment = idx === segments.length - 1;
+                const cumulativePath = segments.slice(0, idx + 1).join("/");
+
+                return (
+                  <span key={cumulativePath} className="path-segment-wrapper">
                     <span
-                      key={idx}
-                      style={{ display: "inline-flex", alignItems: "center" }}
-                    >
-                      <span
-                        className={segmentClass}
-                        draggable={isLastSegment}
-                        onDragStart={
-                          isLastSegment ? handleFilenameDrag : undefined
+                      className={
+                        isLastSegment
+                          ? "path-segment filename-segment"
+                          : "path-segment file-path-segment"
+                      }
+                      draggable={isLastSegment}
+                      onDragStart={
+                        isLastSegment ? handleFilenameDrag : undefined
+                      }
+                      tabIndex={isLastSegment ? 0 : undefined}
+                      onMouseDown={
+                        isLastSegment
+                          ? (e: MouseEvent) => {
+                              e.preventDefault(); // Prevent text selection during drag
+                              // Focus element to enable drag (required for nested draggable elements)
+                              (e.currentTarget as HTMLElement).focus();
+                            }
+                          : undefined
+                      }
+                      onClick={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        // Cache file lookup (used by both NotebookNavigator and file-explorer)
+                        const target =
+                          app.vault.getAbstractFileByPath(cumulativePath);
+                        if (isLastSegment) {
+                          if (shouldUseNotebookNavigator(app, "file")) {
+                            if (
+                              target instanceof TFile &&
+                              revealFileInNotebookNavigator(app, target)
+                            ) {
+                              return;
+                            }
+                          }
+                        } else {
+                          if (shouldUseNotebookNavigator(app, "folder")) {
+                            if (
+                              target instanceof TFolder &&
+                              navigateToFolderInNotebookNavigator(app, target)
+                            ) {
+                              return;
+                            }
+                          }
                         }
-                        onClick={(e: MouseEvent) => {
-                          e.stopPropagation();
-                          if (isLastSegment) {
-                            // Filename segment - reveal file
-                            if (shouldUseNotebookNavigator(app, "file")) {
-                              const file = app.vault.getAbstractFileByPath(
-                                card.path,
-                              );
-                              if (
-                                file instanceof TFile &&
-                                revealFileInNotebookNavigator(app, file)
-                              ) {
-                                return;
-                              }
-                            }
-                          } else {
-                            // Folder segment - navigate to folder
-                            if (shouldUseNotebookNavigator(app, "folder")) {
-                              const folder =
-                                app.vault.getAbstractFileByPath(cumulativePath);
-                              if (
-                                folder instanceof TFolder &&
-                                navigateToFolderInNotebookNavigator(app, folder)
-                              ) {
-                                return;
-                              }
-                            }
+                        const fileExplorer =
+                          app.internalPlugins?.plugins?.["file-explorer"];
+                        if (fileExplorer?.instance?.revealInFolder && target) {
+                          fileExplorer.instance.revealInFolder(target);
+                        }
+                      }}
+                      onContextMenu={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (isLastSegment) {
+                          const file = app.vault.getAbstractFileByPath(
+                            card.path,
+                          );
+                          if (file instanceof TFile) {
+                            showFileContextMenu(e, app, file, card.path);
                           }
-                          // Fallback to file explorer
-                          const fileExplorer =
-                            app.internalPlugins?.plugins?.["file-explorer"];
-                          if (fileExplorer?.instance?.revealInFolder) {
-                            const target =
-                              app.vault.getAbstractFileByPath(cumulativePath);
-                            if (target) {
-                              fileExplorer.instance.revealInFolder(target);
-                            }
-                          }
-                        }}
-                        onContextMenu={(e: MouseEvent) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          if (isLastSegment) {
-                            // Filename segment - show file context menu
-                            const file = app.vault.getAbstractFileByPath(
-                              card.path,
+                        } else {
+                          const folderFile =
+                            app.vault.getAbstractFileByPath(cumulativePath);
+                          if (folderFile instanceof TFolder) {
+                            const menu = new Menu();
+                            app.workspace.trigger(
+                              "file-menu",
+                              menu,
+                              folderFile,
+                              "file-explorer",
                             );
-                            if (file instanceof TFile) {
-                              showFileContextMenu(e, app, file, card.path);
-                            }
-                          } else {
-                            // Folder segment - show folder context menu
-                            const folderFile =
-                              app.vault.getAbstractFileByPath(cumulativePath);
-                            if (folderFile instanceof TFolder) {
-                              const menu = new Menu();
-                              app.workspace.trigger(
-                                "file-menu",
-                                menu,
-                                folderFile,
-                                "file-explorer",
-                              );
-                              menu.showAtMouseEvent(e as unknown as MouseEvent);
-                            }
+                            menu.showAtMouseEvent(e);
                           }
-                        }}
-                      >
-                        {segment}
-                      </span>
-                      {idx < array.length - 1 && (
-                        <span className="path-separator">/</span>
-                      )}
+                        }
+                      }}
+                    >
+                      {segment}
                     </span>
-                  );
-                })}
+                    {idx < segments.length - 1 && (
+                      <span className="path-separator">/</span>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  } else if (
+    (propertyName === "file.folder" || propertyName === "folder") &&
+    card.folderPath &&
+    card.folderPath.length > 0
+  ) {
+    // Folder property: render as pure Preact JSX (consistent with file.path)
+    const folders = card.folderPath.split("/").filter((f: string) => f);
+
+    return (
+      <>
+        {labelAbove}
+        {labelInline}
+        <div className="property-content-wrapper">
+          <div className="property-content">
+            <div className="path-wrapper">
+              {folders.map((folder: string, idx: number) => {
+                const cumulativePath = folders.slice(0, idx + 1).join("/");
+
+                return (
+                  <span key={cumulativePath} className="path-segment-wrapper">
+                    <span
+                      className="path-segment folder-segment"
+                      onClick={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        // Cache folder lookup
+                        const folderFile =
+                          app.vault.getAbstractFileByPath(cumulativePath);
+                        if (shouldUseNotebookNavigator(app, "folder")) {
+                          if (
+                            folderFile instanceof TFolder &&
+                            navigateToFolderInNotebookNavigator(app, folderFile)
+                          ) {
+                            return;
+                          }
+                        }
+                        const fileExplorer =
+                          app.internalPlugins?.plugins?.["file-explorer"];
+                        if (fileExplorer?.instance?.revealInFolder) {
+                          if (folderFile) {
+                            fileExplorer.instance.revealInFolder(folderFile);
+                          }
+                        }
+                      }}
+                      onContextMenu={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const folderFile =
+                          app.vault.getAbstractFileByPath(cumulativePath);
+                        if (folderFile instanceof TFolder) {
+                          const menu = new Menu();
+                          app.workspace.trigger(
+                            "file-menu",
+                            menu,
+                            folderFile,
+                            "file-explorer",
+                          );
+                          menu.showAtMouseEvent(e);
+                        }
+                      }}
+                    >
+                      {folder}
+                    </span>
+                    {idx < folders.length - 1 && (
+                      <span className="path-separator">/</span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1322,14 +1403,8 @@ function Card({
     cardClasses.push(`card-thumbnail-${settings.imageFit}`);
   }
 
-  // Drag handler function
-  const handleDrag = (e: DragEvent) => {
-    const file = app.vault.getAbstractFileByPath(card.path);
-    if (!(file instanceof TFile)) return;
-
-    const dragData = app.dragManager.dragFile(e, file);
-    app.dragManager.onDragStart(e, dragData);
-  };
+  // Drag handler for card-level drag (reuses shared utility)
+  const handleDrag = createFileDragHandler(app, card.path);
 
   // Create AbortController for scroll listener cleanup (before return so child refs can access it)
   cleanupCardScrollListeners(card.path);

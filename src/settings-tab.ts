@@ -162,36 +162,6 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       )
       .addSetting((s) =>
         s
-          .setName("Thumbnail cache size")
-          .setDesc(
-            "Size of cached thumbnails (affects performance and quality)",
-          )
-          .addDropdown((dropdown) =>
-            dropdown
-              .addOption("minimal", "Minimal")
-              .addOption("small", "Small")
-              .addOption("balanced", "Balanced")
-              .addOption("large", "Large")
-              .addOption("unlimited", "Unlimited")
-              .setValue(settings.thumbnailCacheSize)
-              .onChange(
-                async (
-                  value:
-                    | "minimal"
-                    | "small"
-                    | "balanced"
-                    | "large"
-                    | "unlimited",
-                ) => {
-                  await this.plugin.persistenceManager.setGlobalSettings({
-                    thumbnailCacheSize: value,
-                  });
-                },
-              ),
-          ),
-      )
-      .addSetting((s) =>
-        s
           .setName("Omit first line in text preview")
           .setDesc("Control when the first line is removed from text preview")
           .addDropdown((dropdown) =>

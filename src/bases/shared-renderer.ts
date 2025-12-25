@@ -153,7 +153,7 @@ export class SharedCardRenderer {
   constructor(
     protected app: App,
     protected plugin: DynamicViewsPlugin,
-    protected updateLayoutRef: { current: (() => void) | null },
+    protected updateLayoutRef: { current: ((source?: string) => void) | null },
   ) {}
 
   /**
@@ -358,7 +358,7 @@ export class SharedCardRenderer {
       onHoverStart?: (el: HTMLElement) => void;
       onHoverEnd?: () => void;
     },
-  ): void {
+  ): HTMLElement {
     // Create card element
     const cardEl = container.createDiv("card");
 
@@ -1042,6 +1042,8 @@ export class SharedCardRenderer {
     });
     cardObserver.observe(cardEl);
     this.propertyObservers.push(cardObserver);
+
+    return cardEl;
   }
 
   /**
@@ -1143,7 +1145,12 @@ export class SharedCardRenderer {
           }
         },
         onAnimationComplete: () => {
-          if (this.updateLayoutRef.current) this.updateLayoutRef.current();
+          if (this.updateLayoutRef.current) {
+            console.log(
+              "[masonry:shared-renderer] slideshow animation complete triggering layout update",
+            );
+            this.updateLayoutRef.current("slideshow-animation-complete");
+          }
         },
       },
     );

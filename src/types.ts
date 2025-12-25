@@ -52,7 +52,6 @@ export interface Settings {
   imageAspectRatio: number;
   listMarker: string;
   randomizeAction: string;
-  thumbnailCacheSize: "minimal" | "small" | "balanced" | "large" | "unlimited";
   queryHeight: number;
   openFileAction: "card" | "title";
   openRandomInNewTab: boolean;

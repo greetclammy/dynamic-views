@@ -48,7 +48,7 @@ import {
   getCardSpacing,
   setupStyleSettingsObserver,
 } from "../utils/style-settings";
-import { clearImageMetadataCache } from "../shared/image-loader";
+import { reapplyAmbientColors } from "../shared/image-loader";
 import {
   calculateMasonryLayout,
   calculateIncrementalMasonryLayout,
@@ -289,6 +289,7 @@ export function View({
   const columnCountRef = dc.useRef<number | null>(null);
   const displayedCountRef = dc.useRef(displayedCount);
   const sortedLengthRef = dc.useRef<number>(0);
+  const hasBatchAppendedRef = dc.useRef(false);
   const settingsTimeoutRef = dc.useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -302,6 +303,7 @@ export function View({
 
   // Incremental masonry layout tracking
   const lastLayoutResultRef = dc.useRef<MasonryLayoutResult | null>(null);
+  const lastLayoutWidthRef = dc.useRef<number>(0);
   const prevMasonryCountRef = dc.useRef(0);
   const prevCardSizeRef = dc.useRef(settings.cardSize);
   const prevStyleRevisionRef = dc.useRef(0);
@@ -635,7 +637,7 @@ export function View({
   dc.useEffect(() => {
     const disconnect = setupStyleSettingsObserver(
       () => setStyleRevision((r) => r + 1),
-      clearImageMetadataCache,
+      reapplyAmbientColors,
     );
     return disconnect;
   }, []);
@@ -1193,24 +1195,35 @@ export function View({
     // Setup masonry layout function using shared logic
     let isUpdatingLayout = false;
     let pendingLayoutUpdate = false;
+    let layoutCallId = 0;
     const updateLayout = () => {
       const container = containerRef.current;
       if (!container) return;
       // Guard against reentrant calls - queue update if one is in progress
       if (isUpdatingLayout) {
         pendingLayoutUpdate = true;
+        console.log("[masonry:dc] updateLayout QUEUED (reentrant)");
         return;
       }
       isUpdatingLayout = true;
+      const callId = ++layoutCallId;
 
       try {
         const cards = Array.from(
           container.querySelectorAll<HTMLElement>(".card"),
         );
-        if (cards.length === 0) return;
+        if (cards.length === 0) {
+          console.log(`[masonry:dc] updateLayout #${callId} SKIP: no cards`);
+          return;
+        }
 
         const containerWidth = container.clientWidth;
-        if (containerWidth < 100) return;
+        if (containerWidth < 100) {
+          console.log(
+            `[masonry:dc] updateLayout #${callId} SKIP: width=${containerWidth} < 100`,
+          );
+          return;
+        }
 
         const cardSize = settings.cardSize;
         const minColumns = getMinMasonryColumns();
@@ -1219,6 +1232,10 @@ export function View({
         const lastResult = lastLayoutResultRef.current;
         const prevCount = prevMasonryCountRef.current ?? 0;
 
+        console.log(
+          `[masonry:dc] updateLayout #${callId} START | cards=${cards.length}, containerWidth=${containerWidth}, cardSize=${cardSize}, prevCount=${prevCount}, hasLastResult=${!!lastResult}, lastWidth=${lastResult?.containerWidth ?? "N/A"}`,
+        );
+
         // Incremental path: new cards added, same container width
         if (
           lastResult &&
@@ -1226,6 +1243,9 @@ export function View({
           containerWidth === lastResult.containerWidth
         ) {
           const newCards = cards.slice(prevCount);
+          console.log(
+            `[masonry:dc] updateLayout #${callId} INCREMENTAL path | newCards=${newCards.length}`,
+          );
 
           // Pre-set width on new cards before measuring
           newCards.forEach((card) =>
@@ -1256,10 +1276,24 @@ export function View({
           lastLayoutResultRef.current = result;
           prevMasonryCountRef.current = cards.length;
           columnCountRef.current = result.columns;
+          lastLayoutWidthRef.current = Math.round(containerWidth);
+          console.log(
+            `[masonry:dc] updateLayout #${callId} INCREMENTAL done | containerHeight=${Math.round(result.containerHeight)}`,
+          );
           return;
         }
 
-        // Full recalculation
+        // Full recalculation - log reason
+        let reason = "unknown";
+        if (!lastResult) reason = "no previous result";
+        else if (cards.length <= prevCount)
+          reason = `card count not increased (${cards.length} <= ${prevCount})`;
+        else if (containerWidth !== lastResult.containerWidth)
+          reason = `width changed (${lastResult.containerWidth} -> ${containerWidth})`;
+        console.log(
+          `[masonry:dc] updateLayout #${callId} FULL recalc | reason: ${reason}`,
+        );
+
         const result = calculateMasonryLayout({
           cards,
           containerWidth,
@@ -1274,11 +1308,18 @@ export function View({
         lastLayoutResultRef.current = result;
         prevMasonryCountRef.current = cards.length;
         columnCountRef.current = result.columns;
+        lastLayoutWidthRef.current = Math.round(containerWidth);
+        console.log(
+          `[masonry:dc] updateLayout #${callId} FULL done | cols=${result.columns}, containerHeight=${Math.round(result.containerHeight)}`,
+        );
       } finally {
         isUpdatingLayout = false;
         // Process any queued update
         if (pendingLayoutUpdate) {
           pendingLayoutUpdate = false;
+          console.log(
+            `[masonry:dc] updateLayout #${callId} processing queued update`,
+          );
           requestAnimationFrame(updateLayout);
         }
       }
@@ -1288,16 +1329,40 @@ export function View({
     updateLayoutRef.current = updateLayout;
 
     // Initial layout
+    console.log("[masonry:dc] initial layout call");
     updateLayout();
 
     // Debounced resize handler (double-RAF)
     // ResizeObserver handles both pane and window resize (container resizes in both cases)
     let resizeRafId: number | null = null;
-    const debouncedResize = () => {
-      if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
+    let resizeCallId = 0;
+    const debouncedResize = (entries: ResizeObserverEntry[]) => {
+      const entry = entries[0];
+      const newWidth = entry?.contentRect?.width ?? 0;
+      const callId = ++resizeCallId;
+      console.log(
+        `[masonry:dc] ResizeObserver #${callId} fired | newWidth=${Math.round(newWidth)}`,
+      );
+
+      // Hide cards immediately if width changed (before debounce delay)
+      const container = containerRef.current;
+      if (container && Math.round(newWidth) !== lastLayoutWidthRef.current) {
+        container.classList.add("masonry-resizing");
+      }
+
+      if (resizeRafId !== null) {
+        cancelAnimationFrame(resizeRafId);
+        console.log(
+          `[masonry:dc] ResizeObserver #${callId} cancelled previous RAF`,
+        );
+      }
       resizeRafId = requestAnimationFrame(() => {
         resizeRafId = requestAnimationFrame(() => {
+          console.log(
+            `[masonry:dc] ResizeObserver #${callId} double-RAF complete, calling updateLayout`,
+          );
           updateLayout();
+          containerRef.current?.classList.remove("masonry-resizing");
         });
       });
     };
@@ -1489,6 +1554,7 @@ export function View({
 
       displayedCountRef.current = newCount;
       setDisplayedCount(newCount);
+      hasBatchAppendedRef.current = true;
 
       return true; // Batch loaded
     };
@@ -1654,6 +1720,7 @@ export function View({
     (query: string) => {
       setSearchQuery(query);
       setDisplayedCount(app.isMobile ? BATCH_SIZE * 0.5 : BATCH_SIZE);
+      hasBatchAppendedRef.current = false;
     },
     [app.isMobile],
   );
@@ -2023,6 +2090,11 @@ export function View({
         className={`results-container${settings.queryHeight > 0 && !isScrolledToBottom ? " with-fade" : ""}`}
       >
         {renderView()}
+        {displayedCount >= sorted.length &&
+          sorted.length > 0 &&
+          hasBatchAppendedRef.current && (
+            <div className="dynamic-views-end-indicator" />
+          )}
       </div>
 
       <div ref={loadMoreRef} />

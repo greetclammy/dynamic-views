@@ -1,22 +1,64 @@
-import { extractAverageColor, getColorTheme } from "../utils/image-color";
+import {
+  extractDominantColor,
+  formatAmbientColor,
+  calculateLuminanceFromTuple,
+  LUMINANCE_LIGHT_THRESHOLD,
+  type RGBTuple,
+} from "../utils/ambient-color";
 import {
   isCardBackgroundAmbient,
   isCoverBackgroundAmbient,
+  getCardAmbientOpacity,
 } from "../utils/style-settings";
 import type { RefObject } from "../datacore/types";
 
-// Cache image metadata (ambient color + aspect ratio) by URL to avoid flash on re-render
+// Cache image metadata (RGB tuple + aspect ratio) by URL to avoid flash on re-render
+// Store RGB without alpha so we can apply different opacities for card vs cover
 const imageMetadataCache = new Map<
   string,
-  { color?: string; theme?: "light" | "dark"; aspectRatio?: number }
+  {
+    rgb?: RGBTuple;
+    theme?: "light" | "dark";
+    luminance?: number;
+    aspectRatio?: number;
+  }
 >();
 
+// Default aspect ratio for failed images to prevent layout issues (#25)
+const DEFAULT_ASPECT_RATIO = 0.75; // 4:3 landscape
+
 /**
- * Clear image metadata cache when ambient settings change
- * Called by style-settings observer to prevent stale colors
+ * Re-apply ambient colors to all cards using cached RGB with current opacity settings
+ * Called when ambient opacity changes (e.g., subtle↔dramatic)
  */
-export function clearImageMetadataCache(): void {
-  imageMetadataCache.clear();
+export function reapplyAmbientColors(): void {
+  document
+    .querySelectorAll(".dynamic-views .card.cover-ready")
+    .forEach((card) => {
+      if (!(card instanceof HTMLElement)) return;
+
+      // Optimized: query container once, then get img from it
+      const imageEmbedEl = card.querySelector<HTMLElement>(
+        ".dynamic-views-image-embed",
+      );
+      if (!imageEmbedEl) return;
+
+      const imgEl = imageEmbedEl.querySelector<HTMLImageElement>("img");
+      if (!imgEl?.src) return;
+
+      const cached = imageMetadataCache.get(imgEl.src);
+      if (!cached?.rgb || !cached?.theme) return;
+
+      const isCoverImage = card.classList.contains("image-format-cover");
+      applyAmbientStyles(
+        cached.rgb,
+        cached.theme,
+        cached.luminance,
+        imageEmbedEl,
+        card,
+        isCoverImage,
+      );
+    });
 }
 
 /**
@@ -28,6 +70,37 @@ export function getCachedAspectRatio(imgSrc: string): number | undefined {
 }
 
 /**
+ * Apply ambient color styles to card and container (#6 - extracted shared function)
+ */
+function applyAmbientStyles(
+  rgb: RGBTuple,
+  theme: "light" | "dark",
+  luminance: number | undefined,
+  imageEmbedContainer: HTMLElement,
+  cardEl: HTMLElement,
+  isCoverImage: boolean,
+): void {
+  // Card background uses setting-defined opacity, cover background uses 0.17
+  const cardOpacity = getCardAmbientOpacity();
+  const coverOpacity = 0.17;
+
+  const cardColor = formatAmbientColor(rgb, cardOpacity);
+  const coverColor = formatAmbientColor(rgb, coverOpacity);
+
+  // Cover container gets subtle opacity for letterbox
+  imageEmbedContainer.style.setProperty("--ambient-color", coverColor);
+  // Card gets opacity based on card ambient setting
+  cardEl.style.setProperty(
+    "--ambient-color",
+    isCoverImage && !isCardBackgroundAmbient() ? coverColor : cardColor,
+  );
+  cardEl.setAttribute("data-ambient-theme", theme);
+  if (luminance !== undefined) {
+    cardEl.style.setProperty("--ambient-luminance", luminance.toFixed(3));
+  }
+}
+
+/**
  * Apply cached image metadata (ambient color + aspect ratio) to card immediately
  * Called before image loads to prevent flash on re-render
  */
@@ -35,15 +108,23 @@ export function applyCachedImageMetadata(
   imgSrc: string,
   imageEmbedContainer: HTMLElement,
   cardEl: HTMLElement,
+  isCoverImage?: boolean,
 ): boolean {
   const cached = imageMetadataCache.get(imgSrc);
   if (!cached) return false;
 
   // Only apply ambient color if it was cached (ambient settings were on when extracted)
-  if (cached.color && cached.theme) {
-    imageEmbedContainer.style.setProperty("--ambient-color", cached.color);
-    cardEl.style.setProperty("--ambient-color", cached.color);
-    cardEl.setAttribute("data-ambient-theme", cached.theme);
+  if (cached.rgb && cached.theme) {
+    const isCover =
+      isCoverImage ?? cardEl.classList.contains("image-format-cover");
+    applyAmbientStyles(
+      cached.rgb,
+      cached.theme,
+      cached.luminance,
+      imageEmbedContainer,
+      cardEl,
+      isCover,
+    );
   }
   if (cached.aspectRatio !== undefined) {
     cardEl.style.setProperty(
@@ -64,52 +145,68 @@ export function applyCachedImageMetadata(
  * @param imageEmbedContainer - Container for the image embed (for CSS variables)
  * @param cardEl - The card element
  * @param onLayoutUpdate - Optional callback to trigger layout update (for masonry)
+ * @param isCoverImage - Pre-computed cover check to avoid DOM query (#26)
  */
 export function handleImageLoad(
   imgEl: HTMLImageElement,
   imageEmbedContainer: HTMLElement,
   cardEl: HTMLElement,
   onLayoutUpdate?: (() => void) | null,
+  isCoverImage?: boolean,
 ): void {
-  // Calculate aspect ratio (always needed for masonry)
-  const aspectRatio =
+  // Calculate aspect ratio with validation (always needed for masonry)
+  const rawAspectRatio =
     imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0
       ? imgEl.naturalHeight / imgEl.naturalWidth
+      : undefined;
+  // Validate aspect ratio is a finite number
+  const aspectRatio =
+    rawAspectRatio !== undefined && isFinite(rawAspectRatio)
+      ? rawAspectRatio
       : undefined;
 
   // Only extract ambient color if needed by current settings
   // - Card bg ambient: needs color for all images (cover + thumbnail)
   // - Cover bg ambient: only needs color for cover images
-  let ambientColor: string | undefined;
+  let rgb: RGBTuple | undefined;
   let colorTheme: "light" | "dark" | undefined;
+  let luminance: number | undefined;
 
-  const isCoverImage = cardEl.classList.contains("image-format-cover");
+  const isCover =
+    isCoverImage ?? cardEl.classList.contains("image-format-cover");
   const needsAmbient =
-    isCardBackgroundAmbient() || (isCoverImage && isCoverBackgroundAmbient());
+    isCardBackgroundAmbient() || (isCover && isCoverBackgroundAmbient());
 
   if (needsAmbient) {
-    try {
-      ambientColor = extractAverageColor(imgEl);
-      colorTheme = getColorTheme(ambientColor);
-    } catch {
-      // Canvas operations can fail (tainted canvas, etc.) - continue without color
+    const extracted = extractDominantColor(imgEl);
+    if (extracted) {
+      rgb = extracted;
+      // Calculate luminance directly from tuple (no string conversion)
+      luminance = calculateLuminanceFromTuple(rgb);
+      colorTheme = luminance > LUMINANCE_LIGHT_THRESHOLD ? "light" : "dark";
     }
   }
 
-  // Cache for future re-renders
-  if (imgEl.src) {
+  // Cache for future re-renders (only cache if rgb extracted or aspectRatio valid)
+  if (imgEl.src && (rgb || aspectRatio !== undefined)) {
     imageMetadataCache.set(imgEl.src, {
-      color: ambientColor,
+      rgb,
       theme: colorTheme,
+      luminance,
       aspectRatio,
     });
   }
 
-  // Apply ambient color if extracted
-  if (ambientColor && colorTheme) {
-    imageEmbedContainer.style.setProperty("--ambient-color", ambientColor);
-    cardEl.style.setProperty("--ambient-color", ambientColor);
-    cardEl.setAttribute("data-ambient-theme", colorTheme);
+  // Apply ambient color if extracted (uses shared function #6)
+  if (rgb && colorTheme) {
+    applyAmbientStyles(
+      rgb,
+      colorTheme,
+      luminance,
+      imageEmbedContainer,
+      cardEl,
+      isCover,
+    );
   }
 
   // Set actual aspect ratio for masonry contain mode (used when "Fixed cover height" is OFF)
@@ -134,16 +231,24 @@ export function handleImageLoad(
  * @param imageEmbedContainer - Container for the image embed (for CSS variables)
  * @param cardEl - The card element
  * @param onLayoutUpdate - Optional callback to trigger layout update (for masonry)
+ * @returns Cleanup function to remove event listeners (#11)
  */
 export function setupImageLoadHandler(
   imgEl: HTMLImageElement,
   imageEmbedContainer: HTMLElement,
   cardEl: HTMLElement,
   onLayoutUpdate?: () => void,
-): void {
+): () => void {
+  const isCoverImage = cardEl.classList.contains("image-format-cover");
+
   // Apply cached metadata immediately to prevent flash on re-render
   if (imgEl.src && !cardEl.classList.contains("cover-ready")) {
-    applyCachedImageMetadata(imgEl.src, imageEmbedContainer, cardEl);
+    applyCachedImageMetadata(
+      imgEl.src,
+      imageEmbedContainer,
+      cardEl,
+      isCoverImage,
+    );
   }
 
   // Handle already-loaded images (skip if already processed via cache)
@@ -153,24 +258,46 @@ export function setupImageLoadHandler(
     imgEl.naturalHeight > 0 &&
     !cardEl.classList.contains("cover-ready")
   ) {
-    handleImageLoad(imgEl, imageEmbedContainer, cardEl, onLayoutUpdate);
-    return;
+    handleImageLoad(
+      imgEl,
+      imageEmbedContainer,
+      cardEl,
+      onLayoutUpdate,
+      isCoverImage,
+    );
+    return () => {}; // No cleanup needed
   }
 
+  // Event handlers for cleanup (#11)
+  const loadHandler = () =>
+    handleImageLoad(
+      imgEl,
+      imageEmbedContainer,
+      cardEl,
+      onLayoutUpdate,
+      isCoverImage,
+    );
+  const errorHandler = () => {
+    cardEl.classList.add("cover-ready");
+    // Set default aspect ratio on error (#25)
+    cardEl.style.setProperty(
+      "--actual-aspect-ratio",
+      DEFAULT_ASPECT_RATIO.toString(),
+    );
+    if (onLayoutUpdate) {
+      onLayoutUpdate();
+    }
+  };
+
   // Add load/error listeners for pending images
-  imgEl.addEventListener(
-    "load",
-    () => handleImageLoad(imgEl, imageEmbedContainer, cardEl, onLayoutUpdate),
-    { once: true },
-  );
-  imgEl.addEventListener(
-    "error",
-    () => {
-      cardEl.classList.add("cover-ready");
-      if (onLayoutUpdate) onLayoutUpdate();
-    },
-    { once: true },
-  );
+  imgEl.addEventListener("load", loadHandler, { once: true });
+  imgEl.addEventListener("error", errorHandler, { once: true });
+
+  // Return cleanup function (#11)
+  return () => {
+    imgEl.removeEventListener("load", loadHandler);
+    imgEl.removeEventListener("error", errorHandler);
+  };
 }
 
 /**
@@ -184,26 +311,34 @@ export function handleJsxImageRef(
 ): void {
   if (!imgEl) return;
 
-  const cardEl = imgEl.closest(".card") as HTMLElement;
-  if (!cardEl) return;
+  // Fix null assertions (#3)
+  const cardEl = imgEl.closest(".card");
+  if (!cardEl || !(cardEl instanceof HTMLElement)) return;
 
-  const imageEmbedEl = imgEl.closest(
-    ".dynamic-views-image-embed",
-  ) as HTMLElement;
-  if (!imageEmbedEl) return;
+  const imageEmbedEl = imgEl.closest(".dynamic-views-image-embed");
+  if (!imageEmbedEl || !(imageEmbedEl instanceof HTMLElement)) return;
+
+  const isCoverImage = cardEl.classList.contains("image-format-cover");
 
   // Apply cached metadata immediately to prevent flash on re-render
   if (imgEl.src && !cardEl.classList.contains("cover-ready")) {
-    applyCachedImageMetadata(imgEl.src, imageEmbedEl, cardEl);
+    applyCachedImageMetadata(imgEl.src, imageEmbedEl, cardEl, isCoverImage);
   }
 
   // Handle already-loaded images
   if (
     imgEl.complete &&
     imgEl.naturalWidth > 0 &&
+    imgEl.naturalHeight > 0 &&
     !cardEl.classList.contains("cover-ready")
   ) {
-    handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
+    handleImageLoad(
+      imgEl,
+      imageEmbedEl,
+      cardEl,
+      updateLayoutRef.current,
+      isCoverImage,
+    );
   }
 }
 
@@ -217,15 +352,26 @@ export function handleJsxImageLoad(
 ): void {
   const imgEl = e.currentTarget as HTMLImageElement;
 
-  const cardEl = imgEl.closest(".card") as HTMLElement;
-  if (!cardEl || cardEl.classList.contains("cover-ready")) return; // Already handled by ref
+  // Fix null assertions (#3)
+  const cardEl = imgEl.closest(".card");
+  if (
+    !cardEl ||
+    !(cardEl instanceof HTMLElement) ||
+    cardEl.classList.contains("cover-ready")
+  )
+    return;
 
-  const imageEmbedEl = imgEl.closest(
-    ".dynamic-views-image-embed",
-  ) as HTMLElement;
-  if (!imageEmbedEl) return;
+  const imageEmbedEl = imgEl.closest(".dynamic-views-image-embed");
+  if (!imageEmbedEl || !(imageEmbedEl instanceof HTMLElement)) return;
 
-  handleImageLoad(imgEl, imageEmbedEl, cardEl, updateLayoutRef.current);
+  const isCoverImage = cardEl.classList.contains("image-format-cover");
+  handleImageLoad(
+    imgEl,
+    imageEmbedEl,
+    cardEl,
+    updateLayoutRef.current,
+    isCoverImage,
+  );
 }
 
 /**
@@ -237,9 +383,21 @@ export function handleJsxImageError(
   updateLayoutRef: RefObject<(() => void) | null>,
 ): void {
   const imgEl = e.currentTarget as HTMLImageElement;
-  const cardEl = imgEl.closest(".card") as HTMLElement;
-  if (!cardEl || cardEl.classList.contains("cover-ready")) return;
+
+  // Fix null assertions (#3)
+  const cardEl = imgEl.closest(".card");
+  if (
+    !cardEl ||
+    !(cardEl instanceof HTMLElement) ||
+    cardEl.classList.contains("cover-ready")
+  )
+    return;
 
   cardEl.classList.add("cover-ready");
+  // Set default aspect ratio on error (#25)
+  cardEl.style.setProperty(
+    "--actual-aspect-ratio",
+    DEFAULT_ASPECT_RATIO.toString(),
+  );
   if (updateLayoutRef.current) updateLayoutRef.current();
 }

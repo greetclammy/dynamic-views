@@ -221,10 +221,24 @@ export function isThumbnailScrubbingDisabled(): boolean {
 }
 
 /**
- * Check if Card background: Ambient is enabled
+ * Check if Card background: Ambient is enabled (subtle or dramatic)
  */
 export function isCardBackgroundAmbient(): boolean {
-  return hasBodyClass("dynamic-views-ambient-background");
+  return (
+    hasBodyClass("dynamic-views-ambient-bg-subtle") ||
+    hasBodyClass("dynamic-views-ambient-bg-dramatic")
+  );
+}
+
+/**
+ * Get ambient opacity for card backgrounds
+ * Returns 0.17 for subtle, 0.9 for dramatic
+ */
+export function getCardAmbientOpacity(): number {
+  if (hasBodyClass("dynamic-views-ambient-bg-dramatic")) {
+    return 0.9;
+  }
+  return 0.17; // Default for subtle or cover background
 }
 
 /**
@@ -267,9 +281,12 @@ export function setupStyleSettingsObserver(
   onStyleChange: () => void,
   onAmbientSettingChange?: () => void,
 ): () => void {
+  // Card background ambient classes (mutually exclusive)
+  // Note: cover-bg-ambient is a separate setting, not included here
   const ambientClasses = [
-    "dynamic-views-ambient-background",
-    "dynamic-views-cover-bg-ambient",
+    "dynamic-views-ambient-bg-off",
+    "dynamic-views-ambient-bg-subtle",
+    "dynamic-views-ambient-bg-dramatic",
   ];
 
   // Observer for body class changes (Style Settings class-toggle settings)
@@ -293,19 +310,24 @@ export function setupStyleSettingsObserver(
             .join();
 
         if (dynamicViewsChanged) {
-          // Check if ambient settings specifically changed
-          if (onAmbientSettingChange) {
-            const oldAmbient = ambientClasses.some((c) =>
-              oldClasses.includes(c),
-            );
-            const newAmbient = ambientClasses.some((c) =>
-              newClasses.includes(c),
-            );
-            if (oldAmbient !== newAmbient) {
-              onAmbientSettingChange();
-            }
+          // Check if ambient settings specifically changed (including subtle↔dramatic)
+          const oldAmbientSet = ambientClasses
+            .filter((c) => oldClasses.includes(c))
+            .sort()
+            .join();
+          const newAmbientSet = ambientClasses
+            .filter((c) => newClasses.includes(c))
+            .sort()
+            .join();
+          const ambientChanged = oldAmbientSet !== newAmbientSet;
+
+          if (ambientChanged && onAmbientSettingChange) {
+            // Ambient-only change: call dedicated handler, skip full re-render
+            onAmbientSettingChange();
+          } else {
+            // Non-ambient change: full style refresh
+            onStyleChange();
           }
-          onStyleChange();
           break;
         }
       }

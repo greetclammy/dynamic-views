@@ -729,7 +729,6 @@ export function readBasesSettings(
         typeof value === "string" ? value : DEFAULT_SETTINGS.randomizeAction
       ) as "shuffle" | "random";
     })(),
-    thumbnailCacheSize: globalSettings.thumbnailCacheSize, // From global settings
     queryHeight: 0, // Not configurable in Bases
     openFileAction: globalSettings.openFileAction, // From global settings
     openRandomInNewTab: globalSettings.openRandomInNewTab, // From global settings
