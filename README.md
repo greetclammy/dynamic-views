@@ -59,5 +59,5 @@ Note: to get updates for _Dynamic Views_, you will have to check for and install
 
 ## Support
 
-- [Report bugs](https://github.com/greetclammy/dynamic-views/issues)
-- [Request features](https://github.com/greetclammy/dynamic-views/issues)
+- Please [open an issue](https://github.com/greetclammy/dynamic-views/issues) if you run into any problems. 
+- Feature requests considered but not prioritized. Focused on stability and performance. PRs welcome.
