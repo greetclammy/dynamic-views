@@ -198,14 +198,6 @@ export class DynamicViewsCardView extends BasesView {
 
   onDataUpdated(): void {
     void (async () => {
-      console.log("[grid-view] onDataUpdated START", {
-        currentCSSCols:
-          this.containerEl.style.getPropertyValue("--grid-columns"),
-        containerWidth: this.containerEl.clientWidth,
-        lastColumnCount: this.lastColumnCount,
-        isConnected: this.containerEl.isConnected,
-      });
-
       // Guard: return early if data not yet initialized (race condition with MutationObserver)
       if (!this.data) {
         return;
@@ -256,14 +248,6 @@ export class DynamicViewsCardView extends BasesView {
         this.feedContainerRef.current?.children.length
       ) {
         // Restore column CSS (may be lost on tab switch)
-        const currentCSSCols =
-          this.containerEl.style.getPropertyValue("--grid-columns");
-        console.log("[grid-view] early return path", {
-          lastColumnCount: this.lastColumnCount,
-          currentCSSCols,
-          containerWidth: this.containerEl.clientWidth,
-          feedChildren: this.feedContainerRef.current?.children.length,
-        });
         this.containerEl.style.setProperty(
           "--grid-columns",
           String(this.lastColumnCount),
@@ -271,13 +255,7 @@ export class DynamicViewsCardView extends BasesView {
         this.scrollPreservation.restoreAfterRender();
         return;
       }
-      const prevHash = this.lastRenderHash;
       this.lastRenderHash = renderHash;
-      console.log("[grid-view] full render path", {
-        containerWidth: this.containerEl.clientWidth,
-        hashChanged: renderHash !== prevHash,
-        hadChildren: !!this.feedContainerRef.current?.children.length,
-      });
 
       // Calculate initial count dynamically on first render
       if (this.displayedCount === 0) {
@@ -287,11 +265,6 @@ export class DynamicViewsCardView extends BasesView {
       // Update card size before calculating columns
       this.currentCardSize = settings.cardSize;
       const cols = this.calculateColumnCount();
-      console.log("[grid-view] setting columns", {
-        cols,
-        containerWidth: this.containerEl.clientWidth,
-        cardSize: settings.cardSize,
-      });
 
       // Set CSS variables for grid layout
       this.lastColumnCount = cols;
@@ -362,6 +335,7 @@ export class DynamicViewsCardView extends BasesView {
       this.lastGroupKey = undefined;
       this.lastGroupContainer = null;
       this.hasBatchAppended = false;
+      this.lastObservedWidth = 0;
 
       // Cleanup card renderer observers before re-rendering
       this.cardRenderer.cleanup();

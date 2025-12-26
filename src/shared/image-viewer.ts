@@ -2,7 +2,7 @@
  * Shared image viewer handler - eliminates code duplication across card renderers
  */
 
-import type { App } from "obsidian";
+import { Notice, type App } from "obsidian";
 import Panzoom, { PanzoomObject } from "@panzoom/panzoom";
 import { setupSwipeInterception } from "../bases/swipe-interceptor";
 import { GESTURE_TIMEOUT_MS } from "./constants";
@@ -833,8 +833,44 @@ function openImageViewer(
     }
   };
 
+  const onCopy = (e: KeyboardEvent) => {
+    // Check Cmd+C (Mac) or Ctrl+C (Win/Linux)
+    const isCopyShortcut = (e.metaKey || e.ctrlKey) && e.key === "c";
+    if (!isCopyShortcut) return;
+
+    e.preventDefault();
+
+    void (async () => {
+      try {
+        // Clipboard API only supports PNG - convert via canvas
+        const canvas = document.createElement("canvas");
+        canvas.width = imgEl.naturalWidth;
+        canvas.height = imgEl.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Failed to get canvas context");
+        ctx.drawImage(imgEl, 0, 0);
+
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((b) => {
+            if (b) resolve(b);
+            else reject(new Error("Failed to create blob"));
+          }, "image/png");
+        });
+
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+        new Notice("Copied to your clipboard");
+      } catch (error) {
+        console.error("Failed to copy image:", error);
+        new Notice("Failed to copy image");
+      }
+    })();
+  };
+
   // Add all listeners synchronously (isOpening flag prevents immediate trigger)
   document.addEventListener("keydown", onEscape);
+  document.addEventListener("keydown", onCopy);
   cloneEl.addEventListener("click", onOverlayClick);
 
   // Cleanup always removes all listeners (removeEventListener is no-op if never added)
@@ -842,6 +878,7 @@ function openImageViewer(
   viewerListenerCleanups.get(cloneEl)?.();
   viewerListenerCleanups.set(cloneEl, () => {
     document.removeEventListener("keydown", onEscape);
+    document.removeEventListener("keydown", onCopy);
     cloneEl.removeEventListener("click", onOverlayClick);
     if (isMobile) {
       cloneEl.removeEventListener("touchstart", onTouchStart);

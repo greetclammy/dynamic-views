@@ -29,11 +29,12 @@ const markdownPatterns = [
   /_((?:(?!_).)+)_/g, // Italic underscores
   /~~((?:(?!~~).)+)~~/g, // Strikethrough
   /==((?:(?!==).)+)==/g, // Highlight
-  /\[(?![ xX]\])([^\]\n]+)\]\([^)]+\)/g, // Links (exclude checkboxes, no newlines)
+  /!\[[^\]\n]*\]\([^)]*\)/g, // Markdown images (before links, strip entirely)
+  /\[(?![ xX]\])([^\]\n]*)\]\([^)]*\)/g, // Links (exclude checkboxes, allow empty)
   /!\[\[(?:[^\]]|\](?!\]))+\]\]/g, // Embedded wikilinks (images, etc.)
-  /\[\[(?:[^\]|]|\](?!\]))+\|(?:[^\]]|\](?!\]))*\]\]/g, // Wikilinks with display
-  /\[\[(?:[^\]]|\](?!\]))+\]\]/g, // Wikilinks
-  /#[a-zA-Z0-9_\-/]+/g, // Tags
+  /\[\[(?:[^\]|]|\](?!\]))+\|((?:[^\]]|\](?!\]))*)\]\]/g, // Wikilinks with alias → keep alias
+  /\[\[((?:[^\]]|\](?!\]))+)\]\]/g, // Wikilinks → keep link text
+  /(?<=\s|^)#[a-zA-Z0-9_\-/]+/g, // Tags (require whitespace/line-start before #)
   /^\s*[-*+]\s*\[[ xX]\]\s+/gm, // Task list markers (bullet-style) - before bare checkbox
   /^\s*(\d+[.)]\s*)\[[ xX]\]\s+/gm, // Task list markers (numbered) - preserves number
   /\[[ xX]\]\s+/g, // Bare task checkboxes (after task markers)
@@ -162,7 +163,7 @@ export function stripMarkdownSyntax(text: string): string {
   markdownPatterns.forEach((pattern) => {
     result = result.replace(pattern, (match: string, ...groups: string[]) => {
       // Special handling for HTML tag pairs - return content (group 2)
-      if (match.match(/<[a-z][a-z0-9]*\b[^>]*>.*?<\//i)) {
+      if (match[0] === "<" && match.includes("</")) {
         return groups[1] || "";
       }
 
@@ -200,8 +201,8 @@ export function sanitizeForPreview(
   filename?: string,
   titleValue?: string,
 ): string {
-  // Remove frontmatter (requires newline after opening ---)
-  const cleaned = content.replace(/^---\n[\s\S]*?\n---/, "").trim();
+  // Remove frontmatter (supports both LF and CRLF line endings)
+  const cleaned = content.replace(/^---\r?\n[\s\S]*?\r?\n---/, "").trim();
   let stripped = stripMarkdownSyntax(cleaned);
 
   // Check if first line matches filename or title

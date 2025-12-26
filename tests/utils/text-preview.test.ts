@@ -16,6 +16,12 @@ Content here`;
       expect(result).toBe("Content here");
     });
 
+    it("should remove frontmatter with CRLF line endings", () => {
+      const input = "---\r\ntitle: Test\r\ntags: test\r\n---\r\nContent here";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Content here");
+    });
+
     it("should strip inline code", () => {
       const input = "This has `inline code` in it";
       const result = sanitizeForPreview(input);
@@ -70,22 +76,70 @@ Content here`;
       expect(result).toBe("Visit Google for search");
     });
 
-    it("should strip wikilinks", () => {
+    it("should keep wikilink text", () => {
       const input = "See [[Other Page]] for details";
       const result = sanitizeForPreview(input);
-      expect(result).toBe("See for details");
+      expect(result).toBe("See Other Page for details");
     });
 
-    it("should strip wikilinks with display text", () => {
+    it("should keep wikilink alias", () => {
       const input = "See [[Internal Link|Display Text]] here";
       const result = sanitizeForPreview(input);
-      expect(result).toBe("See here");
+      expect(result).toBe("See Display Text here");
     });
 
     it("should strip embedded wikilinks", () => {
       const input = "Image: ![[image.png]] shown";
       const result = sanitizeForPreview(input);
       expect(result).toBe("Image: shown");
+    });
+
+    it("should strip embedded wikilinks with alias", () => {
+      const input = "Image: ![[image.png|caption]] shown";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Image: shown");
+    });
+
+    it("should keep wikilink text with heading reference", () => {
+      const input = "See [[Note#Heading]] for details";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("See Note#Heading for details");
+    });
+
+    it("should keep wikilink alias with heading reference", () => {
+      const input = "See [[Note#Heading|Display]] for details";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("See Display for details");
+    });
+
+    it("should strip markdown images", () => {
+      const input = "Image: ![alt text](https://example.org/img.png) shown";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Image: shown");
+    });
+
+    it("should strip markdown images without alt text", () => {
+      const input = "Image: ![](https://example.org/img.png) shown";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Image: shown");
+    });
+
+    it("should strip empty markdown links", () => {
+      const input = "Link: [](https://example.org) here";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Link: here");
+    });
+
+    it("should handle empty URL in links", () => {
+      const input = "Link: [text]() here";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Link: text here");
+    });
+
+    it("should handle empty URL in images", () => {
+      const input = "Image: ![alt]() here";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Image: here");
     });
 
     it("should strip tags", () => {
