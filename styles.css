@@ -2692,6 +2692,12 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
    VIEW-SPECIFIC STYLES: CARD VIEW
    ============================================ */
 
+/* Enable container queries for bases views (used for responsive hiding during tab transitions) */
+.bases-view[data-view-type="dynamic-views-grid"],
+.bases-view[data-view-type="dynamic-views-masonry"] {
+  container-type: inline-size;
+}
+
 /* Unified grid layout for all grid views (all width modes) */
 .bases-view[data-view-type="dynamic-views-grid"] .dynamic-views-grid,
 .dynamic-views .dynamic-views-grid {
@@ -2966,7 +2972,7 @@ body.dynamic-views-ambient-bg-dramatic
 /* Masonry container */
 .dynamic-views .masonry-container {
   position: relative;
-  height: var(--masonry-height);
+  height: var(--masonry-height, auto);
   contain: layout style;
 }
 
@@ -2991,10 +2997,10 @@ body.dynamic-views-ambient-bg-dramatic
 /* Masonry positioned cards */
 .dynamic-views .card.masonry-positioned {
   position: absolute;
-  width: var(--masonry-width);
+  width: var(--masonry-width, auto);
   height: auto;
-  left: var(--masonry-left);
-  top: var(--masonry-top);
+  left: var(--masonry-left, 0);
+  top: var(--masonry-top, 0);
   contain: layout style paint;
   transition:
     box-shadow var(--anim-duration-fast) ease-in-out,
@@ -7200,7 +7206,7 @@ body.dynamic-views-no-fade-truncated-text
   .dynamic-views-masonry
   .card {
   position: absolute;
-  max-width: 100%;
+  /* Width set explicitly via --masonry-width, no max-width needed */
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -7361,7 +7367,15 @@ body.dynamic-views-no-fade-truncated-text
   display: none;
 }
 
-@container (max-width: 700px) and (min-width: 1px) {
+/* Hide grid during 0-width tab transitions (prevents single-column flash) */
+@container (max-width: 50px) {
+  .dynamic-views-grid,
+  .dynamic-views-masonry {
+    visibility: hidden;
+  }
+}
+
+@container (max-width: 700px) and (min-width: 51px) {
   .dynamic-views .controls-wrapper {
     padding: 3px 8px 8px;
   }
@@ -7458,10 +7472,9 @@ body.dynamic-views-no-fade-truncated-text
     max-width: 100%;
   }
 
-  /* Switch to single column at narrow widths */
+  /* Switch to single column at narrow widths (Datacore only - bases uses CSS grid) */
   .datacore-wide .dynamic-views .dynamic-views-grid,
-  .datacore-max .dynamic-views .dynamic-views-grid,
-  .bases-view[data-view-type="dynamic-views-grid"] .dynamic-views-grid {
+  .datacore-max .dynamic-views .dynamic-views-grid {
     display: flex;
     flex-direction: column;
   }

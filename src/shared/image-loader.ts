@@ -14,6 +14,8 @@ import type { RefObject } from "../datacore/types";
 
 // Cache image metadata (RGB tuple + aspect ratio) by URL to avoid flash on re-render
 // Store RGB without alpha so we can apply different opacities for card vs cover
+// Unbounded cache growth is intentional and harmless - entries are small (~50 bytes each)
+// and bounded by user's vault image count; eviction would cause re-extraction flash
 const imageMetadataCache = new Map<
   string,
   {
@@ -109,9 +111,9 @@ export function applyCachedImageMetadata(
   imageEmbedContainer: HTMLElement,
   cardEl: HTMLElement,
   isCoverImage?: boolean,
-): boolean {
+): void {
   const cached = imageMetadataCache.get(imgSrc);
-  if (!cached) return false;
+  if (!cached) return;
 
   // Only apply ambient color if it was cached (ambient settings were on when extracted)
   if (cached.rgb && cached.theme) {
@@ -133,7 +135,6 @@ export function applyCachedImageMetadata(
     );
   }
   cardEl.classList.add("cover-ready");
-  return true;
 }
 
 /**
@@ -155,13 +156,17 @@ export function handleImageLoad(
   isCoverImage?: boolean,
 ): void {
   // Calculate aspect ratio with validation (always needed for masonry)
+  // Require minimum 1px dimensions to avoid extreme ratios from tiny/broken images
   const rawAspectRatio =
-    imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0
+    imgEl.naturalWidth >= 1 && imgEl.naturalHeight >= 1
       ? imgEl.naturalHeight / imgEl.naturalWidth
       : undefined;
-  // Validate aspect ratio is a finite number
+  // Validate aspect ratio is a finite, reasonable number (cap at 10:1 either direction)
   const aspectRatio =
-    rawAspectRatio !== undefined && isFinite(rawAspectRatio)
+    rawAspectRatio !== undefined &&
+    isFinite(rawAspectRatio) &&
+    rawAspectRatio >= 0.1 &&
+    rawAspectRatio <= 10
       ? rawAspectRatio
       : undefined;
 
@@ -210,9 +215,11 @@ export function handleImageLoad(
   }
 
   // Set actual aspect ratio for masonry contain mode (used when "Fixed cover height" is OFF)
-  if (aspectRatio !== undefined) {
-    cardEl.style.setProperty("--actual-aspect-ratio", aspectRatio.toString());
-  }
+  // Use default ratio for invalid/missing dimensions to prevent layout issues
+  cardEl.style.setProperty(
+    "--actual-aspect-ratio",
+    (aspectRatio ?? DEFAULT_ASPECT_RATIO).toString(),
+  );
 
   // Mark as processed (idempotency guard)
   cardEl.classList.add("cover-ready");
@@ -269,7 +276,9 @@ export function setupImageLoadHandler(
   }
 
   // Event handlers for cleanup (#11)
-  const loadHandler = () =>
+  // Guard against double-processing if cache was applied (#3)
+  const loadHandler = () => {
+    if (cardEl.classList.contains("cover-ready")) return;
     handleImageLoad(
       imgEl,
       imageEmbedContainer,
@@ -277,7 +286,9 @@ export function setupImageLoadHandler(
       onLayoutUpdate,
       isCoverImage,
     );
+  };
   const errorHandler = () => {
+    if (cardEl.classList.contains("cover-ready")) return;
     cardEl.classList.add("cover-ready");
     // Set default aspect ratio on error (#25)
     cardEl.style.setProperty(

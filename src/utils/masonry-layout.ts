@@ -4,7 +4,7 @@
  */
 
 // Debug logging for masonry calculations
-const DEBUG_MASONRY = true;
+const DEBUG_MASONRY = false;
 const logMasonry = (
   source: string,
   msg: string,
@@ -63,7 +63,11 @@ export function calculateMasonryDimensions(params: {
   minColumns: number;
   gap: number;
 }): { columns: number; cardWidth: number } {
-  const { containerWidth, cardSize, minColumns, gap } = params;
+  // Validate inputs - clamp negative values to 0
+  const containerWidth = Math.max(0, params.containerWidth);
+  const cardSize = Math.max(0, params.cardSize);
+  const minColumns = Math.max(1, params.minColumns);
+  const gap = Math.max(0, params.gap);
 
   const columns = Math.max(
     minColumns,
@@ -95,14 +99,12 @@ export function calculateMasonryDimensions(params: {
 export function calculateMasonryLayout(
   params: MasonryLayoutParams,
 ): MasonryLayoutResult {
-  const {
-    cards,
-    containerWidth,
-    cardSize,
-    minColumns,
-    gap,
-    heights: preHeights,
-  } = params;
+  const { cards, heights: preHeights } = params;
+  // Validate inputs - clamp negative values to 0
+  const containerWidth = Math.max(0, params.containerWidth);
+  const cardSize = Math.max(0, params.cardSize);
+  const minColumns = Math.max(1, params.minColumns);
+  const gap = Math.max(0, params.gap);
 
   logMasonry("calc", "FULL LAYOUT START", {
     cardCount: cards.length,
@@ -141,18 +143,6 @@ export function calculateMasonryLayout(
       ? preHeights
       : cards.map((card) => card.offsetHeight);
 
-  // Log height summary
-  const zeroHeights = heights.filter((h) => h === 0).length;
-  const minH = Math.min(...heights);
-  const maxH = Math.max(...heights);
-  logMasonry("calc", "heights", {
-    count: heights.length,
-    zeroHeights,
-    minH,
-    maxH,
-    usingPreHeights: !!(preHeights && preHeights.length === cards.length),
-  });
-
   cards.forEach((card, index) => {
     // Find shortest column - track index during search
     let shortestColumn = 0;
@@ -188,11 +178,12 @@ export function calculateMasonryLayout(
 
   // Calculate container height (subtract trailing gap after last row)
   // Guard against negative height when no cards exist
+  // Round to nearest pixel to avoid floating point accumulation errors
   const maxHeight = columnHeights.length > 0 ? Math.max(...columnHeights) : 0;
-  const containerHeight = maxHeight > 0 ? maxHeight - gap : 0;
+  const containerHeight = Math.round(maxHeight > 0 ? maxHeight - gap : 0);
 
   logMasonry("calc", "FULL LAYOUT END", {
-    containerHeight: Math.round(containerHeight),
+    containerHeight,
     finalColHeights: columnHeights.map((h) => Math.round(h)).join(","),
   });
 
@@ -284,15 +275,6 @@ export function calculateIncrementalMasonryLayout(
       ? preHeights
       : newCards.map((card) => card.offsetHeight);
 
-  // Log height summary
-  const zeroHeights = heights.filter((h) => h === 0).length;
-  if (zeroHeights > 0) {
-    logMasonry("incr", "WARNING: zero heights detected", {
-      zeroHeights,
-      total: heights.length,
-    });
-  }
-
   newCards.forEach((card, index) => {
     // Find shortest column - track index during search
     let shortestColumn = 0;
@@ -327,11 +309,12 @@ export function calculateIncrementalMasonryLayout(
 
   // Subtract trailing gap after last row
   // Guard against negative height when columns are empty
+  // Round to nearest pixel to avoid floating point accumulation errors
   const maxHeight = columnHeights.length > 0 ? Math.max(...columnHeights) : 0;
-  const containerHeight = maxHeight > 0 ? maxHeight - gap : 0;
+  const containerHeight = Math.round(maxHeight > 0 ? maxHeight - gap : 0);
 
   logMasonry("incr", "INCREMENTAL LAYOUT END", {
-    containerHeight: Math.round(containerHeight),
+    containerHeight,
     finalColHeights: columnHeights.map((h) => Math.round(h)).join(","),
   });
 
