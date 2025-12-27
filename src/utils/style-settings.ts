@@ -98,7 +98,7 @@ export function getHideEmptyMode(): HideEmptyMode {
 
 /**
  * Get card spacing from CSS variable
- * For Bases files, returns user-configured value; for embeds, returns Obsidian default
+ * For Bases files, returns user-configured value (desktop/mobile); for embeds, returns Obsidian default
  */
 export function getCardSpacing(containerEl?: HTMLElement): number {
   // Check if we're in a Bases file (not embed)
@@ -109,7 +109,12 @@ export function getCardSpacing(containerEl?: HTMLElement): number {
     // Embed: use Obsidian's spacing scale
     return getCSSVariableAsNumber("--size-4-2", 8);
   }
-  return getCSSVariableAsNumber("--dynamic-views-card-spacing", 8);
+  const isMobile = document.body.classList.contains("is-mobile");
+  const varName = isMobile
+    ? "--dynamic-views-card-spacing-mobile"
+    : "--dynamic-views-card-spacing-desktop";
+  const defaultVal = isMobile ? 6 : 8;
+  return getCSSVariableAsNumber(varName, defaultVal);
 }
 
 /**

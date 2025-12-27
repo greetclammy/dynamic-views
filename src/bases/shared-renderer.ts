@@ -1384,20 +1384,13 @@ export class SharedCardRenderer {
       return;
 
     // Determine which rows go to top vs bottom based on position settings
-    const row1IsTop =
-      row1HasContent && settings.propertyGroup1Position === "top";
-    const row2IsTop =
-      row2HasContent && settings.propertyGroup2Position === "top";
-    const row3IsTop =
-      row3HasContent && settings.propertyGroup3Position === "top";
-    const row4IsTop =
-      row4HasContent && settings.propertyGroup4Position === "top";
-    const row5IsTop =
-      row5HasContent && settings.propertyGroup5Position === "top";
-    const row6IsTop =
-      row6HasContent && settings.propertyGroup6Position === "top";
-    const row7IsTop =
-      row7HasContent && settings.propertyGroup7Position === "top";
+    const row1IsTop = row1HasContent && settings.propertySet1Position === "top";
+    const row2IsTop = row2HasContent && settings.propertySet2Position === "top";
+    const row3IsTop = row3HasContent && settings.propertySet3Position === "top";
+    const row4IsTop = row4HasContent && settings.propertySet4Position === "top";
+    const row5IsTop = row5HasContent && settings.propertySet5Position === "top";
+    const row6IsTop = row6HasContent && settings.propertySet6Position === "top";
+    const row7IsTop = row7HasContent && settings.propertySet7Position === "top";
 
     const hasTopRows =
       row1IsTop ||
@@ -1445,7 +1438,7 @@ export class SharedCardRenderer {
     // Row 1
     if (row1HasContent) {
       const row1El = getContainer(1)!.createDiv("property-row property-row-1");
-      if (settings.propertyGroup1SideBySide) {
+      if (settings.propertySet1SideBySide) {
         row1El.addClass("property-row-sidebyside");
       }
 
@@ -1537,7 +1530,7 @@ export class SharedCardRenderer {
     // Row 2
     if (row2HasContent) {
       const row2El = getContainer(2)!.createDiv("property-row property-row-2");
-      if (settings.propertyGroup2SideBySide) {
+      if (settings.propertySet2SideBySide) {
         row2El.addClass("property-row-sidebyside");
       }
 
@@ -1629,7 +1622,7 @@ export class SharedCardRenderer {
     // Row 3
     if (row3HasContent) {
       const row3El = getContainer(3)!.createDiv("property-row property-row-3");
-      if (settings.propertyGroup3SideBySide) {
+      if (settings.propertySet3SideBySide) {
         row3El.addClass("property-row-sidebyside");
       }
 
@@ -1719,7 +1712,7 @@ export class SharedCardRenderer {
     // Row 4
     if (row4HasContent) {
       const row4El = getContainer(4)!.createDiv("property-row property-row-4");
-      if (settings.propertyGroup4SideBySide) {
+      if (settings.propertySet4SideBySide) {
         row4El.addClass("property-row-sidebyside");
       }
 
@@ -1809,7 +1802,7 @@ export class SharedCardRenderer {
     // Row 5
     if (row5HasContent) {
       const row5El = getContainer(5)!.createDiv("property-row property-row-5");
-      if (settings.propertyGroup5SideBySide) {
+      if (settings.propertySet5SideBySide) {
         row5El.addClass("property-row-sidebyside");
       }
 
@@ -1900,7 +1893,7 @@ export class SharedCardRenderer {
     // Row 6
     if (row6HasContent) {
       const row6El = getContainer(6)!.createDiv("property-row property-row-6");
-      if (settings.propertyGroup6SideBySide) {
+      if (settings.propertySet6SideBySide) {
         row6El.addClass("property-row-sidebyside");
       }
 
@@ -1992,7 +1985,7 @@ export class SharedCardRenderer {
     // Row 7
     if (row7HasContent) {
       const row7El = getContainer(7)!.createDiv("property-row property-row-7");
-      if (settings.propertyGroup7SideBySide) {
+      if (settings.propertySet7SideBySide) {
         row7El.addClass("property-row-sidebyside");
       }
 
@@ -2293,22 +2286,6 @@ export class SharedCardRenderer {
           ? "path-segment filename-segment"
           : "path-segment file-path-segment";
         const segmentEl = span.createSpan({ cls: segmentClass, text: segment });
-
-        // Make filename segment draggable and show page preview on hover
-        if (isLastSegment) {
-          segmentEl.draggable = true;
-          segmentEl.addEventListener(
-            "dragstart",
-            (e: DragEvent) => {
-              e.stopPropagation();
-              const file = this.app.vault.getAbstractFileByPath(card.path);
-              if (!(file instanceof TFile)) return;
-              const dragData = this.app.dragManager.dragFile(e, file);
-              this.app.dragManager.onDragStart(e, dragData);
-            },
-            { signal },
-          );
-        }
 
         // Make clickable
         const cumulativePath = segments.slice(0, idx + 1).join("/");

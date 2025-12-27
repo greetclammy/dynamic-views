@@ -23,20 +23,20 @@ export interface Settings {
   propertyDisplay12: string;
   propertyDisplay13: string;
   propertyDisplay14: string;
-  propertyGroup1SideBySide: boolean;
-  propertyGroup2SideBySide: boolean;
-  propertyGroup3SideBySide: boolean;
-  propertyGroup4SideBySide: boolean;
-  propertyGroup5SideBySide: boolean;
-  propertyGroup6SideBySide: boolean;
-  propertyGroup7SideBySide: boolean;
-  propertyGroup1Position: "top" | "bottom";
-  propertyGroup2Position: "top" | "bottom";
-  propertyGroup3Position: "top" | "bottom";
-  propertyGroup4Position: "top" | "bottom";
-  propertyGroup5Position: "top" | "bottom";
-  propertyGroup6Position: "top" | "bottom";
-  propertyGroup7Position: "top" | "bottom";
+  propertySet1SideBySide: boolean;
+  propertySet2SideBySide: boolean;
+  propertySet3SideBySide: boolean;
+  propertySet4SideBySide: boolean;
+  propertySet5SideBySide: boolean;
+  propertySet6SideBySide: boolean;
+  propertySet7SideBySide: boolean;
+  propertySet1Position: "top" | "bottom";
+  propertySet2Position: "top" | "bottom";
+  propertySet3Position: "top" | "bottom";
+  propertySet4Position: "top" | "bottom";
+  propertySet5Position: "top" | "bottom";
+  propertySet6Position: "top" | "bottom";
+  propertySet7Position: "top" | "bottom";
   propertyLabels: "hide" | "inline" | "above";
   imageFormat:
     | "none"
@@ -63,6 +63,8 @@ export interface Settings {
   cardSize: number;
   preventSidebarSwipe: "disabled" | "base-files" | "all-views";
   revealInNotebookNavigator: "disable" | "files-folders" | "tags" | "all";
+  showYoutubeThumbnails: boolean;
+  showCardLinkCovers: boolean;
 }
 
 export interface UIState {
@@ -92,20 +94,20 @@ export interface DefaultViewSettings {
   propertyDisplay12: string;
   propertyDisplay13: string;
   propertyDisplay14: string;
-  propertyGroup1SideBySide: boolean;
-  propertyGroup2SideBySide: boolean;
-  propertyGroup3SideBySide: boolean;
-  propertyGroup4SideBySide: boolean;
-  propertyGroup5SideBySide: boolean;
-  propertyGroup6SideBySide: boolean;
-  propertyGroup7SideBySide: boolean;
-  propertyGroup1Position: "top" | "bottom";
-  propertyGroup2Position: "top" | "bottom";
-  propertyGroup3Position: "top" | "bottom";
-  propertyGroup4Position: "top" | "bottom";
-  propertyGroup5Position: "top" | "bottom";
-  propertyGroup6Position: "top" | "bottom";
-  propertyGroup7Position: "top" | "bottom";
+  propertySet1SideBySide: boolean;
+  propertySet2SideBySide: boolean;
+  propertySet3SideBySide: boolean;
+  propertySet4SideBySide: boolean;
+  propertySet5SideBySide: boolean;
+  propertySet6SideBySide: boolean;
+  propertySet7SideBySide: boolean;
+  propertySet1Position: "top" | "bottom";
+  propertySet2Position: "top" | "bottom";
+  propertySet3Position: "top" | "bottom";
+  propertySet4Position: "top" | "bottom";
+  propertySet5Position: "top" | "bottom";
+  propertySet6Position: "top" | "bottom";
+  propertySet7Position: "top" | "bottom";
   propertyLabels: "hide" | "inline" | "above";
   showTitle: boolean;
   subtitleProperty: string;

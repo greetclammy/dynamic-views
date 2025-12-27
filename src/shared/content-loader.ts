@@ -2,10 +2,22 @@ import type { App, TFile } from "obsidian";
 import {
   processImagePaths,
   resolveInternalImagePaths,
-  extractEmbedImages,
+  extractImageEmbeds,
 } from "../utils/image";
 import { loadFilePreview } from "../utils/text-preview";
 import { getSlideshowMaxImages } from "../utils/style-settings";
+
+// Track in-flight loads to prevent duplicate parallel requests
+const inFlightTextPreviews = new Set<string>();
+const inFlightImages = new Set<string>();
+
+/**
+ * Clear in-flight tracking sets (call on plugin unload)
+ */
+export function clearInFlightLoads(): void {
+  inFlightTextPreviews.clear();
+  inFlightImages.clear();
+}
 
 /**
  * Entry with text preview loading data
@@ -29,6 +41,7 @@ export interface TextPreviewEntry {
  * @param fallbackToEmbeds - Whether to extract embedded images if no property images
  * @param imageCache - Cache object to store loaded images
  * @param hasImageCache - Cache object to track image availability
+ * @param embedOptions - Options for embed extraction (YouTube, cardlink)
  */
 export async function loadImageForEntry(
   path: string,
@@ -38,11 +51,19 @@ export async function loadImageForEntry(
   fallbackToEmbeds: "always" | "if-empty" | "never",
   imageCache: Record<string, string | string[]>,
   hasImageCache: Record<string, boolean>,
+  embedOptions?: {
+    includeYoutube?: boolean;
+    includeCardLink?: boolean;
+  },
 ): Promise<void> {
   // Skip if already checked (hasImageCache tracks both success and failure)
-  if (path in hasImageCache) {
+  // or if currently being loaded (prevents race with parallel Promise.all)
+  if (path in hasImageCache || inFlightImages.has(path)) {
     return;
   }
+
+  // Mark as in-flight before async work
+  inFlightImages.add(path);
 
   try {
     // Filter to only valid string paths before processing
@@ -50,24 +71,28 @@ export async function loadImageForEntry(
       (v): v is string => typeof v === "string" && v.length > 0,
     );
 
-    // Process and validate image paths using shared utility
-    const { internalPaths, externalUrls } = await processImagePaths(validPaths);
+    // Process image paths using shared utility (sync - no validation needed)
+    const { internalPaths, externalUrls } = processImagePaths(validPaths);
 
     // Convert internal paths to resource URLs using shared utility
     let validImages: string[] = [
       ...resolveInternalImagePaths(internalPaths, path, app),
-      ...externalUrls, // External URLs already validated by processImagePaths
+      ...externalUrls, // External URLs passed through - browser handles load/error
     ];
 
     // Handle embed images based on fallbackToEmbeds mode
     if (fallbackToEmbeds === "always") {
       // Pull from properties first, then append in-note embeds
-      const embedImages = await extractEmbedImages(file, app);
-      validImages = [...validImages, ...embedImages];
+      // Skip parsing if property already has max images
+      const maxImages = getSlideshowMaxImages();
+      if (validImages.length < maxImages) {
+        const embedImages = await extractImageEmbeds(file, app, embedOptions);
+        validImages = [...validImages, ...embedImages];
+      }
     } else if (fallbackToEmbeds === "if-empty") {
       // Only use embeds if property missing/empty
       if (validImages.length === 0) {
-        validImages = await extractEmbedImages(file, app);
+        validImages = await extractImageEmbeds(file, app, embedOptions);
       }
     } else if (fallbackToEmbeds === "never") {
       // Only use property images, never use embeds
@@ -90,6 +115,9 @@ export async function loadImageForEntry(
     console.error(`Failed to load image for ${path}:`, error);
     // Mark as checked to prevent infinite retry loops
     hasImageCache[path] = false;
+  } finally {
+    // Always remove from in-flight set
+    inFlightImages.delete(path);
   }
 }
 
@@ -101,6 +129,7 @@ export async function loadImageForEntry(
  * @param app - Obsidian app instance
  * @param imageCache - Cache object to store loaded images
  * @param hasImageCache - Cache object to track image availability
+ * @param embedOptions - Options for embed extraction (YouTube, cardlink)
  */
 export async function loadImagesForEntries(
   entries: Array<{
@@ -112,6 +141,10 @@ export async function loadImagesForEntries(
   app: App,
   imageCache: Record<string, string | string[]>,
   hasImageCache: Record<string, boolean>,
+  embedOptions?: {
+    includeYoutube?: boolean;
+    includeCardLink?: boolean;
+  },
 ): Promise<void> {
   await Promise.all(
     entries.map(async (entry) => {
@@ -123,6 +156,7 @@ export async function loadImagesForEntries(
         fallbackToEmbeds,
         imageCache,
         hasImageCache,
+        embedOptions,
       );
     }),
   );
@@ -153,10 +187,13 @@ export async function loadTextPreviewForEntry(
   fileName?: string,
   titleString?: string,
 ): Promise<void> {
-  // Skip if already in cache
-  if (path in textPreviewCache) {
+  // Skip if already in cache or currently being loaded (prevents race with parallel Promise.all)
+  if (path in textPreviewCache || inFlightTextPreviews.has(path)) {
     return;
   }
+
+  // Mark as in-flight before async work
+  inFlightTextPreviews.add(path);
 
   try {
     if (file.extension === "md") {
@@ -178,6 +215,9 @@ export async function loadTextPreviewForEntry(
   } catch (error) {
     console.error(`Failed to load text preview for ${path}:`, error);
     textPreviewCache[path] = "";
+  } finally {
+    // Always remove from in-flight set
+    inFlightTextPreviews.delete(path);
   }
 }
 

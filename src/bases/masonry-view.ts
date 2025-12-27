@@ -14,7 +14,6 @@ import { getMinMasonryColumns, getCardSpacing } from "../utils/style-settings";
 import {
   calculateMasonryLayout,
   calculateMasonryDimensions,
-  applyMasonryLayout,
   calculateIncrementalMasonryLayout,
   type MasonryLayoutResult,
 } from "../utils/masonry-layout";
@@ -28,6 +27,7 @@ import {
   ROWS_PER_COLUMN,
   MAX_BATCH_SIZE,
   SCROLL_THROTTLE_MS,
+  RESIZE_THROTTLE_MS,
 } from "../shared/constants";
 import {
   setupBasesSwipeInterception,
@@ -42,7 +42,15 @@ import {
   getGroupKeyDataset,
 } from "./utils";
 import { setupHoverKeyboardNavigation } from "../shared/keyboard-nav";
-import { ScrollPreservation } from "../shared/scroll-preservation";
+import {
+  ScrollPreservation,
+  getLeafProps,
+} from "../shared/scroll-preservation";
+import {
+  PROPERTY_MEASURED_EVENT,
+  cleanupVisibilityObserver,
+  resetGapCache,
+} from "../shared/property-measure";
 import type DynamicViewsPlugin from "../../main";
 import type { Settings } from "../types";
 
@@ -54,7 +62,7 @@ export class DynamicViewsMasonryView extends BasesView {
   private leafId: string;
   private containerEl: HTMLElement;
   private plugin: DynamicViewsPlugin;
-  private scrollPreservation: ScrollPreservation;
+  private scrollPreservation: ScrollPreservation | null = null;
   private textPreviews: Record<string, string> = {};
   private images: Record<string, string | string[]> = {};
   private hasImageAvailable: Record<string, boolean> = {};
@@ -88,23 +96,36 @@ export class DynamicViewsMasonryView extends BasesView {
   private abortController: AbortController | null = null;
   // Track last data+settings hash to detect changes
   private lastRenderHash: string = "";
+  // Track settings hash separately to invalidate caches on settings change
+  private lastSettingsHash: string | null = null;
   // Layout ResizeObserver (created once, not per render)
   private layoutResizeObserver: ResizeObserver | null = null;
-  // RAF ID for debounced resize handling (double-RAF)
+  // RAF ID for throttled resize handling
   private resizeRafId: number | null = null;
+  // Throttle timeout for resize updates
+  private resizeThrottleTimeout: number | null = null;
   // Layout results per group for incremental append (undefined key = ungrouped)
   private groupLayoutResults: Map<string | undefined, MasonryLayoutResult> =
     new Map();
   // Expected container height after incremental layout (for ResizeObserver skip)
   private expectedIncrementalHeight: number | null = null;
-  // Track if any batch append occurred (for end indicator)
-  private hasBatchAppended: boolean = false;
+  // Total entries for end indicator check
+  private totalEntries: number = 0;
+  // Displayed so far for end indicator check
+  private displayedSoFar: number = 0;
+  // Debounce timeout for property-measured relayout
+  private propertyMeasuredTimeout: number | null = null;
 
   /** Calculate batch size based on current column count */
   private getBatchSize(settings: Settings): number {
     if (!this.masonryContainer) return MAX_BATCH_SIZE;
     const minColumns = getMinMasonryColumns();
-    const containerWidth = this.masonryContainer.clientWidth;
+    // Use getBoundingClientRect for actual rendered width (clientWidth rounds fractional pixels)
+    const containerWidth = Math.floor(
+      this.masonryContainer.getBoundingClientRect().width,
+    );
+    // Guard against zero width (element hidden/collapsed)
+    if (containerWidth === 0) return MAX_BATCH_SIZE;
     const gap = getCardSpacing(this.containerEl);
     const columns = Math.max(
       minColumns,
@@ -115,7 +136,10 @@ export class DynamicViewsMasonryView extends BasesView {
 
   /** Calculate initial card count based on container dimensions */
   private calculateInitialCount(settings: Settings): number {
-    const containerWidth = this.containerEl.clientWidth;
+    // Use getBoundingClientRect for actual rendered width (clientWidth rounds fractional pixels)
+    const containerWidth = Math.floor(
+      this.containerEl.getBoundingClientRect().width,
+    );
     const minColumns = getMinMasonryColumns();
     const gap = getCardSpacing(this.containerEl);
     const cardSize = settings.cardSize;
@@ -142,9 +166,13 @@ export class DynamicViewsMasonryView extends BasesView {
     super(controller);
     // Store scroll parent reference
     this.scrollEl = scrollEl;
-    // Get stable leaf ID
-    const leaf = this.app.workspace.getLeaf();
-    this.leafId = (leaf as unknown as { id: string })?.id ?? "";
+    // Find leaf by matching container (getLeaf() creates new leaf if pinned, activeLeaf is deprecated)
+    this.leafId = "";
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view?.containerEl?.contains(scrollEl)) {
+        this.leafId = getLeafProps(leaf).id ?? "";
+      }
+    });
     // Create container inside scroll parent
     this.containerEl = scrollEl.createDiv({
       cls: "dynamic-views dynamic-views-bases-container",
@@ -175,10 +203,10 @@ export class DynamicViewsMasonryView extends BasesView {
     );
 
     // Watch for Dynamic Views Style Settings changes only
-    const disconnectObserver = setupStyleSettingsObserver(
-      () => this.onDataUpdated(),
-      reapplyAmbientColors,
-    );
+    const disconnectObserver = setupStyleSettingsObserver(() => {
+      resetGapCache(); // Invalidate gap cache on settings change
+      this.onDataUpdated();
+    }, reapplyAmbientColors);
     this.register(disconnectObserver);
 
     // Setup hover-to-start keyboard navigation
@@ -191,14 +219,48 @@ export class DynamicViewsMasonryView extends BasesView {
     );
     this.register(cleanupKeyboard);
 
-    // Setup scroll preservation (handles tab switching, scroll tracking, reset detection)
-    this.scrollPreservation = new ScrollPreservation({
-      leafId: this.leafId,
-      scrollEl: this.scrollEl,
-      registerEvent: (e) => this.registerEvent(e),
-      register: (c) => this.register(c),
-      app: this.app,
+    // Listen for property measurement completion to trigger masonry relayout
+    // (card heights may have changed during async property field measurement)
+    // Debounce to batch multiple rapid-fire events, then run during browser idle
+    const scheduleIdleCallback =
+      typeof requestIdleCallback !== "undefined"
+        ? requestIdleCallback
+        : (fn: () => void) => setTimeout(fn, 16); // Fallback: next frame
+    const handlePropertyMeasured = () => {
+      if (this.propertyMeasuredTimeout !== null) {
+        window.clearTimeout(this.propertyMeasuredTimeout);
+      }
+      this.propertyMeasuredTimeout = window.setTimeout(() => {
+        this.propertyMeasuredTimeout = null;
+        // Use idle callback to avoid blocking user interactions
+        // Guard against view destruction during idle wait
+        scheduleIdleCallback(() => {
+          if (!this.containerEl?.isConnected) return;
+          this.updateLayoutRef.current?.("property-measured");
+        });
+      }, 100);
+    };
+    document.addEventListener(PROPERTY_MEASURED_EVENT, handlePropertyMeasured);
+    this.register(() => {
+      document.removeEventListener(
+        PROPERTY_MEASURED_EVENT,
+        handlePropertyMeasured,
+      );
+      if (this.propertyMeasuredTimeout !== null) {
+        window.clearTimeout(this.propertyMeasuredTimeout);
+      }
     });
+
+    // Setup scroll preservation (handles tab switching, scroll tracking, reset detection)
+    if (this.leafId) {
+      this.scrollPreservation = new ScrollPreservation({
+        leafId: this.leafId,
+        scrollEl: this.scrollEl,
+        registerEvent: (e) => this.registerEvent(e),
+        register: (c) => this.register(c),
+        app: this.app,
+      });
+    }
   }
 
   onload(): void {
@@ -235,6 +297,9 @@ export class DynamicViewsMasonryView extends BasesView {
       const groupedData = this.data.groupedData;
       const allEntries = this.data.data;
 
+      // Track total entries for end indicator
+      this.totalEntries = allEntries.length;
+
       // Read settings from Bases config (before hash check so we can include settings)
       const settings = readBasesSettings(
         this.config,
@@ -247,19 +312,31 @@ export class DynamicViewsMasonryView extends BasesView {
       const groupByProperty = hasGroupBy(this.config)
         ? this.config.groupBy?.property
         : undefined;
+      const settingsHash = JSON.stringify(settings);
       const renderHash =
         allEntries.map((e: BasesEntry) => e.file.path).join("\0") +
         "\0\0" +
-        JSON.stringify(settings) +
+        settingsHash +
         "\0\0" +
         (groupByProperty ?? "");
       if (
         renderHash === this.lastRenderHash &&
         this.masonryContainer?.children.length
       ) {
-        this.scrollPreservation.restoreAfterRender();
+        this.scrollPreservation?.restoreAfterRender();
         return;
       }
+
+      // Clear caches if settings changed (textPreviewProperty, imageProperty, etc.)
+      if (
+        this.lastSettingsHash !== null &&
+        this.lastSettingsHash !== settingsHash
+      ) {
+        this.textPreviews = {};
+        this.images = {};
+        this.hasImageAvailable = {};
+      }
+      this.lastSettingsHash = settingsHash;
       this.lastRenderHash = renderHash;
 
       // Calculate initial count dynamically on first render
@@ -333,7 +410,6 @@ export class DynamicViewsMasonryView extends BasesView {
       this.previousDisplayedCount = 0;
       this.lastGroupKey = undefined;
       this.lastGroupContainer = null;
-      this.hasBatchAppended = false;
       this.groupLayoutResults.clear();
 
       // Cleanup card renderer observers before re-rendering
@@ -354,7 +430,7 @@ export class DynamicViewsMasonryView extends BasesView {
       // Setup masonry layout
       this.setupMasonryLayout(settings);
 
-      // Render groups with headers
+      // Render groups with headers (or ungrouped cards directly)
       let displayedSoFar = 0;
       for (const processedGroup of processedGroups) {
         if (displayedSoFar >= this.displayedCount) break;
@@ -367,24 +443,34 @@ export class DynamicViewsMasonryView extends BasesView {
 
         const groupEntries = processedGroup.entries.slice(0, entriesToDisplay);
 
-        // Render group header to masonry container (sibling to card group, matching vanilla)
-        renderGroupHeader(
-          this.masonryContainer,
-          processedGroup.group,
-          this.config,
-          this.app,
-        );
+        // Determine card container: group div (grouped) or masonry container (ungrouped)
+        let cardContainer: HTMLElement;
+        let groupKey: string | undefined;
 
-        // Create group container for cards
-        const groupEl = this.masonryContainer.createDiv(
-          "dynamic-views-group bases-cards-group",
-        );
+        if (isGrouped) {
+          // Render group header to masonry container (sibling to card group, matching vanilla)
+          renderGroupHeader(
+            this.masonryContainer,
+            processedGroup.group,
+            this.config,
+            this.app,
+          );
 
-        // Store group key for layout tracking
-        const groupKey = processedGroup.group.hasKey()
-          ? serializeGroupKey(processedGroup.group.key)
-          : undefined;
-        setGroupKeyDataset(groupEl, groupKey);
+          // Create group container for cards
+          cardContainer = this.masonryContainer.createDiv(
+            "dynamic-views-group bases-cards-group masonry-container",
+          );
+
+          // Store group key for layout tracking
+          groupKey = processedGroup.group.hasKey()
+            ? serializeGroupKey(processedGroup.group.key)
+            : undefined;
+          setGroupKeyDataset(cardContainer, groupKey);
+        } else {
+          // Ungrouped: render directly to masonry container
+          cardContainer = this.masonryContainer;
+          groupKey = undefined;
+        }
 
         // Render cards in this group
         const cards = transformBasesEntries(
@@ -401,18 +487,25 @@ export class DynamicViewsMasonryView extends BasesView {
         for (let i = 0; i < cards.length; i++) {
           const card = cards[i];
           const entry = groupEntries[i];
-          this.renderCard(groupEl, card, entry, displayedSoFar + i, settings);
+          this.renderCard(
+            cardContainer,
+            card,
+            entry,
+            displayedSoFar + i,
+            settings,
+          );
         }
 
         displayedSoFar += entriesToDisplay;
 
         // Track last group for batch append
         this.lastGroupKey = groupKey;
-        this.lastGroupContainer = groupEl;
+        this.lastGroupContainer = cardContainer;
       }
 
-      // Track state for batch append
+      // Track state for batch append and end indicator
       this.previousDisplayedCount = displayedSoFar;
+      this.displayedSoFar = displayedSoFar;
 
       // Initial layout calculation
       if (this.updateLayoutRef.current) {
@@ -423,7 +516,7 @@ export class DynamicViewsMasonryView extends BasesView {
       this.setupInfiniteScroll(allEntries.length, settings);
 
       // Restore scroll position after render
-      this.scrollPreservation.restoreAfterRender();
+      this.scrollPreservation?.restoreAfterRender();
 
       // Remove height preservation now that scroll is restored
       this.containerEl.style.minHeight = "";
@@ -435,9 +528,16 @@ export class DynamicViewsMasonryView extends BasesView {
 
     const minColumns = getMinMasonryColumns();
 
-    // Setup update function using shared masonry logic (c59fe2d simple version)
-    this.updateLayoutRef.current = (_source?: string) => {
+    // Synchronous layout update - single pass, no chunking
+    // Profiling showed chunked async caused layout thrashing (224 InvalidateLayout events)
+    this.updateLayoutRef.current = (source?: string) => {
       if (!this.masonryContainer) return;
+      // Cache width early to avoid double getBoundingClientRect() call (layout flush)
+      const containerWidth = Math.floor(
+        this.masonryContainer.getBoundingClientRect().width,
+      );
+      if (containerWidth === 0) return;
+
       // Guard against reentrant calls - queue update if one is in progress
       if (this.isUpdatingLayout) {
         this.pendingLayoutUpdate = true;
@@ -445,206 +545,234 @@ export class DynamicViewsMasonryView extends BasesView {
       }
       this.isUpdatingLayout = true;
 
-      try {
-        const containerWidth = this.masonryContainer.clientWidth;
-        // Skip layout when container collapsed (happens during tab switch)
-        if (containerWidth === 0) {
-          return;
-        }
-        const gap = getCardSpacing(this.containerEl);
+      // Only hide cards on initial render (prevents flash at 0,0)
+      const skipHiding = source !== "initial-render";
 
-        // Check grouped mode via class (source of truth set in onDataUpdated)
+      try {
+        const gap = getCardSpacing(this.containerEl);
         const isGrouped = this.containerEl.classList.contains("is-grouped");
 
-        // Check if width changed (used for visibility handling)
-        const widthChanged = containerWidth !== this.lastLayoutWidth;
+        // Hide cards during initial render only
+        if (!skipHiding) {
+          this.masonryContainer.classList.add("masonry-resizing");
+        }
+
+        // Collect all cards
+        let allCards: HTMLElement[];
+        let groups: HTMLElement[] | null = null;
 
         if (isGrouped) {
-          // Get all group containers
-          const groups = Array.from(
+          groups = Array.from(
             this.masonryContainer.querySelectorAll<HTMLElement>(
               ".bases-cards-group",
             ),
           );
           if (groups.length === 0) {
+            this.isUpdatingLayout = false;
             return;
           }
+          allCards = Array.from(
+            this.masonryContainer.querySelectorAll<HTMLElement>(".card"),
+          );
+        } else {
+          allCards = Array.from(
+            this.masonryContainer.querySelectorAll<HTMLElement>(".card"),
+          );
+        }
 
-          // Phase 0: Calculate dimensions and set width on all cards BEFORE measuring
-          // (cards use width: auto until --masonry-width is set, causing wrong heights)
-          const { cardWidth } = calculateMasonryDimensions({
-            containerWidth,
-            cardSize: settings.cardSize,
-            minColumns,
-            gap,
-          });
+        if (allCards.length === 0) {
+          this.isUpdatingLayout = false;
+          return;
+        }
 
-          // If width changed, hide cards during recalculation by removing masonry-positioned
-          // Cards without this class have opacity:0 in CSS, preventing visual jumping
-          // The class gets re-added in applyMasonryLayout when positions are applied
-          if (widthChanged) {
-            for (const groupEl of groups) {
-              const cards = groupEl.querySelectorAll<HTMLElement>(".card");
-              for (const card of cards) {
-                card.classList.remove("masonry-positioned");
-              }
-            }
+        // Calculate dimensions
+        const { cardWidth } = calculateMasonryDimensions({
+          containerWidth,
+          cardSize: settings.cardSize,
+          minColumns,
+          gap,
+        });
+
+        // Phase 1: Set all widths (single pass)
+        for (const card of allCards) {
+          if (!skipHiding) {
+            card.classList.remove("masonry-positioned");
           }
+          card.style.setProperty("--masonry-width", `${cardWidth}px`);
+        }
 
+        // Phase 2: Single forced reflow
+        void allCards[0]?.offsetHeight;
+
+        // Phase 3: Read all heights (single pass)
+        const heights = allCards.map((card) => card.offsetHeight);
+
+        // Phase 4: Calculate and apply layout
+        if (isGrouped && groups) {
+          const groupCardsMap = new Map<HTMLElement, HTMLElement[]>();
           for (const groupEl of groups) {
-            const cards = groupEl.querySelectorAll<HTMLElement>(".card");
-            for (const card of cards) {
-              card.style.setProperty("--masonry-width", `${cardWidth}px`);
-            }
-          }
-
-          // Force synchronous reflow after setting width, before measuring heights
-          // Without this, heights may be stale (measured before text reflows to new width)
-          // Reading offsetHeight on first card forces browser to recalculate layout
-          const firstCardForReflow =
-            groups[0]?.querySelector<HTMLElement>(".card");
-          if (firstCardForReflow) {
-            void firstCardForReflow.offsetHeight;
-          }
-
-          // Phase 1: Pre-measure all card heights (single reflow for all groups)
-          const heightMap = new Map<HTMLElement, number>();
-          for (const groupEl of groups) {
-            const cards = groupEl.querySelectorAll<HTMLElement>(".card");
-            for (const card of cards) {
-              heightMap.set(card, card.offsetHeight);
-            }
-          }
-
-          // Phase 2: Calculate and apply layout per group (no reflows)
-          for (const groupEl of groups) {
-            const cards = Array.from(
-              groupEl.querySelectorAll<HTMLElement>(".card"),
+            groupCardsMap.set(
+              groupEl,
+              Array.from(groupEl.querySelectorAll<HTMLElement>(".card")),
             );
-            if (cards.length === 0) continue;
+          }
 
-            // Get pre-measured heights for this group's cards
-            const heights = cards.map((card) => heightMap.get(card)!);
+          let cardIndex = 0;
+          for (const groupEl of groups) {
+            const groupCards = groupCardsMap.get(groupEl) ?? [];
+            if (groupCards.length === 0) continue;
+
+            const groupHeights = heights.slice(
+              cardIndex,
+              cardIndex + groupCards.length,
+            );
             const groupKey = getGroupKeyDataset(groupEl);
 
             const result = calculateMasonryLayout({
-              cards,
+              cards: groupCards,
               containerWidth,
               cardSize: settings.cardSize,
               minColumns,
               gap,
-              heights,
+              heights: groupHeights,
             });
 
-            applyMasonryLayout(groupEl, cards, result);
-
-            // Store result for incremental append (keyed by group)
-            this.groupLayoutResults.set(groupKey, result);
-          }
-          this.lastLayoutWidth = containerWidth;
-        } else {
-          // Ungrouped mode: single layout for all cards
-          const cards = Array.from(
-            this.masonryContainer.querySelectorAll<HTMLElement>(".card"),
-          );
-          if (cards.length === 0) {
-            return;
-          }
-
-          // Set width on all cards BEFORE measuring heights
-          // (cards use width: auto until --masonry-width is set, causing wrong heights)
-          const { cardWidth } = calculateMasonryDimensions({
-            containerWidth,
-            cardSize: settings.cardSize,
-            minColumns,
-            gap,
-          });
-
-          // If width changed, hide cards during recalculation by removing masonry-positioned
-          if (widthChanged) {
-            for (const card of cards) {
-              card.classList.remove("masonry-positioned");
+            // Apply positions (single pass)
+            for (let i = 0; i < groupCards.length; i++) {
+              const pos = result.positions[i];
+              groupCards[i].classList.add("masonry-positioned");
+              groupCards[i].style.setProperty(
+                "--masonry-left",
+                `${pos.left}px`,
+              );
+              groupCards[i].style.setProperty("--masonry-top", `${pos.top}px`);
             }
-          }
 
-          for (const card of cards) {
-            card.style.setProperty("--masonry-width", `${cardWidth}px`);
-          }
+            groupEl.classList.add("masonry-container");
+            groupEl.style.setProperty(
+              "--masonry-height",
+              `${result.containerHeight}px`,
+            );
 
-          // Force synchronous reflow after setting width, before measuring heights
-          if (cards[0]) {
-            void cards[0].offsetHeight;
+            this.groupLayoutResults.set(groupKey, result);
+            cardIndex += groupCards.length;
           }
-
+        } else {
+          // Ungrouped mode
           const result = calculateMasonryLayout({
-            cards,
+            cards: allCards,
             containerWidth,
             cardSize: settings.cardSize,
             minColumns,
             gap,
+            heights,
           });
 
-          applyMasonryLayout(this.masonryContainer, cards, result);
+          // Apply positions (single pass)
+          for (let i = 0; i < allCards.length; i++) {
+            const pos = result.positions[i];
+            allCards[i].classList.add("masonry-positioned");
+            allCards[i].style.setProperty("--masonry-left", `${pos.left}px`);
+            allCards[i].style.setProperty("--masonry-top", `${pos.top}px`);
+          }
+
+          this.masonryContainer.style.setProperty(
+            "--masonry-height",
+            `${result.containerHeight}px`,
+          );
+
           this.groupLayoutResults.set(undefined, result);
-          this.lastLayoutWidth = containerWidth;
         }
+
+        this.lastLayoutWidth = containerWidth;
       } finally {
+        if (!skipHiding && this.masonryContainer?.isConnected) {
+          this.masonryContainer.classList.remove("masonry-resizing");
+        }
+
+        // Show end indicator if all items displayed
+        requestAnimationFrame(() => {
+          if (!this.containerEl?.isConnected) return;
+          if (this.displayedSoFar >= this.totalEntries) {
+            this.showEndIndicator();
+          }
+        });
+
         this.isUpdatingLayout = false;
+
         // Process any queued update
         if (this.pendingLayoutUpdate) {
           this.pendingLayoutUpdate = false;
-          requestAnimationFrame(() =>
-            this.updateLayoutRef.current?.("queued-update"),
-          );
+          requestAnimationFrame(() => {
+            if (!this.containerEl?.isConnected) return;
+            this.updateLayoutRef.current?.("queued-update");
+          });
         }
       }
     };
 
-    // Debounced resize handler (double-RAF)
-    const debouncedResize = (entries: ResizeObserverEntry[]) => {
+    // Throttled resize handler - recalculates every RESIZE_THROTTLE_MS during resize
+    // Uses trailing call pattern: if resize events arrive during throttle, trigger layout when throttle expires
+    let pendingTrailingLayout = false;
+
+    const throttledResize = (entries: ResizeObserverEntry[]) => {
       const entry = entries[0];
-      const newWidth = entry?.contentRect?.width ?? 0;
+      const newWidth = Math.round(entry?.contentRect?.width ?? 0);
 
-      // Hide cards immediately when width changes (before debounce completes)
-      // This prevents visible overlap during resize drag
-      if (
-        this.masonryContainer &&
-        Math.round(newWidth) !== this.lastLayoutWidth
-      ) {
-        this.masonryContainer.classList.add("masonry-resizing");
+      // Skip if width unchanged
+      if (newWidth === this.lastLayoutWidth) {
+        return;
       }
 
-      if (this.resizeRafId !== null) {
-        cancelAnimationFrame(this.resizeRafId);
-      }
-      this.resizeRafId = requestAnimationFrame(() => {
+      // Throttle: only update if not in cooldown
+      if (this.resizeThrottleTimeout === null) {
+        pendingTrailingLayout = false;
+
+        // Cancel any pending RAF
+        if (this.resizeRafId !== null) {
+          cancelAnimationFrame(this.resizeRafId);
+        }
+
+        // Update via double-RAF for smooth rendering
         this.resizeRafId = requestAnimationFrame(() => {
-          if (!this.masonryContainer?.isConnected) {
-            this.masonryContainer?.classList.remove("masonry-resizing");
-            return;
-          }
-          // Skip if width hasn't changed (height changes don't affect masonry layout)
-          const currentWidth = this.masonryContainer.clientWidth;
-          if (currentWidth === this.lastLayoutWidth) {
-            this.masonryContainer.classList.remove("masonry-resizing");
-            return;
-          }
-          if (this.updateLayoutRef.current) {
-            this.updateLayoutRef.current("resize-observer");
-          }
-          // Remove resizing class after layout completes
-          this.masonryContainer?.classList.remove("masonry-resizing");
+          if (!this.masonryContainer?.isConnected) return;
+          this.resizeRafId = requestAnimationFrame(() => {
+            if (!this.masonryContainer?.isConnected) return;
+            if (this.updateLayoutRef.current) {
+              this.updateLayoutRef.current("resize-observer");
+            }
+          });
         });
-      });
+
+        // Start throttle cooldown with trailing call
+        this.resizeThrottleTimeout = window.setTimeout(() => {
+          this.resizeThrottleTimeout = null;
+          // If resize events arrived during throttle, trigger layout now
+          if (pendingTrailingLayout) {
+            pendingTrailingLayout = false;
+            if (this.updateLayoutRef.current) {
+              this.updateLayoutRef.current("resize-trailing");
+            }
+          }
+        }, RESIZE_THROTTLE_MS);
+      } else {
+        // Throttled - mark that we need a trailing layout
+        pendingTrailingLayout = true;
+      }
     };
 
     // Setup resize observer (only once, not per render)
     // ResizeObserver handles both pane and window resize (container resizes in both cases)
     if (!this.layoutResizeObserver) {
-      this.layoutResizeObserver = new ResizeObserver(debouncedResize);
+      this.layoutResizeObserver = new ResizeObserver(throttledResize);
       this.layoutResizeObserver.observe(this.masonryContainer);
       this.register(() => this.layoutResizeObserver?.disconnect());
     } else if (this.masonryContainer) {
+      // Cancel any pending RAF before re-observing
+      if (this.resizeRafId !== null) {
+        cancelAnimationFrame(this.resizeRafId);
+        this.resizeRafId = null;
+      }
       // Re-observe if container was recreated
       this.layoutResizeObserver.disconnect();
       this.layoutResizeObserver.observe(this.masonryContainer);
@@ -765,10 +893,13 @@ export class DynamicViewsMasonryView extends BasesView {
       }
 
       // Determine entries to render in this group
+      // startInGroup: skip already-rendered entries
+      // endInGroup: stop at currCount boundary
       const startInGroup = Math.max(0, prevCount - displayedSoFar);
+      const endInGroup = groupEntriesToDisplay; // Already capped by currCount
       const groupEntries = processedGroup.entries.slice(
         startInGroup,
-        startInGroup + groupEntriesToDisplay,
+        endInGroup,
       );
 
       // Get or create group container
@@ -777,13 +908,8 @@ export class DynamicViewsMasonryView extends BasesView {
         ? serializeGroupKey(processedGroup.group.key)
         : undefined;
 
-      // For ungrouped mode (no group key), use masonryContainer directly
-      // to match initial render structure
-      if (currentGroupKey === undefined) {
-        groupEl = this.masonryContainer;
-        this.lastGroupKey = undefined;
-        this.lastGroupContainer = this.masonryContainer;
-      } else if (
+      // Check if we can reuse the last group container
+      if (
         currentGroupKey === this.lastGroupKey &&
         this.lastGroupContainer?.isConnected
       ) {
@@ -844,6 +970,7 @@ export class DynamicViewsMasonryView extends BasesView {
     // Update state for next append - use currCount (captured at start)
     // to ensure consistency even if this.displayedCount changed during async
     this.previousDisplayedCount = currCount;
+    this.displayedSoFar = displayedSoFar;
 
     // Use incremental layout if we have previous state, otherwise fall back to full recalc
     // For grouped mode, use lastGroupKey; for ungrouped, use undefined
@@ -882,10 +1009,12 @@ export class DynamicViewsMasonryView extends BasesView {
 
       // Function to run incremental layout
       const runIncrementalLayout = () => {
-        // Re-read prevLayout in case it was updated during async operations (#4)
+        // Never hide during incremental layout - cards already positioned
+
+        // Re-read prevLayout in case it was updated during async operations
         const currentPrevLayout = this.groupLayoutResults.get(layoutKey);
 
-        // Validate refs are still valid after async delay (#5)
+        // Validate refs are still valid after async delay
         if (!targetContainer?.isConnected || !currentPrevLayout) {
           return;
         }
@@ -944,7 +1073,7 @@ export class DynamicViewsMasonryView extends BasesView {
           card.style.setProperty("--masonry-top", `${pos.top}px`);
         });
 
-        // Track expected height so ResizeObserver can skip this change (#9)
+        // Track expected height so ResizeObserver can skip this change
         this.expectedIncrementalHeight = result.containerHeight;
 
         // Update container height (group container or main container)
@@ -964,9 +1093,16 @@ export class DynamicViewsMasonryView extends BasesView {
 
       // Double RAF ensures browser has completed layout calculation:
       // First RAF waits for pending style recalc, second ensures paint is complete
-      // and all ResizeObserver callbacks have fired (#15)
+      // and all ResizeObserver callbacks have fired
+      // Both RAFs guarded with isConnected to prevent execution on destroyed view
       const runAfterLayout = (fn: () => void) => {
-        requestAnimationFrame(() => requestAnimationFrame(fn));
+        requestAnimationFrame(() => {
+          if (!this.containerEl?.isConnected) return;
+          requestAnimationFrame(() => {
+            if (!this.containerEl?.isConnected) return;
+            fn();
+          });
+        });
       };
 
       if (isFixedCoverHeight) {
@@ -1022,6 +1158,9 @@ export class DynamicViewsMasonryView extends BasesView {
                 }),
             ),
           ).then(() => {
+            // Guard against view destruction or renderVersion change while waiting for images
+            if (!this.containerEl?.isConnected) return;
+            if (this.renderVersion !== currentVersion) return;
             runAfterLayout(runIncrementalLayout);
           });
         }
@@ -1029,17 +1168,37 @@ export class DynamicViewsMasonryView extends BasesView {
     }
     // Note: else cases (newCardsRendered === 0 or missing targetContainer) are valid no-ops
 
-    // Mark that batch append occurred (for end indicator)
-    this.hasBatchAppended = true;
+    // Clear loading flag after RAF to allow DOM to update
+    // Then check if more content needed (ResizeObserver skips expected heights)
+    requestAnimationFrame(() => {
+      this.isLoading = false;
+      // Re-check after DOM updated - ResizeObserver may skip expected heights
+      const scrollContainer = this.scrollEl;
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollHeight = scrollContainer.scrollHeight;
+      const clientHeight = scrollContainer.clientHeight;
+      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+      const threshold = clientHeight * PANE_MULTIPLIER;
 
-    // Clear loading flag and re-setup infinite scroll
-    this.isLoading = false;
-    this.setupInfiniteScroll(totalEntries, settings);
+      if (
+        distanceFromBottom < threshold &&
+        this.displayedCount < totalEntries &&
+        !this.isLoading
+      ) {
+        this.isLoading = true;
+        const batchSize = this.getBatchSize(settings);
+        this.displayedCount = Math.min(
+          this.displayedCount + batchSize,
+          totalEntries,
+        );
+        void this.appendBatch(totalEntries, settings);
+      }
+    });
   }
 
   private setupInfiniteScroll(totalEntries: number, settings?: Settings): void {
     const scrollContainer = this.scrollEl;
-    // Clean up existing listeners (don't use this.register() since this method is called multiple times)
+    // Clean up existing listeners and timeouts (don't use this.register() since this method is called multiple times)
     if (this.scrollListener) {
       scrollContainer.removeEventListener("scroll", this.scrollListener);
       this.scrollListener = null;
@@ -1048,12 +1207,14 @@ export class DynamicViewsMasonryView extends BasesView {
       this.scrollResizeObserver.disconnect();
       this.scrollResizeObserver = null;
     }
+    // Clear any pending throttle timeout to prevent stale callback execution
+    if (this.scrollThrottleTimeout !== null) {
+      window.clearTimeout(this.scrollThrottleTimeout);
+      this.scrollThrottleTimeout = null;
+    }
 
-    // Show end indicator only after batch append completed all items
+    // All items displayed - no need for scroll loading
     if (this.displayedCount >= totalEntries) {
-      if (this.hasBatchAppended) {
-        this.showEndIndicator();
-      }
       return;
     }
 
@@ -1129,7 +1290,7 @@ export class DynamicViewsMasonryView extends BasesView {
 
         const newHeight = entries[0]?.contentRect.height ?? 0;
 
-        // Skip if this is the expected height from incremental layout (#9)
+        // Skip if this is the expected height from incremental layout
         // Clear expected height regardless of match to prevent stale values
         if (this.expectedIncrementalHeight !== null) {
           const isExpectedHeight =
@@ -1150,21 +1311,31 @@ export class DynamicViewsMasonryView extends BasesView {
       });
       this.scrollResizeObserver.observe(this.masonryContainer);
     }
+
+    // Trigger initial check in case viewport already needs more content
+    checkAndLoad();
   }
 
   /** Show end-of-content indicator when all items are displayed */
   private showEndIndicator(): void {
+    // Guard against disconnected container (RAF callback after view destroyed)
+    if (!this.containerEl?.isConnected) return;
     // Avoid duplicates
-    if (this.containerEl.querySelector(".dynamic-views-end-indicator")) return;
+    if (this.containerEl.querySelector(".dynamic-views-end-indicator")) {
+      return;
+    }
     this.containerEl.createDiv("dynamic-views-end-indicator");
   }
 
   onunload(): void {
-    this.scrollPreservation.cleanup();
+    this.scrollPreservation?.cleanup();
     this.swipeAbortController?.abort();
     this.abortController?.abort();
     if (this.resizeRafId !== null) {
       cancelAnimationFrame(this.resizeRafId);
+    }
+    if (this.resizeThrottleTimeout !== null) {
+      window.clearTimeout(this.resizeThrottleTimeout);
     }
     // Clean up scroll-related resources
     if (this.scrollListener) {
@@ -1176,6 +1347,8 @@ export class DynamicViewsMasonryView extends BasesView {
     if (this.scrollResizeObserver) {
       this.scrollResizeObserver.disconnect();
     }
+    // Clean up property measurement observer
+    cleanupVisibilityObserver();
     this.cardRenderer.cleanup(true); // Force viewer cleanup on view destruction
   }
 

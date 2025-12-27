@@ -31,7 +31,10 @@ import {
   setGroupKeyDataset,
 } from "./utils";
 import { setupHoverKeyboardNavigation } from "../shared/keyboard-nav";
-import { ScrollPreservation } from "../shared/scroll-preservation";
+import {
+  ScrollPreservation,
+  getLeafProps,
+} from "../shared/scroll-preservation";
 import type DynamicViewsPlugin from "../../main";
 import type { Settings } from "../types";
 
@@ -50,7 +53,7 @@ export class DynamicViewsCardView extends BasesView {
   private leafId: string;
   private containerEl: HTMLElement;
   private plugin: DynamicViewsPlugin;
-  private scrollPreservation: ScrollPreservation;
+  private scrollPreservation: ScrollPreservation | null = null;
   private textPreviews: Record<string, string> = {};
   private images: Record<string, string | string[]> = {};
   private hasImageAvailable: Record<string, boolean> = {};
@@ -77,10 +80,12 @@ export class DynamicViewsCardView extends BasesView {
   private renderVersion: number = 0;
   // AbortController for async content loading
   private abortController: AbortController | null = null;
-  // Guard against reentrant ResizeObserver callbacks (#13)
+  // Guard against reentrant ResizeObserver callbacks
   private isUpdatingColumns: boolean = false;
   // Track last data+settings hash to detect changes
   private lastRenderHash: string = "";
+  // Track settings hash separately to invalidate caches on settings change
+  private lastSettingsHash: string | null = null;
   // Track last column count to avoid unnecessary CSS reflow
   private lastColumnCount: number = 0;
   // RAF ID for debounced resize handling (double-RAF)
@@ -92,7 +97,10 @@ export class DynamicViewsCardView extends BasesView {
 
   /** Calculate initial card count based on container dimensions */
   private calculateInitialCount(settings: Settings): number {
-    const containerWidth = this.containerEl.clientWidth;
+    // Use getBoundingClientRect for actual rendered width (clientWidth rounds fractional pixels)
+    const containerWidth = Math.floor(
+      this.containerEl.getBoundingClientRect().width,
+    );
     const minColumns = getMinGridColumns();
     const gap = getCardSpacing(this.containerEl);
     const cardSize = settings.cardSize;
@@ -112,7 +120,10 @@ export class DynamicViewsCardView extends BasesView {
 
   /** Calculate grid column count based on container width and card size */
   private calculateColumnCount(): number {
-    const containerWidth = this.containerEl.clientWidth;
+    // Use getBoundingClientRect for actual rendered width (clientWidth rounds fractional pixels)
+    const containerWidth = Math.floor(
+      this.containerEl.getBoundingClientRect().width,
+    );
     const cardSize = this.currentCardSize;
     const minColumns = getMinGridColumns();
     const gap = getCardSpacing(this.containerEl);
@@ -131,9 +142,13 @@ export class DynamicViewsCardView extends BasesView {
     super(controller);
     // Store scroll parent reference
     this.scrollEl = scrollEl;
-    // Get stable leaf ID
-    const leaf = this.app.workspace.getLeaf();
-    this.leafId = (leaf as unknown as { id: string })?.id ?? "";
+    // Find leaf by matching container (getLeaf() creates new leaf if pinned, activeLeaf is deprecated)
+    this.leafId = "";
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view?.containerEl?.contains(scrollEl)) {
+        this.leafId = getLeafProps(leaf).id ?? "";
+      }
+    });
     // Create container inside scroll parent
     this.containerEl = scrollEl.createDiv({
       cls: "dynamic-views dynamic-views-bases-container",
@@ -181,13 +196,15 @@ export class DynamicViewsCardView extends BasesView {
     this.register(cleanupKeyboard);
 
     // Setup scroll preservation (handles tab switching, scroll tracking, reset detection)
-    this.scrollPreservation = new ScrollPreservation({
-      leafId: this.leafId,
-      scrollEl: this.scrollEl,
-      registerEvent: (e) => this.registerEvent(e),
-      register: (c) => this.register(c),
-      app: this.app,
-    });
+    if (this.leafId) {
+      this.scrollPreservation = new ScrollPreservation({
+        leafId: this.leafId,
+        scrollEl: this.scrollEl,
+        registerEvent: (e) => this.registerEvent(e),
+        register: (c) => this.register(c),
+        app: this.app,
+      });
+    }
   }
 
   onload(): void {
@@ -237,10 +254,11 @@ export class DynamicViewsCardView extends BasesView {
       const groupByProperty = hasGroupBy(this.config)
         ? this.config.groupBy?.property
         : undefined;
+      const settingsHash = JSON.stringify(settings);
       const renderHash =
         allEntries.map((e: BasesEntry) => e.file.path).join("\0") +
         "\0\0" +
-        JSON.stringify(settings) +
+        settingsHash +
         "\0\0" +
         (groupByProperty ?? "");
       if (
@@ -252,9 +270,20 @@ export class DynamicViewsCardView extends BasesView {
           "--grid-columns",
           String(this.lastColumnCount),
         );
-        this.scrollPreservation.restoreAfterRender();
+        this.scrollPreservation?.restoreAfterRender();
         return;
       }
+
+      // Clear caches if settings changed (textPreviewProperty, imageProperty, etc.)
+      if (
+        this.lastSettingsHash !== null &&
+        this.lastSettingsHash !== settingsHash
+      ) {
+        this.textPreviews = {};
+        this.images = {};
+        this.hasImageAvailable = {};
+      }
+      this.lastSettingsHash = settingsHash;
       this.lastRenderHash = renderHash;
 
       // Calculate initial count dynamically on first render
@@ -371,7 +400,7 @@ export class DynamicViewsCardView extends BasesView {
           "dynamic-views-group bases-cards-group",
         );
 
-        // Store group key for consistency with masonry-view (#7)
+        // Store group key for consistency with masonry-view
         const groupKey = processedGroup.group.hasKey()
           ? serializeGroupKey(processedGroup.group.key)
           : undefined;
@@ -408,6 +437,11 @@ export class DynamicViewsCardView extends BasesView {
       // Setup infinite scroll
       this.setupInfiniteScroll(allEntries.length, settings);
 
+      // Show end indicator if all items fit in initial render
+      if (displayedSoFar >= allEntries.length) {
+        this.showEndIndicator();
+      }
+
       // Setup ResizeObserver for dynamic grid updates (double-RAF debounce)
       if (!this.resizeObserver) {
         this.resizeObserver = new ResizeObserver((entries) => {
@@ -418,7 +452,7 @@ export class DynamicViewsCardView extends BasesView {
             // Guard: skip if container disconnected from DOM
             if (!this.containerEl?.isConnected) return;
 
-            // Guard against reentrant calls (#13)
+            // Guard against reentrant calls
             if (this.isUpdatingColumns) return;
             this.isUpdatingColumns = true;
 
@@ -466,7 +500,7 @@ export class DynamicViewsCardView extends BasesView {
       }
 
       // Restore scroll position after render
-      this.scrollPreservation.restoreAfterRender();
+      this.scrollPreservation?.restoreAfterRender();
 
       // Remove height preservation now that scroll is restored
       this.containerEl.style.minHeight = "";
@@ -679,6 +713,12 @@ export class DynamicViewsCardView extends BasesView {
       this.scrollListener = null;
     }
 
+    // Clear any pending throttle timeout to prevent stale callback execution
+    if (this.scrollThrottleTimeout !== null) {
+      window.clearTimeout(this.scrollThrottleTimeout);
+      this.scrollThrottleTimeout = null;
+    }
+
     // Show end indicator only after batch append completed all items
     if (this.displayedCount >= totalEntries) {
       if (this.hasBatchAppended) {
@@ -711,12 +751,20 @@ export class DynamicViewsCardView extends BasesView {
         this.isLoading = true;
 
         // Dynamic batch size: columns × rows per column, capped
+        // Use getBoundingClientRect for actual rendered width (clientWidth rounds fractional pixels)
+        const containerWidth = Math.floor(
+          this.containerEl.getBoundingClientRect().width,
+        );
+        // Guard against zero width (element hidden/collapsed)
+        if (containerWidth === 0) {
+          this.isLoading = false;
+          return;
+        }
         const columns = settings
           ? Math.max(
               getMinGridColumns(),
               Math.floor(
-                (this.containerEl.clientWidth +
-                  getCardSpacing(this.containerEl)) /
+                (containerWidth + getCardSpacing(this.containerEl)) /
                   (settings.cardSize + getCardSpacing(this.containerEl)),
               ),
             )
@@ -752,6 +800,9 @@ export class DynamicViewsCardView extends BasesView {
 
     // Attach listener to scroll container
     scrollContainer.addEventListener("scroll", this.scrollListener);
+
+    // Trigger initial check in case viewport already needs more content
+    checkAndLoad();
   }
 
   /** Show end-of-content indicator when all items are displayed */
@@ -762,7 +813,7 @@ export class DynamicViewsCardView extends BasesView {
   }
 
   onunload(): void {
-    this.scrollPreservation.cleanup();
+    this.scrollPreservation?.cleanup();
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }

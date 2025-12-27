@@ -7,6 +7,16 @@ const GRADIENT_CLASSES = [
   "scroll-gradient-both",
 ] as const;
 
+/** Cache for wrapper/content element refs (auto-cleans via WeakMap) */
+const wrapperCache = new WeakMap<HTMLElement, HTMLElement | null>();
+const contentCache = new WeakMap<HTMLElement, HTMLElement | null>();
+
+/** Cache for current gradient class to skip no-op updates */
+const gradientClassCache = new WeakMap<HTMLElement, string | null>();
+
+/** Cache for throttled update functions per element */
+const throttleCache = new WeakMap<HTMLElement, () => void>();
+
 /**
  * Creates a throttled version of a function
  * Uses requestAnimationFrame for smooth 60fps throttling
@@ -45,12 +55,17 @@ function getGradientClass(
 
 /**
  * Sets the appropriate gradient class on an element, removing others
- * Uses classList.toggle(class, force) which handles no-ops efficiently
+ * Skips update if class unchanged (cached)
  */
 function setGradientClasses(
   element: HTMLElement,
   targetClass: string | null,
 ): void {
+  // Skip if class unchanged
+  const currentClass = gradientClassCache.get(element);
+  if (currentClass === targetClass) return;
+
+  gradientClassCache.set(element, targetClass);
   for (const cls of GRADIENT_CLASSES) {
     element.classList.toggle(cls, cls === targetClass);
   }
@@ -92,42 +107,49 @@ export function updateScrollGradient(element: HTMLElement): void {
     return;
   }
 
-  // With wrapper structure: wrapper always scrolls and receives gradients
-  const wrapper = element.querySelector(
-    ".property-content-wrapper",
-  ) as HTMLElement;
-  const content = element.querySelector(".property-content") as HTMLElement;
+  // Get cached refs or query once and cache
+  let wrapper = wrapperCache.get(element);
+  let content = contentCache.get(element);
+
+  if (wrapper === undefined) {
+    wrapper = element.querySelector<HTMLElement>(".property-content-wrapper");
+    wrapperCache.set(element, wrapper);
+  }
+  if (content === undefined) {
+    content = element.querySelector<HTMLElement>(".property-content");
+    contentCache.set(element, content);
+  }
 
   if (!wrapper || !content) {
     return;
   }
 
+  // Read dimensions once
+  const wrapperWidth = wrapper.clientWidth;
+  const contentScrollWidth = content.scrollWidth;
+
   // Skip if elements not visible/measured - don't clear existing gradients with invalid data
-  if (wrapper.clientWidth === 0 || content.clientWidth === 0) {
+  if (wrapperWidth === 0 || content.clientWidth === 0) {
     return;
   }
 
   // Check if content exceeds wrapper space
-  const isScrollable = content.scrollWidth > wrapper.clientWidth;
+  const isScrollable = contentScrollWidth > wrapperWidth;
 
   if (!isScrollable) {
     setGradientClasses(wrapper, null);
-    if (element.classList.contains("is-scrollable")) {
-      element.removeClass("is-scrollable");
-    }
+    element.classList.remove("is-scrollable");
     return;
   }
 
   // Mark field as scrollable for conditional alignment
-  if (!element.classList.contains("is-scrollable")) {
-    element.addClass("is-scrollable");
-  }
+  element.classList.add("is-scrollable");
 
-  // Calculate and apply gradient class
+  // Calculate and apply gradient class (reuse wrapperWidth)
   const targetClass = getGradientClass(
     wrapper.scrollLeft,
     wrapper.scrollWidth,
-    wrapper.clientWidth,
+    wrapperWidth,
   );
   setGradientClasses(wrapper, targetClass);
 }
@@ -157,6 +179,22 @@ export function setupElementScrollGradient(
 }
 
 /**
+ * Gets or creates a throttled update function for an element
+ * Reuses existing throttle instances to avoid creating 1400+ closures
+ */
+function getThrottledUpdate(
+  element: HTMLElement,
+  updateGradientFn: (element: HTMLElement) => void,
+): () => void {
+  let throttled = throttleCache.get(element);
+  if (!throttled) {
+    throttled = throttleRAF(() => updateGradientFn(element));
+    throttleCache.set(element, throttled);
+  }
+  return throttled;
+}
+
+/**
  * Sets up scroll gradients for all property fields in a container
  * Attaches scroll listeners for user interaction
  * Note: ResizeObserver not needed - card-level observer triggers gradient updates via measurement
@@ -175,9 +213,13 @@ export function setupScrollGradients(
 
   scrollables.forEach((el) => {
     const element = el as HTMLElement;
-    const wrapper = element.querySelector(
-      ".property-content-wrapper",
-    ) as HTMLElement;
+
+    // Get cached wrapper or query and cache
+    let wrapper = wrapperCache.get(element);
+    if (wrapper === undefined) {
+      wrapper = element.querySelector<HTMLElement>(".property-content-wrapper");
+      wrapperCache.set(element, wrapper);
+    }
 
     if (!wrapper) return;
 
@@ -202,8 +244,8 @@ export function setupScrollGradients(
       }
     }
 
-    // Create per-element throttle to avoid lost updates when multiple fields scroll
-    const throttledUpdate = throttleRAF(() => updateGradientFn(element));
+    // Get or create throttled update (reuses existing instance)
+    const throttledUpdate = getThrottledUpdate(element, updateGradientFn);
 
     // Attach scroll listener to wrapper for user scroll interaction
     wrapper.addEventListener("scroll", throttledUpdate, { signal });

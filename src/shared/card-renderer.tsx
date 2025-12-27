@@ -91,7 +91,7 @@ function renderFileExt(extInfo: { ext: string } | null) {
 }
 
 /**
- * Create a drag handler for file elements (used by card-level and filename-segment drag)
+ * Create a drag handler for file elements (used by card-level drag)
  */
 function createFileDragHandler(app: App, path: string) {
   return (e: DragEvent) => {
@@ -966,12 +966,6 @@ function renderProperty(
     // File path property: render as pure Preact JSX
     const segments = resolvedValue.split("/").filter((f: string) => f);
 
-    // Drag handler for filename segment (wraps shared utility with stopPropagation)
-    const handleFilenameDrag = (e: DragEvent) => {
-      e.stopPropagation();
-      createFileDragHandler(app, card.path)(e);
-    };
-
     return (
       <>
         {labelAbove}
@@ -990,20 +984,6 @@ function renderProperty(
                         isLastSegment
                           ? "path-segment filename-segment"
                           : "path-segment file-path-segment"
-                      }
-                      draggable={isLastSegment}
-                      onDragStart={
-                        isLastSegment ? handleFilenameDrag : undefined
-                      }
-                      tabIndex={isLastSegment ? 0 : undefined}
-                      onMouseDown={
-                        isLastSegment
-                          ? (e: MouseEvent) => {
-                              e.preventDefault(); // Prevent text selection during drag
-                              // Focus element to enable drag (required for nested draggable elements)
-                              (e.currentTarget as HTMLElement).focus();
-                            }
-                          : undefined
                       }
                       onClick={(e: MouseEvent) => {
                         e.stopPropagation();
@@ -2172,7 +2152,7 @@ function Card({
 
         const row1 = row1HasContent && (
           <div
-            className={`property-row property-row-1${settings.propertyGroup1SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-row property-row-1${settings.propertySet1SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-1${collapse[0] ? " property-field-collapsed" : ""}`}
@@ -2205,7 +2185,7 @@ function Card({
 
         const row2 = row2HasContent && (
           <div
-            className={`property-row property-row-2${settings.propertyGroup2SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-row property-row-2${settings.propertySet2SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-3${collapse[2] ? " property-field-collapsed" : ""}`}
@@ -2238,7 +2218,7 @@ function Card({
 
         const row3 = row3HasContent && (
           <div
-            className={`property-row property-row-3${settings.propertyGroup3SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-row property-row-3${settings.propertySet3SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-5${collapse[4] ? " property-field-collapsed" : ""}`}
@@ -2271,7 +2251,7 @@ function Card({
 
         const row4 = row4HasContent && (
           <div
-            className={`property-row property-row-4${settings.propertyGroup4SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-row property-row-4${settings.propertySet4SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-7${collapse[6] ? " property-field-collapsed" : ""}`}
@@ -2304,7 +2284,7 @@ function Card({
 
         const row5 = row5HasContent && (
           <div
-            className={`property-row property-row-5${settings.propertyGroup5SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-row property-row-5${settings.propertySet5SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-9${collapse[8] ? " property-field-collapsed" : ""}`}
@@ -2337,7 +2317,7 @@ function Card({
 
         const row6 = row6HasContent && (
           <div
-            className={`property-row property-row-6${settings.propertyGroup6SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-row property-row-6${settings.propertySet6SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-11${collapse[10] ? " property-field-collapsed" : ""}`}
@@ -2370,7 +2350,7 @@ function Card({
 
         const row7 = row7HasContent && (
           <div
-            className={`property-row property-row-7${settings.propertyGroup7SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-row property-row-7${settings.propertySet7SideBySide ? " property-row-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-13${collapse[12] ? " property-field-collapsed" : ""}`}
@@ -2406,31 +2386,31 @@ function Card({
         const bottomRows: JSX.Element[] = [];
 
         if (row1) {
-          if (settings.propertyGroup1Position === "top") topRows.push(row1);
+          if (settings.propertySet1Position === "top") topRows.push(row1);
           else bottomRows.push(row1);
         }
         if (row2) {
-          if (settings.propertyGroup2Position === "top") topRows.push(row2);
+          if (settings.propertySet2Position === "top") topRows.push(row2);
           else bottomRows.push(row2);
         }
         if (row3) {
-          if (settings.propertyGroup3Position === "top") topRows.push(row3);
+          if (settings.propertySet3Position === "top") topRows.push(row3);
           else bottomRows.push(row3);
         }
         if (row4) {
-          if (settings.propertyGroup4Position === "top") topRows.push(row4);
+          if (settings.propertySet4Position === "top") topRows.push(row4);
           else bottomRows.push(row4);
         }
         if (row5) {
-          if (settings.propertyGroup5Position === "top") topRows.push(row5);
+          if (settings.propertySet5Position === "top") topRows.push(row5);
           else bottomRows.push(row5);
         }
         if (row6) {
-          if (settings.propertyGroup6Position === "top") topRows.push(row6);
+          if (settings.propertySet6Position === "top") topRows.push(row6);
           else bottomRows.push(row6);
         }
         if (row7) {
-          if (settings.propertyGroup7Position === "top") topRows.push(row7);
+          if (settings.propertySet7Position === "top") topRows.push(row7);
           else bottomRows.push(row7);
         }
 

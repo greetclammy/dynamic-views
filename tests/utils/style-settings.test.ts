@@ -154,35 +154,67 @@ describe("style-settings", () => {
   });
 
   describe("getCardSpacing", () => {
-    it("should return default value of 8", () => {
+    it("should return default value of 8 on desktop", () => {
       expect(getCardSpacing()).toBe(8);
     });
 
-    it("should return custom value from CSS variable", () => {
+    it("should return default value of 6 on mobile", () => {
+      mockClassList.add("is-mobile");
+      expect(getCardSpacing()).toBe(6);
+    });
+
+    it("should return custom desktop value from CSS variable", () => {
       mockGetComputedStyle.mockReturnValue({
         getPropertyValue: (name: string) =>
-          name === "--dynamic-views-card-spacing" ? "16" : "",
+          name === "--dynamic-views-card-spacing-desktop" ? "16" : "",
       } as CSSStyleDeclaration);
 
       expect(getCardSpacing()).toBe(16);
     });
 
-    it("should parse value with px unit", () => {
+    it("should return custom mobile value from CSS variable", () => {
+      mockClassList.add("is-mobile");
       mockGetComputedStyle.mockReturnValue({
         getPropertyValue: (name: string) =>
-          name === "--dynamic-views-card-spacing" ? "20px" : "",
+          name === "--dynamic-views-card-spacing-mobile" ? "10px" : "",
       } as CSSStyleDeclaration);
 
-      expect(getCardSpacing()).toBe(20);
+      expect(getCardSpacing()).toBe(10);
     });
 
     it("should handle zero value", () => {
       mockGetComputedStyle.mockReturnValue({
         getPropertyValue: (name: string) =>
-          name === "--dynamic-views-card-spacing" ? "0" : "",
+          name === "--dynamic-views-card-spacing-desktop" ? "0" : "",
       } as CSSStyleDeclaration);
 
       expect(getCardSpacing()).toBe(0);
+    });
+
+    it("should return Obsidian spacing for embeds (not in bases leaf)", () => {
+      // Create a mock container element that's NOT inside a bases workspace leaf
+      const mockContainer = document.createElement("div");
+      mockContainer.closest = jest.fn().mockReturnValue(null);
+
+      mockGetComputedStyle.mockReturnValue({
+        getPropertyValue: (name: string) => (name === "--size-4-2" ? "8" : ""),
+      } as CSSStyleDeclaration);
+
+      expect(getCardSpacing(mockContainer)).toBe(8);
+    });
+
+    it("should return custom spacing when inside bases leaf", () => {
+      // Create a mock container element that IS inside a bases workspace leaf
+      const mockContainer = document.createElement("div");
+      const mockBasesLeaf = document.createElement("div");
+      mockContainer.closest = jest.fn().mockReturnValue(mockBasesLeaf);
+
+      mockGetComputedStyle.mockReturnValue({
+        getPropertyValue: (name: string) =>
+          name === "--dynamic-views-card-spacing-desktop" ? "12" : "",
+      } as CSSStyleDeclaration);
+
+      expect(getCardSpacing(mockContainer)).toBe(12);
     });
   });
 

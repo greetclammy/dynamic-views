@@ -152,48 +152,48 @@ export function View({
       viewSettings.propertyDisplay13 ?? defaultViewSettings.propertyDisplay13;
     baseSettings.propertyDisplay14 =
       viewSettings.propertyDisplay14 ?? defaultViewSettings.propertyDisplay14;
-    baseSettings.propertyGroup1SideBySide =
-      viewSettings.propertyGroup1SideBySide ??
-      defaultViewSettings.propertyGroup1SideBySide;
-    baseSettings.propertyGroup2SideBySide =
-      viewSettings.propertyGroup2SideBySide ??
-      defaultViewSettings.propertyGroup2SideBySide;
-    baseSettings.propertyGroup3SideBySide =
-      viewSettings.propertyGroup3SideBySide ??
-      defaultViewSettings.propertyGroup3SideBySide;
-    baseSettings.propertyGroup4SideBySide =
-      viewSettings.propertyGroup4SideBySide ??
-      defaultViewSettings.propertyGroup4SideBySide;
-    baseSettings.propertyGroup5SideBySide =
-      viewSettings.propertyGroup5SideBySide ??
-      defaultViewSettings.propertyGroup5SideBySide;
-    baseSettings.propertyGroup6SideBySide =
-      viewSettings.propertyGroup6SideBySide ??
-      defaultViewSettings.propertyGroup6SideBySide;
-    baseSettings.propertyGroup7SideBySide =
-      viewSettings.propertyGroup7SideBySide ??
-      defaultViewSettings.propertyGroup7SideBySide;
-    baseSettings.propertyGroup1Position =
-      viewSettings.propertyGroup1Position ??
-      defaultViewSettings.propertyGroup1Position;
-    baseSettings.propertyGroup2Position =
-      viewSettings.propertyGroup2Position ??
-      defaultViewSettings.propertyGroup2Position;
-    baseSettings.propertyGroup3Position =
-      viewSettings.propertyGroup3Position ??
-      defaultViewSettings.propertyGroup3Position;
-    baseSettings.propertyGroup4Position =
-      viewSettings.propertyGroup4Position ??
-      defaultViewSettings.propertyGroup4Position;
-    baseSettings.propertyGroup5Position =
-      viewSettings.propertyGroup5Position ??
-      defaultViewSettings.propertyGroup5Position;
-    baseSettings.propertyGroup6Position =
-      viewSettings.propertyGroup6Position ??
-      defaultViewSettings.propertyGroup6Position;
-    baseSettings.propertyGroup7Position =
-      viewSettings.propertyGroup7Position ??
-      defaultViewSettings.propertyGroup7Position;
+    baseSettings.propertySet1SideBySide =
+      viewSettings.propertySet1SideBySide ??
+      defaultViewSettings.propertySet1SideBySide;
+    baseSettings.propertySet2SideBySide =
+      viewSettings.propertySet2SideBySide ??
+      defaultViewSettings.propertySet2SideBySide;
+    baseSettings.propertySet3SideBySide =
+      viewSettings.propertySet3SideBySide ??
+      defaultViewSettings.propertySet3SideBySide;
+    baseSettings.propertySet4SideBySide =
+      viewSettings.propertySet4SideBySide ??
+      defaultViewSettings.propertySet4SideBySide;
+    baseSettings.propertySet5SideBySide =
+      viewSettings.propertySet5SideBySide ??
+      defaultViewSettings.propertySet5SideBySide;
+    baseSettings.propertySet6SideBySide =
+      viewSettings.propertySet6SideBySide ??
+      defaultViewSettings.propertySet6SideBySide;
+    baseSettings.propertySet7SideBySide =
+      viewSettings.propertySet7SideBySide ??
+      defaultViewSettings.propertySet7SideBySide;
+    baseSettings.propertySet1Position =
+      viewSettings.propertySet1Position ??
+      defaultViewSettings.propertySet1Position;
+    baseSettings.propertySet2Position =
+      viewSettings.propertySet2Position ??
+      defaultViewSettings.propertySet2Position;
+    baseSettings.propertySet3Position =
+      viewSettings.propertySet3Position ??
+      defaultViewSettings.propertySet3Position;
+    baseSettings.propertySet4Position =
+      viewSettings.propertySet4Position ??
+      defaultViewSettings.propertySet4Position;
+    baseSettings.propertySet5Position =
+      viewSettings.propertySet5Position ??
+      defaultViewSettings.propertySet5Position;
+    baseSettings.propertySet6Position =
+      viewSettings.propertySet6Position ??
+      defaultViewSettings.propertySet6Position;
+    baseSettings.propertySet7Position =
+      viewSettings.propertySet7Position ??
+      defaultViewSettings.propertySet7Position;
     baseSettings.propertyLabels =
       viewSettings.propertyLabels ?? defaultViewSettings.propertyLabels;
     baseSettings.showTitle =
@@ -577,20 +577,20 @@ export function View({
           propertyDisplay12: settings.propertyDisplay12,
           propertyDisplay13: settings.propertyDisplay13,
           propertyDisplay14: settings.propertyDisplay14,
-          propertyGroup1SideBySide: settings.propertyGroup1SideBySide,
-          propertyGroup2SideBySide: settings.propertyGroup2SideBySide,
-          propertyGroup3SideBySide: settings.propertyGroup3SideBySide,
-          propertyGroup4SideBySide: settings.propertyGroup4SideBySide,
-          propertyGroup5SideBySide: settings.propertyGroup5SideBySide,
-          propertyGroup6SideBySide: settings.propertyGroup6SideBySide,
-          propertyGroup7SideBySide: settings.propertyGroup7SideBySide,
-          propertyGroup1Position: settings.propertyGroup1Position,
-          propertyGroup2Position: settings.propertyGroup2Position,
-          propertyGroup3Position: settings.propertyGroup3Position,
-          propertyGroup4Position: settings.propertyGroup4Position,
-          propertyGroup5Position: settings.propertyGroup5Position,
-          propertyGroup6Position: settings.propertyGroup6Position,
-          propertyGroup7Position: settings.propertyGroup7Position,
+          propertySet1SideBySide: settings.propertySet1SideBySide,
+          propertySet2SideBySide: settings.propertySet2SideBySide,
+          propertySet3SideBySide: settings.propertySet3SideBySide,
+          propertySet4SideBySide: settings.propertySet4SideBySide,
+          propertySet5SideBySide: settings.propertySet5SideBySide,
+          propertySet6SideBySide: settings.propertySet6SideBySide,
+          propertySet7SideBySide: settings.propertySet7SideBySide,
+          propertySet1Position: settings.propertySet1Position,
+          propertySet2Position: settings.propertySet2Position,
+          propertySet3Position: settings.propertySet3Position,
+          propertySet4Position: settings.propertySet4Position,
+          propertySet5Position: settings.propertySet5Position,
+          propertySet6Position: settings.propertySet6Position,
+          propertySet7Position: settings.propertySet7Position,
           propertyLabels: settings.propertyLabels,
           showTitle: settings.showTitle,
           showTextPreview: settings.showTextPreview,
@@ -1128,12 +1128,17 @@ export function View({
           })
           .filter((e): e is NonNullable<typeof e> => e !== null);
 
+        const globalSettings = persistenceManager.getGlobalSettings();
         await loadImagesForEntries(
           imageEntries,
           settings.fallbackToEmbeds,
           app,
           newImages,
           newHasImageAvailable,
+          {
+            includeYoutube: globalSettings.showYoutubeThumbnails,
+            includeCardLink: globalSettings.showCardLinkCovers,
+          },
         );
       }
 
@@ -1332,46 +1337,64 @@ export function View({
     console.log("[masonry:dc] initial layout call");
     updateLayout();
 
-    // Debounced resize handler (double-RAF)
+    // Throttled resize handler (double-RAF)
     // ResizeObserver handles both pane and window resize (container resizes in both cases)
     let resizeRafId: number | null = null;
+    let resizeThrottleTimeout: ReturnType<typeof setTimeout> | null = null;
+    const RESIZE_THROTTLE_MS = 100;
     let resizeCallId = 0;
-    const debouncedResize = (entries: ResizeObserverEntry[]) => {
+    const throttledResize = (entries: ResizeObserverEntry[]) => {
       const entry = entries[0];
-      const newWidth = entry?.contentRect?.width ?? 0;
+      const newWidth = Math.round(entry?.contentRect?.width ?? 0);
       const callId = ++resizeCallId;
       console.log(
-        `[masonry:dc] ResizeObserver #${callId} fired | newWidth=${Math.round(newWidth)}`,
+        `[masonry:dc] ResizeObserver #${callId} fired | newWidth=${newWidth}`,
       );
 
-      // Hide cards immediately if width changed (before debounce delay)
-      const container = containerRef.current;
-      if (container && Math.round(newWidth) !== lastLayoutWidthRef.current) {
-        container.classList.add("masonry-resizing");
-      }
+      // Skip if width unchanged
+      if (newWidth === lastLayoutWidthRef.current) return;
 
-      if (resizeRafId !== null) {
-        cancelAnimationFrame(resizeRafId);
-        console.log(
-          `[masonry:dc] ResizeObserver #${callId} cancelled previous RAF`,
-        );
-      }
-      resizeRafId = requestAnimationFrame(() => {
-        resizeRafId = requestAnimationFrame(() => {
+      // Throttle: only process if not in cooldown
+      if (resizeThrottleTimeout === null) {
+        if (resizeRafId !== null) {
+          cancelAnimationFrame(resizeRafId);
           console.log(
-            `[masonry:dc] ResizeObserver #${callId} double-RAF complete, calling updateLayout`,
+            `[masonry:dc] ResizeObserver #${callId} cancelled previous RAF`,
           );
-          updateLayout();
-          containerRef.current?.classList.remove("masonry-resizing");
+        }
+        resizeRafId = requestAnimationFrame(() => {
+          resizeRafId = requestAnimationFrame(() => {
+            if (!containerRef.current?.isConnected) return;
+            console.log(
+              `[masonry:dc] ResizeObserver #${callId} double-RAF complete, calling updateLayout`,
+            );
+            updateLayout();
+
+            // Check if width changed during async execution (stale width detection)
+            const currentWidth = containerRef.current?.clientWidth ?? 0;
+            if (
+              currentWidth > 0 &&
+              currentWidth !== lastLayoutWidthRef.current
+            ) {
+              console.log(
+                `[masonry:dc] Width changed during layout (${lastLayoutWidthRef.current} -> ${currentWidth}), scheduling another pass`,
+              );
+              requestAnimationFrame(() => updateLayout());
+            }
+          });
         });
-      });
+        resizeThrottleTimeout = setTimeout(() => {
+          resizeThrottleTimeout = null;
+        }, RESIZE_THROTTLE_MS);
+      }
     };
 
-    const resizeObserver = new ResizeObserver(debouncedResize);
+    const resizeObserver = new ResizeObserver(throttledResize);
     resizeObserver.observe(containerRef.current!);
 
     return () => {
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
+      if (resizeThrottleTimeout !== null) clearTimeout(resizeThrottleTimeout);
       resizeObserver.disconnect();
     };
   }, [viewMode, settings.cardSize, _styleRevision, dc]);

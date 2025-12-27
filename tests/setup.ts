@@ -49,6 +49,9 @@ document.createElement = jest.fn((tagName: string) => {
   src: string = "";
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
+  // Default to valid thumbnail dimensions (mqdefault is 320x180, placeholder is 120x90)
+  naturalWidth: number = 320;
+  naturalHeight: number = 180;
 
   constructor() {
     // Store reference to this instance for test access

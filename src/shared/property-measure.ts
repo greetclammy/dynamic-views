@@ -4,6 +4,187 @@
 
 import { updateScrollGradient } from "./scroll-gradient";
 
+/** Cache of last measured container width per card (auto-cleans via WeakMap) */
+const cardWidthCache = new WeakMap<HTMLElement, number>();
+
+/** Cache for getComputedStyle gap values */
+let cachedFieldGap: number | null = null;
+let cachedLabelGap: number | null = null;
+
+/** Reset gap caches when theme/settings change */
+export function resetGapCache(): void {
+  cachedFieldGap = null;
+  cachedLabelGap = null;
+}
+
+/** Track visible cards via IntersectionObserver */
+const visibleCards = new Set<HTMLElement>();
+let visibilityObserver: IntersectionObserver | null = null;
+
+function getVisibilityObserver(): IntersectionObserver {
+  if (!visibilityObserver) {
+    visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const card = entry.target as HTMLElement;
+          if (entry.isIntersecting) {
+            visibleCards.add(card);
+          } else {
+            visibleCards.delete(card);
+          }
+        });
+      },
+      { rootMargin: "100px" }, // Measure slightly before visible
+    );
+  }
+  return visibilityObserver;
+}
+
+/** Cleanup visibility observer and tracked cards */
+export function cleanupVisibilityObserver(): void {
+  if (visibilityObserver) {
+    visibilityObserver.disconnect();
+    visibilityObserver = null;
+  }
+  visibleCards.clear();
+}
+
+/** Global row queue to prevent frame drops */
+interface QueuedRow {
+  row: HTMLElement;
+  card: HTMLElement;
+}
+const rowQueue: QueuedRow[] = [];
+/** Set for O(1) duplicate detection */
+const queuedRows = new Set<HTMLElement>();
+let isProcessingRows = false;
+let pendingFlush = false;
+const gradientBatch: HTMLElement[] = [];
+
+/** Rows to process per frame */
+const ROWS_PER_FRAME = 5;
+
+/** Maximum queue size to prevent unbounded growth */
+const MAX_QUEUE_SIZE = 500;
+
+/** Maximum gradient batch size before early flush */
+const MAX_GRADIENT_BATCH_SIZE = 100;
+
+/** Event name for masonry relayout coordination */
+export const PROPERTY_MEASURED_EVENT = "dynamic-views:property-measured";
+
+/** Process queued rows in batches per frame */
+function processRowQueue(): void {
+  if (rowQueue.length === 0) {
+    isProcessingRows = false;
+    queuedRows.clear(); // Clear dedup set when queue empty
+    // Flush gradient batch when queue empty, then dispatch event in RAF
+    // Set pendingFlush to prevent new queue processing until flush completes
+    if (gradientBatch.length > 0) {
+      pendingFlush = true;
+      requestAnimationFrame(() => {
+        // Clear and process batch inside RAF to avoid race condition
+        // (new items added between slice and RAF execution would be lost)
+        const batch = gradientBatch.slice();
+        gradientBatch.length = 0;
+        batch.forEach((field) => updateScrollGradient(field));
+        pendingFlush = false;
+        document.dispatchEvent(new CustomEvent(PROPERTY_MEASURED_EVENT));
+      });
+    } else {
+      requestAnimationFrame(() => {
+        document.dispatchEvent(new CustomEvent(PROPERTY_MEASURED_EVENT));
+      });
+    }
+    return;
+  }
+
+  isProcessingRows = true;
+
+  // Process up to ROWS_PER_FRAME rows per frame
+  for (let i = 0; i < ROWS_PER_FRAME && rowQueue.length > 0; i++) {
+    const item = rowQueue.shift();
+    if (item) {
+      const { row, card } = item;
+      queuedRows.delete(row); // Remove from dedup set
+      // Check both row AND card are connected
+      if (
+        row.isConnected &&
+        card.isConnected &&
+        !card.classList.contains("compact-mode")
+      ) {
+        row.classList.remove("property-measured");
+        measureSideBySideRow(row, gradientBatch);
+      }
+    }
+  }
+
+  // Early flush if gradient batch is large (prevents unbounded memory growth)
+  // Use RAF to maintain consistent timing and prevent layout thrashing
+  // Set pendingFlush to prevent concurrent RAF batches
+  if (gradientBatch.length >= MAX_GRADIENT_BATCH_SIZE) {
+    pendingFlush = true;
+    const batch = gradientBatch.slice();
+    gradientBatch.length = 0;
+    requestAnimationFrame(() => {
+      batch.forEach((field) => updateScrollGradient(field));
+      pendingFlush = false;
+    });
+  }
+
+  // Continue processing
+  requestAnimationFrame(processRowQueue);
+}
+
+/** Width cache tolerance to avoid redundant measurements from rounding */
+const WIDTH_TOLERANCE = 0.5;
+
+/** Queue all rows from a card for measurement */
+function queueCardRows(
+  cardEl: HTMLElement,
+  rows: NodeListOf<Element>,
+  cardProps: HTMLElement,
+): void {
+  // Only measure visible cards
+  if (!visibleCards.has(cardEl)) return;
+
+  // Skip compact mode cards before queuing
+  if (cardEl.classList.contains("compact-mode")) return;
+
+  // Check width and cache with tolerance
+  const currentWidth = cardProps.clientWidth;
+  if (currentWidth <= 0) return;
+
+  const lastWidth = cardWidthCache.get(cardEl);
+  if (
+    lastWidth !== undefined &&
+    Math.abs(lastWidth - currentWidth) < WIDTH_TOLERANCE
+  ) {
+    return;
+  }
+  cardWidthCache.set(cardEl, currentWidth);
+
+  // Add each row to queue with O(1) dedup and size limit
+  rows.forEach((row) => {
+    const rowEl = row as HTMLElement;
+    // O(1) duplicate check via Set
+    if (!queuedRows.has(rowEl)) {
+      // Enforce queue size limit
+      if (rowQueue.length >= MAX_QUEUE_SIZE) {
+        console.warn("[property-measure] Queue overflow, skipping measurement");
+        return;
+      }
+      queuedRows.add(rowEl);
+      rowQueue.push({ row: rowEl, card: cardEl });
+    }
+  });
+
+  // Start processing if not already running and no flush pending
+  if (!isProcessingRows && !pendingFlush) {
+    requestAnimationFrame(processRowQueue);
+  }
+}
+
 /** Field selector for odd fields (left side) */
 const ODD_FIELD_SELECTOR =
   ".property-field-1, .property-field-3, .property-field-5, .property-field-7, .property-field-9, .property-field-11, .property-field-13";
@@ -14,8 +195,13 @@ const EVEN_FIELD_SELECTOR =
 
 /**
  * Measures and applies optimal widths for a side-by-side property row
+ * @param row - The property row element to measure
+ * @param gradientTargets - Optional array to collect fields needing gradient updates (for batching)
  */
-export function measureSideBySideRow(row: HTMLElement): void {
+export function measureSideBySideRow(
+  row: HTMLElement,
+  gradientTargets?: HTMLElement[],
+): void {
   try {
     const card = row.closest(".card") as HTMLElement;
     const cardProperties = row.closest(".card-properties");
@@ -50,9 +236,9 @@ export function measureSideBySideRow(row: HTMLElement): void {
     const content1 = field1.querySelector(".property-content") as HTMLElement;
     const content2 = field2.querySelector(".property-content") as HTMLElement;
 
-    // Check if either field is truly empty (no content element)
-    const field1Empty = !content1;
-    const field2Empty = !content2;
+    // Check if either field is truly empty (no content element or zero width)
+    const field1Empty = !content1 || content1.scrollWidth === 0;
+    const field2Empty = !content2 || content2.scrollWidth === 0;
 
     // Use cardProperties.clientWidth directly - it already accounts for
     // card padding and side cover constraints
@@ -104,17 +290,22 @@ export function measureSideBySideRow(row: HTMLElement): void {
         width2 = Math.max(width2, aboveLabel2.scrollWidth);
       }
 
-      // Add inline label width + gap
-      const inlineLabelGap = parseFloat(getComputedStyle(field1).gap) || 4;
+      // Add inline label width + gap (use cached value)
+      if (cachedLabelGap === null) {
+        cachedLabelGap = parseFloat(getComputedStyle(field1).gap) || 4;
+      }
       if (inlineLabel1) {
-        width1 += inlineLabel1.scrollWidth + inlineLabelGap;
+        width1 += inlineLabel1.scrollWidth + cachedLabelGap;
       }
       if (inlineLabel2) {
-        width2 += inlineLabel2.scrollWidth + inlineLabelGap;
+        width2 += inlineLabel2.scrollWidth + cachedLabelGap;
       }
 
-      // Read field gap from CSS variable (var(--size-4-2))
-      const fieldGap = parseFloat(getComputedStyle(row).gap) || 8;
+      // Read field gap from CSS variable (use cached value)
+      if (cachedFieldGap === null) {
+        cachedFieldGap = parseFloat(getComputedStyle(row).gap) || 8;
+      }
+      const fieldGap = cachedFieldGap;
       const availableWidth = containerWidth - fieldGap;
 
       // Guard against zero/negative available width
@@ -148,45 +339,77 @@ export function measureSideBySideRow(row: HTMLElement): void {
     if (wrapper1) wrapper1.scrollLeft = 0;
     if (wrapper2) wrapper2.scrollLeft = 0;
 
-    // Update scroll gradients after layout settles (single RAF sufficient
-    // since CSS variables apply synchronously after style.setProperty)
-    requestAnimationFrame(() => {
-      if (!field1Empty) updateScrollGradient(field1);
-      if (!field2Empty) updateScrollGradient(field2);
-    });
+    // Collect gradient targets for batched update, or schedule immediately
+    if (gradientTargets) {
+      if (!field1Empty) gradientTargets.push(field1);
+      if (!field2Empty) gradientTargets.push(field2);
+    } else {
+      // Fallback: schedule own RAF (for single-row calls)
+      requestAnimationFrame(() => {
+        if (!field1Empty) updateScrollGradient(field1);
+        if (!field2Empty) updateScrollGradient(field2);
+      });
+    }
   } finally {
     // Always exit measuring state, even if error occurs
     row.classList.remove("property-measuring");
   }
 }
 
+/** Chunk size for batched measurements (prevents long frames) */
+const MEASUREMENT_CHUNK_SIZE = 5;
+
 /**
  * Resets measurement state and re-measures all side-by-side rows in a container
  * Call this when property label mode changes
+ * Uses chunked processing to prevent frame drops with many rows
  */
 export function remeasurePropertyFields(container: HTMLElement): void {
   if (document.body.classList.contains("dynamic-views-property-width-50-50")) {
     return;
   }
 
-  const rows = container.querySelectorAll(".property-row-sidebyside");
-  rows.forEach((row) => {
-    const rowEl = row as HTMLElement;
-    // Clear measured state to allow re-measurement
-    rowEl.classList.remove("property-measured");
-    rowEl.style.removeProperty("--field1-width");
-    rowEl.style.removeProperty("--field2-width");
+  const rows = Array.from(
+    container.querySelectorAll<HTMLElement>(".property-row-sidebyside"),
+  );
+  if (rows.length === 0) return;
 
-    requestAnimationFrame(() => {
-      measureSideBySideRow(rowEl);
-    });
+  // Clear measured state for all rows first (batch DOM writes)
+  rows.forEach((row) => {
+    row.classList.remove("property-measured");
+    row.style.removeProperty("--field1-width");
+    row.style.removeProperty("--field2-width");
   });
+
+  // Process rows in chunks across frames to prevent freeze
+  let index = 0;
+  const gradientTargets: HTMLElement[] = [];
+
+  function processChunk(): void {
+    const end = Math.min(index + MEASUREMENT_CHUNK_SIZE, rows.length);
+    while (index < end) {
+      measureSideBySideRow(rows[index], gradientTargets);
+      index++;
+    }
+
+    if (index < rows.length) {
+      // More rows to process - schedule next chunk
+      requestAnimationFrame(processChunk);
+    } else if (gradientTargets.length > 0) {
+      // All done - update gradients
+      requestAnimationFrame(() => {
+        gradientTargets.forEach((field) => updateScrollGradient(field));
+      });
+    }
+  }
+
+  requestAnimationFrame(processChunk);
 }
 
 /**
  * Measures all side-by-side property rows in a card element.
- * Uses a single ResizeObserver per card for efficiency.
- * Returns observer for cleanup.
+ * Uses IntersectionObserver for visibility + ResizeObserver for size changes.
+ * Returns observers for cleanup.
  */
 export function measurePropertyFields(cardEl: HTMLElement): ResizeObserver[] {
   // Skip measurement if 50-50 mode - default CSS is already 50-50
@@ -201,25 +424,25 @@ export function measurePropertyFields(cardEl: HTMLElement): ResizeObserver[] {
   const cardProps = cardEl.querySelector(".card-properties") as HTMLElement;
   if (!cardProps) return [];
 
-  // Single ResizeObserver handles both size changes and visibility
-  // (fires when element transitions from hidden/0-size to visible)
-  let rafPending = false;
+  // Register with visibility observer (Phase 5.1)
+  getVisibilityObserver().observe(cardEl);
+
+  // Track if this is the first resize (initial appearance)
+  let isFirstResize = true;
+
+  // ResizeObserver handles size changes
   const observer = new ResizeObserver(() => {
-    // Skip if RAF already queued (debounce rapid resize events)
-    if (rafPending) return;
     // Skip in compact mode or if container has no width
     if (cardEl.classList.contains("compact-mode")) return;
     if (cardProps.clientWidth <= 0) return;
 
-    rafPending = true;
-    requestAnimationFrame(() => {
-      rafPending = false;
-      rows.forEach((row) => {
-        const rowEl = row as HTMLElement;
-        rowEl.classList.remove("property-measured");
-        measureSideBySideRow(rowEl);
-      });
-    });
+    if (isFirstResize) {
+      // Initial appearance - mark as visible for immediate measurement
+      isFirstResize = false;
+      visibleCards.add(cardEl);
+    }
+    // Width cache in queueCardRows prevents redundant measurements
+    queueCardRows(cardEl, rows, cardProps);
   });
   observer.observe(cardEl);
 

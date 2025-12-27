@@ -4,6 +4,121 @@
  */
 
 import { SLIDESHOW_ANIMATION_MS, SWIPE_DETECT_THRESHOLD } from "./constants";
+import { isExternalUrl } from "../utils/image";
+
+// Blob URL cache for external images to prevent re-downloads
+// Browser may not cache cross-origin images; blob URLs guarantee no re-fetch
+const externalBlobCache = new Map<string, string>();
+// Track URLs that failed CORS with timestamp for TTL-based retry
+const corsFailedUrls = new Map<string, number>();
+// Track in-flight fetch requests to prevent duplicate concurrent fetches
+const pendingFetches = new Map<string, Promise<string>>();
+// CORS failure TTL: retry after 5 minutes (transient network errors)
+const CORS_FAILURE_TTL_MS = 5 * 60 * 1000;
+// Flag to prevent orphaned blob URLs during cleanup
+let isCleanedUp = false;
+
+/**
+ * Check if URL is marked as CORS-failed (pure function, no side effects)
+ * TTL expiration is handled by caller to avoid race conditions
+ */
+function isCorsFailed(url: string): boolean {
+  const failedAt = corsFailedUrls.get(url);
+  if (!failedAt) return false;
+  return Date.now() - failedAt <= CORS_FAILURE_TTL_MS;
+}
+
+/**
+ * Get cached blob URL for external image (sync)
+ * Returns cached blob URL if available, otherwise original URL
+ */
+export function getCachedBlobUrl(url: string): string {
+  return externalBlobCache.get(url) ?? url;
+}
+
+/**
+ * Clean up blob URL cache and revoke all blob URLs
+ * Call on plugin unload to prevent memory leaks
+ * Sets cleanup flag to prevent orphaned blob URLs from in-flight fetches
+ */
+export function cleanupExternalBlobCache(): void {
+  isCleanedUp = true;
+  externalBlobCache.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
+  externalBlobCache.clear();
+  corsFailedUrls.clear();
+  pendingFetches.clear();
+}
+
+/**
+ * Get blob URL for external image, fetching and caching if needed
+ * Returns original URL if fetch fails or for non-external URLs
+ * Deduplicates concurrent requests for same URL
+ */
+export async function getExternalBlobUrl(url: string): Promise<string> {
+  // Skip if cleanup already happened (plugin unloaded)
+  if (isCleanedUp) return url;
+  if (!isExternalUrl(url)) return url;
+  if (externalBlobCache.has(url)) return externalBlobCache.get(url)!;
+
+  // Check CORS failure with TTL cleanup (atomic check-and-delete)
+  const failedAt = corsFailedUrls.get(url);
+  if (failedAt) {
+    if (Date.now() - failedAt <= CORS_FAILURE_TTL_MS) {
+      return url; // Still within TTL, skip fetch
+    }
+    corsFailedUrls.delete(url); // TTL expired, allow retry
+  }
+
+  // Deduplicate concurrent requests
+  if (pendingFetches.has(url)) return pendingFetches.get(url)!;
+
+  const fetchPromise = (async () => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        corsFailedUrls.set(url, Date.now());
+        return url;
+      }
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Only cache if cleanup hasn't happened during fetch
+      if (isCleanedUp) {
+        URL.revokeObjectURL(blobUrl); // Prevent orphan
+        return url;
+      }
+
+      externalBlobCache.set(url, blobUrl);
+      return blobUrl;
+    } catch {
+      // Fetch failed (CORS, network, etc.) - mark as failed with timestamp
+      corsFailedUrls.set(url, Date.now());
+      return url;
+    } finally {
+      pendingFetches.delete(url);
+    }
+  })();
+
+  pendingFetches.set(url, fetchPromise);
+  return fetchPromise;
+}
+
+/**
+ * Cache an external image by fetching as blob (fire-and-forget)
+ * Called when the first slideshow image loads
+ */
+export function cacheExternalImage(imgEl: HTMLImageElement): void {
+  const url = imgEl.src;
+  if (
+    url &&
+    isExternalUrl(url) &&
+    !externalBlobCache.has(url) &&
+    !isCorsFailed(url)
+  ) {
+    // Fire and forget - cache for future navigations
+    void getExternalBlobUrl(url);
+  }
+}
 
 // Gesture detection thresholds
 const WHEEL_SWIPE_THRESHOLD = 5; // Accumulated deltaX to trigger navigation
@@ -75,9 +190,10 @@ export function createSlideshowNavigator(
       );
     }
 
-    // Set next image src and CSS variable
-    nextImg.src = newUrl;
-    imageEmbed.style.setProperty("--cover-image-url", `url("${newUrl}")`);
+    // Set next image src and CSS variable (use cached blob URL if available)
+    const effectiveUrl = getCachedBlobUrl(newUrl);
+    nextImg.src = effectiveUrl;
+    imageEmbed.style.setProperty("--cover-image-url", `url("${effectiveUrl}")`);
 
     // Check if this is an "undo" of recent First→Last navigation
     // Must check BEFORE updating the timestamp
@@ -289,6 +405,7 @@ export function setupSwipeGestures(
 
 /**
  * Preload images on first hover
+ * External images are fetched and cached as blob URLs to prevent re-downloads
  */
 export function setupImagePreload(
   cardEl: HTMLElement,
@@ -303,8 +420,14 @@ export function setupImagePreload(
       if (!preloaded) {
         preloaded = true;
         imageUrls.slice(1).forEach((url) => {
-          const img = new Image();
-          img.src = url;
+          if (isExternalUrl(url)) {
+            // Fetch and cache as blob URL (fire-and-forget)
+            void getExternalBlobUrl(url);
+          } else {
+            // Internal images: just trigger browser preload
+            const img = new Image();
+            img.src = url;
+          }
         });
       }
     },

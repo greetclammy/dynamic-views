@@ -232,6 +232,34 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
               }),
           ),
       )
+      .addSetting((s) =>
+        s
+          .setName("Fetch YouTube thumbnails")
+          .setDesc("Extract thumbnail images from YouTube embeds in notes.")
+          .addToggle((toggle) =>
+            toggle
+              .setValue(settings.showYoutubeThumbnails)
+              .onChange(async (value) => {
+                await this.plugin.persistenceManager.setGlobalSettings({
+                  showYoutubeThumbnails: value,
+                });
+              }),
+          ),
+      )
+      .addSetting((s) =>
+        s
+          .setName("Fetch cardlink images")
+          .setDesc("Extract cover images from Auto Card Link blocks in notes.")
+          .addToggle((toggle) =>
+            toggle
+              .setValue(settings.showCardLinkCovers)
+              .onChange(async (value) => {
+                await this.plugin.persistenceManager.setGlobalSettings({
+                  showCardLinkCovers: value,
+                });
+              }),
+          ),
+      )
       // Smart timestamp toggle (sub-settings in separate container below)
       .addSetting((s) => {
         smartTimestampSetting = s;

@@ -8,8 +8,8 @@ interface SettingsProps {
   menuRef?: { current: HTMLDivElement | null };
 }
 
-// Property group configuration
-interface PropertyGroupConfig {
+// Property set configuration
+interface PropertySetConfig {
   key: string;
   label: string;
   firstProp: keyof SettingsType;
@@ -18,62 +18,62 @@ interface PropertyGroupConfig {
   position: keyof SettingsType;
 }
 
-const PROPERTY_GROUPS: PropertyGroupConfig[] = [
+const PROPERTY_SETS: PropertySetConfig[] = [
   {
-    key: "propertyGroup1",
-    label: "Property group 1",
+    key: "propertySet1",
+    label: "Property set 1",
     firstProp: "propertyDisplay1",
     secondProp: "propertyDisplay2",
-    sideBySide: "propertyGroup1SideBySide",
-    position: "propertyGroup1Position",
+    sideBySide: "propertySet1SideBySide",
+    position: "propertySet1Position",
   },
   {
-    key: "propertyGroup2",
-    label: "Property group 2",
+    key: "propertySet2",
+    label: "Property set 2",
     firstProp: "propertyDisplay3",
     secondProp: "propertyDisplay4",
-    sideBySide: "propertyGroup2SideBySide",
-    position: "propertyGroup2Position",
+    sideBySide: "propertySet2SideBySide",
+    position: "propertySet2Position",
   },
   {
-    key: "propertyGroup3",
-    label: "Property group 3",
+    key: "propertySet3",
+    label: "Property set 3",
     firstProp: "propertyDisplay5",
     secondProp: "propertyDisplay6",
-    sideBySide: "propertyGroup3SideBySide",
-    position: "propertyGroup3Position",
+    sideBySide: "propertySet3SideBySide",
+    position: "propertySet3Position",
   },
   {
-    key: "propertyGroup4",
-    label: "Property group 4",
+    key: "propertySet4",
+    label: "Property set 4",
     firstProp: "propertyDisplay7",
     secondProp: "propertyDisplay8",
-    sideBySide: "propertyGroup4SideBySide",
-    position: "propertyGroup4Position",
+    sideBySide: "propertySet4SideBySide",
+    position: "propertySet4Position",
   },
   {
-    key: "propertyGroup5",
-    label: "Property group 5",
+    key: "propertySet5",
+    label: "Property set 5",
     firstProp: "propertyDisplay9",
     secondProp: "propertyDisplay10",
-    sideBySide: "propertyGroup5SideBySide",
-    position: "propertyGroup5Position",
+    sideBySide: "propertySet5SideBySide",
+    position: "propertySet5Position",
   },
   {
-    key: "propertyGroup6",
-    label: "Property group 6",
+    key: "propertySet6",
+    label: "Property set 6",
     firstProp: "propertyDisplay11",
     secondProp: "propertyDisplay12",
-    sideBySide: "propertyGroup6SideBySide",
-    position: "propertyGroup6Position",
+    sideBySide: "propertySet6SideBySide",
+    position: "propertySet6Position",
   },
   {
-    key: "propertyGroup7",
-    label: "Property group 7",
+    key: "propertySet7",
+    label: "Property set 7",
     firstProp: "propertyDisplay13",
     secondProp: "propertyDisplay14",
-    sideBySide: "propertyGroup7SideBySide",
-    position: "propertyGroup7Position",
+    sideBySide: "propertySet7SideBySide",
+    position: "propertySet7Position",
   },
 ];
 
@@ -100,13 +100,13 @@ export function Settings({
     textPreview: false,
     image: false,
     properties: false,
-    propertyGroup1: false,
-    propertyGroup2: false,
-    propertyGroup3: false,
-    propertyGroup4: false,
-    propertyGroup5: false,
-    propertyGroup6: false,
-    propertyGroup7: false,
+    propertySet1: false,
+    propertySet2: false,
+    propertySet3: false,
+    propertySet4: false,
+    propertySet5: false,
+    propertySet6: false,
+    propertySet7: false,
   });
 
   const toggleSection = (section: string) => {
@@ -200,8 +200,8 @@ export function Settings({
     </div>
   );
 
-  // Render a property group section
-  const renderPropertyGroup = (group: PropertyGroupConfig): JSX.Element => (
+  // Render a property set section
+  const renderPropertySet = (group: PropertySetConfig): JSX.Element => (
     <div className="settings-section" key={group.key}>
       {renderSectionHeader(group.key, group.label)}
       <div
@@ -483,8 +483,8 @@ export function Settings({
         </div>
       </div>
 
-      {/* Property Groups 1-7 */}
-      {PROPERTY_GROUPS.map(renderPropertyGroup)}
+      {/* Property Sets 1-7 */}
+      {PROPERTY_SETS.map(renderPropertySet)}
 
       {/* Datacore-specific settings */}
       <div className="setting-item setting-item-dropdown">

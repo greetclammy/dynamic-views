@@ -1,6 +1,6 @@
 import ColorThief from "colorthief";
 
-// Lazy-initialized ColorThief instance (#19)
+// Lazy-initialized ColorThief instance
 let colorThief: ColorThief | null = null;
 
 function getColorThief(): ColorThief {
@@ -12,7 +12,7 @@ function getColorThief(): ColorThief {
 
 export type RGBTuple = [number, number, number];
 
-// Pre-compiled regex for RGB parsing (#18)
+// Pre-compiled regex for RGB parsing
 const RGB_REGEX = /rgba?\((\d+),\s*(\d+),\s*(\d+)/;
 
 // Luminance threshold for light/dark theme detection
@@ -42,7 +42,7 @@ export function extractDominantColor(img: HTMLImageElement): RGBTuple | null {
   try {
     return getColorThief().getColor(img);
   } catch (e) {
-    // Log for debugging CORS/image issues (#9)
+    // Log for debugging CORS/image issues
     console.warn("[ambient-color] Failed to extract color:", e);
     return null;
   }

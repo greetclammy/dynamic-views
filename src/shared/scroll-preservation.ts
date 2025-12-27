@@ -9,13 +9,13 @@ import type { App, EventRef, WorkspaceLeaf } from "obsidian";
 const scrollPositions = new Map<string, number>();
 
 /** Runtime-only properties on WorkspaceLeaf not exposed in public types */
-interface LeafRuntimeProps {
+export interface LeafRuntimeProps {
   id?: string;
   parent?: unknown;
 }
 
 /** Safely access runtime-only leaf properties */
-function getLeafProps(
+export function getLeafProps(
   leaf: WorkspaceLeaf | null | undefined,
 ): LeafRuntimeProps {
   if (!leaf) return {};

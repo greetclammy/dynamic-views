@@ -24,6 +24,8 @@ import {
   toggleShuffleActiveView,
   getPaneType,
 } from "./src/utils/randomize";
+import { cleanupExternalBlobCache } from "./src/shared/slideshow";
+import { clearInFlightLoads } from "./src/shared/content-loader";
 
 export default class DynamicViewsPlugin extends Plugin {
   persistenceManager: PersistenceManager;
@@ -262,5 +264,9 @@ return dv.createView(dc, USER_QUERY);
     document.body.classList.remove(
       `dynamic-views-open-on-${settings.openFileAction}`,
     );
+
+    // Clean up external blob URL cache to prevent memory leaks
+    cleanupExternalBlobCache();
+    clearInFlightLoads();
   }
 }

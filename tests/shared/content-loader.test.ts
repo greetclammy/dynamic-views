@@ -10,7 +10,7 @@ import {
 jest.mock("../../src/utils/image", () => ({
   processImagePaths: jest.fn(),
   resolveInternalImagePaths: jest.fn(),
-  extractEmbedImages: jest.fn(),
+  extractImageEmbeds: jest.fn(),
 }));
 
 // Mock text-preview utility
@@ -24,7 +24,7 @@ describe("content-loader", () => {
   let mockImageUtils: {
     processImagePaths: jest.Mock;
     resolveInternalImagePaths: jest.Mock;
-    extractEmbedImages: jest.Mock;
+    extractImageEmbeds: jest.Mock;
   };
   let mockPreviewUtils: {
     loadFilePreview: jest.Mock;
@@ -42,12 +42,12 @@ describe("content-loader", () => {
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     mockImageUtils = require("../../src/utils/image");
-    mockImageUtils.processImagePaths.mockResolvedValue({
+    mockImageUtils.processImagePaths.mockReturnValue({
       internalPaths: [],
       externalUrls: [],
     });
     mockImageUtils.resolveInternalImagePaths.mockReturnValue([]);
-    mockImageUtils.extractEmbedImages.mockResolvedValue([]);
+    mockImageUtils.extractImageEmbeds.mockResolvedValue([]);
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     mockPreviewUtils = require("../../src/utils/text-preview");
@@ -78,7 +78,7 @@ describe("content-loader", () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
-      mockImageUtils.processImagePaths.mockResolvedValue({
+      mockImageUtils.processImagePaths.mockReturnValue({
         internalPaths: [],
         externalUrls: ["https://example.com/image.png"],
       });
@@ -101,7 +101,7 @@ describe("content-loader", () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
-      mockImageUtils.processImagePaths.mockResolvedValue({
+      mockImageUtils.processImagePaths.mockReturnValue({
         internalPaths: [],
         externalUrls: ["img1.png", "img2.png"],
       });
@@ -124,7 +124,7 @@ describe("content-loader", () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
-      mockImageUtils.processImagePaths.mockResolvedValue({
+      mockImageUtils.processImagePaths.mockReturnValue({
         internalPaths: ["assets/image.png"],
         externalUrls: [],
       });
@@ -155,11 +155,11 @@ describe("content-loader", () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
-      mockImageUtils.processImagePaths.mockResolvedValue({
+      mockImageUtils.processImagePaths.mockReturnValue({
         internalPaths: [],
         externalUrls: ["property.png"],
       });
-      mockImageUtils.extractEmbedImages.mockResolvedValue(["embed.png"]);
+      mockImageUtils.extractImageEmbeds.mockResolvedValue(["embed.png"]);
 
       await loadImageForEntry(
         "test/file.md",
@@ -172,9 +172,10 @@ describe("content-loader", () => {
       );
 
       expect(imageCache["test/file.md"]).toEqual(["property.png", "embed.png"]);
-      expect(mockImageUtils.extractEmbedImages).toHaveBeenCalledWith(
+      expect(mockImageUtils.extractImageEmbeds).toHaveBeenCalledWith(
         mockFile,
         mockApp,
+        undefined,
       );
     });
 
@@ -182,11 +183,11 @@ describe("content-loader", () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
-      mockImageUtils.processImagePaths.mockResolvedValue({
+      mockImageUtils.processImagePaths.mockReturnValue({
         internalPaths: [],
         externalUrls: [],
       });
-      mockImageUtils.extractEmbedImages.mockResolvedValue(["embed.png"]);
+      mockImageUtils.extractImageEmbeds.mockResolvedValue(["embed.png"]);
 
       await loadImageForEntry(
         "test/file.md",
@@ -205,7 +206,7 @@ describe("content-loader", () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
-      mockImageUtils.processImagePaths.mockResolvedValue({
+      mockImageUtils.processImagePaths.mockReturnValue({
         internalPaths: [],
         externalUrls: ["property.png"],
       });
@@ -220,7 +221,7 @@ describe("content-loader", () => {
         hasImageCache,
       );
 
-      expect(mockImageUtils.extractEmbedImages).not.toHaveBeenCalled();
+      expect(mockImageUtils.extractImageEmbeds).not.toHaveBeenCalled();
       expect(imageCache["test/file.md"]).toBe("property.png");
     });
 
@@ -228,7 +229,7 @@ describe("content-loader", () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
-      mockImageUtils.processImagePaths.mockResolvedValue({
+      mockImageUtils.processImagePaths.mockReturnValue({
         internalPaths: [],
         externalUrls: [],
       });
@@ -243,7 +244,7 @@ describe("content-loader", () => {
         hasImageCache,
       );
 
-      expect(mockImageUtils.extractEmbedImages).not.toHaveBeenCalled();
+      expect(mockImageUtils.extractImageEmbeds).not.toHaveBeenCalled();
       expect(imageCache["test/file.md"]).toBeUndefined();
     });
 
@@ -251,9 +252,9 @@ describe("content-loader", () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
-      mockImageUtils.processImagePaths.mockRejectedValue(
-        new Error("Test error"),
-      );
+      mockImageUtils.processImagePaths.mockImplementation(() => {
+        throw new Error("Test error");
+      });
       const consoleSpy = jest
         .spyOn(console, "error")
         .mockImplementation(() => {});
@@ -288,7 +289,7 @@ describe("content-loader", () => {
       file2.path = "file2.md";
       file2.extension = "md";
 
-      mockImageUtils.processImagePaths.mockResolvedValue({
+      mockImageUtils.processImagePaths.mockReturnValue({
         internalPaths: [],
         externalUrls: ["image.png"],
       });

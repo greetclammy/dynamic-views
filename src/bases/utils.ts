@@ -511,6 +511,10 @@ export async function loadContentForEntries(
       app,
       images,
       hasImageAvailable,
+      {
+        includeYoutube: settings.showYoutubeThumbnails,
+        includeCardLink: settings.showCardLinkCovers,
+      },
     );
   }
 }

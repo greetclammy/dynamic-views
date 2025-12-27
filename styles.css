@@ -36,11 +36,21 @@ settings:
                 label: Two
                 value: '2'
     -
-        id: dynamic-views-card-spacing
-        title: Card spacing
-        description: Spacing between cards
+        id: dynamic-views-card-spacing-desktop
+        title: Card spacing (desktop)
+        description: Spacing between cards on desktop
         type: variable-number-slider
         default: 8
+        min: 0
+        max: 32
+        step: 1
+        format: px
+    -
+        id: dynamic-views-card-spacing-mobile
+        title: Card spacing (mobile)
+        description: Spacing between cards on mobile
+        type: variable-number-slider
+        default: 6
         min: 0
         max: 32
         step: 1
@@ -150,7 +160,7 @@ settings:
     -
         id: dynamic-views-ambient-background
         title: Ambient background
-        description: Use ambient color from image as card background (only for cards with images)
+        description: Use image ambient color as card background. Local images only.
         type: class-select
         allowEmpty: false
         default: dynamic-views-ambient-bg-off
@@ -1458,7 +1468,7 @@ body.dynamic-views-title-overflow-scroll .dynamic-views .card-title {
   );
   pointer-events: none;
   opacity: 0;
-  transition: opacity var(--anim-duration-fast);
+  transition: opacity var(--anim-duration-fast, 140ms);
 }
 
 .dynamic-views .results-container.with-fade::after {
@@ -1745,7 +1755,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   font-size: 0.9em;
   color: var(--text-normal);
   box-shadow: none;
@@ -1778,7 +1788,7 @@ body.dynamic-views-disable-toolbar-shadow
 .dynamic-views .view-option {
   padding: 8px 12px;
   cursor: pointer;
-  transition: background-color var(--anim-duration-fast);
+  transition: background-color var(--anim-duration-fast, 140ms);
   font-size: 0.9em;
   display: flex;
   align-items: center;
@@ -1806,7 +1816,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   gap: var(--size-2-2);
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   color: var(--text-normal);
   box-shadow: none;
   height: 30px;
@@ -1849,7 +1859,7 @@ body.dynamic-views-disable-toolbar-shadow
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: background-color var(--anim-duration-fast);
+  transition: background-color var(--anim-duration-fast, 140ms);
   font-size: 0.9em;
 }
 
@@ -1874,10 +1884,10 @@ body.dynamic-views-disable-toolbar-shadow
   border-radius: 6px;
   cursor: pointer;
   transition:
-    background-color var(--anim-duration-fast),
-    opacity var(--anim-duration-fast),
-    transform var(--anim-duration-fast) ease,
-    margin var(--anim-duration-moderate) ease;
+    background-color var(--anim-duration-fast, 140ms),
+    opacity var(--anim-duration-fast, 140ms),
+    transform var(--anim-duration-fast, 140ms) ease,
+    margin var(--anim-duration-moderate, 300ms) ease;
 }
 
 @media (hover: hover) {
@@ -1962,7 +1972,7 @@ body.dynamic-views-disable-toolbar-shadow
   padding: 8px;
   cursor: pointer;
   border-radius: 6px;
-  transition: background-color var(--anim-duration-fast);
+  transition: background-color var(--anim-duration-fast, 140ms);
 }
 
 .limit-reset-button:hover {
@@ -1995,7 +2005,7 @@ body.dynamic-views-disable-toolbar-shadow
   padding: 8px;
   cursor: pointer;
   border-radius: 6px;
-  transition: background-color var(--anim-duration-fast);
+  transition: background-color var(--anim-duration-fast, 140ms);
 }
 
 .dynamic-views .limit-dropdown-menu .bases-toolbar-menu-item:hover {
@@ -2015,7 +2025,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -2048,7 +2058,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   box-shadow: none;
   height: 30px;
   width: 30px;
@@ -2075,7 +2085,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   box-shadow: none;
   height: 30px;
   width: 30px;
@@ -2102,7 +2112,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -2128,7 +2138,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -2154,7 +2164,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -2180,7 +2190,7 @@ body.dynamic-views-disable-toolbar-shadow
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   height: 30px;
   width: 30px;
   box-sizing: border-box;
@@ -2314,8 +2324,8 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
   cursor: pointer;
   font-size: 0.9em;
   transition:
-    background-color var(--anim-duration-fast),
-    border-color var(--anim-duration-fast);
+    background-color var(--anim-duration-fast, 140ms),
+    border-color var(--anim-duration-fast, 140ms);
 }
 
 .query-btn:hover {
@@ -2495,7 +2505,7 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
 .dynamic-views .settings-section-header .chevron {
   width: 16px;
   height: 16px;
-  transition: transform var(--anim-duration-fast) ease;
+  transition: transform var(--anim-duration-fast, 140ms) ease;
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -2573,7 +2583,7 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
   right: 0;
   bottom: 0;
   background-color: var(--background-modifier-border);
-  transition: var(--anim-duration-moderate);
+  transition: var(--anim-duration-moderate, 300ms);
   border-radius: 24px;
 }
 
@@ -2585,7 +2595,7 @@ body.dynamic-views-hide-expand-width .dynamic-views .width-toggle-btn {
   left: 3px;
   bottom: 3px;
   background-color: var(--background-primary);
-  transition: var(--anim-duration-moderate);
+  transition: var(--anim-duration-moderate, 300ms);
   border-radius: 50%;
 }
 
@@ -2608,9 +2618,9 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 .dynamic-views .search-controls {
   flex: 1;
   transition:
-    opacity var(--anim-duration-moderate) ease,
-    flex var(--anim-duration-moderate) ease,
-    margin var(--anim-duration-moderate) ease;
+    opacity var(--anim-duration-moderate, 300ms) ease,
+    flex var(--anim-duration-moderate, 300ms) ease,
+    margin var(--anim-duration-moderate, 300ms) ease;
   overflow: hidden;
   margin: 0 -3px;
   max-width: 400px;
@@ -2649,7 +2659,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   background-color: transparent;
   color: var(--text-normal);
   font-size: 0.9em;
-  transition: all var(--anim-duration-fast);
+  transition: all var(--anim-duration-fast, 140ms);
   height: 30px;
   box-sizing: border-box;
   line-height: 1;
@@ -2666,8 +2676,8 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   color: var(--text-muted);
   opacity: 0.7;
   transition:
-    opacity var(--anim-duration-fast),
-    color var(--anim-duration-fast);
+    opacity var(--anim-duration-fast, 140ms),
+    color var(--anim-duration-fast, 140ms);
   display: block;
 }
 
@@ -2696,6 +2706,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 .bases-view[data-view-type="dynamic-views-grid"],
 .bases-view[data-view-type="dynamic-views-masonry"] {
   container-type: inline-size;
+  --bases-view-padding: var(--dynamic-views-view-padding, 12px);
 }
 
 /* Unified grid layout for all grid views (all width modes) */
@@ -2712,7 +2723,14 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 /* Card spacing setting - Bases files only */
 .workspace-leaf-content[data-type="bases"] .dynamic-views .dynamic-views-grid {
-  gap: var(--dynamic-views-card-spacing, 8px);
+  gap: var(--dynamic-views-card-spacing-desktop, 8px);
+}
+
+.is-mobile
+  .workspace-leaf-content[data-type="bases"]
+  .dynamic-views
+  .dynamic-views-grid {
+  gap: var(--dynamic-views-card-spacing-mobile, 6px);
 }
 
 /* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
@@ -2736,12 +2754,12 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   order: -100;
 }
 
-/* Property group position: top (below title/subtitle, above content) */
+/* Property set position: top (below title/subtitle, above content) */
 .dynamic-views .card .card-properties-top {
   order: -50;
 }
 
-/* Property group position: bottom (after content) */
+/* Property set position: bottom (after content) */
 .dynamic-views .card .card-properties-bottom {
   order: 50;
 }
@@ -2864,7 +2882,14 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 .workspace-leaf-content[data-type="bases"]
   .dynamic-views-grid
   > .dynamic-views-group {
-  gap: var(--dynamic-views-card-spacing, 8px);
+  gap: var(--dynamic-views-card-spacing-desktop, 8px);
+}
+
+.is-mobile
+  .workspace-leaf-content[data-type="bases"]
+  .dynamic-views-grid
+  > .dynamic-views-group {
+  gap: var(--dynamic-views-card-spacing-mobile, 6px);
 }
 
 /* Group containers in masonry - simple block layout */
@@ -2895,8 +2920,8 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   break-inside: avoid;
   page-break-inside: avoid;
   transition:
-    box-shadow var(--anim-duration-fast) ease-in-out,
-    background-color var(--anim-duration-moderate) ease;
+    box-shadow var(--anim-duration-fast, 140ms) ease-in-out,
+    background-color var(--anim-duration-moderate, 300ms) ease;
 }
 
 /* Border as pseudo-element so it appears on top of covers */
@@ -2912,7 +2937,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 /* Fade-in animation for batch-appended cards */
 .dynamic-views .card.card-fade-in {
-  animation: cardFadeIn var(--anim-duration-fast) ease-out;
+  animation: cardFadeIn var(--anim-duration-fast, 140ms) ease-out;
 }
 
 @keyframes cardFadeIn {
@@ -2926,7 +2951,11 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 /* Card spacing setting - Bases files only */
 .workspace-leaf-content[data-type="bases"] .dynamic-views .card {
-  margin: var(--dynamic-views-card-spacing, 8px) 0;
+  margin: var(--dynamic-views-card-spacing-desktop, 8px) 0;
+}
+
+.is-mobile .workspace-leaf-content[data-type="bases"] .dynamic-views .card {
+  margin: var(--dynamic-views-card-spacing-mobile, 6px) 0;
 }
 
 /* Clickable card cursor */
@@ -2976,11 +3005,20 @@ body.dynamic-views-ambient-bg-dramatic
   contain: layout style;
 }
 
-/* Hide cards during resize to prevent visible overlap before layout recalculates */
+/* Hide cards during layout recalc - fade out with opacity transition */
 /* Works for both ungrouped (.masonry-container on same element) and grouped (nested .masonry-container) */
 .dynamic-views .masonry-container.masonry-resizing .card,
 .dynamic-views .masonry-resizing .masonry-container .card {
   opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--anim-duration-superfast, 70ms) ease,
+    visibility 0s var(--anim-duration-superfast, 70ms);
+}
+
+/* Hide end indicator during resize - use display:none to fully remove from flow */
+.dynamic-views:has(.masonry-resizing) .dynamic-views-end-indicator {
+  display: none;
 }
 
 /* Hide cards until masonry positions them (prevents flash at 0,0) */
@@ -3003,8 +3041,9 @@ body.dynamic-views-ambient-bg-dramatic
   top: var(--masonry-top, 0);
   contain: layout style paint;
   transition:
-    box-shadow var(--anim-duration-fast) ease-in-out,
-    background-color var(--anim-duration-moderate) ease;
+    opacity var(--anim-duration-superfast, 70ms) ease,
+    box-shadow var(--anim-duration-fast, 140ms) ease-in-out,
+    background-color var(--anim-duration-moderate, 300ms) ease;
 }
 
 /* Global spacing between card elements (exclude cover-format cards which use flexbox gap) */
@@ -3558,7 +3597,7 @@ body.dynamic-views-show-thumbnail-placeholder
   filter: none;
 }
 
-/* Bottom spacing for phone to prevent mobile toolbar from obscuring cards */
+/* Bottom spacing for phone to push view end indicator above mobile toolbar */
 .is-phone
   .workspace-leaf-content[data-type="bases"]
   .dynamic-views-bases-container {
@@ -3699,7 +3738,7 @@ body:not(.dynamic-views-image-viewer-disabled):not(.is-mobile):not(
     var(--background-primary) calc(var(--overlay-opacity, 0.4) * 100%),
     transparent
   );
-  transition: background var(--anim-duration-fast) ease;
+  transition: background var(--anim-duration-fast, 140ms) ease;
 }
 
 /* Constrained mode: solid background when maximized */
@@ -3724,7 +3763,7 @@ body:not(
   > .dynamic-views-image-embed.is-zoomed {
   background: var(--background-modifier-cover);
   position: fixed;
-  transition: background var(--anim-duration-fast) ease;
+  transition: background var(--anim-duration-fast, 140ms) ease;
 }
 
 /* Fullscreen mode: solid background when maximized */
@@ -3760,8 +3799,8 @@ body:not(.dynamic-views-image-viewer-disabled)
   opacity: 1;
   border-radius: 0;
   transition:
-    max-height var(--anim-duration-fast) ease,
-    max-width var(--anim-duration-fast) ease;
+    max-height var(--anim-duration-fast, 140ms) ease,
+    max-width var(--anim-duration-fast, 140ms) ease;
 }
 
 /* Limit zoomed images to 90% viewport (desktop) / 80vh height (mobile, width inherits 100vw from base) */
@@ -3844,18 +3883,36 @@ body.dynamic-views-cover-crop-bottom
 
 /* Cover backgrounds for contain mode */
 
-/* Ambient background (default) - letterbox fill for contain mode */
+/* Ambient background (default) - letterbox fill for contain mode
+   Base is opaque to block card bg; ambient overlay via ::after */
 .dynamic-views .card.card-cover-contain.image-format-cover .card-cover {
-  background-color: var(--ambient-color, var(--background-secondary));
-  transition: background-color var(--anim-duration-moderate) ease;
+  background-color: var(--background-secondary);
+  position: relative;
 }
 
-/* Plain background: default to --background-primary */
+/* Semi-transparent ambient overlay on top of opaque base */
+.dynamic-views .card.card-cover-contain.image-format-cover .card-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--ambient-color, transparent);
+  transition: background-color var(--anim-duration-moderate, 300ms) ease;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Plain background: default to --background-primary, no ambient overlay */
 body.dynamic-views-cover-bg-plain
   .dynamic-views
   .card.card-cover-contain.image-format-cover
   .card-cover {
   background-color: var(--background-primary);
+}
+body.dynamic-views-cover-bg-plain
+  .dynamic-views
+  .card.card-cover-contain.image-format-cover
+  .card-cover::after {
+  display: none;
 }
 
 /* Plain background + Custom/Transparent card = --bases-cards-cover-background */
@@ -3870,15 +3927,21 @@ body.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
   background-color: var(--bases-cards-cover-background);
 }
 
-/* Transparent background */
+/* Transparent background: no ambient overlay */
 body.dynamic-views-cover-bg-transparent
   .dynamic-views
   .card.card-cover-contain.image-format-cover
   .card-cover {
   background-color: transparent;
 }
+body.dynamic-views-cover-bg-transparent
+  .dynamic-views
+  .card.card-cover-contain.image-format-cover
+  .card-cover::after {
+  display: none;
+}
 
-/* Custom color background */
+/* Custom color background: no ambient overlay */
 body.dynamic-views-cover-bg-custom
   .dynamic-views
   .card.card-cover-contain.image-format-cover
@@ -3887,6 +3950,12 @@ body.dynamic-views-cover-bg-custom
     --dynamic-views-cover-background-custom-color,
     var(--background-secondary)
   );
+}
+body.dynamic-views-cover-bg-custom
+  .dynamic-views
+  .card.card-cover-contain.image-format-cover
+  .card-cover::after {
+  display: none;
 }
 
 /* Masonry cover height: use slider value (crop mode only) */
@@ -4361,7 +4430,7 @@ body.dynamic-views-show-cover-placeholder-none
     .card-cover
     .dynamic-views-image-embed
     img {
-    transition: transform var(--anim-duration-fast) ease;
+    transition: transform var(--anim-duration-fast, 140ms) ease;
   }
 
   body.dynamic-views-cover-hover-zoom
@@ -5109,19 +5178,23 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
 }
 
 .dynamic-views .slideshow-exit-left {
-  animation: slideshow-exit-left var(--anim-duration-moderate) ease forwards;
+  animation: slideshow-exit-left var(--anim-duration-moderate, 300ms) ease
+    forwards;
 }
 
 .dynamic-views .slideshow-exit-right {
-  animation: slideshow-exit-right var(--anim-duration-moderate) ease forwards;
+  animation: slideshow-exit-right var(--anim-duration-moderate, 300ms) ease
+    forwards;
 }
 
 .dynamic-views .slideshow-enter-left {
-  animation: slideshow-enter-left var(--anim-duration-moderate) ease forwards;
+  animation: slideshow-enter-left var(--anim-duration-moderate, 300ms) ease
+    forwards;
 }
 
 .dynamic-views .slideshow-enter-right {
-  animation: slideshow-enter-right var(--anim-duration-moderate) ease forwards;
+  animation: slideshow-enter-right var(--anim-duration-moderate, 300ms) ease
+    forwards;
 }
 
 /* Navigation arrows */
@@ -5138,7 +5211,7 @@ body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparen
   cursor: pointer;
   z-index: 3;
   opacity: 0;
-  transition: opacity var(--anim-duration-fast) ease;
+  transition: opacity var(--anim-duration-fast, 140ms) ease;
 }
 
 .dynamic-views .slideshow-nav-left {
@@ -5198,7 +5271,7 @@ body.dynamic-views-hide-slideshow-arrows .dynamic-views .slideshow-nav-right {
   height: 20px;
   z-index: 3;
   pointer-events: none;
-  transition: opacity var(--anim-duration-fast) ease;
+  transition: opacity var(--anim-duration-fast, 140ms) ease;
 }
 
 /* Hide slideshow indicator when toggle is on */
@@ -5544,33 +5617,17 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
 }
 
 .dynamic-views .file-path-segment,
-.dynamic-views .folder-segment {
-  color: inherit;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
+.dynamic-views .folder-segment,
 .dynamic-views .filename-segment {
   color: inherit;
   white-space: nowrap;
-  cursor: grab;
-  -webkit-user-drag: element;
-  user-drag: element;
+  cursor: pointer;
 }
 
 .dynamic-views .file-path-segment:hover,
 .dynamic-views .folder-segment:hover,
 .dynamic-views .filename-segment:hover {
   text-decoration: underline;
-}
-
-.dynamic-views .filename-segment:focus-visible {
-  outline: 2px solid var(--background-modifier-border-focus);
-  outline-offset: 2px;
-}
-
-.dynamic-views .filename-segment:active {
-  cursor: grabbing;
 }
 
 .dynamic-views .path-separator {
@@ -7179,6 +7236,13 @@ body.dynamic-views-no-fade-truncated-text
   overflow: hidden;
 }
 
+/* Reset Bases' mobile margin - applied to parent instead to include end indicator */
+.is-phone
+  .workspace-leaf-content[data-type="bases"]
+  .dynamic-views-masonry.bases-cards-container {
+  margin-bottom: 0;
+}
+
 .dynamic-views .dynamic-views-masonry .card,
 .workspace-leaf-content[data-type="bases"]
   .dynamic-views
@@ -7405,8 +7469,8 @@ body.dynamic-views-no-fade-truncated-text
     position: relative;
     border-radius: 6px;
     transition:
-      background-color var(--anim-duration-fast),
-      opacity var(--anim-duration-fast);
+      background-color var(--anim-duration-fast, 140ms),
+      opacity var(--anim-duration-fast, 140ms);
   }
 
   .create-note-button-compact {
@@ -7418,7 +7482,7 @@ body.dynamic-views-no-fade-truncated-text
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    transition: all var(--anim-duration-fast);
+    transition: all var(--anim-duration-fast, 140ms);
     height: 30px;
     width: 30px;
     box-sizing: border-box;

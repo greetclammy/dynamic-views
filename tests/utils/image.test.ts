@@ -5,8 +5,10 @@ import {
   stripWikilinkSyntax,
   processImagePaths,
   resolveInternalImagePaths,
-  extractEmbedImages,
+  extractImageEmbeds,
   loadImageForFile,
+  getYouTubeVideoId,
+  getYouTubeThumbnailUrl,
 } from "../../src/utils/image";
 import { App, TFile } from "obsidian";
 
@@ -180,122 +182,74 @@ describe("image", () => {
   });
 
   describe("processImagePaths", () => {
-    beforeEach(() => {
-      jest.useFakeTimers();
-      (global as any).__imageInstances = [];
-      (global as any).__lastImage = null;
-    });
-
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
-    it("should separate internal paths and external URLs", async () => {
+    it("should separate internal paths and external URLs", () => {
       const paths = ["image.png", "https://example.com/image.jpg"];
-
-      const promise = processImagePaths(paths);
-
-      // Validate external URL
-      const img = (global as any).__lastImage;
-      if (img && img.onload) img.onload();
-
-      const result = await promise;
+      const result = processImagePaths(paths);
 
       expect(result.internalPaths).toEqual(["image.png"]);
       expect(result.externalUrls).toEqual(["https://example.com/image.jpg"]);
     });
 
-    it("should strip wikilink syntax", async () => {
+    it("should strip wikilink syntax", () => {
       const paths = ["[[image.png]]", "![[photo.jpg]]"];
-
-      const result = await processImagePaths(paths);
+      const result = processImagePaths(paths);
 
       expect(result.internalPaths).toContain("image.png");
       expect(result.internalPaths).toContain("photo.jpg");
     });
 
-    it("should validate image extensions", async () => {
+    it("should validate image extensions for internal paths only", () => {
       const paths = ["image.png", "document.pdf", "photo.jpg"];
-
-      const result = await processImagePaths(paths);
+      const result = processImagePaths(paths);
 
       expect(result.internalPaths).toContain("image.png");
       expect(result.internalPaths).toContain("photo.jpg");
       expect(result.internalPaths).not.toContain("document.pdf");
     });
 
-    it("should validate external URLs asynchronously", async () => {
+    it("should pass through external URLs without validation", () => {
       const paths = [
         "https://example.com/valid.png",
-        "https://example.com/invalid.png",
+        "https://example.com/other.png",
       ];
+      const result = processImagePaths(paths);
 
-      const promise = processImagePaths(paths);
-
-      // First URL loads successfully
-      let img = (global as any).__imageInstances[0];
-      if (img && img.onload) img.onload();
-
-      // Wait for first promise to resolve
-      await Promise.resolve();
-
-      // Second URL fails
-      img = (global as any).__imageInstances[1];
-      if (img && img.onerror) img.onerror();
-
-      const result = await promise;
-
-      expect(result.externalUrls).toEqual(["https://example.com/valid.png"]);
+      // All external URLs pass through - browser handles load/error at render time
+      expect(result.externalUrls).toEqual([
+        "https://example.com/valid.png",
+        "https://example.com/other.png",
+      ]);
     });
 
-    it("should skip empty paths", async () => {
+    it("should skip empty paths", () => {
       const paths = ["", "  ", "image.png"];
-
-      const result = await processImagePaths(paths);
+      const result = processImagePaths(paths);
 
       expect(result.internalPaths).toEqual(["image.png"]);
     });
 
-    it("should handle empty array", async () => {
-      const result = await processImagePaths([]);
+    it("should handle empty array", () => {
+      const result = processImagePaths([]);
 
       expect(result.internalPaths).toEqual([]);
       expect(result.externalUrls).toEqual([]);
     });
 
-    it("should validate external URLs with query parameters", async () => {
+    it("should pass through external URLs with query parameters", () => {
       const paths = ["https://example.com/image.png?size=large&v=2"];
-
-      const promise = processImagePaths(paths);
-
-      // URL should be validated via Image object regardless of query params
-      const img = (global as any).__lastImage;
-      if (img && img.onload) img.onload();
-
-      const result = await promise;
+      const result = processImagePaths(paths);
 
       expect(result.externalUrls).toEqual([
         "https://example.com/image.png?size=large&v=2",
       ]);
     });
 
-    it("should validate external URLs without file extensions", async () => {
+    it("should pass through external URLs without file extensions", () => {
       const paths = [
         "https://picsum.photos/200",
         "https://api.example.com/image/123",
       ];
-
-      const promise = processImagePaths(paths);
-
-      // Both URLs validated via Image object
-      const img1 = (global as any).__imageInstances[0];
-      if (img1 && img1.onload) img1.onload();
-      await Promise.resolve();
-
-      const img2 = (global as any).__imageInstances[1];
-      if (img2 && img2.onload) img2.onload();
-
-      const result = await promise;
+      const result = processImagePaths(paths);
 
       expect(result.externalUrls).toContain("https://picsum.photos/200");
       expect(result.externalUrls).toContain(
@@ -420,13 +374,52 @@ describe("image", () => {
     });
   });
 
-  describe("extractEmbedImages", () => {
-    let mockApp: App;
-    let mockFile: TFile;
+  describe("getYouTubeVideoId", () => {
+    it("should extract video ID from standard watch URL", () => {
+      expect(getYouTubeVideoId("https://youtube.com/watch?v=dQw4w9WgXcQ")).toBe(
+        "dQw4w9WgXcQ",
+      );
+      expect(
+        getYouTubeVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+      ).toBe("dQw4w9WgXcQ");
+    });
 
+    it("should extract video ID from short URL", () => {
+      expect(getYouTubeVideoId("https://youtu.be/dQw4w9WgXcQ")).toBe(
+        "dQw4w9WgXcQ",
+      );
+    });
+
+    it("should extract video ID from mobile URL", () => {
+      expect(
+        getYouTubeVideoId("https://m.youtube.com/watch?v=dQw4w9WgXcQ"),
+      ).toBe("dQw4w9WgXcQ");
+    });
+
+    it("should extract video ID from embed URL", () => {
+      expect(getYouTubeVideoId("https://youtube.com/embed/dQw4w9WgXcQ")).toBe(
+        "dQw4w9WgXcQ",
+      );
+    });
+
+    it("should extract video ID from shorts URL", () => {
+      expect(getYouTubeVideoId("https://youtube.com/shorts/dQw4w9WgXcQ")).toBe(
+        "dQw4w9WgXcQ",
+      );
+    });
+
+    it("should return null for non-YouTube URLs", () => {
+      expect(getYouTubeVideoId("https://example.com/video")).toBeNull();
+      expect(getYouTubeVideoId("https://vimeo.com/123456")).toBeNull();
+    });
+
+    it("should return null for invalid URLs", () => {
+      expect(getYouTubeVideoId("not-a-url")).toBeNull();
+    });
+  });
+
+  describe("getYouTubeThumbnailUrl", () => {
     beforeEach(() => {
-      mockApp = new App();
-      mockFile = { path: "note.md" } as TFile;
       jest.useFakeTimers();
       (global as any).__imageInstances = [];
       (global as any).__lastImage = null;
@@ -436,20 +429,79 @@ describe("image", () => {
       jest.useRealTimers();
     });
 
-    it("should return empty array when no embeds", async () => {
-      mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue({});
+    it("should return maxresdefault URL when image loads", async () => {
+      const promise = getYouTubeThumbnailUrl("dQw4w9WgXcQ");
 
-      const result = await extractEmbedImages(mockFile, mockApp);
+      const img = (global as any).__lastImage;
+      if (img && img.onload) img.onload();
+
+      const result = await promise;
+      expect(result).toBe(
+        "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      );
+    });
+
+    it("should fall back to hqdefault when maxres fails", async () => {
+      const promise = getYouTubeThumbnailUrl("dQw4w9WgXcQ");
+
+      // First image fails (maxres)
+      let img = (global as any).__imageInstances[0];
+      if (img && img.onerror) img.onerror();
+
+      await Promise.resolve();
+
+      // Second image loads (hqdefault)
+      img = (global as any).__imageInstances[1];
+      if (img && img.onload) img.onload();
+
+      const result = await promise;
+      expect(result).toBe(
+        "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+      );
+    });
+
+    it("should return null when all thumbnails are below mqdefault width (320px)", async () => {
+      const promise = getYouTubeThumbnailUrl("jNQXAC9IVRw");
+
+      // All three quality levels return placeholder (below 320px)
+      for (let i = 0; i < 3; i++) {
+        await Promise.resolve();
+        const img = (global as any).__imageInstances[i];
+        if (img) {
+          img.naturalWidth = 120;
+          img.naturalHeight = 90;
+          if (img.onload) img.onload();
+        }
+      }
+
+      const result = await promise;
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("extractImageEmbeds", () => {
+    let mockApp: App;
+    let mockFile: TFile;
+
+    beforeEach(() => {
+      mockApp = new App();
+      mockFile = { path: "note.md" } as TFile;
+      mockApp.vault.cachedRead = jest.fn().mockResolvedValue("");
+    });
+
+    it("should return empty array for empty file", async () => {
+      mockApp.vault.cachedRead = jest.fn().mockResolvedValue("");
+
+      const result = await extractImageEmbeds(mockFile, mockApp);
 
       expect(result).toEqual([]);
     });
 
-    it("should extract internal image embeds", async () => {
+    it("should extract wikilink embeds", async () => {
       const mockImageFile = { extension: "png" } as TFile;
-
-      mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue({
-        embeds: [{ link: "image.png" }],
-      });
+      mockApp.vault.cachedRead = jest
+        .fn()
+        .mockResolvedValue("Some text\n![[image.png]]\nMore text");
       mockApp.metadataCache.getFirstLinkpathDest = jest
         .fn()
         .mockReturnValue(mockImageFile);
@@ -457,72 +509,22 @@ describe("image", () => {
         .fn()
         .mockReturnValue("app://local/image.png");
 
-      const result = await extractEmbedImages(mockFile, mockApp);
-
-      expect(result).toEqual(["app://local/image.png"]);
-    });
-
-    it("should extract and validate external URL embeds", async () => {
-      mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue({
-        embeds: [{ link: "https://example.com/image.png" }],
-      });
-
-      const promise = extractEmbedImages(mockFile, mockApp);
-
-      const img = (global as any).__lastImage;
-      if (img && img.onload) img.onload();
-
-      const result = await promise;
-
-      expect(result).toEqual(["https://example.com/image.png"]);
-    });
-
-    it("should filter out non-image embeds", async () => {
-      const mockPdfFile = { extension: "pdf" } as TFile;
-
-      mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue({
-        embeds: [{ link: "document.pdf" }],
-      });
-      mockApp.metadataCache.getFirstLinkpathDest = jest
-        .fn()
-        .mockReturnValue(mockPdfFile);
-
-      const result = await extractEmbedImages(mockFile, mockApp);
-
-      expect(result).toEqual([]);
-    });
-
-    it("should handle mixed internal and external embeds", async () => {
-      const mockImageFile = { extension: "png" } as TFile;
-
-      mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue({
-        embeds: [
-          { link: "image.png" },
-          { link: "https://example.com/photo.jpg" },
-        ],
-      });
-      mockApp.metadataCache.getFirstLinkpathDest = jest
-        .fn()
-        .mockReturnValue(mockImageFile);
-      mockApp.vault.getResourcePath = jest
-        .fn()
-        .mockReturnValue("app://local/image.png");
-
-      const promise = extractEmbedImages(mockFile, mockApp);
-
-      const img = (global as any).__lastImage;
-      if (img && img.onload) img.onload();
-
-      const result = await promise;
+      const result = await extractImageEmbeds(mockFile, mockApp);
 
       expect(result).toContain("app://local/image.png");
-      expect(result).toContain("https://example.com/photo.jpg");
     });
 
-    it("should return empty array when metadata is null", async () => {
-      mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue(null);
+    it("should skip cardlink images when disabled", async () => {
+      mockApp.vault.cachedRead = jest.fn().mockResolvedValue(`
+\`\`\`cardlink
+url: https://example.com
+image: https://example.com/cover.png
+\`\`\`
+      `);
 
-      const result = await extractEmbedImages(mockFile, mockApp);
+      const result = await extractImageEmbeds(mockFile, mockApp, {
+        includeCardLink: false,
+      });
 
       expect(result).toEqual([]);
     });
@@ -545,7 +547,7 @@ describe("image", () => {
     it("should return null when file not found", async () => {
       mockApp.vault.getAbstractFileByPath = jest.fn().mockReturnValue(null);
 
-      const result = await loadImageForFile(mockApp, "note.md", "", "balanced");
+      const result = loadImageForFile(mockApp, "note.md", "", "balanced");
 
       expect(result).toBeNull();
     });
@@ -555,7 +557,7 @@ describe("image", () => {
       mockApp.vault.getAbstractFileByPath = jest.fn().mockReturnValue(mockFile);
       mockApp.metadataCache.getFileCache = jest.fn().mockReturnValue({});
 
-      const result = await loadImageForFile(mockApp, "note.md", "", "balanced");
+      const result = loadImageForFile(mockApp, "note.md", "", "balanced");
 
       expect(result).toBeNull();
     });
@@ -583,7 +585,7 @@ describe("image", () => {
         .mockReturnValueOnce("app://local/property.png")
         .mockReturnValueOnce("app://local/embed.jpg");
 
-      const result = await loadImageForFile(
+      const result = loadImageForFile(
         mockApp,
         "note.md",
         "property.png",
@@ -613,7 +615,7 @@ describe("image", () => {
         .fn()
         .mockReturnValue("app://local/embed.jpg");
 
-      const result = await loadImageForFile(
+      const result = loadImageForFile(
         mockApp,
         "note.md",
         "",
@@ -634,7 +636,7 @@ describe("image", () => {
         embeds: [{ link: "embed.jpg" }],
       });
 
-      const result = await loadImageForFile(
+      const result = loadImageForFile(
         mockApp,
         "note.md",
         "",
@@ -667,7 +669,7 @@ describe("image", () => {
         .mockReturnValueOnce("app://local/image1.png")
         .mockReturnValueOnce("app://local/image2.jpg");
 
-      const result = await loadImageForFile(
+      const result = loadImageForFile(
         mockApp,
         "note.md",
         ["image1.png", "image2.jpg"],
@@ -699,7 +701,7 @@ describe("image", () => {
         .fn()
         .mockReturnValue("app://local/embed.png");
 
-      const result = await loadImageForFile(
+      const result = loadImageForFile(
         mockApp,
         "note.md",
         "",

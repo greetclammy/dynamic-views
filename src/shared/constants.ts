@@ -5,7 +5,7 @@
 /** Default batch size for infinite scroll */
 export const BATCH_SIZE = 50;
 
-/** Gap size between cards - default fallback (reads from CSS --dynamic-views-card-spacing via getCardSpacing()) */
+/** Gap size between cards - default fallback (actual value from CSS via getCardSpacing()) */
 export const GAP_SIZE = 12;
 
 /** Scroll position tolerance in pixels */
@@ -31,6 +31,9 @@ export const MAX_BATCH_SIZE = 70;
 
 /** Debounce delay for layout updates in milliseconds */
 export const LAYOUT_UPDATE_DELAY = 50;
+
+/** Throttle interval for resize layout updates in milliseconds */
+export const RESIZE_THROTTLE_MS = 100;
 
 /** Slideshow animation duration in milliseconds (must match CSS) */
 export const SLIDESHOW_ANIMATION_MS = 300;
