@@ -10,9 +10,9 @@ Elegant grid and masonry card views for [Bases](https://help.obsidian.md/bases) 
 
 <img src="https://github.com/user-attachments/assets/a5997474-03ac-4c5c-a0bf-c9c302954d63" />
 
-### Datacore view
+### Datacore
 
-Add to note via Command palette > Dynamic Views: Insert query.
+Add to note via Command palette > Dynamic Views: Insert Datacore query.
 
 <img height="600" src="https://github.com/user-attachments/assets/b2541773-5fb8-4851-920c-ae2afa116fb5" />
 
