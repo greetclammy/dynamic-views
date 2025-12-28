@@ -1215,13 +1215,30 @@ export function CardRenderer({
           }
         };
 
+        // Track mouse button state to allow focus during text selection
+        type ContainerWithMouse = HTMLElement & { _mouseDown?: boolean };
+        (el as ContainerWithMouse)._mouseDown = false;
+
+        const handleMouseDown = () => {
+          (el as ContainerWithMouse)._mouseDown = true;
+        };
+        const handleMouseUp = () => {
+          (el as ContainerWithMouse)._mouseDown = false;
+        };
+
+        el.addEventListener("mousedown", handleMouseDown, { capture: true });
+        document.addEventListener("mouseup", handleMouseUp);
+
         // Block unwanted focus on cards (e.g., from Obsidian's Escape handler)
-        // Allow: intentional focus (arrow keys), Tab from outside
+        // Allow: intentional focus (arrow keys), Tab from outside, mouse clicks
         const handleFocusin = (e: FocusEvent) => {
           if ((el as ContainerWithFlags)._intentionalFocus) return;
 
           const target = e.target as HTMLElement;
           if (!target.classList.contains("card")) return;
+
+          // Allow focus during mouse click (needed for text selection)
+          if ((el as ContainerWithMouse)._mouseDown) return;
 
           const relatedTarget = e.relatedTarget as HTMLElement | null;
 
@@ -1251,6 +1268,10 @@ export function CardRenderer({
             capture: true,
           });
           el.removeEventListener("focusin", handleFocusin);
+          el.removeEventListener("mousedown", handleMouseDown, {
+            capture: true,
+          });
+          document.removeEventListener("mouseup", handleMouseUp);
         };
       }}
       className={
