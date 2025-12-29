@@ -1199,7 +1199,7 @@ export function Toolbar({
               <button
                 className="width-toggle-btn"
                 onClick={onToggleWidth}
-                aria-label={showShrink ? "Shrink width" : "Expand width"}
+                aria-label={showShrink ? "Shrink" : "Expand"}
                 tabIndex={0}
               >
                 {showShrink ? (

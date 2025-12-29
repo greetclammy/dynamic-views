@@ -164,20 +164,48 @@ export function setupHoverKeyboardNavigation(
 
     if (!isArrowKey(e.key)) return;
 
-    const activeEl = document.activeElement;
+    const container = getContainerRef() as
+      | (HTMLElement & {
+          _keyboardNavActive?: boolean;
+          _intentionalFocus?: boolean;
+        })
+      | null;
+    const activeEl = document.activeElement as HTMLElement | null;
     const isCardFocused = activeEl?.classList.contains("card");
-    if (isCardFocused) return;
+
+    // Check the DOM-focused card's container, not hovered card's container
+    // (they may be in different views with separate _keyboardNavActive flags)
+    const focusedCardContainer = activeEl?.closest(
+      ".dynamic-views-masonry, .dynamic-views-grid",
+    ) as (HTMLElement & { _keyboardNavActive?: boolean }) | null;
+    const isVisiblyFocused =
+      focusedCardContainer?._keyboardNavActive && isCardFocused;
+
+    if (isVisiblyFocused) return;
 
     e.preventDefault();
+    e.stopImmediatePropagation(); // Prevent focused card's handler from also running
+
+    // Set flags BEFORE focus() so focusin handler allows it
+    if (container) {
+      container._intentionalFocus = true;
+      container._keyboardNavActive = true;
+    }
+
     hoveredCard.focus();
 
-    const container = getContainerRef();
+    // Update roving tabIndex and clear intentional flag
     if (container) {
       const allCards = container.querySelectorAll(".card");
       const index = Array.from(allCards).indexOf(hoveredCard);
       if (index >= 0) {
         setFocusableIndex(index);
       }
+      requestAnimationFrame(() => {
+        if (container.isConnected) {
+          container._intentionalFocus = false;
+        }
+      });
     }
   };
 

@@ -71,6 +71,7 @@ interface CardContainerElement extends HTMLElement {
   _intentionalFocus?: boolean;
   _lastKey?: string | null;
   _mouseDown?: boolean;
+  _keyboardNavActive?: boolean;
 }
 
 /**
@@ -227,6 +228,7 @@ function renderLink(link: ParsedLink, app: App): JSX.Element {
         href={link.url}
         className="internal-link"
         data-href={link.url}
+        tabIndex={-1}
         draggable={true}
         onClick={(e: MouseEvent) => {
           e.preventDefault();
@@ -275,6 +277,7 @@ function renderLink(link: ParsedLink, app: App): JSX.Element {
     <a
       href={link.url}
       className="external-link"
+      tabIndex={-1}
       target={link.isWebUrl ? "_blank" : undefined}
       rel={link.isWebUrl ? "noopener noreferrer" : undefined}
       onClick={(e: MouseEvent) => {
@@ -782,7 +785,7 @@ function renderProperty(
       <>
         {labelAbove}
         {labelInline}
-        <div className="property-content-wrapper">
+        <div className="property-content-wrapper" tabIndex={-1}>
           <div className="property-content">
             <span className="empty-value-marker">{getEmptyValueMarker()}</span>
           </div>
@@ -804,7 +807,7 @@ function renderProperty(
           <>
             {labelAbove}
             {labelInline}
-            <div className="property-content-wrapper">
+            <div className="property-content-wrapper" tabIndex={-1}>
               <div className="property-content">
                 <span className="list-wrapper">
                   {arrayData.items.map(
@@ -843,7 +846,7 @@ function renderProperty(
       <>
         {labelAbove}
         {labelInline}
-        <div className="property-content-wrapper">
+        <div className="property-content-wrapper" tabIndex={-1}>
           <div className="property-content">
             <span>
               {showTimestampIcon() && settings.propertyLabels === "hide" && (
@@ -889,7 +892,7 @@ function renderProperty(
       <>
         {labelAbove}
         {labelInline}
-        <div className="property-content-wrapper">
+        <div className="property-content-wrapper" tabIndex={-1}>
           <div className="property-content">
             <div className="tags-wrapper">
               {card.yamlTags.map(
@@ -898,6 +901,7 @@ function renderProperty(
                     key={tag}
                     href="#"
                     className="tag"
+                    tabIndex={-1}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       if (
@@ -933,7 +937,7 @@ function renderProperty(
       <>
         {labelAbove}
         {labelInline}
-        <div className="property-content-wrapper">
+        <div className="property-content-wrapper" tabIndex={-1}>
           <div className="property-content">
             <div className="tags-wrapper">
               {card.tags.map(
@@ -942,6 +946,7 @@ function renderProperty(
                     key={tag}
                     href="#"
                     className="tag"
+                    tabIndex={-1}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       if (
@@ -979,7 +984,7 @@ function renderProperty(
       <>
         {labelAbove}
         {labelInline}
-        <div className="property-content-wrapper">
+        <div className="property-content-wrapper" tabIndex={-1}>
           <div className="property-content">
             <div className="path-wrapper">
               {segments.map((segment: string, idx: number) => {
@@ -992,7 +997,7 @@ function renderProperty(
                       className={
                         isLastSegment
                           ? "path-segment filename-segment"
-                          : "path-segment file-path-segment"
+                          : "path-segment folder-segment"
                       }
                       onClick={(e: MouseEvent) => {
                         e.stopPropagation();
@@ -1075,7 +1080,7 @@ function renderProperty(
       <>
         {labelAbove}
         {labelInline}
-        <div className="property-content-wrapper">
+        <div className="property-content-wrapper" tabIndex={-1}>
           <div className="property-content">
             <div className="path-wrapper">
               {folders.map((folder: string, idx: number) => {
@@ -1143,7 +1148,7 @@ function renderProperty(
     <>
       {labelAbove}
       {labelInline}
-      <div className="property-content-wrapper">
+      <div className="property-content-wrapper" tabIndex={-1}>
         <div className="property-content">
           <span>{renderTextWithLinks(resolvedValue, app)}</span>
         </div>
@@ -1194,11 +1199,22 @@ export function CardRenderer({
         container._intentionalFocus = false;
         container._lastKey = null;
         container._mouseDown = false;
+        container._keyboardNavActive ??= false; // Preserve existing value
 
         // Track last key for Tab detection in focusin
         // Note: Arrow key navigation is handled by setupHoverKeyboardNavigation in view layer
         const handleKeydown = (e: KeyboardEvent) => {
           container._lastKey = e.key;
+
+          // Escape exits keyboard nav mode and blurs focused card
+          if (e.key === "Escape") {
+            container._keyboardNavActive = false;
+            const focused = el.querySelector(".card:focus") as HTMLElement;
+            if (focused) {
+              focused.blur();
+            }
+          }
+
           requestAnimationFrame(() => {
             if (el.isConnected) {
               container._lastKey = null;
@@ -1227,29 +1243,84 @@ export function CardRenderer({
 
           const relatedTarget = e.relatedTarget as HTMLElement | null;
 
-          // Focus from outside container - only allow if Tab was pressed
+          // Focus from outside container - allow Tab or arrow keys (hover-to-start)
           if (!relatedTarget || !el.contains(relatedTarget)) {
-            if (container._lastKey === "Tab") return;
-            // Block non-Tab focus from outside (e.g., Escape)
+            const key = container._lastKey;
+            const isArrowKey =
+              key === "ArrowUp" ||
+              key === "ArrowDown" ||
+              key === "ArrowLeft" ||
+              key === "ArrowRight";
+            if (key === "Tab" || isArrowKey) {
+              container._keyboardNavActive = true;
+              return;
+            }
+            // Block other focus from outside (e.g., Escape)
             target.blur();
             return;
           }
 
-          // Block focus moving between cards without arrow keys
+          // Focus moving between cards - only block if caused by non-arrow key
+          // (allows mouse clicks even if _mouseDown timing is off)
           if (relatedTarget.classList.contains("card")) {
-            container._intentionalFocus = true;
-            relatedTarget.focus();
-            requestAnimationFrame(() => {
-              if (el.isConnected) {
-                container._intentionalFocus = false;
-              }
-            });
+            const key = container._lastKey;
+            const isArrowKey =
+              key === "ArrowUp" ||
+              key === "ArrowDown" ||
+              key === "ArrowLeft" ||
+              key === "ArrowRight";
+
+            // Only block if a key was pressed that's not an arrow key
+            if (key && !isArrowKey) {
+              container._intentionalFocus = true;
+              relatedTarget.focus();
+              requestAnimationFrame(() => {
+                if (el.isConnected) {
+                  container._intentionalFocus = false;
+                }
+              });
+            }
+          }
+        };
+
+        // Detect when focus leaves all cards - exit keyboard nav mode
+        const handleFocusout = (e: FocusEvent) => {
+          const relatedTarget = e.relatedTarget as HTMLElement | null;
+          // If focus is leaving to something outside the container, or to non-card inside
+          if (!relatedTarget || !relatedTarget.classList.contains("card")) {
+            container._keyboardNavActive = false;
+          }
+        };
+
+        // Tab into cards: when markdown-preview-view receives Tab focus and contains our cards,
+        // immediately focus first card (browser won't descend into tabIndex=-1 containers)
+        const handleDocumentFocusin = (e: FocusEvent) => {
+          const target = e.target as HTMLElement;
+          // Only when markdown-preview-view receives focus directly (not bubbled)
+          if (
+            target.classList.contains("markdown-preview-view") &&
+            target.contains(el) &&
+            container._lastKey === "Tab"
+          ) {
+            const firstCard = el.querySelector(".card");
+            if (firstCard instanceof HTMLElement) {
+              container._intentionalFocus = true;
+              container._keyboardNavActive = true;
+              firstCard.focus();
+              requestAnimationFrame(() => {
+                if (el.isConnected) {
+                  container._intentionalFocus = false;
+                }
+              });
+            }
           }
         };
 
         // Register event listeners
         document.addEventListener("keydown", handleKeydown, { capture: true });
+        document.addEventListener("focusin", handleDocumentFocusin);
         el.addEventListener("focusin", handleFocusin);
+        el.addEventListener("focusout", handleFocusout);
         el.addEventListener("mousedown", handleMouseDown, { capture: true });
         document.addEventListener("mouseup", handleMouseUp, { capture: true });
 
@@ -1258,7 +1329,9 @@ export function CardRenderer({
           document.removeEventListener("keydown", handleKeydown, {
             capture: true,
           });
+          document.removeEventListener("focusin", handleDocumentFocusin);
           el.removeEventListener("focusin", handleFocusin);
+          el.removeEventListener("focusout", handleFocusout);
           el.removeEventListener("mousedown", handleMouseDown, {
             capture: true,
           });
@@ -1266,6 +1339,28 @@ export function CardRenderer({
             capture: true,
           });
         };
+      }}
+      tabIndex={0}
+      onFocus={(e: FocusEvent) => {
+        // When container receives Tab focus (not click), delegate to first card
+        const container = e.currentTarget as CardContainerElement | null;
+        if (
+          e.target === e.currentTarget &&
+          container &&
+          container._lastKey === "Tab"
+        ) {
+          const firstCard = container.querySelector(".card");
+          if (firstCard instanceof HTMLElement) {
+            container._intentionalFocus = true;
+            container._keyboardNavActive = true;
+            firstCard.focus();
+            requestAnimationFrame(() => {
+              if (container.isConnected) {
+                container._intentionalFocus = false;
+              }
+            });
+          }
+        }
       }}
       className={
         viewMode === "masonry" ? "dynamic-views-masonry" : "dynamic-views-grid"
@@ -1633,16 +1728,11 @@ function Card({
         }
       }}
       onKeyDown={(e: KeyboardEvent) => {
+        // Enter/Space opens file (always use openLinkText, bypass onCardClick)
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          if (effectiveOpenFileAction === "card") {
-            const paneType = Keymap.isModEvent(e);
-            if (onCardClick) {
-              onCardClick(card.path, paneType || false);
-            } else {
-              void app.workspace.openLinkText(card.path, "", paneType || false);
-            }
-          }
+          const paneType = Keymap.isModEvent(e);
+          void app.workspace.openLinkText(card.path, "", paneType || false);
         } else if (isArrowKey(e.key)) {
           e.preventDefault();
           const container = containerRef.current as CardContainerElement | null;
@@ -1653,7 +1743,10 @@ function Card({
               e,
               e.currentTarget as HTMLElement,
               container,
-              (_, targetIndex) => onFocusChange?.(targetIndex),
+              (_, targetIndex) => {
+                container._keyboardNavActive = true;
+                onFocusChange?.(targetIndex);
+              },
             );
             requestAnimationFrame(() => {
               if (container.isConnected) {
@@ -1661,8 +1754,6 @@ function Card({
               }
             });
           }
-        } else if (e.key === "Escape") {
-          (e.currentTarget as HTMLElement).blur();
         }
       }}
       onMouseEnter={(e: MouseEvent) => {
@@ -2171,7 +2262,7 @@ function Card({
 
         const row1 = row1HasContent && (
           <div
-            className={`property-row property-row-1${settings.propertySet1SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-set property-set-1${settings.propertySet1SideBySide ? " property-set-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-1${collapse[0] ? " property-field-collapsed" : ""}`}
@@ -2204,7 +2295,7 @@ function Card({
 
         const row2 = row2HasContent && (
           <div
-            className={`property-row property-row-2${settings.propertySet2SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-set property-set-2${settings.propertySet2SideBySide ? " property-set-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-3${collapse[2] ? " property-field-collapsed" : ""}`}
@@ -2237,7 +2328,7 @@ function Card({
 
         const row3 = row3HasContent && (
           <div
-            className={`property-row property-row-3${settings.propertySet3SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-set property-set-3${settings.propertySet3SideBySide ? " property-set-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-5${collapse[4] ? " property-field-collapsed" : ""}`}
@@ -2270,7 +2361,7 @@ function Card({
 
         const row4 = row4HasContent && (
           <div
-            className={`property-row property-row-4${settings.propertySet4SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-set property-set-4${settings.propertySet4SideBySide ? " property-set-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-7${collapse[6] ? " property-field-collapsed" : ""}`}
@@ -2303,7 +2394,7 @@ function Card({
 
         const row5 = row5HasContent && (
           <div
-            className={`property-row property-row-5${settings.propertySet5SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-set property-set-5${settings.propertySet5SideBySide ? " property-set-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-9${collapse[8] ? " property-field-collapsed" : ""}`}
@@ -2336,7 +2427,7 @@ function Card({
 
         const row6 = row6HasContent && (
           <div
-            className={`property-row property-row-6${settings.propertySet6SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-set property-set-6${settings.propertySet6SideBySide ? " property-set-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-11${collapse[10] ? " property-field-collapsed" : ""}`}
@@ -2369,7 +2460,7 @@ function Card({
 
         const row7 = row7HasContent && (
           <div
-            className={`property-row property-row-7${settings.propertySet7SideBySide ? " property-row-sidebyside" : ""}`}
+            className={`property-set property-set-7${settings.propertySet7SideBySide ? " property-set-sidebyside" : ""}`}
           >
             <div
               className={`property-field property-field-13${collapse[12] ? " property-field-collapsed" : ""}`}

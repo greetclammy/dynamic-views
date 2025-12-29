@@ -798,7 +798,7 @@ export class DynamicViewsMasonryView extends BasesView {
     const throttledResize = (entries: ResizeObserverEntry[]) => {
       if (entries.length === 0) return;
       const entry = entries[0];
-      const newWidth = Math.floor(entry?.contentRect?.width ?? 0);
+      const newWidth = Math.floor(entry.contentRect.width);
 
       // Skip if width unchanged
       if (newWidth === this.lastLayoutWidth) {

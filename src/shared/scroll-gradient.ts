@@ -253,8 +253,8 @@ export function initializeScrollGradients(container: HTMLElement): void {
 
   fields.forEach((field) => {
     // Skip side-by-side fields that haven't been measured yet
-    const row = field.closest(".property-row");
-    const isSideBySide = row?.classList.contains("property-row-sidebyside");
+    const row = field.closest(".property-set");
+    const isSideBySide = row?.classList.contains("property-set-sidebyside");
     const isMeasured = row?.classList.contains("property-measured");
     if (isSideBySide && !isMeasured) return;
 

@@ -124,6 +124,7 @@ export function ListView({
                               key={tag}
                               href="#"
                               className="tag"
+                              tabIndex={-1}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 const searchPlugin =
@@ -153,6 +154,7 @@ export function ListView({
                               key={tag}
                               href="#"
                               className="tag"
+                              tabIndex={-1}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 const searchPlugin =
@@ -182,6 +184,7 @@ export function ListView({
                               key={tag}
                               href="#"
                               className="tag"
+                              tabIndex={-1}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 const searchPlugin =
@@ -211,6 +214,7 @@ export function ListView({
                               key={tag}
                               href="#"
                               className="tag"
+                              tabIndex={-1}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 const searchPlugin =

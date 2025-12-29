@@ -303,6 +303,7 @@ export class SharedCardRenderer {
         href: link.url,
       });
       el.dataset.href = link.url;
+      el.tabIndex = -1;
       el.draggable = true;
       el.addEventListener(
         "click",
@@ -368,6 +369,7 @@ export class SharedCardRenderer {
       text: link.caption,
       href: link.url,
     });
+    el.tabIndex = -1;
     if (link.isWebUrl) {
       el.target = "_blank";
       el.rel = "noopener noreferrer";
@@ -544,21 +546,22 @@ export class SharedCardRenderer {
           } else if (isArrowKey(e.key)) {
             // Arrow key navigation
             e.preventDefault();
-            if (keyboardNav.containerRef.current) {
+            const container = keyboardNav.containerRef.current as
+              | (HTMLElement & { _keyboardNavActive?: boolean })
+              | null;
+            if (container) {
               handleArrowNavigation(
                 e,
                 cardEl,
-                keyboardNav.containerRef.current,
+                container,
                 (_targetCard, targetIndex) => {
+                  container._keyboardNavActive = true;
                   if (keyboardNav.onFocusChange) {
                     keyboardNav.onFocusChange(targetIndex);
                   }
                 },
               );
             }
-          } else if (e.key === "Tab") {
-            // Prevent Tab from moving focus within card grid
-            e.preventDefault();
           } else if (e.key === "Escape") {
             // Unfocus card on Escape
             cardEl.blur();
@@ -1474,9 +1477,9 @@ export class SharedCardRenderer {
 
     // Row 1
     if (row1HasContent) {
-      const row1El = getContainer(1)!.createDiv("property-row property-row-1");
+      const row1El = getContainer(1)!.createDiv("property-set property-set-1");
       if (settings.propertySet1SideBySide) {
-        row1El.addClass("property-row-sidebyside");
+        row1El.addClass("property-set-sidebyside");
       }
 
       const field1El = row1El.createDiv("property-field property-field-1");
@@ -1566,9 +1569,9 @@ export class SharedCardRenderer {
 
     // Row 2
     if (row2HasContent) {
-      const row2El = getContainer(2)!.createDiv("property-row property-row-2");
+      const row2El = getContainer(2)!.createDiv("property-set property-set-2");
       if (settings.propertySet2SideBySide) {
-        row2El.addClass("property-row-sidebyside");
+        row2El.addClass("property-set-sidebyside");
       }
 
       const field3El = row2El.createDiv("property-field property-field-3");
@@ -1658,9 +1661,9 @@ export class SharedCardRenderer {
 
     // Row 3
     if (row3HasContent) {
-      const row3El = getContainer(3)!.createDiv("property-row property-row-3");
+      const row3El = getContainer(3)!.createDiv("property-set property-set-3");
       if (settings.propertySet3SideBySide) {
-        row3El.addClass("property-row-sidebyside");
+        row3El.addClass("property-set-sidebyside");
       }
 
       const field5El = row3El.createDiv("property-field property-field-5");
@@ -1748,9 +1751,9 @@ export class SharedCardRenderer {
 
     // Row 4
     if (row4HasContent) {
-      const row4El = getContainer(4)!.createDiv("property-row property-row-4");
+      const row4El = getContainer(4)!.createDiv("property-set property-set-4");
       if (settings.propertySet4SideBySide) {
-        row4El.addClass("property-row-sidebyside");
+        row4El.addClass("property-set-sidebyside");
       }
 
       const field7El = row4El.createDiv("property-field property-field-7");
@@ -1838,9 +1841,9 @@ export class SharedCardRenderer {
 
     // Row 5
     if (row5HasContent) {
-      const row5El = getContainer(5)!.createDiv("property-row property-row-5");
+      const row5El = getContainer(5)!.createDiv("property-set property-set-5");
       if (settings.propertySet5SideBySide) {
-        row5El.addClass("property-row-sidebyside");
+        row5El.addClass("property-set-sidebyside");
       }
 
       const field9El = row5El.createDiv("property-field property-field-9");
@@ -1929,9 +1932,9 @@ export class SharedCardRenderer {
 
     // Row 6
     if (row6HasContent) {
-      const row6El = getContainer(6)!.createDiv("property-row property-row-6");
+      const row6El = getContainer(6)!.createDiv("property-set property-set-6");
       if (settings.propertySet6SideBySide) {
-        row6El.addClass("property-row-sidebyside");
+        row6El.addClass("property-set-sidebyside");
       }
 
       const field11El = row6El.createDiv("property-field property-field-11");
@@ -2021,9 +2024,9 @@ export class SharedCardRenderer {
 
     // Row 7
     if (row7HasContent) {
-      const row7El = getContainer(7)!.createDiv("property-row property-row-7");
+      const row7El = getContainer(7)!.createDiv("property-set property-set-7");
       if (settings.propertySet7SideBySide) {
-        row7El.addClass("property-row-sidebyside");
+        row7El.addClass("property-set-sidebyside");
       }
 
       const field13El = row7El.createDiv("property-field property-field-13");
@@ -2190,7 +2193,9 @@ export class SharedCardRenderer {
     }
 
     // Wrapper for scrolling content (gradients applied here)
+    // tabIndex -1 prevents scrollable div from being in Tab order
     const contentWrapper = container.createDiv("property-content-wrapper");
+    contentWrapper.tabIndex = -1;
 
     // Content container (actual property value)
     const propertyContent = contentWrapper.createDiv("property-content");
@@ -2256,6 +2261,7 @@ export class SharedCardRenderer {
           text: showHashPrefix ? "#" + tag : tag,
           href: "#",
         });
+        tagEl.tabIndex = -1;
         tagEl.addEventListener(
           "click",
           (e) => {
@@ -2288,6 +2294,7 @@ export class SharedCardRenderer {
           text: showHashPrefix ? "#" + tag : tag,
           href: "#",
         });
+        tagEl.tabIndex = -1;
         tagEl.addEventListener(
           "click",
           (e) => {
@@ -2321,7 +2328,7 @@ export class SharedCardRenderer {
         const isLastSegment = idx === segments.length - 1;
         const segmentClass = isLastSegment
           ? "path-segment filename-segment"
-          : "path-segment file-path-segment";
+          : "path-segment folder-segment";
         const segmentEl = span.createSpan({ cls: segmentClass, text: segment });
 
         // Make clickable

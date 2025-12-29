@@ -1,4 +1,4 @@
-import { App, TFile, Plugin, Keymap } from "obsidian";
+import { App, TFile, Plugin, Keymap, Notice } from "obsidian";
 import type { PaneType } from "obsidian";
 import {
   Settings,
@@ -1328,7 +1328,7 @@ export function View({
       if (entries.length === 0) return;
       const entry = entries[0];
       // Use Math.floor for consistency with getBoundingClientRect measurements
-      const newWidth = Math.floor(entry?.contentRect?.width ?? 0);
+      const newWidth = Math.floor(entry.contentRect.width);
 
       // Skip if width unchanged
       if (newWidth === lastLayoutWidthRef.current) return;
@@ -1952,6 +1952,8 @@ export function View({
         .join("\n");
 
       void navigator.clipboard.writeText(links);
+      setShowLimitDropdown(false);
+      new Notice("Copied to your clipboard");
     },
     [resultLimit, sorted],
   );

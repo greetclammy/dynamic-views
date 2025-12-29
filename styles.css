@@ -321,8 +321,8 @@ settings:
         type: class-toggle
     -
         id: dynamic-views-hide-expand-width
-        title: Hide 'Expand width' button
-        description: Hide expand width button in toolbar
+        title: Hide 'Expand' button
+        description: Hide expand button in toolbar
         type: class-toggle
     -
         id: dynamic-views-disable-toolbar-shadow
@@ -404,7 +404,7 @@ settings:
         type: variable-text
         default: ''
     -
-        id: dynamic-views-property-master-font-size
+        id: dynamic-views-property-font-size
         title: Property font size
         description: Font size for all properties (e.g., 0.8em, 13px, 0.8125rem)
         type: variable-text
@@ -1122,7 +1122,7 @@ settings:
     -
         id: dynamic-views-timestamp-icon
         title: Timestamp icon
-        description: Show icon next to timestamp to distinguish between modified and created timestamps
+        description: Show icon next to timestamp to distinguish between modified and created time when property labels hidden
         type: class-select
         allowEmpty: false
         default: dynamic-views-timestamp-icon-edge
@@ -1140,7 +1140,7 @@ settings:
                 label: Align to card edge
                 value: dynamic-views-timestamp-icon-edge
             -
-                label: Don't show
+                label: Hide
                 value: dynamic-views-timestamp-icon-hide
     -
         id: title-heading
@@ -1288,8 +1288,9 @@ settings:
    COLOR VARIABLES
    ============================================ */
 
-/* Derived CSS variable: clamp thumbnail aspect ratio to 0.5-2.0 range */
+/* Derived CSS variables and custom color compositions */
 body {
+  /* Clamp thumbnail aspect ratio to 0.5-2.0 range */
   --dynamic-views-thumbnail-aspect-ratio: clamp(
     0.5,
     var(--dynamic-views-image-aspect-ratio, 1),
@@ -1297,11 +1298,7 @@ body {
   );
   --dynamic-views-list-separator: ", ";
   --dynamic-views-empty-value-marker: "—";
-}
-
-/* Compose custom colors from HSL components */
-/* When HSL components undefined, entire color becomes invalid and falls back */
-body {
+  /* Custom colors from HSL components (when undefined, falls back) */
   --dynamic-views-property-color-with-labels-custom: hsl(
     var(--dynamic-views-property-color-with-labels-custom-h),
     var(--dynamic-views-property-color-with-labels-custom-s),
@@ -1613,13 +1610,6 @@ body {
   box-sizing: border-box;
   min-height: 270px;
   overflow: visible;
-  --shadow-s-light-mode:
-    0px 0px 8px rgba(0, 0, 0, 0.12), 0px 0px 20px rgba(0, 0, 0, 0.15),
-    0px 0px 32px rgba(0, 0, 0, 0.12);
-  --shadow-s-dark-mode:
-    0px 0px 8px rgba(255, 255, 255, 0.12),
-    0px 0px 20px rgba(255, 255, 255, 0.15),
-    0px 0px 32px rgba(255, 255, 255, 0.12);
   --shadow-l-light-mode:
     0px 0px 8px rgba(0, 0, 0, 0.12), 0px 0px 20px rgba(0, 0, 0, 0.15),
     0px 0px 32px rgba(0, 0, 0, 0.12);
@@ -2940,6 +2930,8 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   transition:
     box-shadow var(--anim-duration-fast, 140ms) ease-in-out,
     background-color var(--anim-duration-moderate, 300ms) ease;
+  /* Cover inset: user setting + 1px offset for border */
+  --cover-inset-computed: calc(var(--dynamic-views-cover-inset, 0px) + 1px);
 }
 
 /* Border as pseudo-element so it appears on top of covers */
@@ -2986,6 +2978,11 @@ body.dynamic-views-hide-card-border .dynamic-views .card::after {
   box-shadow: none;
 }
 
+/* When border hidden: no inset adjustment */
+body.dynamic-views-hide-card-border .dynamic-views .card {
+  --cover-inset-computed: var(--dynamic-views-cover-inset, 0px);
+}
+
 /* Hide border on cards WITH ambient color */
 body.dynamic-views-ambient-bg-subtle
   .dynamic-views
@@ -2994,6 +2991,14 @@ body.dynamic-views-ambient-bg-dramatic
   .dynamic-views
   .card[data-ambient-theme]::after {
   box-shadow: none;
+}
+
+/* Ambient cards have border hidden: no inset adjustment */
+body.dynamic-views-ambient-bg-subtle .dynamic-views .card[data-ambient-theme],
+body.dynamic-views-ambient-bg-dramatic
+  .dynamic-views
+  .card[data-ambient-theme] {
+  --cover-inset-computed: var(--dynamic-views-cover-inset, 0px);
 }
 
 /* Focus ring - appears after hiding rules to win via cascade */
@@ -3253,8 +3258,6 @@ body.dynamic-views-file-type-ext
   margin-right: var(--size-2-2);
   display: none;
 }
-
-/* File type indicator: Extension - now handled by .card-title-ext-suffix element */
 
 .dynamic-views .card-title-icon svg {
   width: 1em;
@@ -4258,63 +4261,26 @@ body.dynamic-views-show-cover-placeholder-none
   overflow: hidden;
 }
 
-/* Placeholder positioning with negative margins to bleed to edges */
-.dynamic-views
-  .card.card-cover-top.image-format-cover
-  .card-cover-wrapper.card-cover-wrapper-placeholder {
+/* Cover-top: wrapper with negative margins to bleed to edges */
+.dynamic-views .card.card-cover-top.image-format-cover .card-cover-wrapper {
   order: -999;
   margin: calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
+      var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
     )
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    )
+    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
     var(--size-4-2)
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    );
+    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px));
 }
 
+/* Cover-bottom placeholder: margin-top auto to push to bottom */
 .dynamic-views
   .card.card-cover-bottom.image-format-cover
   .card-cover-wrapper.card-cover-wrapper-placeholder {
   order: 999;
   margin: auto
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    )
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    )
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    );
-}
-
-/* Cover-top: wrapper at start with negative margins to bleed to edges */
-.dynamic-views
-  .card.card-cover-top.image-format-cover
-  .card-cover-wrapper:not(.card-cover-wrapper-placeholder) {
-  order: -999; /* First */
-  margin: calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    )
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    )
-    var(--size-4-2)
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    );
+    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
+    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
+    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px));
 }
 
 /* Cover-bottom: wrapper at end with negative margins to bleed to edges */
@@ -4323,18 +4289,9 @@ body.dynamic-views-show-cover-placeholder-none
   .card-cover-wrapper:not(.card-cover-wrapper-placeholder) {
   order: 999; /* Last */
   margin: var(--size-4-2)
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    )
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    )
-    calc(
-      var(--dynamic-views-cover-inset, 0px) -
-        var(--dynamic-views-card-padding, 8px)
-    );
+    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
+    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
+    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px));
 }
 
 /* ==================== COVER-ONLY CARDS ==================== */
@@ -4377,9 +4334,9 @@ body.dynamic-views-show-cover-placeholder-none
 /* Cover-left: wrapper positioned at edges */
 .dynamic-views .card.card-cover-left.image-format-cover .card-cover-wrapper {
   position: absolute;
-  top: var(--dynamic-views-cover-inset, 0px);
-  left: var(--dynamic-views-cover-inset, 0px);
-  bottom: var(--dynamic-views-cover-inset, 0px);
+  top: var(--cover-inset-computed);
+  left: var(--cover-inset-computed);
+  bottom: var(--cover-inset-computed);
   right: auto !important;
   width: var(--dynamic-views-side-cover-width, 200px);
 }
@@ -4387,9 +4344,9 @@ body.dynamic-views-show-cover-placeholder-none
 /* Cover-right: wrapper positioned at edges */
 .dynamic-views .card.card-cover-right.image-format-cover .card-cover-wrapper {
   position: absolute;
-  top: var(--dynamic-views-cover-inset, 0px);
-  right: var(--dynamic-views-cover-inset, 0px);
-  bottom: var(--dynamic-views-cover-inset, 0px);
+  top: var(--cover-inset-computed);
+  right: var(--cover-inset-computed);
+  bottom: var(--cover-inset-computed);
   left: auto !important;
   width: var(--dynamic-views-side-cover-width, 200px);
 }
@@ -5333,7 +5290,7 @@ body.dynamic-views-hide-slideshow-indicator
 /* Base properties container styles */
 .dynamic-views .card-properties {
   font-size: var(
-    --dynamic-views-property-master-font-size,
+    --dynamic-views-property-font-size,
     var(--bases-table-font-size)
   );
   color: var(--text-faint);
@@ -5366,7 +5323,7 @@ body.dynamic-views-hide-slideshow-indicator
 
 /* Edge positioning is default: even fields show icon on right ONLY in side-by-side */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5397,7 +5354,7 @@ body.dynamic-views-timestamp-icon-right .dynamic-views .timestamp-icon {
 /* Center positioning: odd fields show icon on right ONLY in side-by-side */
 body.dynamic-views-timestamp-icon-center
   .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-1,
     .property-field-3,
@@ -5416,7 +5373,7 @@ body.dynamic-views-timestamp-icon-center
 /* Center positioning: even fields show icon on left ONLY in side-by-side */
 body.dynamic-views-timestamp-icon-center
   .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5435,7 +5392,7 @@ body.dynamic-views-timestamp-icon-center
 /* Left positioning: even fields reset to left ONLY in side-by-side (counters edge default) */
 body.dynamic-views-timestamp-icon-left
   .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5449,6 +5406,19 @@ body.dynamic-views-timestamp-icon-left
   order: 0;
   margin-right: var(--size-2-2);
   margin-left: 0;
+}
+
+/* Subtitle timestamp icon: center/right moves icon to right side */
+body:is(
+    .dynamic-views-timestamp-icon-center,
+    .dynamic-views-timestamp-icon-right
+  )
+  .dynamic-views
+  .card-subtitle
+  .timestamp-icon {
+  order: 2;
+  margin-right: 0;
+  margin-left: var(--size-2-2);
 }
 
 .dynamic-views .timestamp-icon svg {
@@ -5501,7 +5471,6 @@ body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-properties .tag,
 body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-subtitle .tag,
 body:not(.dynamic-views-tag-style-theme) .dynamic-views .list-properties .tag {
   all: unset;
-  --tag-text-color: var(--text-faint);
   border-radius: var(--pill-radius);
   border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
   color: var(--tag-text-color);
@@ -5567,74 +5536,57 @@ body.dynamic-views-tag-style-plaintext
   text-decoration: underline;
 }
 
-/* Tag color presets (faint is default) */
-body.dynamic-views-tag-color-faint:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--text-faint);
+/* Tag color presets - value definitions (faint is default) */
+body.dynamic-views-tag-color-faint {
+  --dynamic-views-tag-color-value: var(--text-faint);
 }
-body.dynamic-views-tag-color-muted:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--text-muted);
+body.dynamic-views-tag-color-muted {
+  --dynamic-views-tag-color-value: var(--text-muted);
 }
-body.dynamic-views-tag-color-normal:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--text-normal);
+body.dynamic-views-tag-color-normal {
+  --dynamic-views-tag-color-value: var(--text-normal);
 }
-body.dynamic-views-tag-color-accent:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--text-accent);
+body.dynamic-views-tag-color-accent {
+  --dynamic-views-tag-color-value: var(--text-accent);
 }
-body.dynamic-views-tag-color-red:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--color-red);
+body.dynamic-views-tag-color-red {
+  --dynamic-views-tag-color-value: var(--color-red);
 }
-body.dynamic-views-tag-color-orange:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--color-orange);
+body.dynamic-views-tag-color-orange {
+  --dynamic-views-tag-color-value: var(--color-orange);
 }
-body.dynamic-views-tag-color-yellow:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--color-yellow);
+body.dynamic-views-tag-color-yellow {
+  --dynamic-views-tag-color-value: var(--color-yellow);
 }
-body.dynamic-views-tag-color-green:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--color-green);
+body.dynamic-views-tag-color-green {
+  --dynamic-views-tag-color-value: var(--color-green);
 }
-body.dynamic-views-tag-color-cyan:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--color-cyan);
+body.dynamic-views-tag-color-cyan {
+  --dynamic-views-tag-color-value: var(--color-cyan);
 }
-body.dynamic-views-tag-color-blue:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--color-blue);
+body.dynamic-views-tag-color-blue {
+  --dynamic-views-tag-color-value: var(--color-blue);
 }
-body.dynamic-views-tag-color-purple:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--color-purple);
+body.dynamic-views-tag-color-purple {
+  --dynamic-views-tag-color-value: var(--color-purple);
 }
-body.dynamic-views-tag-color-pink:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--color-pink);
+body.dynamic-views-tag-color-pink {
+  --dynamic-views-tag-color-value: var(--color-pink);
 }
-body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
-  .dynamic-views
-  .tag {
-  --tag-text-color: var(--dynamic-views-tag-color-custom, var(--text-faint));
+body.dynamic-views-tag-color-custom {
+  --dynamic-views-tag-color-value: var(
+    --dynamic-views-tag-color-custom,
+    var(--text-faint)
+  );
 }
 
-.dynamic-views .file-path-segment,
+/* Tag color application (skip when using theme styling) */
+body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-properties .tag,
+body:not(.dynamic-views-tag-style-theme) .dynamic-views .card-subtitle .tag,
+body:not(.dynamic-views-tag-style-theme) .dynamic-views .list-properties .tag {
+  --tag-text-color: var(--dynamic-views-tag-color-value, var(--text-faint));
+}
+
 .dynamic-views .folder-segment,
 .dynamic-views .filename-segment {
   color: inherit;
@@ -5642,7 +5594,6 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
   cursor: pointer;
 }
 
-.dynamic-views .file-path-segment:hover,
 .dynamic-views .folder-segment:hover,
 .dynamic-views .filename-segment:hover {
   text-decoration: underline;
@@ -5664,7 +5615,7 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
    PROPERTY ROW SYSTEM
    ============================================ */
 
-.dynamic-views .property-row {
+.dynamic-views .property-set {
   display: flex;
   flex-direction: column;
   gap: var(--size-2-2);
@@ -5672,23 +5623,23 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
   min-width: 0;
 }
 
-.dynamic-views .property-row.property-row-sidebyside {
+.dynamic-views .property-set.property-set-sidebyside {
   flex-direction: row;
   gap: var(--size-4-2);
 }
 
 /* Compact mode: stack side-by-side properties on narrow cards */
-.dynamic-views .card.compact-mode .property-row.property-row-sidebyside {
+.dynamic-views .card.compact-mode .property-set.property-set-sidebyside {
   flex-direction: column;
 }
 
 .dynamic-views
   .card.compact-mode
-  .property-row.property-row-sidebyside
+  .property-set.property-set-sidebyside
   .property-field,
 .dynamic-views
   .card.compact-mode
-  .property-row.property-row-sidebyside.property-measured
+  .property-set.property-set-sidebyside.property-measured
   .property-field {
   max-width: 100% !important;
   flex: none;
@@ -5698,7 +5649,7 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
 /* Compact mode: left-align right-side properties when stacked */
 .dynamic-views
   .card.compact-mode
-  .property-row.property-row-sidebyside
+  .property-set.property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5714,7 +5665,7 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
 
 .dynamic-views
   .card.compact-mode
-  .property-row.property-row-sidebyside
+  .property-set.property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5731,7 +5682,7 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
 
 .dynamic-views
   .card.compact-mode
-  .property-row.property-row-sidebyside
+  .property-set.property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5748,7 +5699,7 @@ body.dynamic-views-tag-color-custom:not(.dynamic-views-tag-style-theme)
 /* Compact mode: reset inline label order (label before content) */
 .dynamic-views
   .card.compact-mode
-  .property-row.property-row-sidebyside
+  .property-set.property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5768,7 +5719,7 @@ body:not(.dynamic-views-timestamp-icon-center):not(
   )
   .dynamic-views
   .card.compact-mode
-  .property-row.property-row-sidebyside
+  .property-set.property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5791,7 +5742,7 @@ body:is(
   )
   .dynamic-views
   .card.compact-mode
-  .property-row.property-row-sidebyside
+  .property-set.property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -5810,7 +5761,7 @@ body:is(
 /* Right alignment for full-row properties with inline labels - value only */
 body.dynamic-views-full-row-align-right
   .dynamic-views
-  .property-row:not(.property-row-sidebyside)
+  .property-set:not(.property-set-sidebyside)
   .property-field:has(.property-label-inline)
   .property-content-wrapper {
   flex: 0 1 auto;
@@ -5884,7 +5835,7 @@ body.dynamic-views-full-row-align-right
 
 /* During measurement: wrapper shouldn't constrain content */
 .dynamic-views
-  .property-row.property-row-sidebyside.property-measuring
+  .property-set.property-set-sidebyside.property-measuring
   .property-content-wrapper {
   width: auto !important;
   max-width: none !important;
@@ -5893,7 +5844,7 @@ body.dynamic-views-full-row-align-right
 }
 
 .dynamic-views
-  .property-row.property-row-sidebyside.property-measuring
+  .property-set.property-set-sidebyside.property-measuring
   .property-content {
   width: max-content !important;
   max-width: none !important;
@@ -5901,7 +5852,7 @@ body.dynamic-views-full-row-align-right
 
 /* During measurement: fields shouldn't constrain content */
 .dynamic-views
-  .property-row.property-row-sidebyside.property-measuring
+  .property-set.property-set-sidebyside.property-measuring
   .property-field {
   width: auto !important;
   max-width: none !important;
@@ -5910,13 +5861,13 @@ body.dynamic-views-full-row-align-right
 
 /* During measurement: remove min-width to allow natural sizing */
 .dynamic-views
-  .property-row.property-row-sidebyside.property-measuring
+  .property-set.property-set-sidebyside.property-measuring
   .property-content {
   min-width: 0 !important;
 }
 
 /* Default state: fields split space equally with 50% max */
-.dynamic-views .property-row.property-row-sidebyside .property-field {
+.dynamic-views .property-set.property-set-sidebyside .property-field {
   flex: 1 1 0;
   max-width: 50%;
 }
@@ -5924,26 +5875,16 @@ body.dynamic-views-full-row-align-right
 /* Measured state: use calculated widths from CSS variables, remove 50% cap */
 /* Odd fields (left side) use --field1-width */
 .dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-1,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-3,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-5,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-7,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-9,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-11,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-13 {
+  .property-set.property-set-sidebyside.property-measured
+  :is(
+    .property-field-1,
+    .property-field-3,
+    .property-field-5,
+    .property-field-7,
+    .property-field-9,
+    .property-field-11,
+    .property-field-13
+  ) {
   width: var(--field1-width);
   flex: 0 0 auto;
   max-width: none;
@@ -5951,26 +5892,16 @@ body.dynamic-views-full-row-align-right
 
 /* Even fields (right side) use --field2-width */
 .dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-2,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-4,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-6,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-8,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-10,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-12,
-.dynamic-views
-  .property-row.property-row-sidebyside.property-measured
-  .property-field-14 {
+  .property-set.property-set-sidebyside.property-measured
+  :is(
+    .property-field-2,
+    .property-field-4,
+    .property-field-6,
+    .property-field-8,
+    .property-field-10,
+    .property-field-12,
+    .property-field-14
+  ) {
   width: var(--field2-width);
   flex: 0 0 auto;
   max-width: none;
@@ -5978,7 +5909,7 @@ body.dynamic-views-full-row-align-right
 
 /* Measured state: wrapper fills calculated field width */
 .dynamic-views
-  .property-row.property-row-sidebyside.property-measured
+  .property-set.property-set-sidebyside.property-measured
   .property-content-wrapper {
   flex: 1 1 auto;
   min-width: 0;
@@ -6043,236 +5974,153 @@ body.dynamic-views-property-label-small-caps
   font-variant: small-caps;
 }
 
-/* Property label color presets */
-body.dynamic-views-property-label-color-faint .dynamic-views .property-label,
-body.dynamic-views-property-label-color-faint
-  .dynamic-views
-  .property-label-inline {
-  color: var(--text-faint);
+/* Property label color presets - value definitions */
+body.dynamic-views-property-label-color-faint {
+  --dynamic-views-prop-label-color-value: var(--text-faint);
+}
+body.dynamic-views-property-label-color-muted {
+  --dynamic-views-prop-label-color-value: var(--text-muted);
+}
+body.dynamic-views-property-label-color-normal {
+  --dynamic-views-prop-label-color-value: var(--text-normal);
+}
+body.dynamic-views-property-label-color-accent {
+  --dynamic-views-prop-label-color-value: var(--text-accent);
+}
+body.dynamic-views-property-label-color-red {
+  --dynamic-views-prop-label-color-value: var(--color-red);
+}
+body.dynamic-views-property-label-color-orange {
+  --dynamic-views-prop-label-color-value: var(--color-orange);
+}
+body.dynamic-views-property-label-color-yellow {
+  --dynamic-views-prop-label-color-value: var(--color-yellow);
+}
+body.dynamic-views-property-label-color-green {
+  --dynamic-views-prop-label-color-value: var(--color-green);
+}
+body.dynamic-views-property-label-color-cyan {
+  --dynamic-views-prop-label-color-value: var(--color-cyan);
+}
+body.dynamic-views-property-label-color-blue {
+  --dynamic-views-prop-label-color-value: var(--color-blue);
+}
+body.dynamic-views-property-label-color-purple {
+  --dynamic-views-prop-label-color-value: var(--color-purple);
+}
+body.dynamic-views-property-label-color-pink {
+  --dynamic-views-prop-label-color-value: var(--color-pink);
+}
+body.dynamic-views-property-label-color-custom {
+  --dynamic-views-prop-label-color-value: var(
+    --dynamic-views-property-label-color-custom,
+    var(--text-faint)
+  );
 }
 
-body.dynamic-views-property-label-color-muted .dynamic-views .property-label,
-body.dynamic-views-property-label-color-muted
-  .dynamic-views
-  .property-label-inline {
-  color: var(--text-muted);
+/* Property label color application */
+.dynamic-views :is(.property-label, .property-label-inline) {
+  color: var(--dynamic-views-prop-label-color-value, var(--text-faint));
 }
 
-body.dynamic-views-property-label-color-normal .dynamic-views .property-label,
-body.dynamic-views-property-label-color-normal
-  .dynamic-views
-  .property-label-inline {
-  color: var(--text-normal);
+/* Property text color presets - with labels - value definitions */
+body.dynamic-views-property-color-with-labels-faint {
+  --dynamic-views-prop-with-label-color-value: var(--text-faint);
 }
-
-body.dynamic-views-property-label-color-accent .dynamic-views .property-label,
-body.dynamic-views-property-label-color-accent
-  .dynamic-views
-  .property-label-inline {
-  color: var(--text-accent);
+body.dynamic-views-property-color-with-labels-muted {
+  --dynamic-views-prop-with-label-color-value: var(--text-muted);
 }
-
-body.dynamic-views-property-label-color-red .dynamic-views .property-label,
-body.dynamic-views-property-label-color-red
-  .dynamic-views
-  .property-label-inline {
-  color: var(--color-red);
+body.dynamic-views-property-color-with-labels-normal {
+  --dynamic-views-prop-with-label-color-value: var(--text-normal);
 }
-
-body.dynamic-views-property-label-color-orange .dynamic-views .property-label,
-body.dynamic-views-property-label-color-orange
-  .dynamic-views
-  .property-label-inline {
-  color: var(--color-orange);
+body.dynamic-views-property-color-with-labels-accent {
+  --dynamic-views-prop-with-label-color-value: var(--text-accent);
 }
-
-body.dynamic-views-property-label-color-yellow .dynamic-views .property-label,
-body.dynamic-views-property-label-color-yellow
-  .dynamic-views
-  .property-label-inline {
-  color: var(--color-yellow);
+body.dynamic-views-property-color-with-labels-red {
+  --dynamic-views-prop-with-label-color-value: var(--color-red);
 }
-
-body.dynamic-views-property-label-color-green .dynamic-views .property-label,
-body.dynamic-views-property-label-color-green
-  .dynamic-views
-  .property-label-inline {
-  color: var(--color-green);
+body.dynamic-views-property-color-with-labels-orange {
+  --dynamic-views-prop-with-label-color-value: var(--color-orange);
 }
-
-body.dynamic-views-property-label-color-cyan .dynamic-views .property-label,
-body.dynamic-views-property-label-color-cyan
-  .dynamic-views
-  .property-label-inline {
-  color: var(--color-cyan);
+body.dynamic-views-property-color-with-labels-yellow {
+  --dynamic-views-prop-with-label-color-value: var(--color-yellow);
 }
-
-body.dynamic-views-property-label-color-blue .dynamic-views .property-label,
-body.dynamic-views-property-label-color-blue
-  .dynamic-views
-  .property-label-inline {
-  color: var(--color-blue);
+body.dynamic-views-property-color-with-labels-green {
+  --dynamic-views-prop-with-label-color-value: var(--color-green);
 }
-
-body.dynamic-views-property-label-color-purple .dynamic-views .property-label,
-body.dynamic-views-property-label-color-purple
-  .dynamic-views
-  .property-label-inline {
-  color: var(--color-purple);
+body.dynamic-views-property-color-with-labels-cyan {
+  --dynamic-views-prop-with-label-color-value: var(--color-cyan);
 }
-
-body.dynamic-views-property-label-color-pink .dynamic-views .property-label,
-body.dynamic-views-property-label-color-pink
-  .dynamic-views
-  .property-label-inline {
-  color: var(--color-pink);
+body.dynamic-views-property-color-with-labels-blue {
+  --dynamic-views-prop-with-label-color-value: var(--color-blue);
 }
-
-body.dynamic-views-property-label-color-custom .dynamic-views .property-label,
-body.dynamic-views-property-label-color-custom
-  .dynamic-views
-  .property-label-inline {
-  color: var(--dynamic-views-property-label-color-custom, var(--text-faint));
+body.dynamic-views-property-color-with-labels-purple {
+  --dynamic-views-prop-with-label-color-value: var(--color-purple);
 }
-
-/* Property text color presets - with labels */
-body.dynamic-views-property-color-with-labels-faint
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--text-faint);
+body.dynamic-views-property-color-with-labels-pink {
+  --dynamic-views-prop-with-label-color-value: var(--color-pink);
 }
-body.dynamic-views-property-color-with-labels-muted
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--text-muted);
-}
-body.dynamic-views-property-color-with-labels-normal
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--text-normal);
-}
-body.dynamic-views-property-color-with-labels-accent
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--text-accent);
-}
-body.dynamic-views-property-color-with-labels-red
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--color-red);
-}
-body.dynamic-views-property-color-with-labels-orange
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--color-orange);
-}
-body.dynamic-views-property-color-with-labels-yellow
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--color-yellow);
-}
-body.dynamic-views-property-color-with-labels-green
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--color-green);
-}
-body.dynamic-views-property-color-with-labels-cyan
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--color-cyan);
-}
-body.dynamic-views-property-color-with-labels-blue
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--color-blue);
-}
-body.dynamic-views-property-color-with-labels-purple
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--color-purple);
-}
-body.dynamic-views-property-color-with-labels-pink
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--color-pink);
-}
-body.dynamic-views-property-color-with-labels-custom
-  .dynamic-views
-  .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(
+body.dynamic-views-property-color-with-labels-custom {
+  --dynamic-views-prop-with-label-color-value: var(
     --dynamic-views-property-color-with-labels-custom,
     var(--text-faint)
   );
 }
 
-/* Property text color presets - without labels */
-body.dynamic-views-property-color-without-labels-faint
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--text-faint);
+/* Property text color application - with labels */
+.dynamic-views
+  .property-field:has(:is(.property-label, .property-label-inline)) {
+  color: var(--dynamic-views-prop-with-label-color-value, var(--text-faint));
 }
-body.dynamic-views-property-color-without-labels-muted
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--text-muted);
+
+/* Property text color presets - without labels - value definitions */
+body.dynamic-views-property-color-without-labels-faint {
+  --dynamic-views-prop-no-label-color-value: var(--text-faint);
 }
-body.dynamic-views-property-color-without-labels-normal
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--text-normal);
+body.dynamic-views-property-color-without-labels-muted {
+  --dynamic-views-prop-no-label-color-value: var(--text-muted);
 }
-body.dynamic-views-property-color-without-labels-accent
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--text-accent);
+body.dynamic-views-property-color-without-labels-normal {
+  --dynamic-views-prop-no-label-color-value: var(--text-normal);
 }
-body.dynamic-views-property-color-without-labels-red
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--color-red);
+body.dynamic-views-property-color-without-labels-accent {
+  --dynamic-views-prop-no-label-color-value: var(--text-accent);
 }
-body.dynamic-views-property-color-without-labels-orange
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--color-orange);
+body.dynamic-views-property-color-without-labels-red {
+  --dynamic-views-prop-no-label-color-value: var(--color-red);
 }
-body.dynamic-views-property-color-without-labels-yellow
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--color-yellow);
+body.dynamic-views-property-color-without-labels-orange {
+  --dynamic-views-prop-no-label-color-value: var(--color-orange);
 }
-body.dynamic-views-property-color-without-labels-green
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--color-green);
+body.dynamic-views-property-color-without-labels-yellow {
+  --dynamic-views-prop-no-label-color-value: var(--color-yellow);
 }
-body.dynamic-views-property-color-without-labels-cyan
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--color-cyan);
+body.dynamic-views-property-color-without-labels-green {
+  --dynamic-views-prop-no-label-color-value: var(--color-green);
 }
-body.dynamic-views-property-color-without-labels-blue
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--color-blue);
+body.dynamic-views-property-color-without-labels-cyan {
+  --dynamic-views-prop-no-label-color-value: var(--color-cyan);
 }
-body.dynamic-views-property-color-without-labels-purple
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--color-purple);
+body.dynamic-views-property-color-without-labels-blue {
+  --dynamic-views-prop-no-label-color-value: var(--color-blue);
 }
-body.dynamic-views-property-color-without-labels-pink
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--color-pink);
+body.dynamic-views-property-color-without-labels-purple {
+  --dynamic-views-prop-no-label-color-value: var(--color-purple);
 }
-body.dynamic-views-property-color-without-labels-custom
-  .dynamic-views
-  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(
+body.dynamic-views-property-color-without-labels-pink {
+  --dynamic-views-prop-no-label-color-value: var(--color-pink);
+}
+body.dynamic-views-property-color-without-labels-custom {
+  --dynamic-views-prop-no-label-color-value: var(
     --dynamic-views-property-color-without-labels-custom,
     var(--text-faint)
   );
+}
+
+/* Property text color application - without labels */
+.dynamic-views
+  .property-field:not(:has(:is(.property-label, .property-label-inline))) {
+  color: var(--dynamic-views-prop-no-label-color-value, var(--text-faint));
 }
 
 /* Links in properties use Obsidian default colors (not property text color) */
@@ -6289,159 +6137,152 @@ body.dynamic-views-property-color-without-labels-custom
   color: var(--link-external-color-hover);
 }
 
-/* Subtitle color presets */
-body.dynamic-views-subtitle-color-muted .dynamic-views .card-subtitle {
-  color: var(--text-muted);
+/* Subtitle color presets - value definitions (faint is default) */
+body.dynamic-views-subtitle-color-faint {
+  --dynamic-views-subtitle-color-value: var(--text-faint);
+}
+body.dynamic-views-subtitle-color-muted {
+  --dynamic-views-subtitle-color-value: var(--text-muted);
+}
+body.dynamic-views-subtitle-color-normal {
+  --dynamic-views-subtitle-color-value: var(--text-normal);
+}
+body.dynamic-views-subtitle-color-accent {
+  --dynamic-views-subtitle-color-value: var(--text-accent);
+}
+body.dynamic-views-subtitle-color-red {
+  --dynamic-views-subtitle-color-value: var(--color-red);
+}
+body.dynamic-views-subtitle-color-orange {
+  --dynamic-views-subtitle-color-value: var(--color-orange);
+}
+body.dynamic-views-subtitle-color-yellow {
+  --dynamic-views-subtitle-color-value: var(--color-yellow);
+}
+body.dynamic-views-subtitle-color-green {
+  --dynamic-views-subtitle-color-value: var(--color-green);
+}
+body.dynamic-views-subtitle-color-cyan {
+  --dynamic-views-subtitle-color-value: var(--color-cyan);
+}
+body.dynamic-views-subtitle-color-blue {
+  --dynamic-views-subtitle-color-value: var(--color-blue);
+}
+body.dynamic-views-subtitle-color-purple {
+  --dynamic-views-subtitle-color-value: var(--color-purple);
+}
+body.dynamic-views-subtitle-color-pink {
+  --dynamic-views-subtitle-color-value: var(--color-pink);
+}
+body.dynamic-views-subtitle-color-custom {
+  --dynamic-views-subtitle-color-value: var(
+    --dynamic-views-subtitle-color-custom,
+    var(--text-faint)
+  );
 }
 
-body.dynamic-views-subtitle-color-normal .dynamic-views .card-subtitle {
-  color: var(--text-normal);
+/* Subtitle color application */
+.dynamic-views .card-subtitle {
+  color: var(--dynamic-views-subtitle-color-value, var(--text-faint));
 }
 
-body.dynamic-views-subtitle-color-accent .dynamic-views .card-subtitle {
-  color: var(--text-accent);
+/* Text preview color presets - value definitions (muted is default) */
+body.dynamic-views-text-preview-color-faint {
+  --dynamic-views-text-preview-color-value: var(--text-faint);
 }
-
-body.dynamic-views-subtitle-color-red .dynamic-views .card-subtitle {
-  color: var(--color-red);
+body.dynamic-views-text-preview-color-muted {
+  --dynamic-views-text-preview-color-value: var(--text-muted);
 }
-
-body.dynamic-views-subtitle-color-orange .dynamic-views .card-subtitle {
-  color: var(--color-orange);
+body.dynamic-views-text-preview-color-normal {
+  --dynamic-views-text-preview-color-value: var(--text-normal);
 }
-
-body.dynamic-views-subtitle-color-yellow .dynamic-views .card-subtitle {
-  color: var(--color-yellow);
+body.dynamic-views-text-preview-color-accent {
+  --dynamic-views-text-preview-color-value: var(--text-accent);
 }
-
-body.dynamic-views-subtitle-color-green .dynamic-views .card-subtitle {
-  color: var(--color-green);
+body.dynamic-views-text-preview-color-red {
+  --dynamic-views-text-preview-color-value: var(--color-red);
 }
-
-body.dynamic-views-subtitle-color-cyan .dynamic-views .card-subtitle {
-  color: var(--color-cyan);
+body.dynamic-views-text-preview-color-orange {
+  --dynamic-views-text-preview-color-value: var(--color-orange);
 }
-
-body.dynamic-views-subtitle-color-blue .dynamic-views .card-subtitle {
-  color: var(--color-blue);
+body.dynamic-views-text-preview-color-yellow {
+  --dynamic-views-text-preview-color-value: var(--color-yellow);
 }
-
-body.dynamic-views-subtitle-color-purple .dynamic-views .card-subtitle {
-  color: var(--color-purple);
+body.dynamic-views-text-preview-color-green {
+  --dynamic-views-text-preview-color-value: var(--color-green);
 }
-
-body.dynamic-views-subtitle-color-pink .dynamic-views .card-subtitle {
-  color: var(--color-pink);
+body.dynamic-views-text-preview-color-cyan {
+  --dynamic-views-text-preview-color-value: var(--color-cyan);
 }
-
-body.dynamic-views-subtitle-color-custom .dynamic-views .card-subtitle {
-  color: var(--dynamic-views-subtitle-color-custom, var(--text-faint));
+body.dynamic-views-text-preview-color-blue {
+  --dynamic-views-text-preview-color-value: var(--color-blue);
 }
-
-/* Text preview color presets */
-body.dynamic-views-text-preview-color-faint .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--text-faint);
+body.dynamic-views-text-preview-color-purple {
+  --dynamic-views-text-preview-color-value: var(--color-purple);
 }
-
-body.dynamic-views-text-preview-color-muted .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--text-muted);
+body.dynamic-views-text-preview-color-pink {
+  --dynamic-views-text-preview-color-value: var(--color-pink);
 }
-
-body.dynamic-views-text-preview-color-normal .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--text-normal);
-}
-
-body.dynamic-views-text-preview-color-accent .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--text-accent);
-}
-
-body.dynamic-views-text-preview-color-red .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--color-red);
-}
-
-body.dynamic-views-text-preview-color-orange .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--color-orange);
-}
-
-body.dynamic-views-text-preview-color-yellow .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--color-yellow);
-}
-
-body.dynamic-views-text-preview-color-green .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--color-green);
-}
-
-body.dynamic-views-text-preview-color-cyan .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--color-cyan);
-}
-
-body.dynamic-views-text-preview-color-blue .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--color-blue);
-}
-
-body.dynamic-views-text-preview-color-purple .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--color-purple);
-}
-
-body.dynamic-views-text-preview-color-pink .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(--color-pink);
-}
-
-body.dynamic-views-text-preview-color-custom .dynamic-views .card-text-preview {
-  --dynamic-views-text-preview-color: var(
+body.dynamic-views-text-preview-color-custom {
+  --dynamic-views-text-preview-color-value: var(
     --dynamic-views-text-preview-color-custom,
     var(--text-muted)
   );
 }
 
-/* Title color presets */
-body.dynamic-views-title-color-faint .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--text-faint);
+/* Text preview color application */
+.dynamic-views .card-text-preview {
+  --dynamic-views-text-preview-color: var(
+    --dynamic-views-text-preview-color-value,
+    var(--text-muted)
+  );
 }
 
-body.dynamic-views-title-color-muted .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--text-muted);
+/* Title color presets - value definitions (normal is default) */
+body.dynamic-views-title-color-faint {
+  --dynamic-views-title-color-value: var(--text-faint);
 }
-
-body.dynamic-views-title-color-accent .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--text-accent);
+body.dynamic-views-title-color-muted {
+  --dynamic-views-title-color-value: var(--text-muted);
 }
-
-body.dynamic-views-title-color-red .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--color-red);
+body.dynamic-views-title-color-accent {
+  --dynamic-views-title-color-value: var(--text-accent);
 }
-
-body.dynamic-views-title-color-orange .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--color-orange);
+body.dynamic-views-title-color-red {
+  --dynamic-views-title-color-value: var(--color-red);
 }
-
-body.dynamic-views-title-color-yellow .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--color-yellow);
+body.dynamic-views-title-color-orange {
+  --dynamic-views-title-color-value: var(--color-orange);
 }
-
-body.dynamic-views-title-color-green .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--color-green);
+body.dynamic-views-title-color-yellow {
+  --dynamic-views-title-color-value: var(--color-yellow);
 }
-
-body.dynamic-views-title-color-cyan .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--color-cyan);
+body.dynamic-views-title-color-green {
+  --dynamic-views-title-color-value: var(--color-green);
 }
-
-body.dynamic-views-title-color-blue .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--color-blue);
+body.dynamic-views-title-color-cyan {
+  --dynamic-views-title-color-value: var(--color-cyan);
 }
-
-body.dynamic-views-title-color-purple .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--color-purple);
+body.dynamic-views-title-color-blue {
+  --dynamic-views-title-color-value: var(--color-blue);
 }
-
-body.dynamic-views-title-color-pink .dynamic-views .card-title {
-  --dynamic-views-title-color: var(--color-pink);
+body.dynamic-views-title-color-purple {
+  --dynamic-views-title-color-value: var(--color-purple);
 }
-
-body.dynamic-views-title-color-custom .dynamic-views .card-title {
-  --dynamic-views-title-color: var(
+body.dynamic-views-title-color-pink {
+  --dynamic-views-title-color-value: var(--color-pink);
+}
+body.dynamic-views-title-color-custom {
+  --dynamic-views-title-color-value: var(
     --dynamic-views-title-color-custom,
+    var(--text-normal)
+  );
+}
+
+/* Title color application */
+.dynamic-views .card-title {
+  --dynamic-views-title-color: var(
+    --dynamic-views-title-color-value,
     var(--text-normal)
   );
 }
@@ -6471,128 +6312,62 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     :is(a, .card-title-link):hover {
     color: var(--text-accent-hover);
   }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-red
+  /* Title color variants (red-pink, custom): 15% white mix using --dynamic-views-title-color-value */
+  body.dynamic-views-open-on-title:is(
+      .dynamic-views-title-color-red,
+      .dynamic-views-title-color-orange,
+      .dynamic-views-title-color-yellow,
+      .dynamic-views-title-color-green,
+      .dynamic-views-title-color-cyan,
+      .dynamic-views-title-color-blue,
+      .dynamic-views-title-color-purple,
+      .dynamic-views-title-color-pink,
+      .dynamic-views-title-color-custom
+    )
     .dynamic-views
     .card-title
     :is(a, .card-title-link):hover {
-    color: color-mix(in hsl, var(--color-red), white 15%);
-  }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-orange
-    .dynamic-views
-    .card-title
-    :is(a, .card-title-link):hover {
-    color: color-mix(in hsl, var(--color-orange), white 15%);
-  }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-yellow
-    .dynamic-views
-    .card-title
-    :is(a, .card-title-link):hover {
-    color: color-mix(in hsl, var(--color-yellow), white 15%);
-  }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-green
-    .dynamic-views
-    .card-title
-    :is(a, .card-title-link):hover {
-    color: color-mix(in hsl, var(--color-green), white 15%);
-  }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-cyan
-    .dynamic-views
-    .card-title
-    :is(a, .card-title-link):hover {
-    color: color-mix(in hsl, var(--color-cyan), white 15%);
-  }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-blue
-    .dynamic-views
-    .card-title
-    :is(a, .card-title-link):hover {
-    color: color-mix(in hsl, var(--color-blue), white 15%);
-  }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-purple
-    .dynamic-views
-    .card-title
-    :is(a, .card-title-link):hover {
-    color: color-mix(in hsl, var(--color-purple), white 15%);
-  }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-pink
-    .dynamic-views
-    .card-title
-    :is(a, .card-title-link):hover {
-    color: color-mix(in hsl, var(--color-pink), white 15%);
-  }
-  body.dynamic-views-open-on-title.dynamic-views-title-color-custom
-    .dynamic-views
-    .card-title
-    :is(a, .card-title-link):hover {
-    color: color-mix(
-      in hsl,
-      var(--dynamic-views-title-color-custom, var(--text-normal)),
-      white 15%
-    );
+    color: color-mix(in hsl, var(--dynamic-views-title-color-value), white 15%);
   }
 
   /* Subtitle hover colors (when clickable) */
   body.dynamic-views-subtitle-color-faint
     .dynamic-views
     .card-subtitle
-    a:hover {
+    :is(a, .folder-segment, .filename-segment):hover {
     color: var(--text-muted);
   }
   body.dynamic-views-subtitle-color-muted
     .dynamic-views
     .card-subtitle
-    a:hover {
+    :is(a, .folder-segment, .filename-segment):hover {
     color: var(--text-normal);
   }
   /* Normal - no hover color change */
   body.dynamic-views-subtitle-color-accent
     .dynamic-views
     .card-subtitle
-    a:hover {
+    :is(a, .folder-segment, .filename-segment):hover {
     color: var(--text-accent-hover);
   }
-  body.dynamic-views-subtitle-color-red .dynamic-views .card-subtitle a:hover {
-    color: color-mix(in hsl, var(--color-red), white 15%);
-  }
-  body.dynamic-views-subtitle-color-orange
+  /* Subtitle color variants: 15% white mix using --dynamic-views-subtitle-color-value */
+  body:is(
+      .dynamic-views-subtitle-color-red,
+      .dynamic-views-subtitle-color-orange,
+      .dynamic-views-subtitle-color-yellow,
+      .dynamic-views-subtitle-color-green,
+      .dynamic-views-subtitle-color-cyan,
+      .dynamic-views-subtitle-color-blue,
+      .dynamic-views-subtitle-color-purple,
+      .dynamic-views-subtitle-color-pink,
+      .dynamic-views-subtitle-color-custom
+    )
     .dynamic-views
     .card-subtitle
-    a:hover {
-    color: color-mix(in hsl, var(--color-orange), white 15%);
-  }
-  body.dynamic-views-subtitle-color-yellow
-    .dynamic-views
-    .card-subtitle
-    a:hover {
-    color: color-mix(in hsl, var(--color-yellow), white 15%);
-  }
-  body.dynamic-views-subtitle-color-green
-    .dynamic-views
-    .card-subtitle
-    a:hover {
-    color: color-mix(in hsl, var(--color-green), white 15%);
-  }
-  body.dynamic-views-subtitle-color-cyan .dynamic-views .card-subtitle a:hover {
-    color: color-mix(in hsl, var(--color-cyan), white 15%);
-  }
-  body.dynamic-views-subtitle-color-blue .dynamic-views .card-subtitle a:hover {
-    color: color-mix(in hsl, var(--color-blue), white 15%);
-  }
-  body.dynamic-views-subtitle-color-purple
-    .dynamic-views
-    .card-subtitle
-    a:hover {
-    color: color-mix(in hsl, var(--color-purple), white 15%);
-  }
-  body.dynamic-views-subtitle-color-pink .dynamic-views .card-subtitle a:hover {
-    color: color-mix(in hsl, var(--color-pink), white 15%);
-  }
-  body.dynamic-views-subtitle-color-custom
-    .dynamic-views
-    .card-subtitle
-    a:hover {
+    :is(a, .folder-segment, .filename-segment):hover {
     color: color-mix(
       in hsl,
-      var(--dynamic-views-subtitle-color-custom, var(--text-faint)),
+      var(--dynamic-views-subtitle-color-value),
       white 15%
     );
   }
@@ -6604,7 +6379,6 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
@@ -6616,7 +6390,6 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
@@ -6629,115 +6402,43 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
     color: var(--text-accent-hover);
   }
-  body.dynamic-views-property-color-with-labels-red
+  /* Property with labels color variants: 15% white mix using --dynamic-views-prop-with-label-color-value */
+  body:is(
+      .dynamic-views-property-color-with-labels-red,
+      .dynamic-views-property-color-with-labels-orange,
+      .dynamic-views-property-color-with-labels-yellow,
+      .dynamic-views-property-color-with-labels-green,
+      .dynamic-views-property-color-with-labels-cyan,
+      .dynamic-views-property-color-with-labels-blue,
+      .dynamic-views-property-color-with-labels-purple,
+      .dynamic-views-property-color-with-labels-pink
+    )
     .dynamic-views
     .property-field:has(:is(.property-label, .property-label-inline))
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
-    color: color-mix(in hsl, var(--color-red), white 15%);
+    color: color-mix(
+      in hsl,
+      var(--dynamic-views-prop-with-label-color-value),
+      white 15%
+    );
   }
-  body.dynamic-views-property-color-with-labels-orange
-    .dynamic-views
-    .property-field:has(:is(.property-label, .property-label-inline))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-orange), white 15%);
-  }
-  body.dynamic-views-property-color-with-labels-yellow
-    .dynamic-views
-    .property-field:has(:is(.property-label, .property-label-inline))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-yellow), white 15%);
-  }
-  body.dynamic-views-property-color-with-labels-green
-    .dynamic-views
-    .property-field:has(:is(.property-label, .property-label-inline))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-green), white 15%);
-  }
-  body.dynamic-views-property-color-with-labels-cyan
-    .dynamic-views
-    .property-field:has(:is(.property-label, .property-label-inline))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-cyan), white 15%);
-  }
-  body.dynamic-views-property-color-with-labels-blue
-    .dynamic-views
-    .property-field:has(:is(.property-label, .property-label-inline))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-blue), white 15%);
-  }
-  body.dynamic-views-property-color-with-labels-purple
-    .dynamic-views
-    .property-field:has(:is(.property-label, .property-label-inline))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-purple), white 15%);
-  }
-  body.dynamic-views-property-color-with-labels-pink
-    .dynamic-views
-    .property-field:has(:is(.property-label, .property-label-inline))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-pink), white 15%);
-  }
+  /* Custom uses pre-computed hover variable */
   body.dynamic-views-property-color-with-labels-custom
     .dynamic-views
     .property-field:has(:is(.property-label, .property-label-inline))
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
@@ -6754,7 +6455,6 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
@@ -6766,7 +6466,6 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
@@ -6779,115 +6478,43 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
     color: var(--text-accent-hover);
   }
-  body.dynamic-views-property-color-without-labels-red
+  /* Property without labels color variants: 15% white mix using --dynamic-views-prop-no-label-color-value */
+  body:is(
+      .dynamic-views-property-color-without-labels-red,
+      .dynamic-views-property-color-without-labels-orange,
+      .dynamic-views-property-color-without-labels-yellow,
+      .dynamic-views-property-color-without-labels-green,
+      .dynamic-views-property-color-without-labels-cyan,
+      .dynamic-views-property-color-without-labels-blue,
+      .dynamic-views-property-color-without-labels-purple,
+      .dynamic-views-property-color-without-labels-pink
+    )
     .dynamic-views
     .property-field:not(:has(:is(.property-label, .property-label-inline)))
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
-    color: color-mix(in hsl, var(--color-red), white 15%);
+    color: color-mix(
+      in hsl,
+      var(--dynamic-views-prop-no-label-color-value),
+      white 15%
+    );
   }
-  body.dynamic-views-property-color-without-labels-orange
-    .dynamic-views
-    .property-field:not(:has(:is(.property-label, .property-label-inline)))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-orange), white 15%);
-  }
-  body.dynamic-views-property-color-without-labels-yellow
-    .dynamic-views
-    .property-field:not(:has(:is(.property-label, .property-label-inline)))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-yellow), white 15%);
-  }
-  body.dynamic-views-property-color-without-labels-green
-    .dynamic-views
-    .property-field:not(:has(:is(.property-label, .property-label-inline)))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-green), white 15%);
-  }
-  body.dynamic-views-property-color-without-labels-cyan
-    .dynamic-views
-    .property-field:not(:has(:is(.property-label, .property-label-inline)))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-cyan), white 15%);
-  }
-  body.dynamic-views-property-color-without-labels-blue
-    .dynamic-views
-    .property-field:not(:has(:is(.property-label, .property-label-inline)))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-blue), white 15%);
-  }
-  body.dynamic-views-property-color-without-labels-purple
-    .dynamic-views
-    .property-field:not(:has(:is(.property-label, .property-label-inline)))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-purple), white 15%);
-  }
-  body.dynamic-views-property-color-without-labels-pink
-    .dynamic-views
-    .property-field:not(:has(:is(.property-label, .property-label-inline)))
-    .property-content
-    :is(
-      a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
-      .folder-segment,
-      .filename-segment
-    ):hover {
-    color: color-mix(in hsl, var(--color-pink), white 15%);
-  }
+  /* Custom uses pre-computed hover variable */
   body.dynamic-views-property-color-without-labels-custom
     .dynamic-views
     .property-field:not(:has(:is(.property-label, .property-label-inline)))
     .property-content
     :is(
       a:not(.tag):not(.internal-link):not(.external-link),
-      .file-path-segment,
       .folder-segment,
       .filename-segment
     ):hover {
@@ -6900,7 +6527,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 
 /* Even fields (right side) - label after content */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -6916,7 +6543,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 
 /* Even fields (right side) - content before label */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -6932,7 +6559,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 
 /* Odd fields (left side) - left-aligned labels */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-1,
     .property-field-3,
@@ -6948,7 +6575,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 
 /* Even fields (right side) - right-aligned labels */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -6984,7 +6611,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 
 /* Even fields (right side) - content should fill wrapper width for proper alignment */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -7026,7 +6653,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 /* Alignment via justify-content on property-content wrapper */
 /* Odd fields (left side) */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-1,
     .property-field-3,
@@ -7042,7 +6669,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 
 /* Even fields (right side) - align content right when not scrollable */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -7058,7 +6685,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 
 /* Even fields (right side) - align content left when scrollable */
 .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -7075,7 +6702,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 /* Left alignment for right-side properties */
 body.dynamic-views-paired-prop-align-left
   .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -7091,7 +6718,7 @@ body.dynamic-views-paired-prop-align-left
 
 body.dynamic-views-paired-prop-align-left
   .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -7108,7 +6735,7 @@ body.dynamic-views-paired-prop-align-left
 
 body.dynamic-views-paired-prop-align-left
   .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -7125,7 +6752,7 @@ body.dynamic-views-paired-prop-align-left
 /* Reset inline property label order to place label before content */
 body.dynamic-views-paired-prop-align-left
   .dynamic-views
-  .property-row-sidebyside
+  .property-set-sidebyside
   :is(
     .property-field-2,
     .property-field-4,
@@ -7140,12 +6767,12 @@ body.dynamic-views-paired-prop-align-left
 }
 
 /* Stacked layout */
-.dynamic-views .property-row:not(.property-row-sidebyside) .property-content {
+.dynamic-views .property-set:not(.property-set-sidebyside) .property-content {
   justify-content: flex-start;
 }
 
 /* Hide scrollbar for side-by-side fields */
-.dynamic-views .property-row-sidebyside .property-field::-webkit-scrollbar {
+.dynamic-views .property-set-sidebyside .property-field::-webkit-scrollbar {
   display: none;
 }
 
@@ -7483,11 +7110,11 @@ body.dynamic-views-no-fade-truncated-text
     width: 100%;
   }
 
-  .results-count-wrapper-compact {
+  .dynamic-views .results-count-wrapper-compact {
     display: flex;
   }
 
-  .create-note-button-compact {
+  .dynamic-views .create-note-button-compact {
     display: flex;
   }
 
