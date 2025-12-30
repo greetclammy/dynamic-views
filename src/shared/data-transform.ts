@@ -762,17 +762,31 @@ export function resolveBasesProperty(
     );
     if (fallback !== null) return fallback;
 
+    // Check if this is an empty checkbox property - show indeterminate state
+    const fmProp = propertyName.startsWith("note.")
+      ? propertyName.slice(5)
+      : propertyName;
+    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- getAllPropertyInfos not in official types */
+    const propInfo = (app.metadataCache as any).getAllPropertyInfos?.()?.[
+      fmProp
+    ] as { widget?: string } | undefined;
+    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+    if (propInfo?.widget === "checkbox") {
+      return JSON.stringify({ type: "checkbox", indeterminate: true });
+    }
+
     // Return empty string for empty property (property exists but empty)
     // This distinguishes from null (missing property)
     return "";
   }
 
+  // Handle checkbox/boolean properties - return special marker for renderer
+  if (typeof data === "boolean") {
+    return JSON.stringify({ type: "checkbox", checked: data });
+  }
+
   // Convert to string
-  if (
-    typeof data === "string" ||
-    typeof data === "number" ||
-    typeof data === "boolean"
-  ) {
+  if (typeof data === "string" || typeof data === "number") {
     const result = String(data);
     // Treat whitespace-only strings as empty
     if (typeof data === "string" && result.trim() === "") {
@@ -943,6 +957,11 @@ export function resolveDatacoreProperty(
     return formatTimestamp(timestampData.timestamp, timestampData.isDateOnly);
   }
 
+  // Handle checkbox/boolean properties - return special marker for renderer
+  if (typeof rawValue === "boolean") {
+    return JSON.stringify({ type: "checkbox", checked: rawValue });
+  }
+
   // Handle missing property (null/undefined)
   if (rawValue === null || rawValue === undefined) {
     // Check if this is a custom timestamp property
@@ -958,6 +977,17 @@ export function resolveDatacoreProperty(
       const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
       return formatTimestamp(timestamp);
     }
+
+    // Check if this is an empty checkbox property - show indeterminate state
+    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- getAllPropertyInfos not in official types */
+    const propInfo = (app.metadataCache as any).getAllPropertyInfos?.()?.[
+      propertyName
+    ] as { widget?: string } | undefined;
+    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+    if (propInfo?.widget === "checkbox") {
+      return JSON.stringify({ type: "checkbox", indeterminate: true });
+    }
+
     // Return null for missing property
     return null;
   }

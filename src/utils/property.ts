@@ -154,6 +154,16 @@ export function getFirstBasesPropertyValue(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- Bases getValue requires any for property names
     let value = entry.getValue(prop as any);
 
+    // Check for date/datetime values first - they have { icon, date, time } structure
+    if (
+      value &&
+      typeof value === "object" &&
+      "date" in value &&
+      "time" in value
+    ) {
+      return value;
+    }
+
     // Check for empty property BEFORE formula fallback
     // Bases returns {icon} for both missing and empty - use metadata cache to distinguish
     // Empty properties return {data: null}, missing properties return null

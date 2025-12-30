@@ -594,7 +594,7 @@ settings:
     -
         id: dynamic-views-full-row-property-alignment
         title: Full-row property alignment
-        description: How to align values when properties aren't shown side-by-side
+        description: How to align values with inline property labels when not shown side-by-side
         type: class-select
         allowEmpty: false
         default: dynamic-views-full-row-align-left
@@ -1141,11 +1141,11 @@ settings:
         level: 2
         collapsed: true
     -
-        id: dynamic-views-datetime-format
-        title: Datetime format
-        description: Moment.js format for full datetime display
+        id: dynamic-views-date-format
+        title: Date format
+        description: Moment.js format for date-only display (older timestamps)
         type: variable-text
-        default: YYYY-MM-DD HH:mm
+        default: YYYY-MM-DD
     -
         id: dynamic-views-time-format
         title: Time format
@@ -1153,11 +1153,11 @@ settings:
         type: variable-text
         default: HH:mm
     -
-        id: dynamic-views-date-format
-        title: Date format
-        description: Moment.js format for date-only display (older timestamps)
+        id: dynamic-views-datetime-format
+        title: Datetime format
+        description: Moment.js format for full datetime display
         type: variable-text
-        default: YYYY-MM-DD
+        default: YYYY-MM-DD HH:mm
     -
         id: dynamic-views-timestamp-recent-full
         title: Show full recent timestamps
@@ -5287,7 +5287,7 @@ body:not(
 
 /* Dual stacked images for slideshow */
 .dynamic-views .slideshow-img {
-  position: absolute !important; /* Override contain mode's position:relative */
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
@@ -5295,11 +5295,12 @@ body:not(
   object-fit: cover;
 }
 
-.dynamic-views .slideshow-img-current {
-  z-index: 2 !important; /* Override contain mode's z-index:1 */
+/* Higher specificity to override .card.image-format-cover .card-cover img z-index */
+.dynamic-views .card.image-format-cover .card-cover .slideshow-img-current {
+  z-index: 2;
 }
 
-.dynamic-views .slideshow-img-next {
+.dynamic-views .card.image-format-cover .card-cover .slideshow-img-next {
   z-index: 1;
 }
 
@@ -5399,10 +5400,12 @@ body:not(
   right: var(--size-2-2);
 }
 
-/* Show arrows on hover */
-.dynamic-views .card-cover-slideshow:hover .slideshow-nav-left,
-.dynamic-views .card-cover-slideshow:hover .slideshow-nav-right {
-  opacity: 1;
+/* Show arrows on hover (desktop only - mobile uses swipe gestures) */
+@media (hover: hover) {
+  .dynamic-views .card-cover-slideshow:hover .slideshow-nav-left,
+  .dynamic-views .card-cover-slideshow:hover .slideshow-nav-right {
+    opacity: 1;
+  }
 }
 
 /* Arrow icons */
@@ -6892,6 +6895,12 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 .dynamic-views .property-content > span.empty-value-marker {
   color: inherit;
   opacity: 0.5;
+}
+
+/* Checkbox property - remove extra padding */
+.dynamic-views .property-content > .metadata-input-checkbox {
+  margin: 0;
+  padding: 0;
 }
 
 /* Even fields (right side) - content should fill wrapper width for proper alignment */

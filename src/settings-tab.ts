@@ -399,9 +399,6 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
           ),
       );
 
-    // Default settings for new views section
-    new SettingGroup(containerEl).setHeading("Default settings for new views");
-
     // Configuration section
     new SettingGroup(containerEl)
       .setHeading("Configuration")

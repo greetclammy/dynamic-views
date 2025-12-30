@@ -782,9 +782,11 @@ function openImageViewer(
     }
   } catch (error) {
     console.error("Failed to setup image viewer", error);
+    resizeObserver?.disconnect();
     modalObserver.disconnect();
     cloneEl.remove();
     viewerClones.delete(embedEl);
+    viewerCleanupFns.delete(cloneEl); // Cleanup any partial setup
     return;
   }
 
@@ -911,9 +913,7 @@ function openImageViewer(
   document.addEventListener("keydown", onCopy);
   cloneEl.addEventListener("click", onOverlayClick);
 
-  // Cleanup always removes all listeners (removeEventListener is no-op if never added)
-  // Call existing cleanup first to prevent leak if map entry is overwritten
-  viewerListenerCleanups.get(cloneEl)?.();
+  // Cleanup removes all listeners (removeEventListener is no-op if never added)
   viewerListenerCleanups.set(cloneEl, () => {
     document.removeEventListener("keydown", onEscape);
     document.removeEventListener("keydown", onCopy);

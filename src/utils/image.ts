@@ -29,24 +29,34 @@ export function isExternalUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
+// Generate regex from VALID_IMAGE_EXTENSIONS to ensure they stay in sync
+// Combines jpeg/jpg as jpe?g for efficiency
+const IMAGE_EXTENSION_REGEX = new RegExp(
+  `\\.(${VALID_IMAGE_EXTENSIONS.filter((e) => e !== "jpeg")
+    .join("|")
+    .replace("jpg", "jpe?g")})$`,
+  "i",
+);
+
 /**
  * Check if a path has a valid image file extension
  * @param path - The file path or URL to check
  * @returns true if path ends with a valid image extension
  */
 function hasValidImageExtension(path: string): boolean {
-  return /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(path);
+  return IMAGE_EXTENSION_REGEX.test(path);
 }
 
 /**
  * Strip wikilink syntax from image path
- * Handles: [[path]], ![[path]], [[path|caption]]
+ * Handles: [[path]], ![[path]], [[path|caption]], [[path#heading]], [[path#^block]]
  * @param path - Path that may contain wikilink syntax
- * @returns Clean path without wikilink markers, or empty string if path is null/undefined
+ * @returns Clean path without wikilink markers, fragments, or captions; empty string if null/undefined
  */
 export function stripWikilinkSyntax(path: string | null | undefined): string {
   if (!path) return "";
-  const wikilinkMatch = path.match(/^!?\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
+  // Capture path before any | (caption) or # (fragment/heading/block)
+  const wikilinkMatch = path.match(/^!?\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]$/);
   return wikilinkMatch ? wikilinkMatch[1].trim() : path;
 }
 
@@ -67,7 +77,8 @@ export function processImagePaths(imagePaths: string[]): {
     // Strip wikilink syntax
     const cleanPath = stripWikilinkSyntax(imgPath);
 
-    if (cleanPath.length === 0) continue;
+    // Skip empty or whitespace-only paths
+    if (cleanPath.trim().length === 0) continue;
 
     if (isExternalUrl(cleanPath)) {
       // Skip YouTube video URLs (not images) - thumbnails extracted from embeds only
@@ -78,7 +89,8 @@ export function processImagePaths(imagePaths: string[]): {
       // Browser handles load/error at render time for faster initial display
       externalUrls.push(cleanPath);
     } else {
-      // Internal path - validate extension
+      // Internal path - validate extension upfront for explicit paths
+      // Extension-less wikilinks like ![[photo]] handled at resolution time
       if (hasValidImageExtension(cleanPath)) {
         internalPaths.push(cleanPath);
       }
@@ -139,13 +151,20 @@ export function getYouTubeVideoId(url: string): string | null {
     const host = parsed.hostname.replace(/^(www\.|m\.)/, "");
 
     if (host === "youtu.be") {
-      return parsed.pathname.slice(1); // /VIDEO_ID
+      const id = parsed.pathname.slice(1); // /VIDEO_ID
+      return id || null; // Return null for empty ID (e.g., youtu.be/)
     }
     if (host === "youtube.com") {
       // /watch?v=ID, /embed/ID, /shorts/ID, /v/ID
       if (parsed.searchParams.has("v")) return parsed.searchParams.get("v");
       const segments = parsed.pathname.split("/");
-      if (["embed", "shorts", "v"].includes(segments[1])) return segments[2];
+      // Check segment exists (length check handles edge case of ID "0")
+      if (
+        ["embed", "shorts", "v"].includes(segments[1]) &&
+        segments.length > 2
+      ) {
+        return segments[2] || null; // Return null if empty segment
+      }
     }
   } catch {
     /* invalid URL */
@@ -166,11 +185,19 @@ const MIN_THUMBNAIL_WIDTH = 320;
 function validateYouTubeThumbnail(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => {
-      resolve(img.naturalWidth >= MIN_THUMBNAIL_WIDTH);
+    let resolved = false;
+    const cleanup = (result: boolean) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeoutId);
+      img.onload = null;
+      img.onerror = null;
+      img.src = "";
+      resolve(result);
     };
-    img.onerror = () => resolve(false);
-    setTimeout(() => resolve(false), 5000);
+    img.onload = () => cleanup(img.naturalWidth >= MIN_THUMBNAIL_WIDTH);
+    img.onerror = () => cleanup(false);
+    const timeoutId = setTimeout(() => cleanup(false), 5000);
     img.src = url;
   });
 }
@@ -354,6 +381,10 @@ function findIndentedCodeBlocks(
   return ranges;
 }
 
+// Match inline code: `...` (backticks with content, not spanning newlines)
+// Module-level to avoid recreation on each call
+const INLINE_CODE_REGEX = /`[^`\n]+`/g;
+
 /**
  * Find all inline code ranges (single backticks).
  * Excludes ranges inside fenced code blocks.
@@ -363,8 +394,8 @@ function findInlineCodeRanges(
   fencedBlocks: FencedCodeBlock[],
 ): CodeRange[] {
   const ranges: CodeRange[] = [];
-  // Match inline code: `...` (backticks with content, not spanning newlines)
-  const INLINE_CODE_REGEX = /`[^`\n]+`/g;
+  // Reset regex lastIndex (global flag maintains state across calls)
+  INLINE_CODE_REGEX.lastIndex = 0;
 
   for (const match of content.matchAll(INLINE_CODE_REGEX)) {
     const start = match.index;
@@ -472,17 +503,40 @@ export async function extractImageEmbeds(
   const includeCardLink = options?.includeCardLink ?? true;
   const maxImages = getSlideshowMaxImages();
 
-  // Read and truncate content
+  // Read and truncate content at line boundary to avoid splitting wikilinks
   let content = await app.vault.cachedRead(file);
   if (content.length > MAX_IMAGE_EXTRACTION_CONTENT_SIZE) {
-    content = content.slice(0, MAX_IMAGE_EXTRACTION_CONTENT_SIZE);
+    // Find last newline before limit to avoid cutting mid-syntax
+    const lastNewline = content.lastIndexOf(
+      "\n",
+      MAX_IMAGE_EXTRACTION_CONTENT_SIZE,
+    );
+    content = content.slice(
+      0,
+      lastNewline !== -1 ? lastNewline : MAX_IMAGE_EXTRACTION_CONTENT_SIZE,
+    );
   }
 
-  // Strip frontmatter
-  if (content.startsWith("---\n")) {
-    const frontmatterEnd = content.indexOf("\n---\n", 4);
+  // Strip frontmatter (handle both Unix \n and Windows \r\n newlines)
+  if (content.startsWith("---\n") || content.startsWith("---\r\n")) {
+    // Match either newline style for frontmatter end
+    const frontmatterEndUnix = content.indexOf("\n---\n", 4);
+    const frontmatterEndWin = content.indexOf("\r\n---\r\n", 4);
+    // Use whichever is found first (or -1 if neither)
+    let frontmatterEnd = -1;
+    let skipLength = 0;
+    if (
+      frontmatterEndUnix !== -1 &&
+      (frontmatterEndWin === -1 || frontmatterEndUnix < frontmatterEndWin)
+    ) {
+      frontmatterEnd = frontmatterEndUnix;
+      skipLength = 5; // \n---\n
+    } else if (frontmatterEndWin !== -1) {
+      frontmatterEnd = frontmatterEndWin;
+      skipLength = 7; // \r\n---\r\n
+    }
     if (frontmatterEnd !== -1) {
-      content = content.slice(frontmatterEnd + 5);
+      content = content.slice(frontmatterEnd + skipLength);
     }
   }
 

@@ -76,6 +76,32 @@ export function getCachedAspectRatio(imgSrc: string): number | undefined {
 }
 
 /**
+ * Invalidate cache entries for a modified file (#17)
+ * Call when vault file is modified to prevent stale RGB/aspect ratio
+ * @param filePath - Vault-relative path of the modified file
+ */
+export function invalidateCacheForFile(filePath: string): void {
+  // Cache keys are app:// URLs with timestamps, e.g., app://local/<path>?123456
+  // Strip query params and decode to get the path for matching
+  for (const key of imageMetadataCache.keys()) {
+    try {
+      // Strip query params (timestamps) and decode URL
+      const urlPath = decodeURIComponent(key.split("?")[0]);
+      // Match if URL path ends with the vault-relative file path
+      if (
+        urlPath.endsWith("/" + filePath) ||
+        urlPath.endsWith("\\" + filePath) ||
+        urlPath === filePath
+      ) {
+        imageMetadataCache.delete(key);
+      }
+    } catch {
+      // Skip malformed URLs
+    }
+  }
+}
+
+/**
  * Apply ambient color styles to card and container (#6 - extracted shared function)
  */
 function applyAmbientStyles(
@@ -429,6 +455,24 @@ export function handleJsxImageRef(
       updateLayoutRef.current,
       isCoverImage,
       isBackdropImage,
+    );
+  } else if (!imgEl.complete) {
+    // #18: Fallback listener if image loads before JSX onLoad handler attaches
+    // Uses { once: true } to auto-cleanup; cover-ready guard prevents double-processing
+    imgEl.addEventListener(
+      "load",
+      () => {
+        if (cardEl.classList.contains("cover-ready")) return;
+        handleImageLoad(
+          imgEl,
+          imageEmbedEl,
+          cardEl,
+          updateLayoutRef.current,
+          isCoverImage,
+          isBackdropImage,
+        );
+      },
+      { once: true },
     );
   }
 }

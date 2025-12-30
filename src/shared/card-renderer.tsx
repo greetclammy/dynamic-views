@@ -627,18 +627,17 @@ function CoverSlideshow({
       ".slideshow-img-current",
     ) as HTMLImageElement;
     if (firstImg) {
-      const expectedFirstUrl = imageArray[0];
+      // Use exact URL for comparison (avoids fragile substring matching)
+      const expectedSrc = getCachedBlobUrl(imageArray[0]);
       firstImg.addEventListener(
         "error",
-        () => {
-          // Ignore errors from src being cleared (resolves to index.html)
-          if (
-            !firstImg.src ||
-            !firstImg.src.includes(expectedFirstUrl.split("?")[0].slice(-30))
-          ) {
+        (e) => {
+          // Ignore errors from src being cleared or changed (use event target for race safety)
+          const targetSrc = (e.target as HTMLImageElement).src;
+          if (!targetSrc || targetSrc !== expectedSrc) {
             return;
           }
-          markExternalUrlAsFailed(firstImg.src);
+          markExternalUrlAsFailed(targetSrc);
           firstImg.style.display = "none";
           navigate(1, false, true);
         },
@@ -851,6 +850,63 @@ function renderProperty(
                     ),
                   )}
                 </span>
+              </div>
+            </div>
+          </>
+        );
+      }
+    } catch {
+      // Fall through to regular text rendering if JSON parse fails
+    }
+  }
+
+  // Handle checkbox properties - render as native Obsidian checkbox
+  if (resolvedValue.startsWith('{"type":"checkbox"')) {
+    try {
+      const checkboxData = JSON.parse(resolvedValue) as {
+        type: string;
+        checked?: boolean;
+        indeterminate?: boolean;
+      };
+      if (checkboxData.type === "checkbox") {
+        const handleCheckboxClick = (e: Event): void => {
+          e.stopPropagation();
+          const input = e.target as HTMLInputElement;
+          // Clear indeterminate state on click
+          input.indeterminate = false;
+          input.dataset.indeterminate = "false";
+          const file = app.vault.getAbstractFileByPath(card.path);
+          if (!(file instanceof TFile)) return;
+          // Strip note. prefix to get frontmatter property name
+          const fmProp = propertyName.startsWith("note.")
+            ? propertyName.slice(5)
+            : propertyName;
+          void app.fileManager.processFrontMatter(file, (frontmatter) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- processFrontMatter callback receives any
+            frontmatter[fmProp] = input.checked;
+          });
+        };
+        const handleCheckboxRef = (el: HTMLInputElement | null): void => {
+          if (el && checkboxData.indeterminate) {
+            el.indeterminate = true;
+          }
+        };
+        return (
+          <>
+            {labelAbove}
+            {labelInline}
+            <div className="property-content-wrapper" tabIndex={-1}>
+              <div className="property-content">
+                <input
+                  className="metadata-input-checkbox"
+                  type="checkbox"
+                  checked={checkboxData.checked ?? false}
+                  data-indeterminate={
+                    checkboxData.indeterminate ? "true" : "false"
+                  }
+                  onClick={handleCheckboxClick}
+                  ref={handleCheckboxRef}
+                />
               </div>
             </div>
           </>
@@ -1670,6 +1726,75 @@ function Card({
           });
         });
 
+        // Setup side cover dimensions (for left/right cover position)
+        if (
+          format === "cover" &&
+          (position === "left" || position === "right")
+        ) {
+          requestAnimationFrame(() => {
+            // Get aspect ratio from settings
+            const aspectRatio =
+              typeof settings.imageAspectRatio === "string"
+                ? parseFloat(settings.imageAspectRatio)
+                : settings.imageAspectRatio || 1.0;
+            const wrapperRatio = aspectRatio / (aspectRatio + 1);
+
+            // Set wrapper ratio for potential CSS calc usage
+            cardEl.style.setProperty(
+              "--dynamic-views-wrapper-ratio",
+              wrapperRatio.toString(),
+            );
+
+            // Function to calculate and set wrapper dimensions
+            const updateWrapperDimensions = () => {
+              const cardWidth = cardEl.offsetWidth;
+              const targetWidth = Math.floor(wrapperRatio * cardWidth);
+              const paddingValue = targetWidth;
+
+              cardEl.style.setProperty(
+                "--dynamic-views-side-cover-width",
+                `${targetWidth}px`,
+              );
+              cardEl.style.setProperty(
+                "--dynamic-views-side-cover-content-padding",
+                `${paddingValue}px`,
+              );
+            };
+
+            // Initial calculation
+            updateWrapperDimensions();
+
+            // Cleanup existing observer for this card if any
+            cleanupCardObserver(card.path);
+
+            // Create ResizeObserver to update wrapper width when card resizes
+            const resizeObserver = new ResizeObserver((entries) => {
+              for (const entry of entries) {
+                const target = entry.target as HTMLElement;
+                const newCardWidth = target.offsetWidth;
+
+                if (newCardWidth === 0) continue;
+
+                const newTargetWidth = Math.floor(wrapperRatio * newCardWidth);
+                const newPaddingValue = newTargetWidth;
+
+                cardEl.style.setProperty(
+                  "--dynamic-views-side-cover-width",
+                  `${newTargetWidth}px`,
+                );
+                cardEl.style.setProperty(
+                  "--dynamic-views-side-cover-content-padding",
+                  `${newPaddingValue}px`,
+                );
+              }
+            });
+
+            // Store observer for cleanup and start observing
+            cardResizeObservers.set(card.path, resizeObserver);
+            resizeObserver.observe(cardEl);
+          });
+        }
+
         // Setup responsive behaviors (compact mode, thumbnail stacking)
         const existingResponsiveObserver = cardResponsiveObservers.get(
           card.path,
@@ -1965,87 +2090,6 @@ function Card({
           />
         </div>
       )}
-
-      {/* Set CSS custom properties for side cover dimensions */}
-      {format === "cover" &&
-        (position === "left" || position === "right") &&
-        (() => {
-          setTimeout(() => {
-            const cardEl = document.querySelector(
-              `[data-path="${card.path}"]`,
-            ) as HTMLElement;
-            if (!cardEl) return;
-
-            // Get aspect ratio from settings
-            const aspectRatio =
-              typeof settings.imageAspectRatio === "string"
-                ? parseFloat(settings.imageAspectRatio)
-                : settings.imageAspectRatio || 1.0;
-            const wrapperRatio = aspectRatio / (aspectRatio + 1);
-
-            // Set wrapper ratio for potential CSS calc usage
-            cardEl.style.setProperty(
-              "--dynamic-views-wrapper-ratio",
-              wrapperRatio.toString(),
-            );
-
-            // Function to calculate and set wrapper dimensions
-            const updateWrapperDimensions = () => {
-              const cardWidth = cardEl.offsetWidth; // Border box width (includes padding)
-              const targetWidth = Math.floor(wrapperRatio * cardWidth);
-              // Cover is positioned at padding edge (right: 0), so card padding provides the gap
-              const paddingValue = targetWidth;
-
-              // Set CSS custom properties on the card element
-              cardEl.style.setProperty(
-                "--dynamic-views-side-cover-width",
-                `${targetWidth}px`,
-              );
-              cardEl.style.setProperty(
-                "--dynamic-views-side-cover-content-padding",
-                `${paddingValue}px`,
-              );
-
-              return { cardWidth, targetWidth, paddingValue };
-            };
-
-            // Initial calculation
-            updateWrapperDimensions();
-
-            // Cleanup existing observer for this card if any
-            cleanupCardObserver(card.path);
-
-            // Create ResizeObserver to update wrapper width when card resizes
-            const resizeObserver = new ResizeObserver((entries) => {
-              for (const entry of entries) {
-                const target = entry.target as HTMLElement;
-                const newCardWidth = target.offsetWidth;
-
-                // Skip if card not yet rendered (width = 0)
-                if (newCardWidth === 0) {
-                  continue;
-                }
-
-                const newTargetWidth = Math.floor(wrapperRatio * newCardWidth);
-                const newPaddingValue = newTargetWidth;
-
-                cardEl.style.setProperty(
-                  "--dynamic-views-side-cover-width",
-                  `${newTargetWidth}px`,
-                );
-                cardEl.style.setProperty(
-                  "--dynamic-views-side-cover-content-padding",
-                  `${newPaddingValue}px`,
-                );
-              }
-            });
-
-            // Store observer for cleanup and start observing
-            cardResizeObservers.set(card.path, resizeObserver);
-            resizeObserver.observe(cardEl);
-          }, 100);
-          return null;
-        })()}
 
       {/* Content container - only render if it will have children */}
       {/* Always create for thumbnail format to allow placeholder rendering */}

@@ -1032,6 +1032,7 @@ export class SharedCardRenderer {
 
           // Create ResizeObserver to update wrapper width when card resizes
           const resizeObserver = new ResizeObserver((entries) => {
+            if (signal.aborted) return; // Guard against race with cleanup
             for (const entry of entries) {
               const target = entry.target as HTMLElement;
               const newCardWidth = target.offsetWidth;
@@ -1058,6 +1059,11 @@ export class SharedCardRenderer {
           // Observe the card element for size changes
           resizeObserver.observe(cardEl);
           this.propertyObservers.push(resizeObserver);
+
+          // Disconnect on abort to prevent accumulation during rapid re-renders
+          signal.addEventListener("abort", () => resizeObserver.disconnect(), {
+            once: true,
+          });
         });
       }
     }
@@ -1071,6 +1077,8 @@ export class SharedCardRenderer {
       img.addEventListener(
         "load",
         () => {
+          // Guard against race with cleanup
+          if (signal.aborted) return;
           // Extract luminance for adaptive text when tint is disabled
           if (isBackdropTintDisabled() && isBackdropAdaptiveTextEnabled()) {
             if (!isExternalUrl(img.src)) {
@@ -1094,6 +1102,8 @@ export class SharedCardRenderer {
       if (imageUrls.length > 1) {
         let currentUrlIndex = 0;
         const tryNextBackdropImage = () => {
+          // Guard against race with cleanup (signal aborted during execution)
+          if (signal.aborted) return;
           // Mark current URL as failed
           if (img.src) {
             markExternalUrlAsFailed(img.src);
@@ -1101,6 +1111,7 @@ export class SharedCardRenderer {
           currentUrlIndex++;
           // Try next valid URL
           while (currentUrlIndex < imageUrls.length) {
+            if (signal.aborted) return; // Check in loop for long image lists
             if (!isFailedExternalUrl(imageUrls[currentUrlIndex])) {
               img.style.display = "";
               const effectiveUrl = getCachedBlobUrl(imageUrls[currentUrlIndex]);
@@ -1119,6 +1130,7 @@ export class SharedCardRenderer {
         img.addEventListener(
           "error",
           () => {
+            if (signal.aborted) return;
             markExternalUrlAsFailed(img.src);
             img.style.display = "none";
             cardEl.removeAttribute("data-backdrop-theme");
@@ -1192,6 +1204,7 @@ export class SharedCardRenderer {
     let isStacked = thumbnailEl?.parentElement === cardEl;
 
     const cardObserver = new ResizeObserver((entries) => {
+      if (signal.aborted) return; // Guard against race with cleanup
       for (const entry of entries) {
         const cardWidth = entry.contentRect.width;
 
@@ -1227,6 +1240,11 @@ export class SharedCardRenderer {
     });
     cardObserver.observe(cardEl);
     this.propertyObservers.push(cardObserver);
+
+    // Disconnect on abort to prevent accumulation during rapid re-renders
+    signal.addEventListener("abort", () => cardObserver.disconnect(), {
+      once: true,
+    });
 
     return cardEl;
   }
@@ -1453,12 +1471,15 @@ export class SharedCardRenderer {
     if (imageUrls.length > 1) {
       let currentUrlIndex = 0;
       const tryNextImage = () => {
+        // Guard against race with cleanup (signal aborted during execution)
+        if (signal?.aborted) return;
         // Mark current URL as failed
         if (imgEl.src) {
           markExternalUrlAsFailed(imgEl.src);
         }
         currentUrlIndex++;
         while (currentUrlIndex < imageUrls.length) {
+          if (signal?.aborted) return; // Check in loop for long image lists
           const nextUrl = imageUrls[currentUrlIndex];
           if (!isFailedExternalUrl(nextUrl)) {
             imgEl.style.display = ""; // Unhide
@@ -1510,6 +1531,14 @@ export class SharedCardRenderer {
 
       // Cache bounding rect on mouseenter to avoid layout thrashing on every mousemove
       let cachedRect: DOMRect | null = null;
+      // Clear cached rect on abort to prevent memory leak if element removed while hovered
+      signal?.addEventListener(
+        "abort",
+        () => {
+          cachedRect = null;
+        },
+        { once: true },
+      );
       imageEl.addEventListener(
         "mouseenter",
         () => {
@@ -1521,6 +1550,7 @@ export class SharedCardRenderer {
       imageEl.addEventListener(
         "mousemove",
         (e) => {
+          if (signal?.aborted) return; // Guard against race with cleanup
           // Use cached rect, or cache on first mousemove if mouseenter didn't fire
           const rect = (cachedRect ??= imageEl.getBoundingClientRect());
           const x = e.clientX - rect.left;
@@ -1951,6 +1981,57 @@ export class SharedCardRenderer {
               span.createSpan({ cls: "list-separator", text: separator });
             }
           });
+          return;
+        }
+      } catch {
+        // Fall through to regular text rendering if JSON parse fails
+      }
+    }
+
+    // Handle checkbox properties - render as native Obsidian checkbox
+    if (stringValue.startsWith('{"type":"checkbox"')) {
+      try {
+        const checkboxData = JSON.parse(stringValue) as {
+          type: string;
+          checked?: boolean;
+          indeterminate?: boolean;
+        };
+        if (checkboxData.type === "checkbox") {
+          const checkboxEl = propertyContent.createEl("input", {
+            cls: "metadata-input-checkbox",
+            type: "checkbox",
+          });
+          if (checkboxData.indeterminate) {
+            checkboxEl.indeterminate = true;
+            checkboxEl.dataset.indeterminate = "true";
+          } else {
+            checkboxEl.checked = checkboxData.checked ?? false;
+            checkboxEl.dataset.indeterminate = "false";
+          }
+          // Make interactive - toggle frontmatter on click
+          checkboxEl.addEventListener(
+            "click",
+            (e) => {
+              e.stopPropagation();
+              const file = this.app.vault.getAbstractFileByPath(card.path);
+              if (!(file instanceof TFile)) return;
+              // Strip note. prefix to get frontmatter property name
+              const fmProp = propertyName.startsWith("note.")
+                ? propertyName.slice(5)
+                : propertyName;
+              // Clear indeterminate state on click
+              checkboxEl.indeterminate = false;
+              checkboxEl.dataset.indeterminate = "false";
+              void this.app.fileManager.processFrontMatter(
+                file,
+                (frontmatter) => {
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- processFrontMatter callback receives any
+                  frontmatter[fmProp] = checkboxEl.checked;
+                },
+              );
+            },
+            { signal },
+          );
           return;
         }
       } catch {

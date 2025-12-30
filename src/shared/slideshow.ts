@@ -28,8 +28,14 @@ let isCleanedUp = false;
 function validateBlobUrl(blobUrl: string): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(img.naturalWidth > 0 && img.naturalHeight > 0);
-    img.onerror = () => resolve(false);
+    const cleanup = (result: boolean) => {
+      img.onload = null;
+      img.onerror = null;
+      img.src = "";
+      resolve(result);
+    };
+    img.onload = () => cleanup(img.naturalWidth > 0 && img.naturalHeight > 0);
+    img.onerror = () => cleanup(false);
     img.src = blobUrl;
   });
 }
@@ -85,8 +91,11 @@ export async function getExternalBlobUrl(url: string): Promise<string> {
   // Skip already-failed URLs
   if (failedUrls.has(url)) return url;
 
-  // Deduplicate concurrent requests
-  if (pendingFetches.has(url)) return pendingFetches.get(url)!;
+  // Deduplicate concurrent requests (check cleanup flag to prevent orphaned blob URLs)
+  if (pendingFetches.has(url)) {
+    if (isCleanedUp) return url;
+    return pendingFetches.get(url)!;
+  }
 
   const fetchPromise = (async () => {
     try {
@@ -221,6 +230,8 @@ export function createSlideshowNavigator(
 
     const { imageEmbed, currImg, nextImg } = elements;
     const newUrl = imageUrls[newIndex];
+    // Get effective URL early (used by error handler and image src)
+    const effectiveUrl = getCachedBlobUrl(newUrl);
 
     isAnimating = true;
 
@@ -238,16 +249,16 @@ export function createSlideshowNavigator(
     }
 
     // Handle failed images: mark as failed, hide, and auto-advance
+    // Use event target for URL comparison to avoid race with rapid navigation
     nextImg.addEventListener(
       "error",
-      () => {
+      (e) => {
         if (signal.aborted) return;
         // Ignore errors from src being cleared (resolves to index.html) or changed
-        // Only handle errors for the URL we actually set
-        const failedUrl = imageUrls[newIndex];
-        const expectedUrl = getCachedBlobUrl(failedUrl);
-        if (nextImg.src !== expectedUrl) return;
-        failedUrls.add(failedUrl);
+        // Only handle errors for the URL we actually set (use event target, not element ref)
+        const targetSrc = (e.target as HTMLImageElement).src;
+        if (targetSrc !== effectiveUrl) return;
+        failedUrls.add(newUrl);
         nextImg.style.display = "none";
 
         // After animation completes, try to advance to next valid slide
@@ -255,6 +266,8 @@ export function createSlideshowNavigator(
           pendingTimeouts.delete(timeoutId);
           if (!signal.aborted) {
             nextImg.style.display = "";
+            // Reset isAnimating before recursive call to prevent stuck state
+            isAnimating = false;
             navigate(direction, honorGestureDirection);
           }
         }, SLIDESHOW_ANIMATION_MS + 50);
@@ -263,8 +276,7 @@ export function createSlideshowNavigator(
       { once: true, signal },
     );
 
-    // Set next image src and CSS variable (use cached blob URL if available)
-    const effectiveUrl = getCachedBlobUrl(newUrl);
+    // Set next image src and CSS variable
     imageEmbed.style.setProperty("--cover-image-url", `url("${effectiveUrl}")`);
 
     // Skip animation: directly update current image
@@ -520,6 +532,8 @@ export function setupImagePreload(
       if (!preloaded) {
         preloaded = true;
         imageUrls.slice(1).forEach((url) => {
+          // Skip known-failed URLs to avoid wasting resources
+          if (failedUrls.has(url)) return;
           if (isExternalUrl(url)) {
             // Fetch and cache as blob URL (fire-and-forget)
             void getExternalBlobUrl(url);
