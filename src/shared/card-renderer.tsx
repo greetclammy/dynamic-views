@@ -35,6 +35,9 @@ import {
 import { handleImageViewerClick, cleanupAllViewers } from "./image-viewer";
 import {
   createSlideshowNavigator,
+  getCachedBlobUrl,
+  isFailedExternalUrl,
+  markExternalUrlAsFailed,
   setupImagePreload,
   setupSwipeGestures,
 } from "./slideshow";
@@ -617,6 +620,22 @@ function CoverSlideshow({
         },
       },
     );
+
+    // Auto-advance if first image fails to load (skip animation for instant display)
+    const firstImg = imageEmbed.querySelector(
+      ".slideshow-img-current",
+    ) as HTMLImageElement;
+    if (firstImg) {
+      firstImg.addEventListener(
+        "error",
+        () => {
+          markExternalUrlAsFailed(firstImg.src);
+          firstImg.style.display = "none";
+          navigate(1, false, true);
+        },
+        { once: true, signal },
+      );
+    }
 
     // Setup arrow navigation
     const leftArrow = slideshowEl.querySelector(".slideshow-nav-left");
@@ -2046,10 +2065,12 @@ function Card({
                           0,
                           Math.min(section, imageArray.length - 1),
                         );
+                        const rawUrl = imageArray[newIndex];
+                        if (isFailedExternalUrl(rawUrl)) return;
                         const imgEl = (
                           e.currentTarget as HTMLElement
                         ).querySelector("img");
-                        const newSrc = imageArray[newIndex];
+                        const newSrc = getCachedBlobUrl(rawUrl);
                         if (imgEl && newSrc) {
                           const currentSrc = imgEl.src;
                           if (currentSrc !== newSrc) {
@@ -2062,10 +2083,14 @@ function Card({
                 onMouseLeave={
                   enableScrubbing
                     ? (e: MouseEvent) => {
+                        const firstValidUrl = imageArray.find(
+                          (url) => !isFailedExternalUrl(url),
+                        );
+                        if (!firstValidUrl) return;
                         const imgEl = (
                           e.currentTarget as HTMLElement
                         ).querySelector("img");
-                        const firstSrc = imageArray[0];
+                        const firstSrc = getCachedBlobUrl(firstValidUrl);
                         if (imgEl && firstSrc) {
                           imgEl.src = firstSrc;
                         }
@@ -2092,9 +2117,40 @@ function Card({
                   <img
                     src={imageArray[0] || ""}
                     alt=""
-                    ref={(imgEl: HTMLImageElement | null) =>
-                      handleJsxImageRef(imgEl, updateLayoutRef)
-                    }
+                    ref={(imgEl: HTMLImageElement | null) => {
+                      handleJsxImageRef(imgEl, updateLayoutRef);
+                      // Add fallback error handler for multi-image cards
+                      if (imgEl && imageArray.length > 1) {
+                        let currentUrlIndex = 0;
+                        imgEl.addEventListener("error", () => {
+                          markExternalUrlAsFailed(imgEl.src);
+                          currentUrlIndex++;
+                          while (currentUrlIndex < imageArray.length) {
+                            if (
+                              !isFailedExternalUrl(imageArray[currentUrlIndex])
+                            ) {
+                              imgEl.style.display = "";
+                              const effectiveUrl = getCachedBlobUrl(
+                                imageArray[currentUrlIndex],
+                              );
+                              imgEl.src = effectiveUrl;
+                              const embedEl = imgEl.closest(
+                                ".dynamic-views-image-embed",
+                              ) as HTMLElement;
+                              if (embedEl) {
+                                embedEl.style.setProperty(
+                                  "--cover-image-url",
+                                  `url("${effectiveUrl}")`,
+                                );
+                              }
+                              return;
+                            }
+                            currentUrlIndex++;
+                          }
+                          imgEl.style.display = "none";
+                        });
+                      }
+                    }}
                     onLoad={(e: Event) =>
                       handleJsxImageLoad(e, updateLayoutRef)
                     }

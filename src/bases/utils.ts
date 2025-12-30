@@ -20,7 +20,44 @@ import {
   navigateToTagInNotebookNavigator,
   navigateToFolderInNotebookNavigator,
 } from "../utils/notebook-navigator";
-import type { Settings } from "../types";
+import type { Settings, DefaultViewSettings } from "../types";
+import { DEFAULT_VIEW_SETTINGS } from "../constants";
+
+// Bases config interface for initialization
+interface BasesConfigInit {
+  get(key: string): unknown;
+  set(key: string, value: unknown): void;
+  getAll(): Record<string, unknown>;
+}
+
+/**
+ * Initialize default property values for a new Bases view
+ * Called once on view creation to persist defaults so clearing works correctly
+ */
+export function initializeViewDefaults(
+  config: BasesConfigInit,
+  defaults: DefaultViewSettings = DEFAULT_VIEW_SETTINGS,
+): void {
+  const allKeys = config.getAll();
+
+  // Check for initialization marker (persists even if user clears all settings)
+  if ("_dvInitialized" in allKeys) {
+    // View was initialized before - persist cleared state as "" so it survives reload
+    // (undefined doesn't persist to JSON, but "" does)
+    if (allKeys.propertyDisplay1 === undefined) {
+      config.set("propertyDisplay1", "");
+    }
+    if (allKeys.propertyDisplay2 === undefined) {
+      config.set("propertyDisplay2", "");
+    }
+    return;
+  }
+
+  // Fresh view - set defaults and marker
+  config.set("_dvInitialized", true);
+  config.set("propertyDisplay1", defaults.propertyDisplay1);
+  config.set("propertyDisplay2", defaults.propertyDisplay2);
+}
 
 /** CSS selector for embedded view detection - centralized for maintainability */
 export const EMBEDDED_VIEW_SELECTOR =

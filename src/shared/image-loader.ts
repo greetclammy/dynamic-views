@@ -12,8 +12,8 @@ import {
   isBackdropTintDisabled,
   isBackdropAdaptiveTextEnabled,
 } from "../utils/style-settings";
-import { isExternalOrBlobUrl } from "../utils/image";
-import { cacheExternalImage } from "./slideshow";
+import { isExternalUrl } from "../utils/image";
+import { cacheExternalImage, markExternalUrlAsFailed } from "./slideshow";
 import type { RefObject } from "../datacore/types";
 
 // Cache image metadata (RGB tuple + aspect ratio) by URL to avoid flash on re-render
@@ -226,9 +226,9 @@ export function handleImageLoad(
     isBackdropAdaptiveTextEnabled();
 
   if (needsAmbient || needsBackdropLuminance) {
-    // Skip external images - most servers don't support CORS, and attempting
-    // to reload with crossOrigin causes noisy browser console errors
-    if (!isExternalOrBlobUrl(imgEl.src)) {
+    // Skip non-cached external images - blob URLs (cached via requestUrl) work
+    // since they're same-origin, but original external URLs would taint canvas
+    if (!isExternalUrl(imgEl.src)) {
       const extracted = extractDominantColor(imgEl);
       if (extracted) {
         rgb = extracted;
@@ -259,16 +259,16 @@ export function handleImageLoad(
       cardEl,
       isCover,
     );
-  } else if (needsAmbient && isExternalOrBlobUrl(imgEl.src)) {
-    // Clear ambient styles for external images (e.g., slideshow switching from local to external)
+  } else if (needsAmbient && isExternalUrl(imgEl.src)) {
+    // Clear ambient styles for uncached external images
     clearAmbientStyles(imageEmbedContainer, cardEl);
   }
 
   // Apply backdrop theme for luminance-based adaptive text (when tint is disabled)
   if (isBackdropImage && colorTheme && needsBackdropLuminance) {
     cardEl.setAttribute("data-backdrop-theme", colorTheme);
-  } else if (isBackdropImage && isExternalOrBlobUrl(imgEl.src)) {
-    // Clear backdrop theme for external images
+  } else if (isBackdropImage && isExternalUrl(imgEl.src)) {
+    // Clear backdrop theme for uncached external images
     cardEl.removeAttribute("data-backdrop-theme");
   }
 
@@ -346,6 +346,13 @@ export function setupImageLoadHandler(
     );
   };
   const errorHandler = () => {
+    // Mark external URL as failed to prevent retry attempts
+    if (imgEl.src) {
+      markExternalUrlAsFailed(imgEl.src);
+    }
+    // Hide broken image to prevent placeholder icon
+    imgEl.style.display = "none";
+
     if (cardEl.classList.contains("cover-ready")) return;
     cardEl.classList.add("cover-ready");
     // Set default aspect ratio on error
@@ -466,12 +473,21 @@ export function handleJsxImageLoad(
 /**
  * JSX onError handler for image elements
  * Ensures cover-ready is set even on error so layout doesn't wait indefinitely
+ * Hides broken images and marks external URLs as failed
  */
 export function handleJsxImageError(
   e: Event,
   updateLayoutRef: RefObject<(() => void) | null>,
 ): void {
   const imgEl = e.currentTarget as HTMLImageElement;
+
+  // Mark external URL as failed to prevent retry attempts
+  if (imgEl.src) {
+    markExternalUrlAsFailed(imgEl.src);
+  }
+
+  // Hide broken image to prevent placeholder icon
+  imgEl.style.display = "none";
 
   // Fix null assertions
   const cardEl = imgEl.closest(".card");

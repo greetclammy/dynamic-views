@@ -9,7 +9,6 @@ import { DEFAULT_VIEW_SETTINGS } from "../constants";
 // Bases config object interface
 interface BasesConfig {
   get(key: string): unknown;
-  getAll?(): Record<string, unknown>;
 }
 
 /**
@@ -500,12 +499,6 @@ export function readBasesSettings(
     return defaults.imageFormat;
   };
 
-  // Get all stored keys to distinguish "never set" from "cleared"
-  // Bases stores the key even when value is undefined (cleared)
-  const allKeys = config.getAll?.() ?? {};
-  const hasKey = (key: string) =>
-    Object.prototype.hasOwnProperty.call(allKeys, key);
-
   return {
     // String properties
     titleProperty: getString("titleProperty", defaults.titleProperty),
@@ -531,16 +524,9 @@ export function readBasesSettings(
     })(),
 
     // Property display strings (1-14)
-    // For propertyDisplay1/2: if key exists but value is undefined, field was cleared → use ""
-    // If key doesn't exist, field never touched → use defaults
-    propertyDisplay1: getString(
-      "propertyDisplay1",
-      hasKey("propertyDisplay1") ? "" : defaults.propertyDisplay1,
-    ),
-    propertyDisplay2: getString(
-      "propertyDisplay2",
-      hasKey("propertyDisplay2") ? "" : defaults.propertyDisplay2,
-    ),
+    // Defaults are persisted on view creation, so undefined = cleared
+    propertyDisplay1: getString("propertyDisplay1", ""),
+    propertyDisplay2: getString("propertyDisplay2", ""),
     propertyDisplay3: getString("propertyDisplay3", defaults.propertyDisplay3),
     propertyDisplay4: getString("propertyDisplay4", defaults.propertyDisplay4),
     propertyDisplay5: getString("propertyDisplay5", defaults.propertyDisplay5),

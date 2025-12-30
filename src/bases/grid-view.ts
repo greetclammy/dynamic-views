@@ -38,6 +38,7 @@ import {
   hasGroupBy,
   serializeGroupKey,
   setGroupKeyDataset,
+  initializeViewDefaults,
 } from "./utils";
 import {
   initializeContainerFocus,
@@ -277,6 +278,21 @@ export class DynamicViewsCardView extends BasesView {
 
       const groupedData = this.data.groupedData;
       const allEntries = this.data.data;
+
+      // Initialize default property values for new views (before reading settings)
+      // This persists defaults so clearing them works correctly
+      // Cast: Obsidian types lack getAll but runtime has it
+      const configWithGetAll = this.config as unknown as {
+        getAll?: () => Record<string, unknown>;
+      };
+      if (configWithGetAll?.getAll) {
+        initializeViewDefaults(
+          this.config as unknown as Parameters<
+            typeof initializeViewDefaults
+          >[0],
+          this.plugin.persistenceManager.getDefaultViewSettings(),
+        );
+      }
 
       // Read settings from Bases config (before hash check so we can include settings)
       const settings = readBasesSettings(

@@ -37,14 +37,6 @@ export function isBlobUrl(url: string): boolean {
 }
 
 /**
- * Check if URL is external or a blob from external source
- * Used for ambient color exclusion
- */
-export function isExternalOrBlobUrl(url: string): boolean {
-  return isExternalUrl(url) || isBlobUrl(url);
-}
-
-/**
  * Check if a path has a valid image file extension
  * @param path - The file path or URL to check
  * @returns true if path ends with a valid image extension

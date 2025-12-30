@@ -49,6 +49,7 @@ import {
   serializeGroupKey,
   setGroupKeyDataset,
   getGroupKeyDataset,
+  initializeViewDefaults,
 } from "./utils";
 import {
   initializeContainerFocus,
@@ -357,6 +358,21 @@ export class DynamicViewsMasonryView extends BasesView {
 
       // Track total entries for end indicator
       this.totalEntries = allEntries.length;
+
+      // Initialize default property values for new views (before reading settings)
+      // This persists defaults so clearing them works correctly
+      // Cast: Obsidian types lack getAll but runtime has it
+      const configWithGetAll = this.config as unknown as {
+        getAll?: () => Record<string, unknown>;
+      };
+      if (configWithGetAll?.getAll) {
+        initializeViewDefaults(
+          this.config as unknown as Parameters<
+            typeof initializeViewDefaults
+          >[0],
+          this.plugin.persistenceManager.getDefaultViewSettings(),
+        );
+      }
 
       // Read settings from Bases config (before hash check so we can include settings)
       const settings = readBasesSettings(

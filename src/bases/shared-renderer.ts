@@ -48,7 +48,7 @@ import {
   calculateLuminanceFromTuple,
   LUMINANCE_LIGHT_THRESHOLD,
 } from "../utils/ambient-color";
-import { isExternalOrBlobUrl } from "../utils/image";
+import { isExternalUrl } from "../utils/image";
 import { getPropertyLabel, normalizePropertyName } from "../utils/property";
 import { findLinksInText, type ParsedLink } from "../utils/link-parser";
 import {
@@ -64,6 +64,9 @@ import type DynamicViewsPlugin from "../../main";
 import type { Settings } from "../types";
 import {
   createSlideshowNavigator,
+  getCachedBlobUrl,
+  isFailedExternalUrl,
+  markExternalUrlAsFailed,
   setupImagePreload,
   setupSwipeGestures,
 } from "../shared/slideshow";
@@ -367,6 +370,14 @@ export class SharedCardRenderer {
           e.stopPropagation();
         },
         { signal },
+      );
+      img.addEventListener(
+        "error",
+        () => {
+          markExternalUrlAsFailed(img.src);
+          img.style.display = "none";
+        },
+        { signal, once: true },
       );
       return;
     }
@@ -1059,7 +1070,7 @@ export class SharedCardRenderer {
         () => {
           // Extract luminance for adaptive text when tint is disabled
           if (isBackdropTintDisabled() && isBackdropAdaptiveTextEnabled()) {
-            if (!isExternalOrBlobUrl(img.src)) {
+            if (!isExternalUrl(img.src)) {
               const rgb = extractDominantColor(img);
               if (rgb) {
                 const luminance = calculateLuminanceFromTuple(rgb);
@@ -1068,7 +1079,7 @@ export class SharedCardRenderer {
                 cardEl.setAttribute("data-backdrop-theme", theme);
               }
             } else {
-              // Clear theme for external images (can't extract due to CORS)
+              // Clear theme for uncached external images
               cardEl.removeAttribute("data-backdrop-theme");
             }
           }
@@ -1079,6 +1090,8 @@ export class SharedCardRenderer {
       img.addEventListener(
         "error",
         () => {
+          markExternalUrlAsFailed(img.src);
+          img.style.display = "none";
           this.updateLayoutRef.current?.();
         },
         { signal },
@@ -1293,6 +1306,17 @@ export class SharedCardRenderer {
       },
     );
 
+    // Auto-advance if first image fails to load (skip animation for instant display)
+    currentImg.addEventListener(
+      "error",
+      () => {
+        markExternalUrlAsFailed(currentImg.src);
+        currentImg.style.display = "none";
+        navigate(1, false, true);
+      },
+      { once: true, signal },
+    );
+
     // Multi-image indicator
     if (isSlideshowIndicatorEnabled()) {
       const indicator = slideshowEl.createDiv("slideshow-indicator");
@@ -1386,6 +1410,39 @@ export class SharedCardRenderer {
       );
     }
 
+    // Fallback to next valid image if current fails (for multi-image cards)
+    if (imageUrls.length > 1) {
+      let currentUrlIndex = 0;
+      const tryNextImage = () => {
+        // Mark current URL as failed
+        if (imgEl.src) {
+          markExternalUrlAsFailed(imgEl.src);
+        }
+        currentUrlIndex++;
+        while (currentUrlIndex < imageUrls.length) {
+          const nextUrl = imageUrls[currentUrlIndex];
+          if (!isFailedExternalUrl(nextUrl)) {
+            imgEl.style.display = ""; // Unhide
+            const effectiveUrl = getCachedBlobUrl(nextUrl);
+            imgEl.src = effectiveUrl;
+            imageEmbedContainer.style.setProperty(
+              "--cover-image-url",
+              `url("${effectiveUrl}")`,
+            );
+            return;
+          }
+          currentUrlIndex++;
+        }
+        // All images failed - keep hidden
+        imgEl.style.display = "none";
+      };
+      imgEl.addEventListener(
+        "error",
+        tryNextImage,
+        signal ? { signal } : undefined,
+      );
+    }
+
     // Thumbnail scrubbing (desktop only, max 10 images)
     if (
       format === "thumbnail" &&
@@ -1413,11 +1470,15 @@ export class SharedCardRenderer {
               scrubbableUrls.length - 1,
             ),
           );
-          if (imgEl.src !== scrubbableUrls[index]) {
-            imgEl.src = scrubbableUrls[index];
+          const rawUrl = scrubbableUrls[index];
+          // Skip failed external images
+          if (isFailedExternalUrl(rawUrl)) return;
+          const targetUrl = getCachedBlobUrl(rawUrl);
+          if (imgEl.src !== targetUrl) {
+            imgEl.src = targetUrl;
             imageEmbedContainer.style.setProperty(
               "--cover-image-url",
-              `url("${scrubbableUrls[index]}")`,
+              `url("${targetUrl}")`,
             );
           }
         },
@@ -1427,10 +1488,16 @@ export class SharedCardRenderer {
       imageEl.addEventListener(
         "mouseleave",
         () => {
-          imgEl.src = scrubbableUrls[0];
+          // Find first valid URL
+          const firstValidUrl = scrubbableUrls.find(
+            (url) => !isFailedExternalUrl(url),
+          );
+          if (!firstValidUrl) return;
+          const targetUrl = getCachedBlobUrl(firstValidUrl);
+          imgEl.src = targetUrl;
           imageEmbedContainer.style.setProperty(
             "--cover-image-url",
-            `url("${scrubbableUrls[0]}")`,
+            `url("${targetUrl}")`,
           );
         },
         signal ? { signal } : undefined,

@@ -10,6 +10,8 @@ import {
   getZoomSensitivityDesktop,
   getZoomSensitivityMobile,
 } from "../utils/style-settings";
+import { getCachedBlobUrl } from "./slideshow";
+import { isExternalUrl } from "../utils/image";
 
 /** Long-press detection threshold in ms */
 const LONG_PRESS_THRESHOLD = 500;
@@ -578,6 +580,11 @@ function openImageViewer(
   if (!imgEl) {
     console.warn("Cannot open viewer - cloned img element missing");
     return;
+  }
+
+  // Use cached blob URL for external images to avoid re-fetching
+  if (isExternalUrl(imgEl.src)) {
+    imgEl.src = getCachedBlobUrl(imgEl.src);
   }
 
   // Append clone to appropriate container based on fullscreen setting
