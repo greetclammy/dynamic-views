@@ -25,6 +25,7 @@ import {
 } from "./src/utils/randomize";
 import { cleanupExternalBlobCache } from "./src/shared/slideshow";
 import { clearInFlightLoads } from "./src/shared/content-loader";
+import { invalidateCacheForFile } from "./src/shared/image-loader";
 
 export default class DynamicViewsPlugin extends Plugin {
   persistenceManager: PersistenceManager;
@@ -174,6 +175,29 @@ export default class DynamicViewsPlugin extends Plugin {
         toggleShuffleActiveView(this.app);
       },
     });
+
+    // Invalidate image metadata cache when vault files are modified (#17)
+    // Only invalidate for image files to avoid unnecessary cache clears
+    const IMAGE_EXTENSIONS = new Set([
+      "png",
+      "jpg",
+      "jpeg",
+      "gif",
+      "webp",
+      "svg",
+      "bmp",
+      "ico",
+    ]);
+    this.registerEvent(
+      this.app.vault.on("modify", (file) => {
+        if (file instanceof TFile) {
+          const ext = file.extension.toLowerCase();
+          if (IMAGE_EXTENSIONS.has(ext)) {
+            invalidateCacheForFile(file.path);
+          }
+        }
+      }),
+    );
 
     // Handle editor-drop events for plugin cards
     this.registerEvent(

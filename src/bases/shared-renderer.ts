@@ -383,6 +383,7 @@ export class SharedCardRenderer {
       img.addEventListener(
         "error",
         () => {
+          if (signal?.aborted) return; // Guard against race with cleanup
           markExternalUrlAsFailed(img.src);
           img.style.display = "none";
         },
@@ -1122,6 +1123,7 @@ export class SharedCardRenderer {
             currentUrlIndex++;
           }
           // All images failed
+          if (signal.aborted) return; // Guard before final DOM mutations
           img.style.display = "none";
           cardEl.removeAttribute("data-backdrop-theme");
           this.updateLayoutRef.current?.();
@@ -1272,10 +1274,6 @@ export class SharedCardRenderer {
     const imageEmbedContainer = slideshowEl.createDiv(
       "dynamic-views-image-embed",
     );
-    imageEmbedContainer.style.setProperty(
-      "--cover-image-url",
-      `url("${imageUrls[0]}")`,
-    );
 
     // Add zoom handler
     const cardEl = slideshowEl.closest(".card") as HTMLElement;
@@ -1357,6 +1355,7 @@ export class SharedCardRenderer {
     currentImg.addEventListener(
       "error",
       () => {
+        if (signal.aborted) return; // Guard against race with cleanup
         // Ignore errors from src being cleared (resolves to index.html)
         if (
           !currentImg.src ||
@@ -1445,11 +1444,6 @@ export class SharedCardRenderer {
     const imgEl = imageEmbedContainer.createEl("img", {
       attr: { src: imageUrls[0], alt: "" },
     });
-    // Set CSS variable for letterbox blur background
-    imageEmbedContainer.style.setProperty(
-      "--cover-image-url",
-      `url("${imageUrls[0]}")`,
-    );
 
     // Handle image load for masonry layout and color extraction
     // Only pass layout callback for covers (thumbnails have fixed CSS height)
@@ -1480,17 +1474,13 @@ export class SharedCardRenderer {
           const nextUrl = imageUrls[currentUrlIndex];
           if (!isFailedExternalUrl(nextUrl)) {
             imgEl.style.display = ""; // Unhide
-            const effectiveUrl = getCachedBlobUrl(nextUrl);
-            imgEl.src = effectiveUrl;
-            imageEmbedContainer.style.setProperty(
-              "--cover-image-url",
-              `url("${effectiveUrl}")`,
-            );
+            imgEl.src = getCachedBlobUrl(nextUrl);
             return;
           }
           currentUrlIndex++;
         }
         // All images failed - complete fallback handling
+        if (signal?.aborted) return; // Guard before final DOM mutations
         imgEl.style.display = "none";
         if (!cardEl.classList.contains("cover-ready")) {
           cardEl.classList.add("cover-ready");
@@ -1557,10 +1547,6 @@ export class SharedCardRenderer {
           const targetUrl = getCachedBlobUrl(rawUrl);
           if (imgEl.src !== targetUrl) {
             imgEl.src = targetUrl;
-            imageEmbedContainer.style.setProperty(
-              "--cover-image-url",
-              `url("${targetUrl}")`,
-            );
           }
         },
         { signal },
@@ -1576,12 +1562,7 @@ export class SharedCardRenderer {
             (url) => !isFailedExternalUrl(url),
           );
           if (!firstValidUrl) return;
-          const targetUrl = getCachedBlobUrl(firstValidUrl);
-          imgEl.src = targetUrl;
-          imageEmbedContainer.style.setProperty(
-            "--cover-image-url",
-            `url("${targetUrl}")`,
-          );
+          imgEl.src = getCachedBlobUrl(firstValidUrl);
         },
         { signal },
       );

@@ -443,24 +443,24 @@ settings:
     -
         id: dynamic-views-url-icon
         title: "'Open URL' button icon"
-        description: Lucide icon name (e.g., external-link, link, arrow-up-right)
+        description: Lucide icon name
         type: variable-text
         default: 'square-arrow-out-up-right'
     -
         id: dynamic-views-property-font
         title: Property font
-        description: Font name as it appears on your system. Can be overridden by individual item options below.
+        description: Font name as it appears on your system
         type: variable-text
         default: ''
     -
         id: dynamic-views-property-font-size
         title: Property font size
-        description: Font size for all properties (e.g., 0.8em, 13px, 0.8125rem)
+        description: Font size of property values (e.g., 0.8em, 13px, 0.8125rem)
         type: variable-text
         default: ''
     -
         id: dynamic-views-property-color-with-labels
-        title: Text color (with labels)
+        title: Text color (labels shown)
         description: Theme color preset for property text when property labels are shown
         type: class-select
         allowEmpty: false
@@ -507,7 +507,7 @@ settings:
                 value: dynamic-views-property-color-with-labels-custom
     -
         id: dynamic-views-property-color-with-labels-custom
-        title: Custom text color (with labels)
+        title: Custom text color (labels shown)
         description: Custom color for property text when property labels are shown
         type: variable-themed-color
         format: hsl-split
@@ -515,7 +515,7 @@ settings:
         default-dark: '#'
     -
         id: dynamic-views-property-color-without-labels
-        title: Text color (without labels)
+        title: Text color (labels hidden)
         description: Theme color preset for property text when property labels are hidden
         type: class-select
         allowEmpty: false
@@ -562,7 +562,7 @@ settings:
                 value: dynamic-views-property-color-without-labels-custom
     -
         id: dynamic-views-property-color-without-labels-custom
-        title: Custom text color (without labels)
+        title: Custom text color (labels hidden)
         description: Custom color for property text when property labels are hidden
         type: variable-themed-color
         format: hsl-split

@@ -680,7 +680,6 @@ function CoverSlideshow({
     <div className="card-cover card-cover-slideshow" ref={onSlideshowRef}>
       <div
         className="dynamic-views-image-embed"
-        style={{ "--cover-image-url": `url("${imageArray[0]}")` }}
         onClick={(e: MouseEvent) => {
           handleImageViewerClick(
             e,
@@ -1715,6 +1714,9 @@ function Card({
         // Measure side-by-side property field widths (double RAF to ensure DOM is ready)
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
+            // Guard against race: card may be unmounted before inner RAF executes
+            if (!cardEl.isConnected) return;
+
             const existingPropertyObservers = cardPropertyObservers.get(
               card.path,
             );
@@ -1734,6 +1736,9 @@ function Card({
           (position === "left" || position === "right")
         ) {
           requestAnimationFrame(() => {
+            // Guard against race: card may be unmounted before RAF executes
+            if (!cardEl.isConnected) return;
+
             // Get aspect ratio from settings
             const aspectRatio =
               typeof settings.imageAspectRatio === "string"
@@ -2041,9 +2046,6 @@ function Card({
                 <div className="card-cover">
                   <div
                     className="dynamic-views-image-embed"
-                    style={{
-                      "--cover-image-url": `url("${imageArray[0] || ""}")`,
-                    }}
                     onClick={(e: MouseEvent) => {
                       handleImageViewerClick(
                         e,
@@ -2157,9 +2159,6 @@ function Card({
               >
                 <div
                   className="dynamic-views-image-embed"
-                  style={{
-                    "--cover-image-url": `url("${imageArray[0] || ""}")`,
-                  }}
                   onClick={(e: MouseEvent) => {
                     handleImageViewerClick(
                       e,
@@ -2216,15 +2215,6 @@ function Card({
                                   imageArray[i],
                                 );
                                 imgEl.src = effectiveUrl;
-                                const embedEl = imgEl.closest(
-                                  ".dynamic-views-image-embed",
-                                ) as HTMLElement;
-                                if (embedEl) {
-                                  embedEl.style.setProperty(
-                                    "--cover-image-url",
-                                    `url("${effectiveUrl}")`,
-                                  );
-                                }
                                 return;
                               }
                             }

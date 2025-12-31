@@ -85,6 +85,35 @@ describe("image", () => {
       expect(stripWikilinkSyntax("[[image.png")).toBe("[[image.png");
       expect(stripWikilinkSyntax("image.png]]")).toBe("image.png]]");
     });
+
+    it("should strip heading fragments", () => {
+      expect(stripWikilinkSyntax("[[image.png#heading]]")).toBe("image.png");
+      expect(stripWikilinkSyntax("![[photo.jpg#section]]")).toBe("photo.jpg");
+    });
+
+    it("should strip block references", () => {
+      expect(stripWikilinkSyntax("![[photo.jpg#^block-id]]")).toBe("photo.jpg");
+      expect(stripWikilinkSyntax("[[image.png#^abc123]]")).toBe("image.png");
+    });
+
+    it("should handle fragment and caption together", () => {
+      expect(stripWikilinkSyntax("[[image.png#heading|caption]]")).toBe(
+        "image.png",
+      );
+      expect(stripWikilinkSyntax("![[photo.jpg#^block|alt text]]")).toBe(
+        "photo.jpg",
+      );
+    });
+
+    it("should handle surrounding whitespace", () => {
+      expect(stripWikilinkSyntax("  [[image.png]]  ")).toBe("image.png");
+      expect(stripWikilinkSyntax("\t![[photo.jpg]]\n")).toBe("photo.jpg");
+    });
+
+    it("should return null/undefined as empty string", () => {
+      expect(stripWikilinkSyntax(null)).toBe("");
+      expect(stripWikilinkSyntax(undefined)).toBe("");
+    });
   });
 
   describe("processImagePaths", () => {
@@ -321,6 +350,21 @@ describe("image", () => {
 
     it("should return null for invalid URLs", () => {
       expect(getYouTubeVideoId("not-a-url")).toBeNull();
+    });
+
+    it("should return null for empty URL", () => {
+      expect(getYouTubeVideoId("")).toBeNull();
+    });
+
+    it("should return null for YouTube URL without video ID", () => {
+      expect(getYouTubeVideoId("https://youtube.com/")).toBeNull();
+      expect(getYouTubeVideoId("https://youtube.com/watch")).toBeNull();
+    });
+
+    it("should handle URL with timestamp parameter", () => {
+      expect(
+        getYouTubeVideoId("https://youtube.com/watch?v=dQw4w9WgXcQ&t=120"),
+      ).toBe("dQw4w9WgXcQ");
     });
   });
 

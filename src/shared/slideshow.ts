@@ -246,7 +246,7 @@ export function createSlideshowNavigator(
       return;
     }
 
-    const { imageEmbed, currImg, nextImg } = elements;
+    const { currImg, nextImg } = elements;
     const newUrl = imageUrls[newIndex];
     // Get effective URL early (used by error handler and image src)
     const effectiveUrl = getCachedBlobUrl(newUrl);
@@ -294,9 +294,6 @@ export function createSlideshowNavigator(
       },
       { once: true, signal },
     );
-
-    // Set next image src and CSS variable
-    imageEmbed.style.setProperty("--cover-image-url", `url("${effectiveUrl}")`);
 
     // Skip animation: directly update current image
     if (skipAnimation) {

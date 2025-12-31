@@ -22,6 +22,44 @@ Content here`;
       expect(result).toBe("Content here");
     });
 
+    it("should handle mixed LF and CRLF in frontmatter", () => {
+      // Some frontmatter lines have CRLF, others LF
+      const input = "---\r\ntitle: Test\ntags: test\r\n---\nContent here";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Content here");
+    });
+
+    it("should handle CRLF in content after frontmatter", () => {
+      const input =
+        "---\r\ntitle: Test\r\n---\r\nFirst line\r\nSecond line\r\nThird line";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("First line Second line Third line");
+    });
+
+    it("should handle CRLF in headings", () => {
+      const input = "# Heading\r\n\r\nContent here\r\nMore content";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Content here More content");
+    });
+
+    it("should handle CRLF in bullet lists", () => {
+      const input = "- Item 1\r\n- Item 2\r\n- Item 3";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Item 1 Item 2 Item 3");
+    });
+
+    it("should handle CRLF in code blocks", () => {
+      const input = "Text\r\n```\r\ncode\r\n```\r\nMore text";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Text More text");
+    });
+
+    it("should handle CRLF in blockquotes", () => {
+      const input = "> Quote line 1\r\n> Quote line 2\r\n\r\nNormal text";
+      const result = sanitizeForPreview(input);
+      expect(result).toBe("Quote line 1 Quote line 2 Normal text");
+    });
+
     it("should strip inline code", () => {
       const input = "This has `inline code` in it";
       const result = sanitizeForPreview(input);

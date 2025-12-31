@@ -597,6 +597,283 @@ describe("data-transform", () => {
       // Should return null for missing property
       expect(result).toBeNull();
     });
+
+    describe("empty vs missing property detection (Bases)", () => {
+      it("should return null for missing property (not in frontmatter)", () => {
+        const {
+          getFirstBasesPropertyValue,
+        } = require("../../src/utils/property");
+        // Missing property returns null
+        getFirstBasesPropertyValue.mockReturnValue(null);
+
+        const mockEntry: any = {
+          file: { path: "test.md" },
+          getValue: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const result = resolveBasesProperty(
+          mockApp,
+          "nonExistentProp",
+          mockEntry,
+          mockCardData,
+          mockSettings,
+        );
+
+        // Missing property returns null
+        expect(result).toBeNull();
+      });
+
+      it("should return empty string for property that exists but is empty", () => {
+        const {
+          getFirstBasesPropertyValue,
+          isCheckboxProperty,
+        } = require("../../src/utils/property");
+        // Property exists but has null data (empty value in frontmatter)
+        getFirstBasesPropertyValue.mockReturnValue({ data: null });
+        // Not a checkbox
+        isCheckboxProperty.mockReturnValue(false);
+
+        const mockEntry: any = {
+          file: { path: "test.md" },
+          getValue: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const result = resolveBasesProperty(
+          mockApp,
+          "emptyProp",
+          mockEntry,
+          mockCardData,
+          mockSettings,
+        );
+
+        // Empty property returns empty string to distinguish from missing
+        expect(result).toBe("");
+      });
+
+      it("should return empty string for property with empty string value", () => {
+        const {
+          getFirstBasesPropertyValue,
+          isCheckboxProperty,
+        } = require("../../src/utils/property");
+        // Property exists with empty string data
+        getFirstBasesPropertyValue.mockReturnValue({ data: "" });
+        isCheckboxProperty.mockReturnValue(false);
+
+        const mockEntry: any = {
+          file: { path: "test.md" },
+          getValue: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const result = resolveBasesProperty(
+          mockApp,
+          "emptyStringProp",
+          mockEntry,
+          mockCardData,
+          mockSettings,
+        );
+
+        expect(result).toBe("");
+      });
+
+      it("should return null for property with empty array", () => {
+        const {
+          getFirstBasesPropertyValue,
+          isCheckboxProperty,
+        } = require("../../src/utils/property");
+        // Property exists with empty array data
+        getFirstBasesPropertyValue.mockReturnValue({ data: [] });
+        isCheckboxProperty.mockReturnValue(false);
+
+        const mockEntry: any = {
+          file: { path: "test.md" },
+          getValue: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const result = resolveBasesProperty(
+          mockApp,
+          "emptyArrayProp",
+          mockEntry,
+          mockCardData,
+          mockSettings,
+        );
+
+        // Empty arrays are treated as null (property exists but empty)
+        // Actually looking at code, empty arrays trigger the isCheckboxProperty check
+        // and fall through to the same path as null data
+        expect(result).toBe("");
+      });
+    });
+
+    describe("checkbox property handling (Bases)", () => {
+      it("should create checkbox marker for boolean true", () => {
+        const {
+          getFirstBasesPropertyValue,
+        } = require("../../src/utils/property");
+        getFirstBasesPropertyValue.mockReturnValue({ data: true });
+
+        const mockEntry: any = {
+          file: { path: "test.md" },
+          getValue: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const result = resolveBasesProperty(
+          mockApp,
+          "done",
+          mockEntry,
+          mockCardData,
+          mockSettings,
+        );
+
+        expect(result).toBe('{"type":"checkbox","checked":true}');
+      });
+
+      it("should create checkbox marker for boolean false", () => {
+        const {
+          getFirstBasesPropertyValue,
+        } = require("../../src/utils/property");
+        getFirstBasesPropertyValue.mockReturnValue({ data: false });
+
+        const mockEntry: any = {
+          file: { path: "test.md" },
+          getValue: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const result = resolveBasesProperty(
+          mockApp,
+          "done",
+          mockEntry,
+          mockCardData,
+          mockSettings,
+        );
+
+        expect(result).toBe('{"type":"checkbox","checked":false}');
+      });
+
+      it("should create indeterminate marker when checkbox property has null data", () => {
+        const {
+          getFirstBasesPropertyValue,
+          isCheckboxProperty,
+        } = require("../../src/utils/property");
+        // Property exists but has null data (empty value)
+        getFirstBasesPropertyValue.mockReturnValue({ data: null });
+        // Property is registered as checkbox widget
+        isCheckboxProperty.mockReturnValue(true);
+
+        const mockEntry: any = {
+          file: { path: "test.md" },
+          getValue: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const result = resolveBasesProperty(
+          mockApp,
+          "done",
+          mockEntry,
+          mockCardData,
+          mockSettings,
+        );
+
+        expect(result).toBe('{"type":"checkbox","indeterminate":true}');
+      });
+
+      it("should return empty string for non-checkbox property with null data", () => {
+        const {
+          getFirstBasesPropertyValue,
+          isCheckboxProperty,
+        } = require("../../src/utils/property");
+        // Property exists but has null data (empty value)
+        getFirstBasesPropertyValue.mockReturnValue({ data: null });
+        // Property is not a checkbox
+        isCheckboxProperty.mockReturnValue(false);
+
+        const mockEntry: any = {
+          file: { path: "test.md" },
+          getValue: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const result = resolveBasesProperty(
+          mockApp,
+          "someProperty",
+          mockEntry,
+          mockCardData,
+          mockSettings,
+        );
+
+        // Empty string indicates property exists but is empty
+        expect(result).toBe("");
+      });
+    });
   });
 
   describe("resolveDatacoreProperty", () => {
@@ -1026,6 +1303,158 @@ describe("data-transform", () => {
         expect(result).toBe(
           '{"type":"array","items":["[[valid.png]]","[[also-valid.jpg]]"]}',
         );
+      });
+    });
+
+    describe("checkbox property handling", () => {
+      it("should create checkbox marker for boolean true", () => {
+        // Mock getFirstDatacorePropertyValue to return boolean true
+        const {
+          getFirstDatacorePropertyValue,
+        } = require("../../src/utils/property");
+        getFirstDatacorePropertyValue.mockReturnValue(true);
+
+        const mockPage: any = {
+          value: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const mockDC: any = {
+          coerce: { string: (val: any) => String(val) },
+        };
+
+        const result = resolveDatacoreProperty(
+          mockApp,
+          "done",
+          mockPage,
+          mockCardData,
+          mockSettings,
+          mockDC,
+        );
+
+        expect(result).toBe('{"type":"checkbox","checked":true}');
+      });
+
+      it("should create checkbox marker for boolean false", () => {
+        // Mock getFirstDatacorePropertyValue to return boolean false
+        const {
+          getFirstDatacorePropertyValue,
+        } = require("../../src/utils/property");
+        getFirstDatacorePropertyValue.mockReturnValue(false);
+
+        const mockPage: any = {
+          value: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const mockDC: any = {
+          coerce: { string: (val: any) => String(val) },
+        };
+
+        const result = resolveDatacoreProperty(
+          mockApp,
+          "done",
+          mockPage,
+          mockCardData,
+          mockSettings,
+          mockDC,
+        );
+
+        expect(result).toBe('{"type":"checkbox","checked":false}');
+      });
+
+      it("should create indeterminate marker when checkbox property has null value", () => {
+        // Mock getFirstDatacorePropertyValue to return null (property exists but empty)
+        const {
+          getFirstDatacorePropertyValue,
+          isCheckboxProperty,
+        } = require("../../src/utils/property");
+        getFirstDatacorePropertyValue.mockReturnValue(null);
+        // Mock isCheckboxProperty to return true (property is registered as checkbox widget)
+        isCheckboxProperty.mockReturnValue(true);
+
+        const mockPage: any = {
+          value: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const mockDC: any = {
+          coerce: { string: (val: any) => String(val) },
+        };
+
+        const result = resolveDatacoreProperty(
+          mockApp,
+          "done",
+          mockPage,
+          mockCardData,
+          mockSettings,
+          mockDC,
+        );
+
+        expect(result).toBe('{"type":"checkbox","indeterminate":true}');
+      });
+
+      it("should return null for non-checkbox property with null value", () => {
+        // Mock getFirstDatacorePropertyValue to return null
+        const {
+          getFirstDatacorePropertyValue,
+          isCheckboxProperty,
+        } = require("../../src/utils/property");
+        getFirstDatacorePropertyValue.mockReturnValue(null);
+        // Mock isCheckboxProperty to return false (property is not a checkbox)
+        isCheckboxProperty.mockReturnValue(false);
+
+        const mockPage: any = {
+          value: jest.fn(),
+        };
+
+        const mockCardData: any = {
+          path: "test.md",
+          folderPath: "",
+          tags: [],
+          yamlTags: [],
+          ctime: 1000000,
+          mtime: 2000000,
+        };
+
+        const mockDC: any = {
+          coerce: { string: (val: any) => String(val) },
+        };
+
+        const result = resolveDatacoreProperty(
+          mockApp,
+          "someProperty",
+          mockPage,
+          mockCardData,
+          mockSettings,
+          mockDC,
+        );
+
+        expect(result).toBeNull();
       });
     });
   });

@@ -616,70 +616,69 @@ function openImageViewer(
     }
   }
 
+  // Wrap ALL setup in try-catch to prevent orphaned clone on error
   let resizeObserver: ResizeObserver | null = null;
-  if (!isFullscreen) {
-    // Use workspace-leaf (stable across React re-renders) as observer target
-    const workspaceLeaf = embedEl.closest(".workspace-leaf");
-    if (workspaceLeaf) {
-      const updateBounds = () => {
-        const rect = workspaceLeaf.getBoundingClientRect();
-        cloneEl.style.top = `${rect.top}px`;
-        cloneEl.style.left = `${rect.left}px`;
-        cloneEl.style.width = `${rect.width}px`;
-        cloneEl.style.height = `${rect.height}px`;
-      };
+  let modalObserver: MutationObserver | null = null;
 
-      // Set fixed positioning with bounds matching the container
-      cloneEl.style.inset = "auto"; // Reset inset first
-      cloneEl.style.position = "fixed";
-      updateBounds();
-      // Append to body (not view-content) to survive React re-renders
-      document.body.appendChild(cloneEl);
+  try {
+    if (!isFullscreen) {
+      // Use workspace-leaf (stable across React re-renders) as observer target
+      const workspaceLeaf = embedEl.closest(".workspace-leaf");
+      if (workspaceLeaf) {
+        const updateBounds = () => {
+          const rect = workspaceLeaf.getBoundingClientRect();
+          cloneEl.style.top = `${rect.top}px`;
+          cloneEl.style.left = `${rect.left}px`;
+          cloneEl.style.width = `${rect.width}px`;
+          cloneEl.style.height = `${rect.height}px`;
+        };
 
-      // Update bounds when leaf resizes (stable element)
-      resizeObserver = new ResizeObserver(updateBounds);
-      resizeObserver.observe(workspaceLeaf);
+        // Set fixed positioning with bounds matching the container
+        cloneEl.style.inset = "auto"; // Reset inset first
+        cloneEl.style.position = "fixed";
+        updateBounds();
+        // Append to body (not view-content) to survive React re-renders
+        document.body.appendChild(cloneEl);
+
+        // Update bounds when leaf resizes (stable element)
+        resizeObserver = new ResizeObserver(updateBounds);
+        resizeObserver.observe(workspaceLeaf);
+      } else {
+        document.body.appendChild(cloneEl);
+      }
     } else {
       document.body.appendChild(cloneEl);
     }
-  } else {
-    document.body.appendChild(cloneEl);
-  }
 
-  viewerClones.set(embedEl, cloneEl);
-
-  // Watch for Obsidian modals opening (command palette, settings, etc.)
-  const modalObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (
-          node instanceof HTMLElement &&
-          node.matches(".modal-container, .prompt")
-        ) {
-          if (isFullscreen) {
-            closeImageViewer(cloneEl, viewerCleanupFns, viewerClones);
-          } else {
-            cloneEl.style.zIndex = "0";
+    // Watch for Obsidian modals opening (command palette, settings, etc.)
+    modalObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (
+            node instanceof HTMLElement &&
+            node.matches(".modal-container, .prompt")
+          ) {
+            if (isFullscreen) {
+              closeImageViewer(cloneEl, viewerCleanupFns, viewerClones);
+            } else {
+              cloneEl.style.zIndex = "0";
+            }
+            return;
           }
-          return;
         }
       }
-    }
-  });
-  modalObserver.observe(document.body, { childList: true });
+    });
+    modalObserver.observe(document.body, { childList: true });
 
-  // Only setup pinch/gesture zoom if not disabled
-  const isPinchZoomDisabled = document.body.classList.contains(
-    "dynamic-views-zoom-disabled",
-  );
+    // Only setup pinch/gesture zoom if not disabled
+    const isPinchZoomDisabled = document.body.classList.contains(
+      "dynamic-views-zoom-disabled",
+    );
 
-  // Check dismiss setting once, applies regardless of panzoom state
-  const isDismissDisabled = document.body.classList.contains(
-    "dynamic-views-image-viewer-disable-dismiss-on-click",
-  );
-
-  // Wrap gesture setup in try-catch to prevent orphaned clone on error
-  try {
+    // Check dismiss setting once, applies regardless of panzoom state
+    const isDismissDisabled = document.body.classList.contains(
+      "dynamic-views-image-viewer-disable-dismiss-on-click",
+    );
     if (!isPinchZoomDisabled) {
       const gestureCleanup = setupImageViewerGestures(imgEl, cloneEl, isMobile);
 
@@ -780,155 +779,176 @@ function openImageViewer(
         imgEl.removeEventListener("contextmenu", onContextMenu);
       });
     }
-  } catch (error) {
-    console.error("Failed to setup image viewer", error);
-    resizeObserver?.disconnect();
-    modalObserver.disconnect();
-    cloneEl.remove();
-    viewerClones.delete(embedEl);
-    viewerCleanupFns.delete(cloneEl); // Cleanup any partial setup
-    return;
-  }
 
-  // Track multi-touch gesture state to prevent pinch from triggering close
-  let gestureInProgress = false;
-  let gestureTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    // Track multi-touch gesture state to prevent pinch from triggering close
+    let gestureInProgress = false;
+    let gestureTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  const clearGestureTimeout = () => {
-    if (gestureTimeoutId !== null) {
-      clearTimeout(gestureTimeoutId);
-      gestureTimeoutId = null;
-    }
-  };
-
-  const onTouchStart = (e: TouchEvent) => {
-    if (e.touches.length > 1) {
-      gestureInProgress = true;
-      // Clear any pending reset since gesture is active
-      clearGestureTimeout();
-    }
-  };
-  const onTouchEnd = (e: TouchEvent) => {
-    // Only clear gesture flag when all fingers lifted
-    if (e.touches.length === 0 && gestureInProgress) {
-      // Clear any existing timeout to prevent double-fire
-      clearGestureTimeout();
-      // Short delay to ensure click event doesn't fire during gesture completion
-      gestureTimeoutId = setTimeout(() => {
-        gestureInProgress = false;
+    const clearGestureTimeout = () => {
+      if (gestureTimeoutId !== null) {
+        clearTimeout(gestureTimeoutId);
         gestureTimeoutId = null;
-      }, GESTURE_TIMEOUT_MS);
-    }
-  };
-
-  if (isMobile) {
-    cloneEl.addEventListener("touchstart", onTouchStart, { passive: true });
-    cloneEl.addEventListener("touchend", onTouchEnd, { passive: true });
-  }
-
-  // Flag to prevent opening click from immediately closing viewer
-  let isOpening = true;
-  setTimeout(() => {
-    isOpening = false;
-  }, 0);
-
-  // Click on overlay (cloneEl background, not image) closes viewer
-  const onOverlayClick = (e: MouseEvent) => {
-    if (isOpening) return;
-    // On mobile, ignore clicks during or immediately after gesture
-    if (isMobile && gestureInProgress) return;
-    // Ignore overlay click after long press reset (cursor may end over overlay)
-    if (cloneEl.dataset.longPressTriggered) return;
-    if (e.target === cloneEl) {
-      closeImageViewer(cloneEl, viewerCleanupFns, viewerClones);
-    }
-  };
-
-  const onEscape = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      closeImageViewer(cloneEl, viewerCleanupFns, viewerClones);
-    }
-  };
-
-  const onCopy = (e: KeyboardEvent) => {
-    const isCopyShortcut = (e.metaKey || e.ctrlKey) && e.key === "c";
-    if (!isCopyShortcut) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    void (async () => {
-      try {
-        if (!document.hasFocus()) {
-          window.focus();
-          await new Promise((r) => setTimeout(r, 50));
-        }
-
-        // For external images, reload with crossOrigin to avoid tainted canvas
-        const isExternal = /^https?:\/\//i.test(imgEl.src);
-        let sourceImg: HTMLImageElement = imgEl;
-
-        if (isExternal) {
-          sourceImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => resolve(img);
-            img.onerror = () => reject(new Error("Failed to load image"));
-            img.src = imgEl.src;
-          });
-        }
-
-        if (!sourceImg.naturalWidth || !sourceImg.naturalHeight) {
-          throw new Error("Image not loaded");
-        }
-
-        // Clipboard API only supports PNG - convert via canvas
-        const canvas = document.createElement("canvas");
-        canvas.width = sourceImg.naturalWidth;
-        canvas.height = sourceImg.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Failed to get canvas context");
-        ctx.drawImage(sourceImg, 0, 0);
-
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((b) => {
-            if (b) resolve(b);
-            else reject(new Error("Failed to create blob"));
-          }, "image/png");
-        });
-
-        await navigator.clipboard.write([
-          new ClipboardItem({ "image/png": blob }),
-        ]);
-        new Notice("Copied to your clipboard");
-      } catch (error) {
-        console.error("Failed to copy image:", error);
-        new Notice("Failed to copy image");
       }
-    })();
-  };
+    };
 
-  // Add all listeners synchronously (isOpening flag prevents immediate trigger)
-  document.addEventListener("keydown", onEscape);
-  document.addEventListener("keydown", onCopy);
-  cloneEl.addEventListener("click", onOverlayClick);
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        gestureInProgress = true;
+        // Clear any pending reset since gesture is active
+        clearGestureTimeout();
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      // Only clear gesture flag when all fingers lifted
+      if (e.touches.length === 0 && gestureInProgress) {
+        // Clear any existing timeout to prevent double-fire
+        clearGestureTimeout();
+        // Short delay to ensure click event doesn't fire during gesture completion
+        gestureTimeoutId = setTimeout(() => {
+          gestureInProgress = false;
+          gestureTimeoutId = null;
+        }, GESTURE_TIMEOUT_MS);
+      }
+    };
 
-  // Cleanup removes all listeners (removeEventListener is no-op if never added)
-  viewerListenerCleanups.set(cloneEl, () => {
-    document.removeEventListener("keydown", onEscape);
-    document.removeEventListener("keydown", onCopy);
-    cloneEl.removeEventListener("click", onOverlayClick);
     if (isMobile) {
-      cloneEl.removeEventListener("touchstart", onTouchStart);
-      cloneEl.removeEventListener("touchend", onTouchEnd);
+      cloneEl.addEventListener("touchstart", onTouchStart, { passive: true });
+      cloneEl.addEventListener("touchend", onTouchEnd, { passive: true });
     }
-    // Clear pending gesture timeout to prevent dangling callbacks
-    if (gestureTimeoutId !== null) {
-      clearTimeout(gestureTimeoutId);
+
+    // Flag to prevent opening click from immediately closing viewer
+    let isOpening = true;
+    setTimeout(() => {
+      isOpening = false;
+    }, 0);
+
+    // Click on overlay (cloneEl background, not image) closes viewer
+    const onOverlayClick = (e: MouseEvent) => {
+      if (isOpening) return;
+      // On mobile, ignore clicks during or immediately after gesture
+      if (isMobile && gestureInProgress) return;
+      // Ignore overlay click after long press reset (cursor may end over overlay)
+      if (cloneEl.dataset.longPressTriggered) return;
+      if (e.target === cloneEl) {
+        closeImageViewer(cloneEl, viewerCleanupFns, viewerClones);
+      }
+    };
+
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeImageViewer(cloneEl, viewerCleanupFns, viewerClones);
+      }
+    };
+
+    const onCopy = (e: KeyboardEvent) => {
+      const isCopyShortcut = (e.metaKey || e.ctrlKey) && e.key === "c";
+      if (!isCopyShortcut) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      void (async () => {
+        try {
+          if (!document.hasFocus()) {
+            window.focus();
+            await new Promise((r) => setTimeout(r, 50));
+          }
+
+          // For external images, reload with crossOrigin to avoid tainted canvas
+          const isExternal = /^https?:\/\//i.test(imgEl.src);
+          let sourceImg: HTMLImageElement = imgEl;
+
+          if (isExternal) {
+            sourceImg = await new Promise<HTMLImageElement>(
+              (resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error("Failed to load image"));
+                img.src = imgEl.src;
+              },
+            );
+          }
+
+          if (!sourceImg.naturalWidth || !sourceImg.naturalHeight) {
+            throw new Error("Image not loaded");
+          }
+
+          // Clipboard API only supports PNG - convert via canvas
+          const canvas = document.createElement("canvas");
+          canvas.width = sourceImg.naturalWidth;
+          canvas.height = sourceImg.naturalHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Failed to get canvas context");
+          ctx.drawImage(sourceImg, 0, 0);
+
+          const blob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((b) => {
+              if (b) resolve(b);
+              else reject(new Error("Failed to create blob"));
+            }, "image/png");
+          });
+
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          new Notice("Copied to your clipboard");
+        } catch (error) {
+          console.error("Failed to copy image:", error);
+          new Notice("Failed to copy image");
+        }
+      })();
+    };
+
+    // Add all listeners synchronously (isOpening flag prevents immediate trigger)
+    document.addEventListener("keydown", onEscape);
+    document.addEventListener("keydown", onCopy);
+    cloneEl.addEventListener("click", onOverlayClick);
+
+    // Cleanup removes all listeners (removeEventListener is no-op if never added)
+    viewerListenerCleanups.set(cloneEl, () => {
+      document.removeEventListener("keydown", onEscape);
+      document.removeEventListener("keydown", onCopy);
+      cloneEl.removeEventListener("click", onOverlayClick);
+      if (isMobile) {
+        cloneEl.removeEventListener("touchstart", onTouchStart);
+        cloneEl.removeEventListener("touchend", onTouchEnd);
+      }
+      // Clear pending gesture timeout to prevent dangling callbacks
+      if (gestureTimeoutId !== null) {
+        clearTimeout(gestureTimeoutId);
+      }
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      modalObserver?.disconnect();
+    });
+
+    // Register in tracking map AFTER all setup succeeds (prevents partial state)
+    viewerClones.set(embedEl, cloneEl);
+  } catch (error) {
+    // Comprehensive cleanup in reverse order of allocation
+    console.error("Failed to setup image viewer", error);
+
+    // 1. Call and remove gesture cleanup (may have been partially set up)
+    const gestureCleanup = viewerCleanupFns.get(cloneEl);
+    if (gestureCleanup) {
+      gestureCleanup();
     }
-    if (resizeObserver) {
-      resizeObserver.disconnect();
+    viewerCleanupFns.delete(cloneEl);
+
+    // 2. Call and remove listener cleanup (may have been partially set up)
+    const listenerCleanup = viewerListenerCleanups.get(cloneEl);
+    if (listenerCleanup) {
+      listenerCleanup();
     }
-    modalObserver.disconnect();
-  });
+    viewerListenerCleanups.delete(cloneEl);
+
+    // 3. Disconnect observers (may be null if error was early)
+    modalObserver?.disconnect();
+    resizeObserver?.disconnect();
+
+    // 4. Remove DOM element last
+    cloneEl.remove();
+  }
 }

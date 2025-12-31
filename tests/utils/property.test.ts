@@ -7,6 +7,10 @@ import {
   getAllDatacoreImagePropertyValues,
   getPropertyLabel,
   getAllVaultProperties,
+  stripNotePrefix,
+  isCheckboxProperty,
+  normalizePropertyName,
+  isValidUri,
 } from "../../src/utils/property";
 import { App } from "obsidian";
 
@@ -519,6 +523,213 @@ describe("property", () => {
       const filePathIndex = result.indexOf("file path");
 
       expect(pathIndex).toBeLessThan(filePathIndex);
+    });
+  });
+
+  describe("stripNotePrefix", () => {
+    it("should strip note. prefix", () => {
+      expect(stripNotePrefix("note.title")).toBe("title");
+      expect(stripNotePrefix("note.author")).toBe("author");
+    });
+
+    it("should return unchanged if no note. prefix", () => {
+      expect(stripNotePrefix("title")).toBe("title");
+      expect(stripNotePrefix("file.path")).toBe("file.path");
+      expect(stripNotePrefix("formula.test")).toBe("formula.test");
+    });
+
+    it("should handle empty string", () => {
+      expect(stripNotePrefix("")).toBe("");
+    });
+
+    it("should handle note. as entire string", () => {
+      expect(stripNotePrefix("note.")).toBe("");
+    });
+  });
+
+  describe("isCheckboxProperty", () => {
+    let mockApp: App;
+
+    beforeEach(() => {
+      mockApp = new App();
+    });
+
+    it("should return true for checkbox widget", () => {
+      (mockApp.metadataCache as any).getAllPropertyInfos = jest
+        .fn()
+        .mockReturnValue({
+          done: { widget: "checkbox" },
+          completed: { widget: "checkbox" },
+        });
+
+      expect(isCheckboxProperty(mockApp, "done")).toBe(true);
+      expect(isCheckboxProperty(mockApp, "completed")).toBe(true);
+    });
+
+    it("should return false for non-checkbox widget", () => {
+      (mockApp.metadataCache as any).getAllPropertyInfos = jest
+        .fn()
+        .mockReturnValue({
+          title: { widget: "text" },
+          date: { widget: "date" },
+        });
+
+      expect(isCheckboxProperty(mockApp, "title")).toBe(false);
+      expect(isCheckboxProperty(mockApp, "date")).toBe(false);
+    });
+
+    it("should strip note. prefix before checking", () => {
+      (mockApp.metadataCache as any).getAllPropertyInfos = jest
+        .fn()
+        .mockReturnValue({
+          done: { widget: "checkbox" },
+        });
+
+      expect(isCheckboxProperty(mockApp, "note.done")).toBe(true);
+    });
+
+    it("should return false for missing property", () => {
+      (mockApp.metadataCache as any).getAllPropertyInfos = jest
+        .fn()
+        .mockReturnValue({});
+
+      expect(isCheckboxProperty(mockApp, "missing")).toBe(false);
+    });
+
+    it("should handle missing getAllPropertyInfos method", () => {
+      delete (mockApp.metadataCache as any).getAllPropertyInfos;
+
+      expect(isCheckboxProperty(mockApp, "done")).toBe(false);
+    });
+  });
+
+  describe("normalizePropertyName", () => {
+    let mockApp: App;
+
+    beforeEach(() => {
+      mockApp = new App();
+      // Mock workspace.getLeavesOfType to return empty (API unavailable)
+      mockApp.workspace.getLeavesOfType = jest.fn().mockReturnValue([]);
+    });
+
+    it("should pass through syntax format properties", () => {
+      expect(normalizePropertyName(mockApp, "file.path")).toBe("file.path");
+      expect(normalizePropertyName(mockApp, "file.mtime")).toBe("file.mtime");
+      expect(normalizePropertyName(mockApp, "formula.test")).toBe(
+        "formula.test",
+      );
+      expect(normalizePropertyName(mockApp, "note.title")).toBe("note.title");
+    });
+
+    it("should use hardcoded fallback when API unavailable", () => {
+      expect(normalizePropertyName(mockApp, "file name")).toBe("file.name");
+      expect(normalizePropertyName(mockApp, "created time")).toBe("file.ctime");
+      expect(normalizePropertyName(mockApp, "modified time")).toBe(
+        "file.mtime",
+      );
+      expect(normalizePropertyName(mockApp, "folder")).toBe("file.folder");
+    });
+
+    it("should return custom properties as-is", () => {
+      expect(normalizePropertyName(mockApp, "customProp")).toBe("customProp");
+      expect(normalizePropertyName(mockApp, "my_property")).toBe("my_property");
+    });
+
+    it("should handle empty/whitespace input", () => {
+      expect(normalizePropertyName(mockApp, "")).toBe("");
+      expect(normalizePropertyName(mockApp, "   ")).toBe("   ");
+    });
+
+    it("should trim input", () => {
+      expect(normalizePropertyName(mockApp, "  file.path  ")).toBe("file.path");
+    });
+  });
+
+  describe("isValidUri", () => {
+    it("should accept valid HTTP URLs", () => {
+      expect(isValidUri("http://example.com")).toBe(true);
+      expect(isValidUri("https://example.com/path")).toBe(true);
+      expect(isValidUri("https://example.com/path?query=1")).toBe(true);
+    });
+
+    it("should accept other valid URI schemes", () => {
+      expect(isValidUri("obsidian://open?vault=test")).toBe(true);
+      expect(isValidUri("file:///path/to/file")).toBe(true);
+      expect(isValidUri("ftp://server.com/file")).toBe(true);
+    });
+
+    it("should reject invalid URIs", () => {
+      expect(isValidUri("not-a-uri")).toBe(false);
+      expect(isValidUri("example.com")).toBe(false);
+      expect(isValidUri("://missing-scheme")).toBe(false);
+    });
+
+    it("should reject empty/null/undefined", () => {
+      expect(isValidUri("")).toBe(false);
+      expect(isValidUri(null as any)).toBe(false);
+      expect(isValidUri(undefined as any)).toBe(false);
+    });
+
+    it("should reject too short URIs", () => {
+      expect(isValidUri("a://")).toBe(false); // Less than 5 chars
+    });
+
+    it("should handle whitespace", () => {
+      expect(isValidUri("  https://example.com  ")).toBe(true);
+    });
+  });
+
+  describe("getFirstBasesPropertyValue date validation", () => {
+    let mockApp: App;
+    let mockEntry: any;
+
+    beforeEach(() => {
+      mockApp = new App();
+      mockEntry = {
+        getValue: jest.fn(),
+        file: { path: "test.md" },
+      };
+    });
+
+    it("should accept valid date object with Date instance", () => {
+      const validDate = new Date("2024-01-01");
+      mockEntry.getValue = jest.fn().mockReturnValue({
+        icon: "calendar",
+        date: validDate,
+        time: null,
+      });
+
+      const result = getFirstBasesPropertyValue(mockApp, mockEntry, "dateProp");
+      expect(result).toEqual({ icon: "calendar", date: validDate, time: null });
+    });
+
+    it("should reject malformed date object with string date", () => {
+      mockEntry.getValue = jest.fn().mockReturnValue({
+        icon: "calendar",
+        date: "2024-01-01", // String, not Date
+        time: null,
+      });
+
+      // Should fall through to other checks, not return malformed value
+      const result = getFirstBasesPropertyValue(mockApp, mockEntry, "dateProp");
+      expect(result).not.toEqual(
+        expect.objectContaining({ date: "2024-01-01" }),
+      );
+    });
+
+    it("should reject date object with invalid Date (NaN)", () => {
+      const invalidDate = new Date("invalid");
+      mockEntry.getValue = jest.fn().mockReturnValue({
+        icon: "calendar",
+        date: invalidDate,
+        time: null,
+      });
+
+      const result = getFirstBasesPropertyValue(mockApp, mockEntry, "dateProp");
+      // Invalid date should not be returned as valid date value
+      expect(result).not.toEqual(
+        expect.objectContaining({ date: invalidDate }),
+      );
     });
   });
 });

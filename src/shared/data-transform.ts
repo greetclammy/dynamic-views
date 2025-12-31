@@ -73,8 +73,9 @@ function handleTimestampPropertyFallback(
   }
 
   // Fall back to file metadata
+  // Use styled=true for consistent formatting with other timestamp displays
   const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
-  return formatTimestamp(timestamp);
+  return formatTimestamp(timestamp, false, true);
 }
 
 /**
@@ -742,9 +743,14 @@ export function resolveBasesProperty(
 
   // Check if it's a date/datetime value - format with custom format
   // Date properties return { date: Date, time: boolean } directly
+  // Use styled=true for consistent formatting with file timestamps
   const timestampData = extractTimestamp(value);
   if (timestampData) {
-    return formatTimestamp(timestampData.timestamp, timestampData.isDateOnly);
+    return formatTimestamp(
+      timestampData.timestamp,
+      timestampData.isDateOnly,
+      true,
+    );
   }
 
   // For non-date properties, extract .data
@@ -919,10 +925,15 @@ export function resolveDatacoreProperty(
   // Handle arrays - join elements
   if (Array.isArray(rawValue)) {
     // Check if all elements are dates - if so, format first one
+    // Use styled=true for consistent formatting with file timestamps
     const firstElement = rawValue[0] as unknown;
     const timestampData = extractTimestamp(firstElement);
     if (timestampData) {
-      return formatTimestamp(timestampData.timestamp, timestampData.isDateOnly);
+      return formatTimestamp(
+        timestampData.timestamp,
+        timestampData.isDateOnly,
+        true,
+      );
     }
 
     // Otherwise join all elements as strings
@@ -945,9 +956,14 @@ export function resolveDatacoreProperty(
   }
 
   // Check if it's a date/datetime value - format with custom format
+  // Use styled=true for consistent formatting with file timestamps
   const timestampData = extractTimestamp(rawValue);
   if (timestampData) {
-    return formatTimestamp(timestampData.timestamp, timestampData.isDateOnly);
+    return formatTimestamp(
+      timestampData.timestamp,
+      timestampData.isDateOnly,
+      true,
+    );
   }
 
   // Handle checkbox/boolean properties - return special marker for renderer
@@ -967,8 +983,9 @@ export function resolveDatacoreProperty(
 
     if (isCustomCreatedTime || isCustomModifiedTime) {
       // Fall back to file metadata
+      // Use styled=true for consistent formatting with other timestamp displays
       const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
-      return formatTimestamp(timestamp);
+      return formatTimestamp(timestamp, false, true);
     }
 
     // Check if this is an empty checkbox property - show indeterminate state

@@ -88,10 +88,10 @@ export function invalidateCacheForFile(filePath: string): void {
       // Strip query params (timestamps) and decode URL
       const urlPath = decodeURIComponent(key.split("?")[0]);
       // Match if URL path ends with the vault-relative file path
+      // Use separator prefix to avoid partial filename matches (e.g., "image.png" shouldn't match "myimage.png")
       if (
         urlPath.endsWith("/" + filePath) ||
-        urlPath.endsWith("\\" + filePath) ||
-        urlPath === filePath
+        urlPath.endsWith("\\" + filePath)
       ) {
         imageMetadataCache.delete(key);
       }
