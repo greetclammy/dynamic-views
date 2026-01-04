@@ -36,7 +36,7 @@ Add to note via Command palette > Dynamic Views: Insert Datacore query.
 >
 > **Ensure your files are regularly [backed up](https://help.obsidian.md/backup).**
 
-Untill _Dynamic Views_ is [made availiable](https://github.com/obsidianmd/obsidian-releases/pull/8400) in the plugin directory, follow the steps below to install it:
+Until _Dynamic Views_ is [made available](https://github.com/obsidianmd/obsidian-releases/pull/8400) in the plugin directory, follow the steps below to install it:
 
 1. Download and enable the community plugin [BRAT](https://obsidian.md/plugins?id=obsidian42-brat).
 2. Run _Add a beta plugin for testing_ in Command palette.
