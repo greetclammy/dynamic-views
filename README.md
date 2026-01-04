@@ -36,19 +36,16 @@ Add to note via Command palette > Dynamic Views: Insert Datacore query.
 >
 > **Ensure your files are regularly [backed up](https://help.obsidian.md/backup).**
 
-Untill _Dynamic Views_ is [made availiable](https://github.com/obsidianmd/obsidian-releases/pull/8400) in the plugin directory, follow the steps below to install it.
-
-### BRAT (recommended)
+Untill _Dynamic Views_ is [made availiable](https://github.com/obsidianmd/obsidian-releases/pull/8400) in the plugin directory, follow the steps below to install it:
 
 1. Download and enable the community plugin [BRAT](https://obsidian.md/plugins?id=obsidian42-brat).
-2. Open _BRAT_ settings.
-3. Press _Add Beta Plugin_.
-4. Paste https://github.com/greetclammy/dynamic-views in the text field.
-5. Select _Latest version_.
-6. Check _Enable after installing the plugin_.
-7. Press _Add Plugin_.
+2. Run _Add a beta plugin for testing_ in Command palette.
+3. Paste https://github.com/greetclammy/dynamic-views in the text field.
+4. Select _Latest version_.
+5. Check _Enable after installing the plugin_.
+6. Press _Add Plugin_.
 
-### Install manually
+<details><summary>Install manually</summary>
 
 Note: to get updates for _Dynamic Views_, you will have to check for and install them manually.
 
@@ -57,11 +54,10 @@ Note: to get updates for _Dynamic Views_, you will have to check for and install
 3. Reload plugins or app.
 4. Enable _Dynamic Views_ in Obsidian settings > Community plugins > Installed plugins.
 
+</details>
+
 ## Support
 
 - Please [open an issue](https://github.com/greetclammy/dynamic-views/issues) if you run into any problems.
 - Feature requests considered but not prioritized; further development focused on stability and performance.
-
-## Contributing
-
-PRs welcome. Reach out if you're interested in helping maintain the plugin — get author credit and the sole funding URL in return.
+- PRs welcome. Reach out if you're interested in helping maintain the plugin — get author credit and the sole funding URL in return.
