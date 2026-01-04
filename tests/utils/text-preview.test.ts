@@ -427,6 +427,12 @@ Content here`;
       expect(result).toBe("My File Content here");
     });
 
+    it("should omit first line with CRLF when it matches filename (ifMatchesTitle)", () => {
+      const input = "My File\r\nContent here";
+      const result = sanitizeForPreview(input, "ifMatchesTitle", "My File");
+      expect(result).toBe("Content here");
+    });
+
     it("should handle empty content", () => {
       expect(sanitizeForPreview("")).toBe("");
       expect(sanitizeForPreview("   ")).toBe("");

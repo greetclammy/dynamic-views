@@ -16,7 +16,23 @@ interface DateValue {
 }
 
 /**
+ * Check if a timestamp is from today
+ */
+export function isTimestampToday(timestamp: number): boolean {
+  const timestampDate = new Date(timestamp);
+  const todayDate = new Date();
+  return (
+    timestampDate.getFullYear() === todayDate.getFullYear() &&
+    timestampDate.getMonth() === todayDate.getMonth() &&
+    timestampDate.getDate() === todayDate.getDate()
+  );
+}
+
+/**
  * Format timestamp using moment.js with formats from Style Settings
+ * @param timestamp - The timestamp to format
+ * @param isDateOnly - If true, always use date-only format (for date-type properties)
+ * @param styled - If true, apply recent/older abbreviation rules
  */
 export function formatTimestamp(
   timestamp: number,
@@ -34,33 +50,38 @@ export function formatTimestamp(
     getTimeFormat(): string;
   };
 
-  // For date-only properties, show date only
+  // For date-only properties, use date format
   if (isDateOnly) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
     return moment(timestamp).format(styleSettings.getDateFormat()) as string;
   }
 
-  // For styled property display, apply Style Settings toggles
-  if (styled) {
-    const timestampDate = new Date(timestamp);
-    const todayDate = new Date();
-    const isToday =
-      timestampDate.getFullYear() === todayDate.getFullYear() &&
-      timestampDate.getMonth() === todayDate.getMonth() &&
-      timestampDate.getDate() === todayDate.getDate();
-
-    if (isToday && styleSettings.shouldShowRecentTimeOnly()) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
-      return moment(timestamp).format(styleSettings.getTimeFormat()) as string;
-    }
-    const isFuture = timestamp > Date.now();
-    if (!isToday && !isFuture && styleSettings.shouldShowOlderDateOnly()) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
-      return moment(timestamp).format(styleSettings.getDateFormat()) as string;
-    }
+  // For non-styled properties, use full datetime format
+  if (!styled) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
+    return moment(timestamp).format(
+      styleSettings.getDatetimeFormat(),
+    ) as string;
   }
 
-  // Full datetime
+  // Determine whether to show time-only or date-only format
+  // Each timestamp evaluated independently based on its own date
+  const isToday = isTimestampToday(timestamp);
+  const isFuture = timestamp > Date.now();
+  const showTimeOnly = isToday && styleSettings.shouldShowRecentTimeOnly();
+  const showDateOnly =
+    !isToday && !isFuture && styleSettings.shouldShowOlderDateOnly();
+
+  if (showTimeOnly) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
+    return moment(timestamp).format(styleSettings.getTimeFormat()) as string;
+  }
+  if (showDateOnly) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
+    return moment(timestamp).format(styleSettings.getDateFormat()) as string;
+  }
+
+  // Full datetime for styled
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- moment.js untyped API
   return moment(timestamp).format(styleSettings.getDatetimeFormat()) as string;
 }
@@ -99,10 +120,9 @@ export function getTimestampIcon(
 }
 
 /**
- * Check if a value is a valid date value (works for both Bases and Datacore)
- * Must have 'time' property to distinguish from text properties that might contain date-like strings
+ * Check if a value is a Bases date value ({date: Date, time: boolean})
  */
-export function isDateValue(value: unknown): value is DateValue {
+export function isBasesDateValue(value: unknown): value is DateValue {
   return (
     value !== null &&
     typeof value === "object" &&
@@ -115,16 +135,66 @@ export function isDateValue(value: unknown): value is DateValue {
 }
 
 /**
+ * Luxon DateTime interface (subset used by Datacore)
+ * @see https://moment.github.io/luxon/api-docs/index.html#datetime
+ */
+interface LuxonDateTime {
+  toMillis(): number;
+  hour: number;
+  minute: number;
+  second: number;
+  millisecond: number;
+}
+
+/**
+ * Check if a value is a Luxon DateTime (Datacore format)
+ */
+export function isLuxonDateTime(value: unknown): value is LuxonDateTime {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "toMillis" in value &&
+    typeof (value as LuxonDateTime).toMillis === "function" &&
+    "hour" in value &&
+    typeof (value as LuxonDateTime).hour === "number"
+  );
+}
+
+/**
+ * Check if a value is a valid date value (works for both Bases and Datacore)
+ * @deprecated Use isBasesDateValue or isLuxonDateTime directly
+ */
+export function isDateValue(value: unknown): value is DateValue {
+  return isBasesDateValue(value);
+}
+
+/**
  * Extract timestamp from date value (works for both Bases and Datacore)
  */
 export function extractTimestamp(
   value: unknown,
 ): { timestamp: number; isDateOnly: boolean } | null {
-  if (isDateValue(value)) {
+  // Bases format: {date: Date, time: boolean}
+  if (isBasesDateValue(value)) {
     return {
       timestamp: value.date.getTime(),
       isDateOnly: value.time === false,
     };
   }
+
+  // Datacore format: Luxon DateTime
+  // @see https://moment.github.io/luxon/api-docs/index.html#datetime
+  if (isLuxonDateTime(value)) {
+    const isDateOnly =
+      value.hour === 0 &&
+      value.minute === 0 &&
+      value.second === 0 &&
+      value.millisecond === 0;
+    return {
+      timestamp: value.toMillis(),
+      isDateOnly,
+    };
+  }
+
   return null;
 }

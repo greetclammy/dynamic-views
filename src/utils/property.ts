@@ -17,19 +17,43 @@ export function stripNotePrefix(propertyName: string): string {
 }
 
 /**
+ * Get property info from Obsidian's property registry
+ * @param app - Obsidian App instance
+ * @param propertyName - Property name (may include "note." prefix)
+ * @returns Property info object with type/widget, or undefined if not found
+ */
+function getPropertyInfo(
+  app: App,
+  propertyName: string,
+): { type?: string; widget?: string } | undefined {
+  const fmProp = stripNotePrefix(propertyName);
+  /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- getAllPropertyInfos not in official types */
+  return (app.metadataCache as any).getAllPropertyInfos?.()?.[fmProp] as
+    | { type?: string; widget?: string }
+    | undefined;
+  /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+}
+
+/**
  * Check if a property is a checkbox type using Obsidian's property registry
  * @param app - Obsidian App instance
  * @param propertyName - Property name (may include "note." prefix)
  * @returns true if property widget type is "checkbox"
  */
 export function isCheckboxProperty(app: App, propertyName: string): boolean {
-  const fmProp = stripNotePrefix(propertyName);
-  /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- getAllPropertyInfos not in official types */
-  const propInfo = (app.metadataCache as any).getAllPropertyInfos?.()?.[
-    fmProp
-  ] as { widget?: string } | undefined;
-  /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-  return propInfo?.widget === "checkbox";
+  return getPropertyInfo(app, propertyName)?.widget === "checkbox";
+}
+
+/**
+ * Check if a property is a date or datetime type using Obsidian's property registry
+ * Used to distinguish actual date properties from text properties containing date-like strings
+ * @param app - Obsidian App instance
+ * @param propertyName - Property name (may include "note." prefix)
+ * @returns true if property type is "date" or "datetime"
+ */
+export function isDateProperty(app: App, propertyName: string): boolean {
+  const widget = getPropertyInfo(app, propertyName)?.widget;
+  return widget === "date" || widget === "datetime";
 }
 
 /**

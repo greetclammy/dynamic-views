@@ -22,23 +22,24 @@ export class ClearSettingsModal extends Modal {
     this.setTitle("Caution");
     contentEl.createEl("p", {
       text: "This will reset all plugin settings to their default values. This action cannot be undone.",
+      cls: "mod-warning",
     });
 
     const buttonContainer = contentEl.createDiv({
       cls: "modal-button-container",
     });
 
-    const cancelButton = buttonContainer.createEl("button", { text: "Cancel" });
-    cancelButton.onclick = () => this.close();
-
     const clearButton = buttonContainer.createEl("button", {
-      text: "Clear settings",
+      text: "Clear",
     });
     clearButton.addClass("mod-warning");
     clearButton.onclick = async () => {
       this.close();
       await this.onConfirm();
     };
+
+    const cancelButton = buttonContainer.createEl("button", { text: "Cancel" });
+    cancelButton.onclick = () => this.close();
   }
 
   onClose() {

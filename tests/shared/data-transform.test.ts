@@ -17,6 +17,7 @@ jest.mock("../../src/shared/render-utils", () => ({
   ),
   extractTimestamp: jest.fn(() => null),
   isDateValue: jest.fn(() => false),
+  isTimestampToday: jest.fn(() => false),
 }));
 
 describe("data-transform", () => {
@@ -33,13 +34,17 @@ describe("data-transform", () => {
       propertyDisplay3: "",
       propertyDisplay4: "",
       smartTimestamp: false,
-      createdTimeProperty: "",
-      modifiedTimeProperty: "",
+      createdTimeProperty: "created time",
+      modifiedTimeProperty: "modified time",
       fallbackToInNote: true,
       omitFirstLine: "ifMatchesTitle",
     } as Settings;
 
     mockApp = new App();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe("datacoreResultToCardData", () => {
@@ -702,7 +707,7 @@ describe("data-transform", () => {
         expect(result).toBe("");
       });
 
-      it("should return null for property with empty array", () => {
+      it("should return empty string for property with empty array", () => {
         const {
           getFirstBasesPropertyValue,
           isCheckboxProperty,
@@ -733,9 +738,7 @@ describe("data-transform", () => {
           mockSettings,
         );
 
-        // Empty arrays are treated as null (property exists but empty)
-        // Actually looking at code, empty arrays trigger the isCheckboxProperty check
-        // and fall through to the same path as null data
+        // Empty arrays indicate property exists but is empty
         expect(result).toBe("");
       });
     });

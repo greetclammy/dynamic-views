@@ -167,19 +167,8 @@ export function applyCachedImageMetadata(
   const cached = imageMetadataCache.get(imgSrc);
   if (!cached) return;
 
-  // Only apply ambient color if it was cached (ambient settings were on when extracted)
-  if (cached.rgb && cached.theme) {
-    const isCover =
-      isCoverImage ?? cardEl.classList.contains("image-format-cover");
-    applyAmbientStyles(
-      cached.rgb,
-      cached.theme,
-      cached.luminance,
-      imageEmbedContainer,
-      cardEl,
-      isCover,
-    );
-  }
+  // Don't apply ambient styles here - let handleImageLoad apply them in double rAF
+  // so the transition animates. Aspect ratio can be applied immediately.
 
   // Apply cached backdrop theme for luminance-based adaptive text
   if (
@@ -197,7 +186,7 @@ export function applyCachedImageMetadata(
       cached.aspectRatio.toString(),
     );
   }
-  cardEl.classList.add("cover-ready");
+  // Don't add cover-ready here - wait for actual image load to trigger fade-in
 }
 
 /**
@@ -275,29 +264,6 @@ export function handleImageLoad(
     });
   }
 
-  // Apply ambient color if extracted (uses shared function #6)
-  if (rgb && colorTheme) {
-    applyAmbientStyles(
-      rgb,
-      colorTheme,
-      luminance,
-      imageEmbedContainer,
-      cardEl,
-      isCover,
-    );
-  } else if (needsAmbient && isExternalUrl(imgEl.src)) {
-    // Clear ambient styles for uncached external images
-    clearAmbientStyles(imageEmbedContainer, cardEl);
-  }
-
-  // Apply backdrop theme for luminance-based adaptive text (when tint is disabled)
-  if (isBackdropImage && colorTheme && needsBackdropLuminance) {
-    cardEl.setAttribute("data-backdrop-theme", colorTheme);
-  } else if (isBackdropImage && isExternalUrl(imgEl.src)) {
-    // Clear backdrop theme for uncached external images
-    cardEl.removeAttribute("data-backdrop-theme");
-  }
-
   // Set actual aspect ratio for masonry contain mode (used when "Fixed cover height" is OFF)
   // Use default ratio for invalid/missing dimensions to prevent layout issues
   cardEl.style.setProperty(
@@ -305,12 +271,47 @@ export function handleImageLoad(
     (aspectRatio ?? DEFAULT_ASPECT_RATIO).toString(),
   );
 
-  // Mark as processed (idempotency guard)
-  cardEl.classList.add("cover-ready");
+  // Apply backdrop theme immediately (no animation needed)
+  if (isBackdropImage && colorTheme && needsBackdropLuminance) {
+    cardEl.setAttribute("data-backdrop-theme", colorTheme);
+  } else if (isBackdropImage && isExternalUrl(imgEl.src)) {
+    cardEl.removeAttribute("data-backdrop-theme");
+  }
 
-  // Trigger layout update if callback provided (for masonry reflow)
-  if (onLayoutUpdate) {
-    onLayoutUpdate();
+  // Double rAF ensures browser paints initial state before triggering transitions
+  // Single rAF can be batched with initial render; double guarantees a paint cycle
+  requestAnimationFrame(() => {
+    // Guard against card unmounted during first rAF
+    if (!cardEl.isConnected) return;
+    requestAnimationFrame(() => {
+      // Guard against card unmounted during second rAF
+      if (!cardEl.isConnected) return;
+      cardEl.classList.add("cover-ready");
+      if (onLayoutUpdate) {
+        onLayoutUpdate();
+      }
+      // Apply ambient color in same frame - both transitions start together
+      if (rgb && colorTheme && imageEmbedContainer.isConnected) {
+        applyAmbientStyles(
+          rgb,
+          colorTheme,
+          luminance,
+          imageEmbedContainer,
+          cardEl,
+          isCover,
+        );
+      }
+    });
+  });
+
+  if (
+    !rgb &&
+    needsAmbient &&
+    isExternalUrl(imgEl.src) &&
+    cardEl.isConnected &&
+    imageEmbedContainer.isConnected
+  ) {
+    clearAmbientStyles(imageEmbedContainer, cardEl);
   }
 }
 
@@ -343,12 +344,15 @@ export function setupImageLoadHandler(
   }
 
   // Handle already-loaded images (skip if already processed via cache)
+  // Force reflow to ensure initial opacity:0 is computed before triggering transition
   if (
     imgEl.complete &&
     imgEl.naturalWidth > 0 &&
     imgEl.naturalHeight > 0 &&
     !cardEl.classList.contains("cover-ready")
   ) {
+    // Force reflow - reading offsetHeight computes current styles
+    void cardEl.offsetHeight;
     handleImageLoad(
       imgEl,
       imageEmbedContainer,
@@ -442,12 +446,14 @@ export function handleJsxImageRef(
   }
 
   // Handle already-loaded images
+  // Force reflow to ensure initial opacity:0 is computed before triggering transition
   if (
     imgEl.complete &&
     imgEl.naturalWidth > 0 &&
     imgEl.naturalHeight > 0 &&
     !cardEl.classList.contains("cover-ready")
   ) {
+    void cardEl.offsetHeight;
     handleImageLoad(
       imgEl,
       imageEmbedEl,

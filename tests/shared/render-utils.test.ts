@@ -19,7 +19,7 @@ jest.mock("moment", () => {
 jest.mock("../../src/utils/style-settings", () => ({
   shouldShowRecentTimeOnly: jest.fn(),
   shouldShowOlderDateOnly: jest.fn(),
-  getDatetimeFormat: jest.fn(() => "YYYY-MM-DD HH:mm"),
+  getDatetimeFormat: jest.fn(() => "YYYY-MM-DD, HH:mm"),
   getDateFormat: jest.fn(() => "YYYY-MM-DD"),
   getTimeFormat: jest.fn(() => "HH:mm"),
   showTimestampIcon: jest.fn(),
@@ -45,8 +45,10 @@ describe("render-utils", () => {
 
   describe("formatTimestamp", () => {
     it("should format date-only timestamps using date format", () => {
-      const result = formatTimestamp(1000000, true, false);
-      expect(result).toBe("1000000-YYYY-MM-DD");
+      const timestamp = 1000000;
+      const result = formatTimestamp(timestamp, true, false);
+      expect(result).toBe(`${timestamp}-YYYY-MM-DD`);
+      expect(mockStyleSettings.getDateFormat).toHaveBeenCalled();
     });
 
     it("should format recent styled timestamps as time only when setting enabled", () => {
@@ -104,17 +106,20 @@ describe("render-utils", () => {
       const recentTimestamp = now - 1000;
 
       const result = formatTimestamp(recentTimestamp, false, true);
-      expect(result).toBe(`${recentTimestamp}-YYYY-MM-DD HH:mm`);
+      expect(result).toBe(`${recentTimestamp}-YYYY-MM-DD, HH:mm`);
     });
 
-    it("should format non-styled timestamps as full datetime", () => {
-      const result = formatTimestamp(1000000, false, false);
-      expect(result).toBe("1000000-YYYY-MM-DD HH:mm");
+    it("should format non-styled timestamps using datetime format", () => {
+      const timestamp = 1000000;
+      const result = formatTimestamp(timestamp, false, false);
+      expect(result).toBe(`${timestamp}-YYYY-MM-DD, HH:mm`);
+      expect(mockStyleSettings.getDatetimeFormat).toHaveBeenCalled();
     });
 
-    it("should handle zero timestamp", () => {
+    it("should handle zero timestamp with datetime format", () => {
       const result = formatTimestamp(0, false, false);
-      expect(result).toBe("0-YYYY-MM-DD HH:mm");
+      expect(result).toBe("0-YYYY-MM-DD, HH:mm");
+      expect(mockStyleSettings.getDatetimeFormat).toHaveBeenCalled();
     });
 
     it("should handle NaN timestamp gracefully", () => {
@@ -138,7 +143,7 @@ describe("render-utils", () => {
       tomorrow.setHours(12, 0, 0, 0);
 
       const result = formatTimestamp(tomorrow.getTime(), false, true);
-      expect(result).toBe(`${tomorrow.getTime()}-YYYY-MM-DD HH:mm`);
+      expect(result).toBe(`${tomorrow.getTime()}-YYYY-MM-DD, HH:mm`);
     });
 
     it("should show full datetime for older timestamps when shouldShowOlderDateOnly is false", () => {
@@ -149,7 +154,7 @@ describe("render-utils", () => {
       yesterday.setDate(yesterday.getDate() - 1);
 
       const result = formatTimestamp(yesterday.getTime(), false, true);
-      expect(result).toBe(`${yesterday.getTime()}-YYYY-MM-DD HH:mm`);
+      expect(result).toBe(`${yesterday.getTime()}-YYYY-MM-DD, HH:mm`);
     });
 
     it("should show full datetime for today when shouldShowRecentTimeOnly is false", () => {
@@ -158,7 +163,7 @@ describe("render-utils", () => {
 
       const now = Date.now();
       const result = formatTimestamp(now - 1000, false, true);
-      expect(result).toBe(`${now - 1000}-YYYY-MM-DD HH:mm`);
+      expect(result).toBe(`${now - 1000}-YYYY-MM-DD, HH:mm`);
     });
   });
 
@@ -176,7 +181,7 @@ describe("render-utils", () => {
 
   describe("getTimestampIcon", () => {
     const baseSettings = {
-      createdTimeProperty: "",
+      createdTimeProperty: "created time",
     } as Settings;
 
     it('should return "calendar" for file.ctime', () => {

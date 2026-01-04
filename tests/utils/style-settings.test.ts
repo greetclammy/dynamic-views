@@ -239,7 +239,7 @@ describe("style-settings", () => {
     });
 
     it("should return false when full timestamp class is present", () => {
-      mockClassList.add("dynamic-views-timestamp-older-full");
+      mockClassList.add("dynamic-views-timestamp-past-full");
       expect(shouldShowOlderDateOnly()).toBe(false);
     });
   });

@@ -1107,7 +1107,7 @@ export function Toolbar({
                     Apply
                   </button>
                   <button
-                    className="query-btn query-clear-btn"
+                    className="query-btn query-clear-btn mod-warning"
                     tabIndex={0}
                     onClick={onClearQuery}
                   >

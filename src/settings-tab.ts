@@ -141,7 +141,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       .addSetting((s) =>
         s
           .setName("Open file action")
-          .setDesc("How files should open when clicked")
+          .setDesc("How files should open when clicked.")
           .addDropdown((dropdown) =>
             dropdown
               .addOption("card", "Press on title or card")
@@ -163,7 +163,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       .addSetting((s) =>
         s
           .setName("Omit first line in text preview")
-          .setDesc("Control when the first line is removed from text preview")
+          .setDesc("Control when the first line is removed from text preview.")
           .addDropdown((dropdown) =>
             dropdown
               .addOption("always", "Always")
@@ -208,11 +208,11 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
               smartTimestamp: value,
             });
             if (value) {
-              conditionalText.show();
-              smartTimestampSubSettingsEl.show();
+              conditionalText.removeClass("dynamic-views-hidden");
+              smartTimestampSubSettingsEl.removeClass("dynamic-views-hidden");
             } else {
-              conditionalText.hide();
-              smartTimestampSubSettingsEl.hide();
+              conditionalText.addClass("dynamic-views-hidden");
+              smartTimestampSubSettingsEl.addClass("dynamic-views-hidden");
             }
           }),
         );
@@ -231,15 +231,15 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       ".setting-group:nth-child(2) .setting-items",
     );
     smartTimestampSubSettingsEl = (generalGroupItems ?? containerEl).createDiv(
-      "smart-timestamp-sub-settings",
+      "setting-sub-items",
     );
 
     new Setting(smartTimestampSubSettingsEl)
       .setName("Created time property")
-      .setDesc("Leave blank to use file metadata.")
+      .setDesc("Property with creation timestamps.")
       .addText((text) =>
         text
-          .setPlaceholder("created")
+          .setPlaceholder("created time")
           .setValue(settings.createdTimeProperty)
           .onChange(async (value) => {
             await this.plugin.persistenceManager.setGlobalSettings({
@@ -250,10 +250,10 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 
     new Setting(smartTimestampSubSettingsEl)
       .setName("Modified time property")
-      .setDesc("Leave blank to use file metadata.")
+      .setDesc("Property with modification timestamps.")
       .addText((text) =>
         text
-          .setPlaceholder("modified")
+          .setPlaceholder("modified time")
           .setValue(settings.modifiedTimeProperty)
           .onChange(async (value) => {
             await this.plugin.persistenceManager.setGlobalSettings({
@@ -264,11 +264,11 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 
     // Initialize visibility
     if (settings.smartTimestamp) {
-      conditionalText.show();
-      smartTimestampSubSettingsEl.show();
+      conditionalText.removeClass("dynamic-views-hidden");
+      smartTimestampSubSettingsEl.removeClass("dynamic-views-hidden");
     } else {
-      conditionalText.hide();
-      smartTimestampSubSettingsEl.hide();
+      conditionalText.addClass("dynamic-views-hidden");
+      smartTimestampSubSettingsEl.addClass("dynamic-views-hidden");
     }
 
     new SettingGroup(containerEl)
@@ -322,7 +322,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       )
       .addSetting((s) =>
         s
-          .setName("Fetch cardlink images")
+          .setName("Fetch card link images")
           .then((s) => {
             const desc = s.descEl;
             desc.appendText("Extract cover images from ");
@@ -386,7 +386,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
         s
           .setName("Open random file in new tab")
           .setDesc(
-            "When opening a random file, open it in a new tab instead of the same tab",
+            "When opening a random file, open it in a new tab instead of the same tab.",
           )
           .addToggle((toggle) =>
             toggle
@@ -567,7 +567,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
           .setName("Clear settings")
           .setDesc("Reset all plugin settings to their default values.")
           .addButton((button) => {
-            button.buttonEl.addClass("mod-destructive");
+            button.buttonEl.addClass("mod-warning");
             button.setButtonText("Clear").onClick(() => {
               new ClearSettingsModal(this.app, this.plugin, async () => {
                 // Reset all settings to defaults with deep copy

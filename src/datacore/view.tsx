@@ -47,6 +47,7 @@ import {
   getMinMasonryColumns,
   getMinGridColumns,
   getCardSpacing,
+  getCompactBreakpoint,
   setupStyleSettingsObserver,
 } from "../utils/style-settings";
 import { reapplyAmbientColors } from "../shared/image-loader";
@@ -64,6 +65,8 @@ import {
 import type { CardData } from "../shared/card-renderer";
 import { setupSwipeInterception } from "../bases/swipe-interceptor";
 import { setupHoverKeyboardNavigation } from "../shared/keyboard-nav";
+import { initializeScrollGradients } from "../shared/scroll-gradient";
+import { initializeTitleTruncation } from "../bases/shared-renderer";
 
 // Extend App type to include isMobile property
 declare module "obsidian" {
@@ -1408,6 +1411,58 @@ export function View({
       resizeObserver.disconnect();
     };
   }, [viewMode, settings.cardSize, _styleRevision, dc]);
+
+  // Initialize scroll gradients and title truncation after cards render
+  // Uses double-RAF to ensure layout calculations complete first
+  dc.useEffect(() => {
+    // Skip for list view (no cards with property fields)
+    if (viewMode === "list") return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    let rafId: number | null = null;
+    let rafId2: number | null = null;
+
+    // Double-RAF: wait for layout useEffects to complete
+    rafId = requestAnimationFrame(() => {
+      rafId2 = requestAnimationFrame(() => {
+        if (!container.isConnected) return;
+        const fields = container.querySelectorAll(".property-field").length;
+        console.log(`// gradient init: viewMode=${viewMode}, fields=${fields}`);
+
+        // Sync responsive classes before gradient init (ResizeObservers are async)
+        const compactBreakpoint = getCompactBreakpoint();
+        if (compactBreakpoint > 0) {
+          container.querySelectorAll<HTMLElement>(".card").forEach((card) => {
+            const cardWidth = card.offsetWidth;
+            if (cardWidth === 0) return;
+            const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
+            const thumbWidth = thumb?.offsetWidth ?? 0;
+
+            card.classList.toggle(
+              "compact-mode",
+              cardWidth < compactBreakpoint,
+            );
+            if (thumb && thumbWidth > 0) {
+              card.classList.toggle(
+                "thumbnail-stack",
+                cardWidth < thumbWidth * 3,
+              );
+            }
+          });
+        }
+
+        initializeScrollGradients(container);
+        initializeTitleTruncation(container);
+      });
+    });
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      if (rafId2 !== null) cancelAnimationFrame(rafId2);
+    };
+  }, [viewMode, displayedCount, _styleRevision, dc]);
 
   // Sync refs for callback access in infinite scroll
   dc.useEffect(() => {

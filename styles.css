@@ -31,8 +31,8 @@ settings:
                 value: dynamic-views-backdrop-theme-disable
     -
         id: dynamic-views-backdrop-overlay-light
-        title: Light overlay opacity
-        description: Strength of the light overlay
+        title: Light overlay strength
+        description: Opacity of the light overlay
         type: variable-number-slider
         default: 70
         min: 0
@@ -40,10 +40,10 @@ settings:
         step: 1
     -
         id: dynamic-views-backdrop-overlay-dark
-        title: Dark overlay opacity
-        description: Strength of the dark overlay
+        title: Dark overlay strength
+        description: Opacity of the dark overlay
         type: variable-number-slider
-        default: 70
+        default: 40
         min: 0
         max: 100
         step: 1
@@ -273,7 +273,7 @@ settings:
     -
         id: dynamic-views-masonry-fixed-cover-height
         title: Fixed cover height
-        description: Keep top/bottom letterbox bars visible in Masonry contain mode.
+        description: Keep top/bottom letterbox bars visible in contain mode in Masonry.
         type: class-toggle
         default: false
     -
@@ -309,9 +309,14 @@ settings:
         type: variable-number-slider
         default: 0
         min: 0
-        max: 32
+        max: 48
         step: 1
         format: px
+    -
+        id: dynamic-views-cover-circular
+        title: Round covers
+        description: Make cover corners perfectly rounded
+        type: class-toggle
     -
         id: dynamic-views-cover-inset
         title: Cover inset
@@ -325,8 +330,20 @@ settings:
     -
         id: dynamic-views-cover-hover-zoom
         title: Hover zoom
-        description: Subtle zoom effect when hovering over cards with covers
-        type: class-toggle
+        description: Subtle zoom effect when hovering over covers
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-cover-hover-zoom-off
+        options:
+            -
+                label: On hover over cover
+                value: dynamic-views-cover-hover-zoom-cover
+            -
+                label: On hover over card
+                value: dynamic-views-cover-hover-zoom-card
+            -
+                label: Disabled
+                value: dynamic-views-cover-hover-zoom-off
     -
         id: datacore-heading
         title: Datacore
@@ -383,6 +400,63 @@ settings:
         title: Disable fade gradient at query bottom
         description: Hide fade-out gradient at bottom of scrollable results (applies when View height > 0)
         type: class-toggle
+    -
+        id: dates-heading
+        title: Dates
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-date-format
+        title: Date format
+        description: Moment.js format for date-only properties.
+        type: variable-text
+        default: YYYY-MM-DD
+    -
+        id: dynamic-views-time-format
+        title: Time format
+        description: Moment.js format for time-only display.
+        type: variable-text
+        default: HH:mm
+    -
+        id: dynamic-views-datetime-format
+        title: Datetime format
+        description: Moment.js format for datetime properties.
+        type: variable-text
+        default: YYYY-MM-DD, HH:mm
+    -
+        id: dynamic-views-timestamp-recent-full
+        title: Show full recent timestamps
+        description: Show date for today's created and modified timestamps
+        type: class-toggle
+    -
+        id: dynamic-views-timestamp-past-full
+        title: Show full past timestamps
+        description: Show time for created and modified timestamps older than today.
+        type: class-toggle
+    -
+        id: dynamic-views-timestamp-icon
+        title: Timestamp icon
+        description: Show icon next to timestamp to distinguish between modified and created time when property labels hidden.
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-timestamp-icon-edge
+        options:
+            -
+                label: Align left
+                value: dynamic-views-timestamp-icon-left
+            -
+                label: Align right
+                value: dynamic-views-timestamp-icon-right
+            -
+                label: Align to card center
+                value: dynamic-views-timestamp-icon-center
+            -
+                label: Align to card edge
+                value: dynamic-views-timestamp-icon-edge
+            -
+                label: Hide
+                value: dynamic-views-timestamp-icon-hide
     -
         id: image-viewer-heading
         title: Image viewer
@@ -583,7 +657,7 @@ settings:
         default: dynamic-views-hide-empty-labels-hidden
         options:
             -
-                label: Show markers
+				label: Show empty value markers
                 value: dynamic-views-hide-empty-show
             -
                 label: Hide if labels hidden
@@ -611,14 +685,14 @@ settings:
         description: How to align right-side properties when properties are shown side-by-side
         type: class-select
         allowEmpty: false
-        default: dynamic-views-paired-prop-align-right
+        default: dynamic-views-paired-property-align-right
         options:
             -
                 label: Left
-                value: dynamic-views-paired-prop-align-left
+                value: dynamic-views-paired-property-align-left
             -
                 label: Right
-                value: dynamic-views-paired-prop-align-right
+                value: dynamic-views-paired-property-align-right
     -
         id: dynamic-views-property-width-allocation
         title: Property width allocation
@@ -1096,7 +1170,7 @@ settings:
         type: variable-number-slider
         default: 4
         min: 0
-        max: 50
+        max: 48
         step: 1
         format: px
     -
@@ -1134,63 +1208,6 @@ settings:
         description: Hide the shadow below thumbnails with multiple images
         type: class-toggle
         default: false
-    -
-        id: timestamps-heading
-        title: Timestamps
-        type: heading
-        level: 2
-        collapsed: true
-    -
-        id: dynamic-views-date-format
-        title: Date format
-        description: Moment.js format for date-only display (older timestamps)
-        type: variable-text
-        default: YYYY-MM-DD
-    -
-        id: dynamic-views-time-format
-        title: Time format
-        description: Moment.js format for time-only display (recent timestamps)
-        type: variable-text
-        default: HH:mm
-    -
-        id: dynamic-views-datetime-format
-        title: Datetime format
-        description: Moment.js format for full datetime display
-        type: variable-text
-        default: YYYY-MM-DD HH:mm
-    -
-        id: dynamic-views-timestamp-recent-full
-        title: Show full recent timestamps
-        description: Show date for today's timestamps
-        type: class-toggle
-    -
-        id: dynamic-views-timestamp-older-full
-        title: Show full older timestamps
-        description: Show time for timestamps older than today
-        type: class-toggle
-    -
-        id: dynamic-views-timestamp-icon
-        title: Timestamp icon
-        description: Show icon next to timestamp to distinguish between modified and created time when property labels hidden
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-timestamp-icon-edge
-        options:
-            -
-                label: Align left
-                value: dynamic-views-timestamp-icon-left
-            -
-                label: Align right
-                value: dynamic-views-timestamp-icon-right
-            -
-                label: Align to card center
-                value: dynamic-views-timestamp-icon-center
-            -
-                label: Align to card edge
-                value: dynamic-views-timestamp-icon-edge
-            -
-                label: Hide
-                value: dynamic-views-timestamp-icon-hide
     -
         id: title-heading
         title: Title
@@ -3174,19 +3191,20 @@ body.dynamic-views-card-background-custom .dynamic-views .card {
   );
 }
 
-/* Ambient background: Cards WITH images only (requires cover-ready to avoid flash) */
+/* Ambient card background: Uses fallback matching base bg until --ambient-color is set */
 body.dynamic-views-ambient-bg-subtle
   .dynamic-views
-  .card.image-format-cover.cover-ready:has(.card-cover),
+  .card.image-format-cover:has(.card-cover),
 body.dynamic-views-ambient-bg-subtle
   .dynamic-views
-  .card.image-format-thumbnail.cover-ready:has(.card-thumbnail),
+  .card.image-format-thumbnail:has(.card-thumbnail),
 body.dynamic-views-adaptive-text
   .dynamic-views
-  .card.image-format-cover.cover-ready:has(.card-cover),
+  .card.image-format-cover:has(.card-cover),
 body.dynamic-views-adaptive-text
   .dynamic-views
-  .card.image-format-thumbnail.cover-ready:has(.card-thumbnail) {
+  .card.image-format-thumbnail:has(.card-thumbnail) {
+  /* Fallback matches base card bg; transitions when --ambient-color is set */
   background-color: var(--ambient-color, var(--background-primary-alt));
 }
 
@@ -3743,6 +3761,12 @@ body.dynamic-views-hide-thumbnail-shadow.dynamic-views-show-thumbnail-placeholde
   object-position: center center;
   pointer-events: auto;
   border-radius: 0; /* Override theme styles; container handles border-radius */
+  opacity: 0;
+  transition: opacity var(--anim-duration-moderate, 300ms) ease;
+}
+
+.dynamic-views .card.cover-ready .card-thumbnail img {
+  opacity: 1;
 }
 
 /* Thumbnail contain mode */
@@ -4430,6 +4454,22 @@ body.dynamic-views-show-cover-placeholder-none
   border-radius: var(--dynamic-views-cover-border-radius, 0);
 }
 
+/* Circular cover: 50% makes any shape circular */
+body.dynamic-views-cover-circular
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover-wrapper,
+body.dynamic-views-cover-circular
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover,
+body.dynamic-views-cover-circular
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover-placeholder {
+  border-radius: 50%;
+}
+
 /* Cover-left/right: full height */
 .dynamic-views .card.card-cover-left.image-format-cover .card-cover,
 .dynamic-views .card.card-cover-right.image-format-cover .card-cover {
@@ -4458,11 +4498,24 @@ body.dynamic-views-show-cover-placeholder-none
   object-fit: cover;
   object-position: center center;
   border-radius: 0; /* Override theme styles; container handles border-radius */
+  opacity: 0;
+  transition: opacity var(--anim-duration-moderate, 300ms) ease;
+}
+
+.dynamic-views .card.image-format-cover.cover-ready .card-cover img {
+  opacity: 1;
 }
 
 /* Hover zoom for cover images (only when enabled via Style Settings, desktop only) */
 @media (hover: hover) {
-  body.dynamic-views-cover-hover-zoom
+  /* Base transition for both hover modes */
+  body.dynamic-views-cover-hover-zoom-cover
+    .dynamic-views
+    .card.image-format-cover
+    .card-cover
+    .dynamic-views-image-embed
+    img,
+  body.dynamic-views-cover-hover-zoom-card
     .dynamic-views
     .card.image-format-cover
     .card-cover
@@ -4471,7 +4524,18 @@ body.dynamic-views-show-cover-placeholder-none
     transition: transform var(--anim-duration-fast, 140ms) ease;
   }
 
-  body.dynamic-views-cover-hover-zoom
+  /* Hover over cover: zoom when hovering cover element */
+  body.dynamic-views-cover-hover-zoom-cover
+    .dynamic-views
+    .card.image-format-cover
+    .card-cover:hover
+    .dynamic-views-image-embed
+    img {
+    transform: scale(1.05);
+  }
+
+  /* Hover over card: zoom when hovering anywhere on card */
+  body.dynamic-views-cover-hover-zoom-card
     .dynamic-views
     .card.image-format-cover:hover
     .card-cover
@@ -5170,6 +5234,12 @@ body.dynamic-views-hide-card-border .dynamic-views .card.image-format-backdrop {
   height: 100%;
   object-fit: cover;
   object-position: center;
+  opacity: 0;
+  transition: opacity var(--anim-duration-moderate, 300ms) ease;
+}
+
+.dynamic-views .card.image-format-backdrop.cover-ready .card-backdrop img {
+  opacity: 1;
 }
 
 /* Overlay for text readability */
@@ -5389,7 +5459,7 @@ body:not(
   cursor: pointer;
   z-index: 3;
   opacity: 0;
-  transition: opacity var(--anim-duration-fast, 140ms) ease;
+  transition: opacity var(--anim-duration-moderate, 300ms) ease;
 }
 
 .dynamic-views .slideshow-nav-left {
@@ -5451,7 +5521,7 @@ body.dynamic-views-hide-slideshow-arrows .dynamic-views .slideshow-nav-right {
   height: 20px;
   z-index: 3;
   pointer-events: none;
-  transition: opacity var(--anim-duration-fast, 140ms) ease;
+  transition: opacity var(--anim-duration-moderate, 300ms) ease;
 }
 
 /* Hide slideshow indicator when toggle is on */
@@ -6214,34 +6284,34 @@ body.dynamic-views-property-label-color-normal
 }
 
 body.dynamic-views-property-label-color-accent {
-  --dynamic-views-prop-label-color-value: var(--text-accent);
+  --dynamic-views-property-label-color-value: var(--text-accent);
 }
 body.dynamic-views-property-label-color-red {
-  --dynamic-views-prop-label-color-value: var(--color-red);
+  --dynamic-views-property-label-color-value: var(--color-red);
 }
 body.dynamic-views-property-label-color-orange {
-  --dynamic-views-prop-label-color-value: var(--color-orange);
+  --dynamic-views-property-label-color-value: var(--color-orange);
 }
 body.dynamic-views-property-label-color-yellow {
-  --dynamic-views-prop-label-color-value: var(--color-yellow);
+  --dynamic-views-property-label-color-value: var(--color-yellow);
 }
 body.dynamic-views-property-label-color-green {
-  --dynamic-views-prop-label-color-value: var(--color-green);
+  --dynamic-views-property-label-color-value: var(--color-green);
 }
 body.dynamic-views-property-label-color-cyan {
-  --dynamic-views-prop-label-color-value: var(--color-cyan);
+  --dynamic-views-property-label-color-value: var(--color-cyan);
 }
 body.dynamic-views-property-label-color-blue {
-  --dynamic-views-prop-label-color-value: var(--color-blue);
+  --dynamic-views-property-label-color-value: var(--color-blue);
 }
 body.dynamic-views-property-label-color-purple {
-  --dynamic-views-prop-label-color-value: var(--color-purple);
+  --dynamic-views-property-label-color-value: var(--color-purple);
 }
 body.dynamic-views-property-label-color-pink {
-  --dynamic-views-prop-label-color-value: var(--color-pink);
+  --dynamic-views-property-label-color-value: var(--color-pink);
 }
 body.dynamic-views-property-label-color-custom {
-  --dynamic-views-prop-label-color-value: var(
+  --dynamic-views-property-label-color-value: var(
     --dynamic-views-property-label-color-custom,
     var(--text-faint)
   );
@@ -6255,7 +6325,7 @@ body.dynamic-views-property-label-color-custom
 
 /* Property label color application */
 .dynamic-views :is(.property-label, .property-label-inline) {
-  color: var(--dynamic-views-prop-label-color-value, var(--text-faint));
+  color: var(--dynamic-views-property-label-color-value, var(--text-faint));
 }
 
 /* Property text color presets - with labels - semantic colors for ambient compatibility */
@@ -6276,34 +6346,34 @@ body.dynamic-views-property-color-with-labels-normal
 }
 
 body.dynamic-views-property-color-with-labels-accent {
-  --dynamic-views-prop-with-label-color-value: var(--text-accent);
+  --dynamic-views-property-with-label-color-value: var(--text-accent);
 }
 body.dynamic-views-property-color-with-labels-red {
-  --dynamic-views-prop-with-label-color-value: var(--color-red);
+  --dynamic-views-property-with-label-color-value: var(--color-red);
 }
 body.dynamic-views-property-color-with-labels-orange {
-  --dynamic-views-prop-with-label-color-value: var(--color-orange);
+  --dynamic-views-property-with-label-color-value: var(--color-orange);
 }
 body.dynamic-views-property-color-with-labels-yellow {
-  --dynamic-views-prop-with-label-color-value: var(--color-yellow);
+  --dynamic-views-property-with-label-color-value: var(--color-yellow);
 }
 body.dynamic-views-property-color-with-labels-green {
-  --dynamic-views-prop-with-label-color-value: var(--color-green);
+  --dynamic-views-property-with-label-color-value: var(--color-green);
 }
 body.dynamic-views-property-color-with-labels-cyan {
-  --dynamic-views-prop-with-label-color-value: var(--color-cyan);
+  --dynamic-views-property-with-label-color-value: var(--color-cyan);
 }
 body.dynamic-views-property-color-with-labels-blue {
-  --dynamic-views-prop-with-label-color-value: var(--color-blue);
+  --dynamic-views-property-with-label-color-value: var(--color-blue);
 }
 body.dynamic-views-property-color-with-labels-purple {
-  --dynamic-views-prop-with-label-color-value: var(--color-purple);
+  --dynamic-views-property-with-label-color-value: var(--color-purple);
 }
 body.dynamic-views-property-color-with-labels-pink {
-  --dynamic-views-prop-with-label-color-value: var(--color-pink);
+  --dynamic-views-property-with-label-color-value: var(--color-pink);
 }
 body.dynamic-views-property-color-with-labels-custom {
-  --dynamic-views-prop-with-label-color-value: var(
+  --dynamic-views-property-with-label-color-value: var(
     --dynamic-views-property-color-with-labels-custom,
     var(--text-faint)
   );
@@ -6321,7 +6391,10 @@ body.dynamic-views-property-color-with-labels-custom
 /* Property text color application - with labels */
 .dynamic-views
   .property-field:has(:is(.property-label, .property-label-inline)) {
-  color: var(--dynamic-views-prop-with-label-color-value, var(--text-faint));
+  color: var(
+    --dynamic-views-property-with-label-color-value,
+    var(--text-muted)
+  );
 }
 
 /* Property text color presets - without labels - semantic colors for ambient compatibility */
@@ -6342,34 +6415,34 @@ body.dynamic-views-property-color-without-labels-normal
 }
 
 body.dynamic-views-property-color-without-labels-accent {
-  --dynamic-views-prop-no-label-color-value: var(--text-accent);
+  --dynamic-views-property-no-label-color-value: var(--text-accent);
 }
 body.dynamic-views-property-color-without-labels-red {
-  --dynamic-views-prop-no-label-color-value: var(--color-red);
+  --dynamic-views-property-no-label-color-value: var(--color-red);
 }
 body.dynamic-views-property-color-without-labels-orange {
-  --dynamic-views-prop-no-label-color-value: var(--color-orange);
+  --dynamic-views-property-no-label-color-value: var(--color-orange);
 }
 body.dynamic-views-property-color-without-labels-yellow {
-  --dynamic-views-prop-no-label-color-value: var(--color-yellow);
+  --dynamic-views-property-no-label-color-value: var(--color-yellow);
 }
 body.dynamic-views-property-color-without-labels-green {
-  --dynamic-views-prop-no-label-color-value: var(--color-green);
+  --dynamic-views-property-no-label-color-value: var(--color-green);
 }
 body.dynamic-views-property-color-without-labels-cyan {
-  --dynamic-views-prop-no-label-color-value: var(--color-cyan);
+  --dynamic-views-property-no-label-color-value: var(--color-cyan);
 }
 body.dynamic-views-property-color-without-labels-blue {
-  --dynamic-views-prop-no-label-color-value: var(--color-blue);
+  --dynamic-views-property-no-label-color-value: var(--color-blue);
 }
 body.dynamic-views-property-color-without-labels-purple {
-  --dynamic-views-prop-no-label-color-value: var(--color-purple);
+  --dynamic-views-property-no-label-color-value: var(--color-purple);
 }
 body.dynamic-views-property-color-without-labels-pink {
-  --dynamic-views-prop-no-label-color-value: var(--color-pink);
+  --dynamic-views-property-no-label-color-value: var(--color-pink);
 }
 body.dynamic-views-property-color-without-labels-custom {
-  --dynamic-views-prop-no-label-color-value: var(
+  --dynamic-views-property-no-label-color-value: var(
     --dynamic-views-property-color-without-labels-custom,
     var(--text-faint)
   );
@@ -6387,7 +6460,7 @@ body.dynamic-views-property-color-without-labels-custom
 /* Property text color application - without labels */
 .dynamic-views
   .property-field:not(:has(:is(.property-label, .property-label-inline))) {
-  color: var(--dynamic-views-prop-no-label-color-value, var(--text-faint));
+  color: var(--dynamic-views-property-no-label-color-value, var(--text-faint));
 }
 
 /* Links in properties use Obsidian default colors (not property text color) */
@@ -6695,7 +6768,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     ):hover {
     color: var(--text-accent-hover);
   }
-  /* Property with labels color variants: 15% white mix using --dynamic-views-prop-with-label-color-value */
+  /* Property with labels color variants: 15% white mix using --dynamic-views-property-with-label-color-value */
   body:is(
       .dynamic-views-property-color-with-labels-red,
       .dynamic-views-property-color-with-labels-orange,
@@ -6716,7 +6789,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     ):hover {
     color: color-mix(
       in hsl,
-      var(--dynamic-views-prop-with-label-color-value),
+      var(--dynamic-views-property-with-label-color-value),
       white 15%
     );
   }
@@ -6771,7 +6844,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     ):hover {
     color: var(--text-accent-hover);
   }
-  /* Property without labels color variants: 15% white mix using --dynamic-views-prop-no-label-color-value */
+  /* Property without labels color variants: 15% white mix using --dynamic-views-property-no-label-color-value */
   body:is(
       .dynamic-views-property-color-without-labels-red,
       .dynamic-views-property-color-without-labels-orange,
@@ -6792,7 +6865,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     ):hover {
     color: color-mix(
       in hsl,
-      var(--dynamic-views-prop-no-label-color-value),
+      var(--dynamic-views-property-no-label-color-value),
       white 15%
     );
   }
@@ -6891,10 +6964,10 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
   width: max-content;
 }
 
-/* Empty value marker styling - 0.5 opacity of property value color */
+/* Empty value marker styling - 0.6 opacity of property value color */
 .dynamic-views .property-content > span.empty-value-marker {
   color: inherit;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 /* Checkbox property - remove extra padding */
@@ -6938,10 +7011,10 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
   display: inline;
 }
 
-/* List separator styling - 0.5 opacity of property value color */
+/* List separator styling - 0.6 opacity of property value color */
 .dynamic-views .list-separator {
   color: inherit;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 /* Alignment via justify-content on property-content wrapper */
@@ -6994,7 +7067,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 }
 
 /* Left alignment for right-side properties */
-body.dynamic-views-paired-prop-align-left
+body.dynamic-views-paired-property-align-left
   .dynamic-views
   .property-set-sidebyside
   :is(
@@ -7010,7 +7083,7 @@ body.dynamic-views-paired-prop-align-left
   justify-content: flex-start;
 }
 
-body.dynamic-views-paired-prop-align-left
+body.dynamic-views-paired-property-align-left
   .dynamic-views
   .property-set-sidebyside
   :is(
@@ -7027,7 +7100,7 @@ body.dynamic-views-paired-prop-align-left
   order: 0;
 }
 
-body.dynamic-views-paired-prop-align-left
+body.dynamic-views-paired-property-align-left
   .dynamic-views
   .property-set-sidebyside
   :is(
@@ -7044,7 +7117,7 @@ body.dynamic-views-paired-prop-align-left
 }
 
 /* Reset inline property label order to place label before content */
-body.dynamic-views-paired-prop-align-left
+body.dynamic-views-paired-property-align-left
   .dynamic-views
   .property-set-sidebyside
   :is(
@@ -7511,29 +7584,42 @@ body.dynamic-views-no-fade-truncated-text
   }
 }
 
-/* Smart timestamp toggle - remove bottom padding when toggle is off */
-.setting-items
-  > .setting-item:has(+ .smart-timestamp-sub-settings):has(
-    .checkbox-container:not(.is-enabled)
-  ) {
-  padding-bottom: 0;
+/* Hidden utility class */
+.dynamic-views-hidden {
+  display: none;
 }
 
-/* Settings tab indentation */
-.smart-timestamp-sub-settings {
+/* Indented sub-settings */
+.setting-sub-items {
   margin-inline-start: 20px;
   padding-left: 1em;
   position: relative;
 }
 
-.smart-timestamp-sub-settings::before {
+.setting-sub-items::before {
   content: "";
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 10px;
+  bottom: 0;
   width: 1px;
   background-color: var(--background-modifier-border);
+}
+
+/* Add padding only when visible and not last.
+   Currently inactive as sub-items is last child; retained for future structure changes. */
+.setting-sub-items:not(.dynamic-views-hidden):has(+ .setting-item) {
+  padding-bottom: var(--size-4-4, 16px);
+}
+
+.setting-sub-items:not(.dynamic-views-hidden):has(+ .setting-item)::before {
+  bottom: var(--size-4-4, 16px);
+}
+
+/* Remove bottom padding from setting when sub-items hidden and last in group */
+.setting-items
+  > .setting-item:has(+ .setting-sub-items.dynamic-views-hidden:last-child) {
+  padding-bottom: 0;
 }
 
 /* Feedback button */

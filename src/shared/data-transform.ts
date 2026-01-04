@@ -13,6 +13,7 @@ import {
   normalizePropertyName,
   isValidUri,
   isCheckboxProperty,
+  stripNotePrefix,
 } from "../utils/property";
 import { hasUriScheme } from "../utils/link-parser";
 import { VALID_IMAGE_EXTENSIONS } from "../utils/image";
@@ -49,33 +50,27 @@ function stripTagHashes(tags: string[]): string[] {
 }
 
 /**
- * Handle custom timestamp property fallback logic
- * @param propertyName The property being resolved
- * @param settings Plugin settings
- * @param cardData Card data with file metadata timestamps
- * @returns Formatted timestamp string, placeholder, or null
+ * Check if a property is a custom timestamp property (created/modified time)
+ * These properties should use styled formatting (recent/older abbreviation)
+ * Handles both Bases format (note.propertyName) and Datacore format (propertyName)
  */
-function handleTimestampPropertyFallback(
+function isCustomTimestampProperty(
   propertyName: string,
   settings: Settings,
-  cardData: CardData,
-): string | null {
-  // Check if this is a custom timestamp property
-  const isCustomCreatedTime =
-    settings.createdTimeProperty &&
-    propertyName === settings.createdTimeProperty;
-  const isCustomModifiedTime =
-    settings.modifiedTimeProperty &&
-    propertyName === settings.modifiedTimeProperty;
+): boolean {
+  const stripped = stripNotePrefix(propertyName);
 
-  if (!isCustomCreatedTime && !isCustomModifiedTime) {
-    return null; // Not a custom timestamp property
+  if (settings.createdTimeProperty) {
+    const settingStripped = stripNotePrefix(settings.createdTimeProperty);
+    if (stripped === settingStripped) return true;
   }
 
-  // Fall back to file metadata
-  // Use styled=true for consistent formatting with other timestamp displays
-  const timestamp = isCustomCreatedTime ? cardData.ctime : cardData.mtime;
-  return formatTimestamp(timestamp, false, true);
+  if (settings.modifiedTimeProperty) {
+    const settingStripped = stripNotePrefix(settings.modifiedTimeProperty);
+    if (stripped === settingStripped) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -129,9 +124,24 @@ function applySmartTimestamp(
     return props;
   }
 
-  // Determine which timestamp we're sorting by
-  const sortingByCtime = sortMethod.includes("ctime");
-  const sortingByMtime = sortMethod.includes("mtime");
+  // Prerequisite: both settings must be populated
+  if (!settings.createdTimeProperty || !settings.modifiedTimeProperty) {
+    return props;
+  }
+
+  // Detect ctime sorting: includes "ctime" OR matches createdTimeProperty (for Bases)
+  const createdPropStripped = stripNotePrefix(settings.createdTimeProperty);
+  const sortingByCtime =
+    sortMethod.includes("ctime") ||
+    sortMethod.startsWith(settings.createdTimeProperty + "-") ||
+    sortMethod.startsWith(createdPropStripped + "-");
+
+  // Detect mtime sorting: includes "mtime" OR matches modifiedTimeProperty (for Bases)
+  const modifiedPropStripped = stripNotePrefix(settings.modifiedTimeProperty);
+  const sortingByMtime =
+    sortMethod.includes("mtime") ||
+    sortMethod.startsWith(settings.modifiedTimeProperty + "-") ||
+    sortMethod.startsWith(modifiedPropStripped + "-");
 
   // Only proceed if sorting by a timestamp
   if (!sortingByCtime && !sortingByMtime) {
@@ -159,8 +169,8 @@ function applySmartTimestamp(
 
   // Determine which timestamp property to show and which to replace
   const targetProperty = sortingByCtime
-    ? settings.createdTimeProperty || "file.ctime"
-    : settings.modifiedTimeProperty || "file.mtime";
+    ? settings.createdTimeProperty
+    : settings.modifiedTimeProperty;
 
   const propertiesToReplace = sortingByCtime
     ? ["file.mtime", "modified time", settings.modifiedTimeProperty].filter(
@@ -171,14 +181,12 @@ function applySmartTimestamp(
       );
 
   // Replace mismatched timestamp properties
-  const result = props.map((prop) => {
+  return props.map((prop) => {
     if (propertiesToReplace.includes(prop)) {
       return targetProperty;
     }
     return prop;
   });
-
-  return result;
 }
 
 /**
@@ -278,7 +286,14 @@ export function datacoreResultToCardData(
     imageUrl,
   };
 
-  // Resolve properties
+  // Resolve properties - include all subtitle properties for smart timestamp check
+  // (subtitle is comma-separated fallback list; any could be a timestamp)
+  const subtitlePropsList =
+    settings.subtitleProperty
+      ?.split(",")
+      .map((p) => p.trim())
+      .filter((p) => p) || [];
+
   let props = [
     settings.propertyDisplay1,
     settings.propertyDisplay2,
@@ -294,10 +309,15 @@ export function datacoreResultToCardData(
     settings.propertyDisplay12,
     settings.propertyDisplay13,
     settings.propertyDisplay14,
+    ...subtitlePropsList, // indices 14+: subtitle fallbacks participate in "both timestamps shown" check
   ];
 
-  // Apply smart timestamp logic
+  // Apply smart timestamp logic (includes subtitle fallbacks)
   props = applySmartTimestamp(props, sortMethod, settings);
+
+  // Extract processed subtitle props, then trim array back to 14
+  const processedSubtitleProps = props.slice(14);
+  props = props.slice(0, 14);
 
   // Detect duplicates (priority: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14)
   const seen = new Set<string>();
@@ -329,12 +349,17 @@ export function datacoreResultToCardData(
   }
 
   // Resolve subtitle property (supports comma-separated list)
-  if (settings.subtitleProperty) {
-    const subtitleProps = settings.subtitleProperty
-      .split(",")
-      .map((p) => p.trim())
-      .filter((p) => p);
-    for (const prop of subtitleProps) {
+  // All properties were already processed by smart timestamp above
+  // Timestamps use styled=false (full format like title)
+  if (settings.subtitleProperty && processedSubtitleProps.length > 0) {
+    for (const prop of processedSubtitleProps) {
+      // Try timestamp first with styled=false (full format)
+      const timestamp = resolveTimestampProperty(prop, ctime, mtime, false);
+      if (timestamp) {
+        cardData.subtitle = timestamp;
+        break;
+      }
+      // Fall back to regular property resolution
       const resolved = resolveDatacoreProperty(
         app,
         prop,
@@ -497,7 +522,15 @@ export function basesEntryToCardData(
     imageUrl,
   };
 
-  // Resolve properties
+  // Resolve properties - include all subtitle properties for smart timestamp check
+  // (subtitle is comma-separated fallback list; any could be a timestamp)
+  // Normalize for Bases API
+  const subtitlePropsList =
+    settings.subtitleProperty
+      ?.split(",")
+      .map((p) => normalizePropertyName(app, p.trim()))
+      .filter((p) => p) || [];
+
   let props = [
     settings.propertyDisplay1,
     settings.propertyDisplay2,
@@ -513,10 +546,15 @@ export function basesEntryToCardData(
     settings.propertyDisplay12,
     settings.propertyDisplay13,
     settings.propertyDisplay14,
+    ...subtitlePropsList, // indices 14+: subtitle fallbacks participate in "both timestamps shown" check
   ];
 
-  // Apply smart timestamp logic
+  // Apply smart timestamp logic (includes subtitle fallbacks)
   props = applySmartTimestamp(props, sortMethod, settings);
+
+  // Extract processed subtitle props, then trim array back to 14
+  const processedSubtitleProps = props.slice(14);
+  props = props.slice(0, 14);
 
   // Detect duplicates (priority: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14)
   const seen = new Set<string>();
@@ -547,13 +585,17 @@ export function basesEntryToCardData(
   }
 
   // Resolve subtitle property (supports comma-separated list)
-  // Normalize property names to support both display names and syntax names
-  if (settings.subtitleProperty) {
-    const subtitleProps = settings.subtitleProperty
-      .split(",")
-      .map((p) => normalizePropertyName(app, p.trim()))
-      .filter((p) => p);
-    for (const prop of subtitleProps) {
+  // All properties were already processed by smart timestamp above
+  // Timestamps use styled=false (full format like title)
+  if (settings.subtitleProperty && processedSubtitleProps.length > 0) {
+    for (const prop of processedSubtitleProps) {
+      // Try timestamp first with styled=false (full format)
+      const timestamp = resolveTimestampProperty(prop, ctime, mtime, false);
+      if (timestamp) {
+        cardData.subtitle = timestamp;
+        break;
+      }
+      // Fall back to regular property resolution
       const resolved = resolveBasesProperty(
         app,
         prop,
@@ -730,45 +772,32 @@ export function resolveBasesProperty(
   // Generic property: read from frontmatter
   const value = getFirstBasesPropertyValue(app, entry, propertyName);
 
-  // Handle fallback for custom timestamp properties when property is missing
+  // No value - property missing or empty
   if (!value) {
-    const fallback = handleTimestampPropertyFallback(
-      propertyName,
-      settings,
-      cardData,
-    );
-    if (fallback !== null) return fallback;
     return null;
   }
 
-  // Check if it's a date/datetime value - format with custom format
-  // Date properties return { date: Date, time: boolean } directly
-  // Use styled=true for consistent formatting with file timestamps
+  // Check if it's a date/datetime value - format regardless of property type
   const timestampData = extractTimestamp(value);
   if (timestampData) {
+    // Use styled formatting only for custom timestamp properties
+    const isCustomTimestamp = isCustomTimestampProperty(propertyName, settings);
     return formatTimestamp(
       timestampData.timestamp,
       timestampData.isDateOnly,
-      true,
+      isCustomTimestamp,
     );
   }
 
-  // For non-date properties, extract .data
+  // Extract .data for Bases properties
   const data = (value as { data?: unknown })?.data;
 
-  // Handle empty values for custom timestamp properties
+  // Handle empty values
   if (
     data == null ||
     data === "" ||
     (Array.isArray(data) && data.length === 0)
   ) {
-    const fallback = handleTimestampPropertyFallback(
-      propertyName,
-      settings,
-      cardData,
-    );
-    if (fallback !== null) return fallback;
-
     // Check if this is an empty checkbox property - show indeterminate state
     if (isCheckboxProperty(app, propertyName)) {
       return JSON.stringify({ type: "checkbox", indeterminate: true });
@@ -955,14 +984,15 @@ export function resolveDatacoreProperty(
     return JSON.stringify({ type: "array", items: stringElements });
   }
 
-  // Check if it's a date/datetime value - format with custom format
-  // Use styled=true for consistent formatting with file timestamps
+  // Check if it's a date/datetime value - format regardless of property type
   const timestampData = extractTimestamp(rawValue);
   if (timestampData) {
+    // Use styled formatting only for custom timestamp properties
+    const isCustomTimestamp = isCustomTimestampProperty(propertyName, settings);
     return formatTimestamp(
       timestampData.timestamp,
       timestampData.isDateOnly,
-      true,
+      isCustomTimestamp,
     );
   }
 
@@ -1002,15 +1032,6 @@ export function resolveDatacoreProperty(
 
   // Handle empty values (property exists but empty)
   if (!value || value.trim() === "") {
-    const fallback = handleTimestampPropertyFallback(
-      propertyName,
-      settings,
-      cardData,
-    );
-    if (fallback !== null) return fallback;
-
-    // Return empty string for empty property (property exists but empty)
-    // This distinguishes from null (missing property)
     return "";
   }
 

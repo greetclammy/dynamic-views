@@ -2194,6 +2194,7 @@ function Card({
                         imgEl.addEventListener(
                           "error",
                           () => {
+                            if (controller.signal.aborted) return;
                             if (imgEl.src) markExternalUrlAsFailed(imgEl.src);
                             // Find current position by URL match (handles scrubbing)
                             const failedSrc = imgEl.src;
@@ -2218,8 +2219,7 @@ function Card({
                                 return;
                               }
                             }
-                            // All images failed - complete cleanup
-                            imgEl.style.display = "none";
+                            // All images failed - complete cleanup with double rAF
                             const cardEl = imgEl.closest(
                               ".card",
                             ) as HTMLElement;
@@ -2227,14 +2227,29 @@ function Card({
                               cardEl &&
                               !cardEl.classList.contains("cover-ready")
                             ) {
-                              cardEl.classList.add("cover-ready");
-                              cardEl.style.setProperty(
-                                "--actual-aspect-ratio",
-                                DEFAULT_ASPECT_RATIO.toString(),
-                              );
-                              cardEl.removeAttribute("data-backdrop-theme");
-                              if (updateLayoutRef.current)
-                                updateLayoutRef.current();
+                              requestAnimationFrame(() => {
+                                if (
+                                  controller.signal.aborted ||
+                                  !cardEl.isConnected
+                                )
+                                  return;
+                                requestAnimationFrame(() => {
+                                  if (
+                                    controller.signal.aborted ||
+                                    !cardEl.isConnected
+                                  )
+                                    return;
+                                  imgEl.style.display = "none";
+                                  cardEl.style.setProperty(
+                                    "--actual-aspect-ratio",
+                                    DEFAULT_ASPECT_RATIO.toString(),
+                                  );
+                                  cardEl.removeAttribute("data-backdrop-theme");
+                                  cardEl.classList.add("cover-ready");
+                                  if (updateLayoutRef.current)
+                                    updateLayoutRef.current();
+                                });
+                              });
                             }
                           },
                           { signal: controller.signal },

@@ -14,7 +14,6 @@ import {
   Keymap,
 } from "obsidian";
 import { CardData } from "../shared/card-renderer";
-import { resolveBasesProperty } from "../shared/data-transform";
 import {
   setupImageLoadHandler,
   handleImageLoad,
@@ -1096,7 +1095,15 @@ export class SharedCardRenderer {
               cardEl.removeAttribute("data-backdrop-theme");
             }
           }
-          this.updateLayoutRef.current?.();
+          // Double rAF for CSS fade-in transition (consistent with cover/thumbnail)
+          requestAnimationFrame(() => {
+            if (signal.aborted || !cardEl.isConnected) return;
+            requestAnimationFrame(() => {
+              if (signal.aborted || !cardEl.isConnected) return;
+              cardEl.classList.add("cover-ready");
+              this.updateLayoutRef.current?.();
+            });
+          });
         },
         { signal },
       );
@@ -1115,6 +1122,7 @@ export class SharedCardRenderer {
           while (currentUrlIndex < imageUrls.length) {
             if (signal.aborted) return; // Check in loop for long image lists
             if (!isFailedExternalUrl(imageUrls[currentUrlIndex])) {
+              if (signal.aborted) return; // Guard before DOM mutation
               img.style.display = "";
               const effectiveUrl = getCachedBlobUrl(imageUrls[currentUrlIndex]);
               img.src = effectiveUrl;
@@ -1122,11 +1130,18 @@ export class SharedCardRenderer {
             }
             currentUrlIndex++;
           }
-          // All images failed
-          if (signal.aborted) return; // Guard before final DOM mutations
-          img.style.display = "none";
-          cardEl.removeAttribute("data-backdrop-theme");
-          this.updateLayoutRef.current?.();
+          // All images failed - use double rAF for cover-ready
+          if (signal.aborted) return;
+          requestAnimationFrame(() => {
+            if (signal.aborted || !cardEl.isConnected) return;
+            requestAnimationFrame(() => {
+              if (signal.aborted || !cardEl.isConnected) return;
+              img.style.display = "none";
+              cardEl.removeAttribute("data-backdrop-theme");
+              cardEl.classList.add("cover-ready");
+              this.updateLayoutRef.current?.();
+            });
+          });
         };
         img.addEventListener("error", tryNextBackdropImage, { signal });
       } else {
@@ -1135,9 +1150,17 @@ export class SharedCardRenderer {
           () => {
             if (signal.aborted) return;
             markExternalUrlAsFailed(img.src);
-            img.style.display = "none";
-            cardEl.removeAttribute("data-backdrop-theme");
-            this.updateLayoutRef.current?.();
+            // Double rAF for cover-ready (consistent with load handler)
+            requestAnimationFrame(() => {
+              if (signal.aborted || !cardEl.isConnected) return;
+              requestAnimationFrame(() => {
+                if (signal.aborted || !cardEl.isConnected) return;
+                img.style.display = "none";
+                cardEl.removeAttribute("data-backdrop-theme");
+                cardEl.classList.add("cover-ready");
+                this.updateLayoutRef.current?.();
+              });
+            });
           },
           { signal },
         );
@@ -1579,37 +1602,41 @@ export class SharedCardRenderer {
     settings: Settings,
     signal: AbortSignal,
   ): void {
-    // Get all 14 property names
-    const props = [
-      settings.propertyDisplay1,
-      settings.propertyDisplay2,
-      settings.propertyDisplay3,
-      settings.propertyDisplay4,
-      settings.propertyDisplay5,
-      settings.propertyDisplay6,
-      settings.propertyDisplay7,
-      settings.propertyDisplay8,
-      settings.propertyDisplay9,
-      settings.propertyDisplay10,
-      settings.propertyDisplay11,
-      settings.propertyDisplay12,
-      settings.propertyDisplay13,
-      settings.propertyDisplay14,
+    // Use property names from CardData (already processed by smart timestamp)
+    const effectiveProps = [
+      card.propertyName1 ?? "",
+      card.propertyName2 ?? "",
+      card.propertyName3 ?? "",
+      card.propertyName4 ?? "",
+      card.propertyName5 ?? "",
+      card.propertyName6 ?? "",
+      card.propertyName7 ?? "",
+      card.propertyName8 ?? "",
+      card.propertyName9 ?? "",
+      card.propertyName10 ?? "",
+      card.propertyName11 ?? "",
+      card.propertyName12 ?? "",
+      card.propertyName13 ?? "",
+      card.propertyName14 ?? "",
     ];
 
-    // Detect duplicates (priority: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14)
-    const seen = new Set<string>();
-    const effectiveProps = props.map((prop) => {
-      if (!prop || prop === "") return "";
-      if (seen.has(prop)) return ""; // Duplicate, skip
-      seen.add(prop);
-      return prop;
-    });
-
-    // Resolve property values
-    const values = effectiveProps.map((prop) =>
-      prop ? resolveBasesProperty(this.app, prop, entry, card, settings) : null,
-    );
+    // Use property values from CardData (already resolved)
+    const values: (string | null)[] = [
+      card.property1 as string | null,
+      card.property2 as string | null,
+      card.property3 as string | null,
+      card.property4 as string | null,
+      card.property5 as string | null,
+      card.property6 as string | null,
+      card.property7 as string | null,
+      card.property8 as string | null,
+      card.property9 as string | null,
+      card.property10 as string | null,
+      card.property11 as string | null,
+      card.property12 as string | null,
+      card.property13 as string | null,
+      card.property14 as string | null,
+    ];
 
     // Pre-compute hide settings (avoid repeated classList checks)
     const hideMissing = shouldHideMissingProperties();

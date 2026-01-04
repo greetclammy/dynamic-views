@@ -651,6 +651,8 @@ function openImageViewer(
     }
 
     // Watch for Obsidian modals opening (command palette, settings, etc.)
+    // Note: MutationObserver callbacks are async, so viewerClones.set() at end of try block
+    // will always complete before any callback fires - no race condition possible
     modalObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {

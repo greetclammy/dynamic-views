@@ -75,7 +75,7 @@ function getCSSVariableAsNumber(name: string, defaultValue: number): number {
 /**
  * Check if body has a specific class
  */
-function hasBodyClass(className: string): boolean {
+export function hasBodyClass(className: string): boolean {
   return document.body.classList.contains(className);
 }
 
@@ -174,7 +174,7 @@ export function shouldShowRecentTimeOnly(): boolean {
  * Returns false when user enables "Show full older timestamps"
  */
 export function shouldShowOlderDateOnly(): boolean {
-  return !hasBodyClass("dynamic-views-timestamp-older-full");
+  return !hasBodyClass("dynamic-views-timestamp-past-full");
 }
 
 /**
@@ -184,7 +184,7 @@ export function shouldShowOlderDateOnly(): boolean {
 export function getDatetimeFormat(): string {
   return getCSSTextVariable(
     "--dynamic-views-datetime-format",
-    "YYYY-MM-DD HH:mm",
+    "YYYY-MM-DD, HH:mm",
   );
 }
 
@@ -335,6 +335,43 @@ export function getUrlIcon(): string {
     icon = icon.slice(7);
   }
   return icon;
+}
+
+/**
+ * Get a hash of Style Settings that affect card rendering
+ * Used to detect when cards need re-rendering due to Style Settings changes
+ */
+export function getStyleSettingsHash(): string {
+  return [
+    // Timestamp formatting
+    shouldShowRecentTimeOnly(),
+    shouldShowOlderDateOnly(),
+    getDatetimeFormat(),
+    getDateFormat(),
+    getTimeFormat(),
+    // Property display
+    getListSeparator(),
+    getEmptyValueMarker(),
+    shouldHideMissingProperties(),
+    getHideEmptyMode(),
+    showTagHashPrefix(),
+    // Slideshow
+    isSlideshowEnabled(),
+    isThumbnailScrubbingDisabled(),
+    getSlideshowMaxImages(),
+    // Layout
+    getMinMasonryColumns(),
+    getMinGridColumns(),
+    getCompactBreakpoint(),
+    getZoomSensitivityDesktop(),
+    // Other
+    getUrlIcon(),
+    // Body classes for overflow and layout modes
+    hasBodyClass("dynamic-views-title-overflow-scroll"),
+    hasBodyClass("dynamic-views-subtitle-overflow-scroll"),
+    hasBodyClass("dynamic-views-property-width-50-50"),
+    hasBodyClass("dynamic-views-hidden-file-extensions"),
+  ].join("|");
 }
 
 /**

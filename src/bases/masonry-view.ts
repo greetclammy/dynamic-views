@@ -41,6 +41,7 @@ import {
 import {
   setupBasesSwipeInterception,
   setupStyleSettingsObserver,
+  getStyleSettingsHash,
   getSortMethod,
   loadContentForEntries,
   processGroups,
@@ -390,8 +391,10 @@ export class DynamicViewsMasonryView extends BasesView {
       const groupByProperty = hasGroupBy(this.config)
         ? this.config.groupBy?.property
         : undefined;
+      const sortMethod = getSortMethod(this.config);
       const settingsHash = JSON.stringify(settings);
-      // Include mtime in hash so content changes trigger updates
+      const styleSettingsHash = getStyleSettingsHash();
+      // Include mtime and sortMethod in hash so content/sort changes trigger updates
       const renderHash =
         allEntries
           .map((e: BasesEntry) => `${e.file.path}:${e.file.stat.mtime}`)
@@ -399,7 +402,11 @@ export class DynamicViewsMasonryView extends BasesView {
         "\0\0" +
         settingsHash +
         "\0\0" +
-        (groupByProperty ?? "");
+        (groupByProperty ?? "") +
+        "\0\0" +
+        sortMethod +
+        "\0\0" +
+        styleSettingsHash;
 
       // Detect files with changed content (mtime changed but paths unchanged)
       const changedPaths = new Set<string>();
@@ -478,7 +485,6 @@ export class DynamicViewsMasonryView extends BasesView {
       );
 
       // Transform to CardData (only visible entries)
-      const sortMethod = getSortMethod(this.config);
 
       // Reset shuffle state if sort method changed
       if (
@@ -1217,12 +1223,6 @@ export class DynamicViewsMasonryView extends BasesView {
     this.previousDisplayedCount = currCount;
     this.displayedSoFar = displayedSoFar;
 
-    // Batch-initialize scroll gradients and title truncation for newly rendered cards
-    if (this.masonryContainer) {
-      initializeScrollGradients(this.masonryContainer);
-      initializeTitleTruncation(this.masonryContainer);
-    }
-
     // Use incremental layout if we have previous state, otherwise fall back to full recalc
     // For grouped mode, use lastGroupKey; for ungrouped, use undefined
     const layoutKey = this.lastGroup.container ? this.lastGroup.key : undefined;
@@ -1240,9 +1240,19 @@ export class DynamicViewsMasonryView extends BasesView {
     if (groupsWithNewCards > 1) {
       // Batch spanned multiple groups - trigger full recalc to position all
       this.updateLayoutRef.current?.("multi-group-fallback");
+      // Initialize gradients after layout
+      if (this.masonryContainer) {
+        initializeScrollGradients(this.masonryContainer);
+        initializeTitleTruncation(this.masonryContainer);
+      }
     } else if (!prevLayout && newCardsRendered > 0) {
       // No previous layout for this container (new group) - trigger full recalc
       this.updateLayoutRef.current?.("new-group-fallback");
+      // Initialize gradients after layout (use targetContainer for grouped layouts)
+      if (targetContainer) {
+        initializeScrollGradients(targetContainer);
+        initializeTitleTruncation(targetContainer);
+      }
     } else if (prevLayout && newCardsRendered > 0 && targetContainer) {
       // Get only the newly rendered cards from the target container
       const allCards = Array.from(
@@ -1332,6 +1342,12 @@ export class DynamicViewsMasonryView extends BasesView {
 
         // Store for next incremental append
         this.groupLayoutResults.set(layoutKey, result);
+
+        // Initialize scroll gradients for new cards
+        if (targetContainer) {
+          initializeScrollGradients(targetContainer);
+          initializeTitleTruncation(targetContainer);
+        }
 
         // After layout completes, check if more content needed
         // (ResizeObserver skips expected heights, so we check here)

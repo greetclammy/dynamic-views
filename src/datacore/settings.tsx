@@ -393,75 +393,90 @@ export function Settings({
                 </select>
               </div>
             )}
-          {renderTextInput(
-            "Image property",
-            "imageProperty",
-            "Comma-separated if multiple",
+          {settings.imageFormat !== "none" && (
+            <>
+              {renderTextInput(
+                "Image property",
+                "imageProperty",
+                "Comma-separated if multiple",
+              )}
+              <div className="setting-item setting-item-dropdown">
+                <div className="setting-item-info">
+                  <label>Show image embeds</label>
+                </div>
+                <select
+                  value={settings.fallbackToEmbeds}
+                  onChange={(e: unknown) => {
+                    const evt = e as Event & { target: HTMLSelectElement };
+                    onSettingsChange({
+                      fallbackToEmbeds: evt.target.value as
+                        | "always"
+                        | "if-empty"
+                        | "never",
+                    });
+                  }}
+                  className="dropdown"
+                >
+                  <option value="always">Always</option>
+                  <option value="if-empty">If property missing or empty</option>
+                  <option value="never">Never</option>
+                </select>
+              </div>
+            </>
           )}
-          <div className="setting-item setting-item-dropdown">
-            <div className="setting-item-info">
-              <label>Show image embeds</label>
-            </div>
-            <select
-              value={settings.fallbackToEmbeds}
-              onChange={(e: unknown) => {
-                const evt = e as Event & { target: HTMLSelectElement };
-                onSettingsChange({
-                  fallbackToEmbeds: evt.target.value as
-                    | "always"
-                    | "if-empty"
-                    | "never",
-                });
-              }}
-              className="dropdown"
-            >
-              <option value="always">Always</option>
-              <option value="if-empty">If property missing or empty</option>
-              <option value="never">Never</option>
-            </select>
-          </div>
-          <div className="setting-item setting-item-dropdown">
-            <div className="setting-item-info">
-              <label>Fit</label>
-            </div>
-            <select
-              value={settings.imageFit}
-              onChange={(e: unknown) => {
-                const evt = e as Event & { target: HTMLSelectElement };
-                onSettingsChange({
-                  imageFit: evt.target.value as "crop" | "contain",
-                });
-              }}
-              className="dropdown"
-            >
-              <option value="crop">Crop</option>
-              <option value="contain">Contain</option>
-            </select>
-          </div>
-          <div className="setting-item">
-            <div className="setting-item-info">
-              <label>Ratio</label>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <input
-                type="range"
-                min="0.25"
-                max="2.5"
-                step="0.05"
-                value={settings.imageAspectRatio}
-                onChange={(e: unknown) => {
-                  const evt = e as Event & { target: HTMLInputElement };
-                  onSettingsChange({
-                    imageAspectRatio: parseFloat(evt.target.value),
-                  });
-                }}
-                style={{ flex: 1 }}
-              />
-              <span style={{ minWidth: "40px" }}>
-                {settings.imageAspectRatio.toFixed(2)}
-              </span>
-            </div>
-          </div>
+          {settings.imageFormat !== "none" &&
+            settings.imageFormat !== "background" && (
+              <>
+                <div className="setting-item setting-item-dropdown">
+                  <div className="setting-item-info">
+                    <label>Fit</label>
+                  </div>
+                  <select
+                    value={settings.imageFit}
+                    onChange={(e: unknown) => {
+                      const evt = e as Event & { target: HTMLSelectElement };
+                      onSettingsChange({
+                        imageFit: evt.target.value as "crop" | "contain",
+                      });
+                    }}
+                    className="dropdown"
+                  >
+                    <option value="crop">Crop</option>
+                    <option value="contain">Contain</option>
+                  </select>
+                </div>
+                <div className="setting-item">
+                  <div className="setting-item-info">
+                    <label>Ratio</label>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <input
+                      type="range"
+                      min="0.25"
+                      max="2.5"
+                      step="0.05"
+                      value={settings.imageAspectRatio}
+                      onChange={(e: unknown) => {
+                        const evt = e as Event & { target: HTMLInputElement };
+                        onSettingsChange({
+                          imageAspectRatio: parseFloat(evt.target.value),
+                        });
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                    <span style={{ minWidth: "40px" }}>
+                      {settings.imageAspectRatio.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
         </div>
       </div>
 

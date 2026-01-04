@@ -211,7 +211,10 @@ export function setupBasesSwipeInterception(
 }
 
 // Re-export from shared location
-export { setupStyleSettingsObserver } from "../utils/style-settings";
+export {
+  setupStyleSettingsObserver,
+  getStyleSettingsHash,
+} from "../utils/style-settings";
 
 /** Interface for Bases config groupBy property */
 export interface BasesGroupBy {

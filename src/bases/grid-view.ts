@@ -31,6 +31,7 @@ import {
 import {
   setupBasesSwipeInterception,
   setupStyleSettingsObserver,
+  getStyleSettingsHash,
   getSortMethod,
   loadContentForEntries,
   processGroups,
@@ -310,8 +311,10 @@ export class DynamicViewsCardView extends BasesView {
       const groupByProperty = hasGroupBy(this.config)
         ? this.config.groupBy?.property
         : undefined;
+      const sortMethod = getSortMethod(this.config);
       const settingsHash = JSON.stringify(settings);
-      // Include mtime in hash so content changes trigger updates
+      const styleSettingsHash = getStyleSettingsHash();
+      // Include mtime and sortMethod in hash so content/sort changes trigger updates
       const renderHash =
         allEntries
           .map((e: BasesEntry) => `${e.file.path}:${e.file.stat.mtime}`)
@@ -319,7 +322,11 @@ export class DynamicViewsCardView extends BasesView {
         "\0\0" +
         settingsHash +
         "\0\0" +
-        (groupByProperty ?? "");
+        (groupByProperty ?? "") +
+        "\0\0" +
+        sortMethod +
+        "\0\0" +
+        styleSettingsHash;
 
       // Detect files with changed content (mtime changed but paths unchanged)
       const changedPaths = new Set<string>();
@@ -409,7 +416,6 @@ export class DynamicViewsCardView extends BasesView {
       );
 
       // Transform to CardData (only visible entries)
-      const sortMethod = getSortMethod(this.config);
 
       // Reset shuffle state if sort method changed
       if (
@@ -795,6 +801,7 @@ export class DynamicViewsCardView extends BasesView {
     let displayedSoFar = 0;
     let newCardsRendered = 0;
     const startIndex = prevCount;
+    const newCardEls: HTMLElement[] = [];
 
     for (const processedGroup of processedGroups) {
       if (displayedSoFar >= currCount) break;
@@ -849,7 +856,7 @@ export class DynamicViewsCardView extends BasesView {
         this.lastGroup.container = groupEl;
       }
 
-      // Transform and render cards
+      // Transform and render cards, collecting refs for batch init
       const cards = transformBasesEntries(
         this.app,
         groupEntries,
@@ -864,13 +871,14 @@ export class DynamicViewsCardView extends BasesView {
       for (let i = 0; i < cards.length; i++) {
         const card = cards[i];
         const entry = groupEntries[i];
-        this.renderCard(
+        const cardEl = this.renderCard(
           groupEl,
           card,
           entry,
           startIndex + newCardsRendered,
           settings,
         );
+        newCardEls.push(cardEl);
         newCardsRendered++;
       }
 
@@ -881,34 +889,31 @@ export class DynamicViewsCardView extends BasesView {
     // to ensure consistency even if this.displayedCount changed during async
     this.previousDisplayedCount = currCount;
 
-    // Batch-initialize scroll gradients and title truncation for newly rendered cards
-    if (this.feedContainerRef.current) {
+    // Batch-initialize scroll gradients and title truncation for newly rendered cards only
+    if (newCardEls.length > 0) {
       // Sync responsive classes before gradient init (ResizeObservers are async)
       const compactBreakpoint = getCompactBreakpoint();
       if (compactBreakpoint > 0) {
-        this.feedContainerRef.current
-          .querySelectorAll<HTMLElement>(".card")
-          .forEach((card) => {
-            // Read all widths before writes to avoid layout thrashing
-            const cardWidth = card.offsetWidth;
-            if (cardWidth === 0) return; // Skip unmeasured cards
-            const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
-            const thumbWidth = thumb?.offsetWidth ?? 0;
+        newCardEls.forEach((card) => {
+          const cardWidth = card.offsetWidth;
+          if (cardWidth === 0) return;
+          const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
+          const thumbWidth = thumb?.offsetWidth ?? 0;
 
+          card.classList.toggle("compact-mode", cardWidth < compactBreakpoint);
+          if (thumb && thumbWidth > 0) {
             card.classList.toggle(
-              "compact-mode",
-              cardWidth < compactBreakpoint,
+              "thumbnail-stack",
+              cardWidth < thumbWidth * 3,
             );
-            if (thumb && thumbWidth > 0) {
-              card.classList.toggle(
-                "thumbnail-stack",
-                cardWidth < thumbWidth * 3,
-              );
-            }
-          });
+          }
+        });
       }
-      initializeScrollGradients(this.feedContainerRef.current);
-      initializeTitleTruncation(this.feedContainerRef.current);
+      // Initialize gradients/truncation (uses caching to skip already-processed fields)
+      if (this.feedContainerRef.current) {
+        initializeScrollGradients(this.feedContainerRef.current);
+        initializeTitleTruncation(this.feedContainerRef.current);
+      }
     }
 
     // Mark that batch append occurred (for end indicator)
