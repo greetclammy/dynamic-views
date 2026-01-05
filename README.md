@@ -58,6 +58,6 @@ Note: to get updates for _Dynamic Views_, you will have to check for and install
 
 ## Support
 
-- Please [open an issue](https://github.com/greetclammy/dynamic-views/issues) if you run into any problems.
-- Feature requests considered but not prioritized; further development focused on stability and performance.
+- Please [open an issue](https://github.com/greetclammy/dynamic-views/issues) if you run into a problem.
+- Feature request issues considered but not prioritized; further development focused on stability and performance.
 - PRs welcome. Reach out if you're interested in helping maintain the plugin — get author credit and the sole funding URL in return.
