@@ -38,7 +38,7 @@ Add to note via Command palette > Dynamic Views: Insert Datacore query.
 
 Until _Dynamic Views_ is [made available](https://github.com/obsidianmd/obsidian-releases/pull/8400) in the plugin directory, follow the steps below to install it:
 
-1. Download and enable the community plugin [BRAT](https://obsidian.md/plugins?id=obsidian42-brat).
+1. Download and enable the [BRAT](https://obsidian.md/plugins?id=obsidian42-brat) plugin.
 2. Run _Add a beta plugin for testing_ in Command palette.
 3. Paste https://github.com/greetclammy/dynamic-views in the text field.
 4. Select _Latest version_.
