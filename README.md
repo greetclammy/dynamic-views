@@ -34,7 +34,7 @@ Add to note via Command palette > Dynamic Views: Insert Datacore query.
 > [!IMPORTANT]  
 > The plugin is in active development — things can break, or change drastically between releases.
 >
-> **Ensure your files are regularly [backed up](https://help.obsidian.md/backup).**
+> **Please ensure your files are regularly [backed up](https://help.obsidian.md/backup).**
 
 Until _Dynamic Views_ is [made available](https://github.com/obsidianmd/obsidian-releases/pull/8400) in the plugin directory, follow the steps below to install it:
 
