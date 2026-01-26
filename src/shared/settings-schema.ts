@@ -83,7 +83,7 @@ export function getBasesViewOptions(): any[] {
           options: {
             thumbnail: "Thumbnail",
             cover: "Cover",
-            background: "Backdrop",
+            backdrop: "Backdrop",
             none: "No image",
           },
           default: "thumbnail",
@@ -113,7 +113,7 @@ export function getBasesViewOptions(): any[] {
           key: "fallbackToEmbeds",
           options: {
             always: "Always",
-            "if-empty": "If image property missing or empty",
+            "if-unavailable": "If no available property images",
             never: "Never",
           },
           default: "always",
@@ -483,7 +483,7 @@ export function readBasesSettings(
     const position = config.get("imagePosition");
 
     if (format === "none") return "none";
-    if (format === "background") return "background";
+    if (format === "backdrop") return "backdrop";
 
     // Combine format + position (e.g., "cover" + "top" → "cover-top")
     if (
@@ -518,7 +518,9 @@ export function readBasesSettings(
     // Enum: fallbackToEmbeds
     fallbackToEmbeds: (() => {
       const value = config.get("fallbackToEmbeds");
-      return value === "always" || value === "if-empty" || value === "never"
+      return value === "always" ||
+        value === "if-unavailable" ||
+        value === "never"
         ? value
         : defaults.fallbackToEmbeds;
     })(),
@@ -637,8 +639,6 @@ export function readBasesSettings(
     queryHeight: 0, // Not configurable in Bases
     openFileAction: globalSettings.openFileAction,
     openRandomInNewTab: globalSettings.openRandomInNewTab,
-    showShuffleInRibbon: globalSettings.showShuffleInRibbon,
-    showRandomInRibbon: globalSettings.showRandomInRibbon,
     smartTimestamp: globalSettings.smartTimestamp,
     createdTimeProperty: globalSettings.createdTimeProperty,
     modifiedTimeProperty: globalSettings.modifiedTimeProperty,

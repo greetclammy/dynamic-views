@@ -1,9 +1,5 @@
 export type RGBTuple = [number, number, number];
 
-// Luminance threshold for light/dark theme detection
-// Values above this are considered "light" backgrounds
-export const LUMINANCE_LIGHT_THRESHOLD = 0.333;
-
 /**
  * Extract the average color from an image element using canvas sampling
  * Uses a 50×50 scaled canvas for performance (~400× less work than full image)

@@ -12,11 +12,17 @@ jest.mock("../../src/utils/image", () => ({
   processImagePaths: jest.fn(),
   resolveInternalImagePaths: jest.fn(),
   extractImageEmbeds: jest.fn(),
+  isExternalUrl: jest.fn((url: string) => /^https?:\/\//i.test(url)),
 }));
 
 // Mock text-preview utility
 jest.mock("../../src/utils/text-preview", () => ({
   loadFilePreview: jest.fn(),
+}));
+
+// Mock slideshow utilities (getExternalBlobUrl validates external URLs)
+jest.mock("../../src/shared/slideshow", () => ({
+  getExternalBlobUrl: jest.fn((url: string) => Promise.resolve(url)),
 }));
 
 describe("content-loader", () => {
@@ -181,7 +187,7 @@ describe("content-loader", () => {
       );
     });
 
-    it('should use embeds only when empty with fallbackToEmbeds "if-empty"', async () => {
+    it('should use embeds only when unavailable with fallbackToEmbeds "if-unavailable"', async () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
@@ -196,7 +202,7 @@ describe("content-loader", () => {
         mockFile,
         mockApp,
         [],
-        "if-empty",
+        "if-unavailable",
         imageCache,
         hasImageCache,
       );
@@ -204,7 +210,7 @@ describe("content-loader", () => {
       expect(imageCache["test/file.md"]).toBe("embed.png");
     });
 
-    it('should not use embeds when property images exist with "if-empty"', async () => {
+    it('should not use embeds when property images exist with "if-unavailable"', async () => {
       const imageCache: Record<string, string | string[]> = {};
       const hasImageCache: Record<string, boolean> = {};
 
@@ -218,7 +224,7 @@ describe("content-loader", () => {
         mockFile,
         mockApp,
         ["property.png"],
-        "if-empty",
+        "if-unavailable",
         imageCache,
         hasImageCache,
       );
@@ -525,7 +531,7 @@ describe("content-loader", () => {
         mockFile,
         mockApp,
         [],
-        "if-empty",
+        "if-unavailable",
         imageCache2,
         hasImageCache2,
       );
@@ -536,7 +542,7 @@ describe("content-loader", () => {
       expect(mockImageUtils.processImagePaths).toHaveBeenCalledTimes(2);
       // "never" should have no images
       expect(hasImageCache1["test/file.md"]).toBe(false);
-      // "if-empty" should have embed
+      // "if-unavailable" should have embed
       expect(imageCache2["test/file.md"]).toBe("embed.png");
     });
 

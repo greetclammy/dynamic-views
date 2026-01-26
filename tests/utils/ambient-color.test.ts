@@ -2,8 +2,8 @@ import {
   extractDominantColor,
   formatAmbientColor,
   calculateLuminanceFromTuple,
-  LUMINANCE_LIGHT_THRESHOLD,
 } from "../../src/utils/ambient-color";
+import { LUMINANCE_LIGHT_THRESHOLD } from "../../src/shared/constants";
 
 describe("ambient-color", () => {
   describe("extractDominantColor", () => {

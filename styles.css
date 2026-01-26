@@ -48,10 +48,38 @@ settings:
         max: 100
         step: 1
     -
+        id: dynamic-views-backdrop-overlay-blur
+        title: Overlay blur
+        type: variable-number-slider
+        default: 0
+        min: 0
+        max: 20
+        step: 1
+        format: px
+    -
         id: dynamic-views-backdrop-no-adaptive-text
         title: Disable adaptive text colors
         description: Do not adjust text colors for readability
         type: class-toggle
+    -
+        id: dynamic-views-backdrop-hover-reveal
+        title: Reveal content on hover
+        description: Hide card content and overlay until hovering over card
+        type: class-toggle
+    -
+        id: dynamic-views-backdrop-height
+        title: Card height set by
+        description: What determines card height
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-backdrop-height-content
+        options:
+            -
+                label: Card content
+                value: dynamic-views-backdrop-height-content
+            -
+                label: Image ratio setting
+                value: dynamic-views-backdrop-height-ratio
     -
         id: layout-heading
         title: Card layout
@@ -197,6 +225,33 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
+        id: dynamic-views-card-background-hover
+        title: Card background on hover
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-card-background-hover-none
+        options:
+            -
+                label: No change
+                value: dynamic-views-card-background-hover-none
+            -
+                label: Tinted
+                value: dynamic-views-card-background-hover-tinted
+            -
+                label: Transparent
+                value: dynamic-views-card-background-hover-transparent
+            -
+                label: Custom color
+                value: dynamic-views-card-background-hover-custom
+    -
+        id: dynamic-views-card-background-hover-custom-color
+        title: Custom card background on hover
+        description: Custom color for card backgrounds on hover (only used when Card background on hover is set to Custom color)
+        type: variable-themed-color
+        format: hex
+        default-light: '#'
+        default-dark: '#'
+    -
         id: dynamic-views-no-fade-truncated-text
         title: Hide scroll gradient
         description: Hide gradient fade effect on titles, subtitles and properties when they can be scrolled horizontally
@@ -333,7 +388,7 @@ settings:
         description: Subtle zoom effect when hovering over covers
         type: class-select
         allowEmpty: false
-        default: dynamic-views-cover-hover-zoom-off
+        default: dynamic-views-cover-hover-zoom-card
         options:
             -
                 label: On hover over cover
@@ -344,6 +399,11 @@ settings:
             -
                 label: Disabled
                 value: dynamic-views-cover-hover-zoom-off
+    -
+        id: dynamic-views-show-cover-border
+        title: Show border between cover and card content
+        description: Show divider line between cover and card content
+        type: class-toggle
     -
         id: datacore-heading
         title: Datacore
@@ -1395,6 +1455,15 @@ body {
     calc(var(--dynamic-views-tag-color-custom-s) * 1.02),
     calc(var(--dynamic-views-tag-color-custom-l) * 1.15)
   );
+  /* Adaptive text colors: "light" = light text, "dark" = dark text */
+  --dynamic-views-adaptive-text-light-normal: #fafafa;
+  --dynamic-views-adaptive-text-light-muted: #f5f5f5;
+  --dynamic-views-adaptive-text-light-faint: #d0d0d0;
+  --dynamic-views-adaptive-text-dark-normal: #222222;
+  --dynamic-views-adaptive-text-dark-muted: #333333;
+  --dynamic-views-adaptive-text-dark-faint: #666666;
+  /* Plain background for covers/thumbnails without images */
+  --dynamic-views-image-background-plain: #eeeeee;
 }
 
 /* Appearance section description styling */
@@ -3011,7 +3080,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   page-break-inside: avoid;
   transition:
     box-shadow var(--anim-duration-fast, 140ms) ease-in-out,
-    background-color var(--anim-duration-moderate, 300ms) ease;
+    background-color 5000ms ease;
   /* Cover inset: user setting + 1px offset for border */
   --cover-inset-computed: calc(var(--dynamic-views-cover-inset, 0px) + 1px);
 }
@@ -3068,25 +3137,12 @@ body.dynamic-views-hide-card-border .dynamic-views .card {
 /* Hide border on cards WITH ambient color (dramatic mode only) */
 body.dynamic-views-adaptive-text
   .dynamic-views
-  .card[data-ambient-theme]::after {
+  .card[data-adaptive-text]::after {
   box-shadow: none;
 }
 
-/* Show border on hover for dramatic ambient cards */
-@media (hover: hover) {
-  body.dynamic-views-adaptive-text
-    .dynamic-views
-    .card[data-ambient-theme]:hover::after {
-    box-shadow: inset 0 0 0 1px
-      var(
-        --dynamic-views-card-border-color-hover,
-        var(--background-modifier-border-focus)
-      );
-  }
-}
-
 /* Dramatic ambient cards have border hidden: no inset adjustment */
-body.dynamic-views-adaptive-text .dynamic-views .card[data-ambient-theme] {
+body.dynamic-views-adaptive-text .dynamic-views .card[data-adaptive-text] {
   --cover-inset-computed: var(--dynamic-views-cover-inset, 0px);
 }
 
@@ -3152,7 +3208,7 @@ body.dynamic-views-adaptive-text .dynamic-views .card:focus-visible::after {
   transition:
     opacity var(--anim-duration-superfast, 70ms) ease,
     box-shadow var(--anim-duration-fast, 140ms) ease-in-out,
-    background-color var(--anim-duration-moderate, 300ms) ease;
+    background-color 5000ms ease;
 }
 
 /* Global spacing between card elements (exclude cover-format cards which use flexbox gap) */
@@ -3191,6 +3247,24 @@ body.dynamic-views-card-background-custom .dynamic-views .card {
   );
 }
 
+/* Card background on hover options */
+body.dynamic-views-card-background-hover-tinted .dynamic-views .card:hover {
+  background-color: var(--background-primary-alt);
+}
+
+body.dynamic-views-card-background-hover-transparent
+  .dynamic-views
+  .card:hover {
+  background-color: transparent;
+}
+
+body.dynamic-views-card-background-hover-custom .dynamic-views .card:hover {
+  background-color: var(
+    --dynamic-views-card-background-hover-custom-color,
+    var(--background-primary-alt)
+  );
+}
+
 /* Ambient card background: Uses fallback matching base bg until --ambient-color is set */
 body.dynamic-views-ambient-bg-subtle
   .dynamic-views
@@ -3212,18 +3286,18 @@ body.dynamic-views-adaptive-text
 /* Excludes backdrop cards - they have separate adaptive text control */
 body.dynamic-views-adaptive-text
   .dynamic-views
-  .card[data-ambient-theme="light"]:not(.image-format-backdrop) {
-  --text-normal: #222222;
-  --text-muted: #333333;
-  --text-faint: #666666;
+  .card[data-adaptive-text="light"]:not(.image-format-backdrop) {
+  --text-normal: var(--dynamic-views-adaptive-text-light-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-light-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-light-faint);
 }
 
 body.dynamic-views-adaptive-text
   .dynamic-views
-  .card[data-ambient-theme="dark"]:not(.image-format-backdrop) {
-  --text-normal: #fafafa;
-  --text-muted: #f5f5f5;
-  --text-faint: #d0d0d0;
+  .card[data-adaptive-text="dark"]:not(.image-format-backdrop) {
+  --text-normal: var(--dynamic-views-adaptive-text-dark-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-dark-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-dark-faint);
 }
 
 /* Grid mode: card-content fills available space, aligns children to top */
@@ -3380,7 +3454,7 @@ body.dynamic-views-file-type-badge .dynamic-views .card-title-ext::before {
   font-size: var(--font-ui-smaller);
   line-height: var(--dynamic-views-title-font-size, var(--font-ui-medium));
   padding: 0 0.33em 0 0.38em; /* Extra 0.05em left to offset letter-spacing trailing space */
-  border-radius: var(--radius-s);
+  border-radius: 4px;
   background-color: var(--background-modifier-border);
   font-weight: var(--nav-tag-weight);
   letter-spacing: 0.05em;
@@ -3684,7 +3758,7 @@ body.dynamic-views-show-thumbnail-placeholder
       var(--dynamic-views-image-aspect-ratio, 1)
   );
   border-radius: var(--dynamic-views-thumbnail-border-radius, 4px);
-  background-color: var(--background-modifier-border);
+  background-color: var(--dynamic-views-image-background-plain);
 }
 
 /* Multi-image thumbnail: use drop-shadow on img for consistent look in crop/contain */
@@ -3762,7 +3836,7 @@ body.dynamic-views-hide-thumbnail-shadow.dynamic-views-show-thumbnail-placeholde
   pointer-events: auto;
   border-radius: 0; /* Override theme styles; container handles border-radius */
   opacity: 0;
-  transition: opacity var(--anim-duration-moderate, 300ms) ease;
+  transition: opacity 5000ms ease;
 }
 
 .dynamic-views .card.cover-ready .card-thumbnail img {
@@ -4011,7 +4085,7 @@ body.dynamic-views-cover-crop-bottom
   inset: 0;
   z-index: 0;
   background-color: var(--ambient-color, transparent);
-  transition: background-color var(--anim-duration-moderate, 300ms) ease;
+  transition: background-color 5000ms ease;
   border-radius: inherit;
   pointer-events: none;
 }
@@ -4021,17 +4095,7 @@ body.dynamic-views-cover-bg-plain
   .dynamic-views
   .card.image-format-cover
   .card-cover {
-  background-color: var(--background-primary);
-}
-body.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover,
-body.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover {
-  background-color: var(--bases-cards-cover-background);
+  background-color: var(--dynamic-views-image-background-plain);
 }
 body.dynamic-views-cover-bg-transparent
   .dynamic-views
@@ -4045,7 +4109,7 @@ body.dynamic-views-cover-bg-custom
   .card-cover {
   background-color: var(
     --dynamic-views-cover-background-custom-color,
-    var(--background-secondary)
+    var(--dynamic-views-image-background-plain)
   );
 }
 
@@ -4499,7 +4563,7 @@ body.dynamic-views-cover-circular
   object-position: center center;
   border-radius: 0; /* Override theme styles; container handles border-radius */
   opacity: 0;
-  transition: opacity var(--anim-duration-moderate, 300ms) ease;
+  transition: opacity 5000ms ease;
 }
 
 .dynamic-views .card.image-format-cover.cover-ready .card-cover img {
@@ -4508,50 +4572,157 @@ body.dynamic-views-cover-circular
 
 /* Hover zoom for cover images (only when enabled via Style Settings, desktop only) */
 @media (hover: hover) {
-  /* Base transition for both hover modes */
+  /* Base transition for single-image covers */
   body.dynamic-views-cover-hover-zoom-cover
     .dynamic-views
     .card.image-format-cover
-    .card-cover
+    .card-cover:not(.card-cover-slideshow)
     .dynamic-views-image-embed
     img,
   body.dynamic-views-cover-hover-zoom-card
     .dynamic-views
     .card.image-format-cover
-    .card-cover
+    .card-cover:not(.card-cover-slideshow)
     .dynamic-views-image-embed
     img {
-    transition: transform var(--anim-duration-fast, 140ms) ease;
+    transition:
+      transform var(--anim-duration-fast, 140ms) ease,
+      opacity 5000ms ease;
   }
 
-  /* Hover over cover: zoom when hovering cover element */
+  /* Base transition for slideshow covers - use scale property to not conflict with slide animations */
   body.dynamic-views-cover-hover-zoom-cover
     .dynamic-views
     .card.image-format-cover
-    .card-cover:hover
+    .card-cover-slideshow
+    .dynamic-views-image-embed
+    img,
+  body.dynamic-views-cover-hover-zoom-card
+    .dynamic-views
+    .card.image-format-cover
+    .card-cover-slideshow
+    .dynamic-views-image-embed
+    img {
+    transition:
+      scale var(--anim-duration-fast, 140ms) ease,
+      opacity 5000ms ease;
+  }
+
+  /* Hover over cover: zoom when hovering cover element (single image) */
+  body.dynamic-views-cover-hover-zoom-cover
+    .dynamic-views
+    .card.image-format-cover
+    .card-cover:not(.card-cover-slideshow):hover
     .dynamic-views-image-embed
     img {
     transform: scale(1.05);
   }
 
-  /* Hover over card: zoom when hovering anywhere on card */
+  /* Hover over cover: zoom when hovering cover element (slideshow - only eligible image) */
+  body.dynamic-views-cover-hover-zoom-cover
+    .dynamic-views
+    .card.image-format-cover
+    .card-cover-slideshow:hover
+    .dynamic-views-image-embed
+    img.hover-zoom-eligible {
+    scale: 1.05;
+  }
+
+  /* Hover over card: zoom when hovering anywhere on card (single image) */
   body.dynamic-views-cover-hover-zoom-card
     .dynamic-views
     .card.image-format-cover:hover
-    .card-cover
+    .card-cover:not(.card-cover-slideshow)
     .dynamic-views-image-embed
     img {
     transform: scale(1.05);
   }
+
+  /* Hover over card: zoom when hovering anywhere on card (slideshow - only eligible image) */
+  body.dynamic-views-cover-hover-zoom-card
+    .dynamic-views
+    .card.image-format-cover:hover
+    .card-cover-slideshow
+    .dynamic-views-image-embed
+    img.hover-zoom-eligible {
+    scale: 1.05;
+  }
+}
+
+/* ==================== COVER-CONTENT BORDER ==================== */
+
+/* Border between cover and card content (when enabled via Style Settings) */
+body.dynamic-views-show-cover-border
+  .dynamic-views
+  .card.card-cover-top.image-format-cover
+  .card-cover-wrapper {
+  border-bottom: 1px solid
+    var(--dynamic-views-card-border-color, var(--background-modifier-border));
+}
+
+body.dynamic-views-show-cover-border
+  .dynamic-views
+  .card.card-cover-bottom.image-format-cover
+  .card-cover-wrapper {
+  border-top: 1px solid
+    var(--dynamic-views-card-border-color, var(--background-modifier-border));
+}
+
+body.dynamic-views-show-cover-border
+  .dynamic-views
+  .card.card-cover-left.image-format-cover
+  .card-cover-wrapper {
+  border-right: 1px solid
+    var(--dynamic-views-card-border-color, var(--background-modifier-border));
+}
+
+body.dynamic-views-show-cover-border
+  .dynamic-views
+  .card.card-cover-right.image-format-cover
+  .card-cover-wrapper {
+  border-left: 1px solid
+    var(--dynamic-views-card-border-color, var(--background-modifier-border));
 }
 
 /* ==================== COVER PLACEHOLDERS ==================== */
 
-/* Placeholder base styles: hidden by default, with border radius and default background */
+/* Placeholder base styles: hidden by default, with border radius */
 .dynamic-views .card.image-format-cover .card-cover-placeholder {
   display: none;
   border-radius: var(--dynamic-views-cover-border-radius, 0);
-  background-color: var(--background-primary);
+}
+
+/* Placeholder background: follows cover background setting */
+/* Plain */
+body.dynamic-views-cover-bg-plain
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover-placeholder {
+  background-color: var(--dynamic-views-image-background-plain);
+}
+/* Ambient: fallback to plain since no image to extract from */
+body.dynamic-views-cover-bg-ambient
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover-placeholder {
+  background-color: var(--dynamic-views-image-background-plain);
+}
+/* Custom */
+body.dynamic-views-cover-bg-custom
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover-placeholder {
+  background-color: var(
+    --dynamic-views-cover-background-custom-color,
+    var(--dynamic-views-image-background-plain)
+  );
+}
+/* Transparent */
+body.dynamic-views-cover-bg-transparent
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover-placeholder {
+  background-color: transparent;
 }
 
 /* Show placeholder in grid view by default (when no Style Settings class present) */
@@ -5034,180 +5205,6 @@ body.dynamic-views-show-cover-placeholder-both
   min-height: var(--dynamic-views-side-cover-min-height, 150px);
 }
 
-/* Placeholder color mappings - organized by cover background type */
-
-/* Plain cover background: default to --background-primary */
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-plain
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-plain
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder {
-  background-color: var(--background-primary);
-}
-
-/* Plain cover background + Custom/Transparent card = --bases-cards-cover-background */
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-custom
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-plain.dynamic-views-card-background-transparent
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder {
-  background-color: var(--bases-cards-cover-background);
-}
-
-/* Ambient cover background + Tinted card = --background-primary */
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-ambient.dynamic-views-card-background-tinted
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-ambient.dynamic-views-card-background-tinted
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-ambient.dynamic-views-card-background-tinted
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-ambient.dynamic-views-card-background-tinted
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder {
-  background-color: var(--background-primary);
-}
-
-/* Ambient cover background + non-Tinted card = --bases-cards-cover-background */
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-ambient:not(
-    .dynamic-views-card-background-tinted
-  )
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-ambient:not(
-    .dynamic-views-card-background-tinted
-  )
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-ambient:not(
-    .dynamic-views-card-background-tinted
-  )
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-ambient:not(
-    .dynamic-views-card-background-tinted
-  )
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder {
-  background-color: var(--bases-cards-cover-background);
-}
-
-/* Custom color cover background + all cards = --dynamic-views-cover-background-custom-color */
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-custom
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-custom
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-custom
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-custom
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder {
-  background-color: var(--dynamic-views-cover-background-custom-color);
-}
-
-/* Transparent cover background + all cards = transparent (not visible) */
-body.dynamic-views-show-cover-placeholder-grid.dynamic-views-cover-bg-transparent
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparent
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-masonry.dynamic-views-cover-bg-transparent
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-show-cover-placeholder-both.dynamic-views-cover-bg-transparent
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover
-  .card-cover-placeholder {
-  background-color: transparent;
-}
-
 /* ==================== BACKGROUND FORMAT ==================== */
 
 /* Background format - image fills entire card */
@@ -5235,11 +5232,18 @@ body.dynamic-views-hide-card-border .dynamic-views .card.image-format-backdrop {
   object-fit: cover;
   object-position: center;
   opacity: 0;
-  transition: opacity var(--anim-duration-moderate, 300ms) ease;
+  transition: opacity 5000ms ease;
 }
 
 .dynamic-views .card.image-format-backdrop.cover-ready .card-backdrop img {
   opacity: 1;
+}
+
+.dynamic-views
+  .card.image-format-backdrop.card-cover-contain
+  .card-backdrop
+  img {
+  object-fit: contain;
 }
 
 /* Overlay for text readability */
@@ -5248,6 +5252,7 @@ body.dynamic-views-hide-card-border .dynamic-views .card.image-format-backdrop {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
 }
 
 /* Overlay theme: Match theme (default) */
@@ -5255,16 +5260,18 @@ body.dynamic-views-backdrop-theme-match.theme-dark
   .dynamic-views
   .card.image-format-backdrop
   .card-backdrop::after {
-  background: black;
-  opacity: calc(var(--dynamic-views-backdrop-overlay-dark, 70) / 100);
+  background: rgb(
+    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 40) * 1%)
+  );
 }
 
 body.dynamic-views-backdrop-theme-match.theme-light
   .dynamic-views
   .card.image-format-backdrop
   .card-backdrop::after {
-  background: white;
-  opacity: calc(var(--dynamic-views-backdrop-overlay-light, 70) / 100);
+  background: rgb(
+    255 255 255 / calc(var(--dynamic-views-backdrop-overlay-light, 70) * 1%)
+  );
 }
 
 /* Overlay theme: Light (forced) */
@@ -5272,8 +5279,9 @@ body.dynamic-views-backdrop-theme-light
   .dynamic-views
   .card.image-format-backdrop
   .card-backdrop::after {
-  background: white;
-  opacity: calc(var(--dynamic-views-backdrop-overlay-light, 70) / 100);
+  background: rgb(
+    255 255 255 / calc(var(--dynamic-views-backdrop-overlay-light, 70) * 1%)
+  );
 }
 
 /* Overlay theme: Dark (forced) */
@@ -5281,8 +5289,9 @@ body.dynamic-views-backdrop-theme-dark
   .dynamic-views
   .card.image-format-backdrop
   .card-backdrop::after {
-  background: black;
-  opacity: calc(var(--dynamic-views-backdrop-overlay-dark, 70) / 100);
+  background: rgb(
+    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 40) * 1%)
+  );
 }
 
 /* Overlay theme: Disable */
@@ -5300,57 +5309,167 @@ body.dynamic-views-backdrop-theme-disable
   z-index: 1;
 }
 
-/* Backdrop text color overrides (light overlay) - on by default */
-/* Only applies to cards with actual backdrop images */
+/* Hover reveal: hide content by default (only if card has image) */
+body.dynamic-views-backdrop-hover-reveal
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop)
+  .card-title-group,
+body.dynamic-views-backdrop-hover-reveal
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop)
+  .card-content,
+body.dynamic-views-backdrop-hover-reveal
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop)
+  .card-properties-top,
+body.dynamic-views-backdrop-hover-reveal
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop)
+  .card-properties-bottom {
+  opacity: 0;
+  transition: opacity var(--anim-duration-moderate, 300ms);
+}
+
+/* Hover reveal: show content on hover */
+body.dynamic-views-backdrop-hover-reveal
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop):hover
+  .card-title-group,
+body.dynamic-views-backdrop-hover-reveal
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop):hover
+  .card-content,
+body.dynamic-views-backdrop-hover-reveal
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop):hover
+  .card-properties-top,
+body.dynamic-views-backdrop-hover-reveal
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop):hover
+  .card-properties-bottom {
+  opacity: 1;
+}
+
+/* Hover reveal: hide overlay by default (each theme variant) */
+body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-match.theme-dark
+  .dynamic-views
+  .card.image-format-backdrop
+  .card-backdrop::after,
+body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-match.theme-light
+  .dynamic-views
+  .card.image-format-backdrop
+  .card-backdrop::after,
+body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-light
+  .dynamic-views
+  .card.image-format-backdrop
+  .card-backdrop::after,
+body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-dark
+  .dynamic-views
+  .card.image-format-backdrop
+  .card-backdrop::after {
+  background: transparent;
+  backdrop-filter: blur(0px);
+  transition: background var(--anim-duration-moderate, 300ms);
+}
+
+/* Hover reveal: show overlay on hover (restore configured strength) */
+body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-match.theme-dark
+  .dynamic-views
+  .card.image-format-backdrop:hover
+  .card-backdrop::after {
+  background: rgb(
+    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 40) * 1%)
+  );
+  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
+}
+
+body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-match.theme-light
+  .dynamic-views
+  .card.image-format-backdrop:hover
+  .card-backdrop::after {
+  background: rgb(
+    255 255 255 / calc(var(--dynamic-views-backdrop-overlay-light, 70) * 1%)
+  );
+  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
+}
+
+body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-light
+  .dynamic-views
+  .card.image-format-backdrop:hover
+  .card-backdrop::after {
+  background: rgb(
+    255 255 255 / calc(var(--dynamic-views-backdrop-overlay-light, 70) * 1%)
+  );
+  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
+}
+
+body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-dark
+  .dynamic-views
+  .card.image-format-backdrop:hover
+  .card-backdrop::after {
+  background: rgb(
+    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 40) * 1%)
+  );
+  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
+}
+
+/* Backdrop sizing: image ratio mode (only cards with image) */
+body.dynamic-views-backdrop-height-ratio
+  .dynamic-views
+  .card.image-format-backdrop:has(.card-backdrop) {
+  aspect-ratio: var(--dynamic-views-image-aspect-ratio, 1);
+}
+
+/* Backdrop text color overrides (light overlay → dark text) */
+/* Excludes cards with data-adaptive-text (luminance-based when overlay transparent) */
 body:not(
     .dynamic-views-backdrop-no-adaptive-text
   ).dynamic-views-backdrop-theme-light
   .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop),
+  .card.image-format-backdrop:not([data-adaptive-text]):has(.card-backdrop),
 body:not(
     .dynamic-views-backdrop-no-adaptive-text
   ).dynamic-views-backdrop-theme-match.theme-light
   .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop) {
-  --text-normal: #222222;
-  --text-muted: #333333;
-  --text-faint: #666666;
+  .card.image-format-backdrop:not([data-adaptive-text]):has(.card-backdrop) {
+  --text-normal: var(--dynamic-views-adaptive-text-dark-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-dark-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-dark-faint);
 }
 
-/* Backdrop text color overrides (dark overlay) - on by default */
-/* Only applies to cards with actual backdrop images */
+/* Backdrop text color overrides (dark overlay → light text) */
+/* Excludes cards with data-adaptive-text (luminance-based when overlay transparent) */
 body:not(
     .dynamic-views-backdrop-no-adaptive-text
   ).dynamic-views-backdrop-theme-dark
   .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop),
+  .card.image-format-backdrop:not([data-adaptive-text]):has(.card-backdrop),
 body:not(
     .dynamic-views-backdrop-no-adaptive-text
   ).dynamic-views-backdrop-theme-match.theme-dark
   .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop) {
-  --text-normal: #fafafa;
-  --text-muted: #f5f5f5;
-  --text-faint: #d0d0d0;
+  .card.image-format-backdrop:not([data-adaptive-text]):has(.card-backdrop) {
+  --text-normal: var(--dynamic-views-adaptive-text-light-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-light-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-light-faint);
 }
 
-/* Backdrop text color overrides (tint disabled, luminance-based) */
-/* Uses extracted image luminance to determine text color */
-body:not(
-    .dynamic-views-backdrop-no-adaptive-text
-  ).dynamic-views-backdrop-theme-disable
+/* Backdrop text color overrides (luminance-based) */
+/* Applies when tint disabled OR overlay transparent (data-adaptive-text set by JS) */
+body:not(.dynamic-views-backdrop-no-adaptive-text)
   .dynamic-views
-  .card.image-format-backdrop[data-backdrop-theme="light"]:has(.card-backdrop) {
-  --text-normal: #222222;
-  --text-muted: #333333;
-  --text-faint: #666666;
+  .card.image-format-backdrop[data-adaptive-text="light"]:has(.card-backdrop) {
+  --text-normal: var(--dynamic-views-adaptive-text-light-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-light-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-light-faint);
 }
 
-body:not(
-    .dynamic-views-backdrop-no-adaptive-text
-  ).dynamic-views-backdrop-theme-disable
+body:not(.dynamic-views-backdrop-no-adaptive-text)
   .dynamic-views
-  .card.image-format-backdrop[data-backdrop-theme="dark"]:has(.card-backdrop) {
+  .card.image-format-backdrop[data-adaptive-text="dark"]:has(.card-backdrop) {
+  --text-normal: var(--dynamic-views-adaptive-text-dark-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-dark-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-dark-faint);
 }
 
 /* ==================== SLIDESHOW STYLES ==================== */
@@ -5453,6 +5572,7 @@ body:not(
   transform: translateY(-50%);
   width: 24px;
   height: 24px;
+  user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;

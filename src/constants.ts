@@ -95,8 +95,6 @@ export const DEFAULT_SETTINGS: Settings = {
   queryHeight: 0,
   openFileAction: "card",
   openRandomInNewTab: true,
-  showShuffleInRibbon: true,
-  showRandomInRibbon: true,
   smartTimestamp: true,
   createdTimeProperty: "created time",
   modifiedTimeProperty: "modified time",
@@ -116,13 +114,3 @@ export const DEFAULT_UI_STATE = {
 };
 
 export const STORAGE_KEY_PREFIX = "dynamic-views";
-
-export const CSS_CLASSES = {
-  CONTAINER: "dynamic-views-container",
-  GRID: "dynamic-views-grid",
-  MASONRY: "dynamic-views-masonry",
-  LIST: "dynamic-views-list",
-  TOOLBAR: "dynamic-views-toolbar",
-  SETTINGS: "dynamic-views-settings",
-  CONTROL_BAR: "dynamic-views-control-bar",
-};

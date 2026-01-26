@@ -67,7 +67,7 @@ function getCSSTextVariable(name: string, defaultValue: string): string {
  */
 function getCSSVariableAsNumber(name: string, defaultValue: number): number {
   const value = getCSSVariable(name, "");
-  if (!value) return defaultValue;
+  if (value === "") return defaultValue;
   const parsed = parseFloat(value);
   return isNaN(parsed) ? defaultValue : parsed;
 }
@@ -77,6 +77,15 @@ function getCSSVariableAsNumber(name: string, defaultValue: number): number {
  */
 export function hasBodyClass(className: string): boolean {
   return document.body.classList.contains(className);
+}
+
+/**
+ * Update body class based on backdrop blur setting.
+ * Adds 'dynamic-views-backdrop-blur-active' when blur > 0.
+ */
+export function updateBackdropBlurClass(): void {
+  const blur = getCSSVariableAsNumber("--dynamic-views-backdrop-overlay-blur", 0);
+  document.body.classList.toggle("dynamic-views-backdrop-blur-active", blur > 0);
 }
 
 /**
@@ -301,7 +310,7 @@ export function isCoverBackgroundAmbient(): boolean {
  * Check if backdrop overlay tint is disabled
  * When disabled, luminance detection determines adaptive text colors
  */
-export function isBackdropTintDisabled(): boolean {
+function isBackdropTintDisabled(): boolean {
   return hasBodyClass("dynamic-views-backdrop-theme-disable");
 }
 
@@ -309,8 +318,47 @@ export function isBackdropTintDisabled(): boolean {
  * Check if backdrop adaptive text is enabled (default: ON)
  * Returns true when the "disable" toggle is NOT set
  */
-export function isBackdropAdaptiveTextEnabled(): boolean {
+function isBackdropAdaptiveTextEnabled(): boolean {
   return !hasBodyClass("dynamic-views-backdrop-no-adaptive-text");
+}
+
+/**
+ * Check if backdrop overlay is effectively transparent (opacity = 0)
+ * Only called when tint is NOT disabled (caller checks isBackdropTintDisabled first)
+ */
+function isBackdropOverlayTransparent(): boolean {
+  // Determine which opacity variable to check based on tint mode
+  const isDarkTint = hasBodyClass("dynamic-views-backdrop-theme-dark");
+  const isLightTint = hasBodyClass("dynamic-views-backdrop-theme-light");
+
+  if (isDarkTint) {
+    return (
+      getCSSVariableAsNumber("--dynamic-views-backdrop-overlay-dark", 70) === 0
+    );
+  }
+  if (isLightTint) {
+    return (
+      getCSSVariableAsNumber("--dynamic-views-backdrop-overlay-light", 70) === 0
+    );
+  }
+
+  // Default to "match" behavior (CSS default) - check opacity based on current theme
+  const isDarkTheme = hasBodyClass("theme-dark");
+  const varName = isDarkTheme
+    ? "--dynamic-views-backdrop-overlay-dark"
+    : "--dynamic-views-backdrop-overlay-light";
+  return getCSSVariableAsNumber(varName, 70) === 0;
+}
+
+/**
+ * Check if backdrop images should use luminance-based adaptive text
+ * True when adaptive text is enabled AND (tint disabled OR overlay transparent)
+ */
+export function shouldUseBackdropLuminance(): boolean {
+  return (
+    isBackdropAdaptiveTextEnabled() &&
+    (isBackdropTintDisabled() || isBackdropOverlayTransparent())
+  );
 }
 
 /**

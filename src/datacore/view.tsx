@@ -47,7 +47,6 @@ import {
   getMinMasonryColumns,
   getMinGridColumns,
   getCardSpacing,
-  getCompactBreakpoint,
   setupStyleSettingsObserver,
 } from "../utils/style-settings";
 import { reapplyAmbientColors } from "../shared/image-loader";
@@ -66,7 +65,10 @@ import type { CardData } from "../shared/card-renderer";
 import { setupSwipeInterception } from "../bases/swipe-interceptor";
 import { setupHoverKeyboardNavigation } from "../shared/keyboard-nav";
 import { initializeScrollGradients } from "../shared/scroll-gradient";
-import { initializeTitleTruncation } from "../bases/shared-renderer";
+import {
+  initializeTitleTruncation,
+  syncResponsiveClasses,
+} from "../bases/shared-renderer";
 
 // Extend App type to include isMobile property
 declare module "obsidian" {
@@ -504,7 +506,7 @@ export function View({
     }
   }, [resultLimit, ctime, persistenceManager]);
 
-  // Persist settings changes
+  // Persist settings changes (debounced)
   dc.useEffect(() => {
     if (settingsTimeoutRef.current) {
       clearTimeout(settingsTimeoutRef.current);
@@ -561,6 +563,11 @@ export function View({
         void persistenceManager.setViewSettings(ctime, viewSettings);
       }
     }, 300);
+    return () => {
+      if (settingsTimeoutRef.current) {
+        clearTimeout(settingsTimeoutRef.current);
+      }
+    };
   }, [settings, ctime, persistenceManager]);
 
   // Setup swipe interception on mobile if enabled (Datacore is always embedded)
@@ -610,6 +617,39 @@ export function View({
 
   // Style Settings revision - triggers re-render when CSS variables change
   const [_styleRevision, setStyleRevision] = dc.useState(0);
+
+  // Computed key for property settings - triggers gradient re-init when properties change
+  const propertySettingsKey = [
+    settings.propertyDisplay1,
+    settings.propertyDisplay2,
+    settings.propertyDisplay3,
+    settings.propertyDisplay4,
+    settings.propertyDisplay5,
+    settings.propertyDisplay6,
+    settings.propertyDisplay7,
+    settings.propertyDisplay8,
+    settings.propertyDisplay9,
+    settings.propertyDisplay10,
+    settings.propertyDisplay11,
+    settings.propertyDisplay12,
+    settings.propertyDisplay13,
+    settings.propertyDisplay14,
+    settings.propertySet1SideBySide,
+    settings.propertySet2SideBySide,
+    settings.propertySet3SideBySide,
+    settings.propertySet4SideBySide,
+    settings.propertySet5SideBySide,
+    settings.propertySet6SideBySide,
+    settings.propertySet7SideBySide,
+    settings.propertySet1Position,
+    settings.propertySet2Position,
+    settings.propertySet3Position,
+    settings.propertySet4Position,
+    settings.propertySet5Position,
+    settings.propertySet6Position,
+    settings.propertySet7Position,
+    settings.omitFirstLine,
+  ].join("|");
 
   // Ref to always capture latest validatedQuery for debounced callbacks
   const validatedQueryRef = dc.useRef(validatedQuery);
@@ -1272,6 +1312,23 @@ export function View({
     // Initial layout
     updateLayout();
 
+    // Initialize gradients after layout sets card widths (double-RAF for CSS property paint)
+    const container = containerRef.current;
+    if (container) {
+      requestAnimationFrame(() => {
+        if (!container.isConnected) return;
+        requestAnimationFrame(() => {
+          if (!container.isConnected) return;
+          // Sync responsive classes (same pattern as Bases)
+          syncResponsiveClasses(
+            Array.from(container.querySelectorAll<HTMLElement>(".card")),
+          );
+          initializeScrollGradients(container);
+          initializeTitleTruncation(container);
+        });
+      });
+    }
+
     // Throttled resize handler (double-RAF)
     // ResizeObserver handles both pane and window resize (container resizes in both cases)
     let resizeRafId: number | null = null;
@@ -1353,7 +1410,14 @@ export function View({
       if (resizeThrottleTimeout !== null) clearTimeout(resizeThrottleTimeout);
       resizeObserver.disconnect();
     };
-  }, [viewMode, settings.cardSize, _styleRevision, dc]);
+  }, [
+    viewMode,
+    settings.cardSize,
+    _styleRevision,
+    sorted.length,
+    propertySettingsKey,
+    dc,
+  ]);
 
   // Apply dynamic grid layout (all width modes)
   dc.useEffect(() => {
@@ -1414,9 +1478,10 @@ export function View({
 
   // Initialize scroll gradients and title truncation after cards render
   // Uses double-RAF to ensure layout calculations complete first
+  // Note: masonry mode handles this inside its layout useEffect
   dc.useEffect(() => {
-    // Skip for list view (no cards with property fields)
-    if (viewMode === "list") return;
+    // Skip for list (no cards) and masonry (handled in layout effect)
+    if (viewMode !== "card") return;
 
     const container = containerRef.current;
     if (!container) return;
@@ -1428,30 +1493,11 @@ export function View({
     rafId = requestAnimationFrame(() => {
       rafId2 = requestAnimationFrame(() => {
         if (!container.isConnected) return;
-        const fields = container.querySelectorAll(".property-field").length;
-        console.log(`// gradient init: viewMode=${viewMode}, fields=${fields}`);
 
         // Sync responsive classes before gradient init (ResizeObservers are async)
-        const compactBreakpoint = getCompactBreakpoint();
-        if (compactBreakpoint > 0) {
-          container.querySelectorAll<HTMLElement>(".card").forEach((card) => {
-            const cardWidth = card.offsetWidth;
-            if (cardWidth === 0) return;
-            const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
-            const thumbWidth = thumb?.offsetWidth ?? 0;
-
-            card.classList.toggle(
-              "compact-mode",
-              cardWidth < compactBreakpoint,
-            );
-            if (thumb && thumbWidth > 0) {
-              card.classList.toggle(
-                "thumbnail-stack",
-                cardWidth < thumbWidth * 3,
-              );
-            }
-          });
-        }
+        syncResponsiveClasses(
+          Array.from(container.querySelectorAll<HTMLElement>(".card")),
+        );
 
         initializeScrollGradients(container);
         initializeTitleTruncation(container);
@@ -1462,7 +1508,14 @@ export function View({
       if (rafId !== null) cancelAnimationFrame(rafId);
       if (rafId2 !== null) cancelAnimationFrame(rafId2);
     };
-  }, [viewMode, displayedCount, _styleRevision, dc]);
+  }, [
+    viewMode,
+    displayedCount,
+    settings.cardSize,
+    _styleRevision,
+    propertySettingsKey,
+    dc,
+  ]);
 
   // Sync refs for callback access in infinite scroll
   dc.useEffect(() => {

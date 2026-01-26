@@ -5,14 +5,8 @@
 /** Default batch size for infinite scroll */
 export const BATCH_SIZE = 50;
 
-/** Gap size between cards - default fallback (actual value from CSS via getCardSpacing()) */
-export const GAP_SIZE = 12;
-
 /** Scroll position tolerance in pixels */
 export const SCROLL_TOLERANCE = 1;
-
-/** Default image aspect ratio for covers */
-export const IMAGE_ASPECT_RATIO = 0.55;
 
 /** Pane height multiplier for infinite scroll trigger threshold */
 export const PANE_MULTIPLIER = 3;
@@ -25,9 +19,6 @@ export const ROWS_PER_COLUMN = 10;
 
 /** Maximum batch size cap */
 export const MAX_BATCH_SIZE = 70;
-
-/** Debounce delay for layout updates in milliseconds */
-export const LAYOUT_UPDATE_DELAY = 50;
 
 /** Throttle interval for resize layout updates in milliseconds */
 export const RESIZE_THROTTLE_MS = 100;
@@ -46,3 +37,9 @@ export const GESTURE_TIMEOUT_MS = 50;
 
 /** JSON prefix for checkbox property markers */
 export const CHECKBOX_MARKER_PREFIX = '{"type":"checkbox"';
+
+/** Thumbnail stacking threshold multiplier (card stacks when width < thumbnail * this) */
+export const THUMBNAIL_STACK_MULTIPLIER = 3;
+
+/** Luminance threshold for light/dark theme detection (values above = light background) */
+export const LUMINANCE_LIGHT_THRESHOLD = 0.333;

@@ -12,6 +12,7 @@ import {
   getHideEmptyMode,
   getUrlIcon,
   clearStyleSettingsCache,
+  shouldUseBackdropLuminance,
 } from "../../src/utils/style-settings";
 
 describe("style-settings", () => {
@@ -440,6 +441,115 @@ describe("style-settings", () => {
       } as CSSStyleDeclaration);
 
       expect(getUrlIcon()).toBe("star");
+    });
+  });
+
+  describe("shouldUseBackdropLuminance", () => {
+    // Helper to set overlay opacity CSS variable
+    const setOverlayOpacity = (darkOpacity: number, lightOpacity: number) => {
+      mockGetComputedStyle.mockReturnValue({
+        getPropertyValue: (name: string) => {
+          if (name === "--dynamic-views-backdrop-overlay-dark")
+            return String(darkOpacity);
+          if (name === "--dynamic-views-backdrop-overlay-light")
+            return String(lightOpacity);
+          return "";
+        },
+      } as CSSStyleDeclaration);
+    };
+
+    describe("when adaptive text is disabled", () => {
+      beforeEach(() => {
+        mockClassList.add("dynamic-views-backdrop-no-adaptive-text");
+      });
+
+      it("should return false regardless of tint disabled", () => {
+        mockClassList.add("dynamic-views-backdrop-theme-disable");
+        expect(shouldUseBackdropLuminance()).toBe(false);
+      });
+
+      it("should return false regardless of overlay transparency", () => {
+        setOverlayOpacity(0, 0);
+        expect(shouldUseBackdropLuminance()).toBe(false);
+      });
+    });
+
+    describe("when adaptive text is enabled (default)", () => {
+      describe("with tint disabled", () => {
+        it("should return true", () => {
+          mockClassList.add("dynamic-views-backdrop-theme-disable");
+          expect(shouldUseBackdropLuminance()).toBe(true);
+        });
+      });
+
+      describe("with dark tint mode", () => {
+        beforeEach(() => {
+          mockClassList.add("dynamic-views-backdrop-theme-dark");
+        });
+
+        it("should return true when dark overlay is transparent (0)", () => {
+          setOverlayOpacity(0, 70);
+          expect(shouldUseBackdropLuminance()).toBe(true);
+        });
+
+        it("should return false when dark overlay is opaque", () => {
+          setOverlayOpacity(70, 0);
+          expect(shouldUseBackdropLuminance()).toBe(false);
+        });
+      });
+
+      describe("with light tint mode", () => {
+        beforeEach(() => {
+          mockClassList.add("dynamic-views-backdrop-theme-light");
+        });
+
+        it("should return true when light overlay is transparent (0)", () => {
+          setOverlayOpacity(70, 0);
+          expect(shouldUseBackdropLuminance()).toBe(true);
+        });
+
+        it("should return false when light overlay is opaque", () => {
+          setOverlayOpacity(0, 70);
+          expect(shouldUseBackdropLuminance()).toBe(false);
+        });
+      });
+
+      describe('with "match" mode (no tint class, default behavior)', () => {
+        it("should check dark overlay when theme-dark", () => {
+          mockClassList.add("theme-dark");
+          setOverlayOpacity(0, 70);
+          expect(shouldUseBackdropLuminance()).toBe(true);
+        });
+
+        it("should return false when dark theme with opaque dark overlay", () => {
+          mockClassList.add("theme-dark");
+          setOverlayOpacity(70, 0);
+          expect(shouldUseBackdropLuminance()).toBe(false);
+        });
+
+        it("should check light overlay when theme-light", () => {
+          // No theme-dark class = light theme
+          setOverlayOpacity(70, 0);
+          expect(shouldUseBackdropLuminance()).toBe(true);
+        });
+
+        it("should return false when light theme with opaque light overlay", () => {
+          setOverlayOpacity(0, 70);
+          expect(shouldUseBackdropLuminance()).toBe(false);
+        });
+      });
+
+      describe("edge cases", () => {
+        it("should use default opacity (70) when CSS variable not set", () => {
+          // No CSS variables set, defaults to 70 (opaque)
+          expect(shouldUseBackdropLuminance()).toBe(false);
+        });
+
+        it("should handle non-zero low opacity as opaque", () => {
+          setOverlayOpacity(1, 1);
+          expect(shouldUseBackdropLuminance()).toBe(false);
+        });
+      });
     });
   });
 });

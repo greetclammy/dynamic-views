@@ -45,18 +45,6 @@ export function isCheckboxProperty(app: App, propertyName: string): boolean {
 }
 
 /**
- * Check if a property is a date or datetime type using Obsidian's property registry
- * Used to distinguish actual date properties from text properties containing date-like strings
- * @param app - Obsidian App instance
- * @param propertyName - Property name (may include "note." prefix)
- * @returns true if property type is "date" or "datetime"
- */
-export function isDateProperty(app: App, propertyName: string): boolean {
-  const widget = getPropertyInfo(app, propertyName)?.widget;
-  return widget === "date" || widget === "datetime";
-}
-
-/**
  * Type declarations for undocumented Bases API
  */
 interface BasesPropertyConfig {

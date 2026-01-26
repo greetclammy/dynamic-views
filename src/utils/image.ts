@@ -1,4 +1,5 @@
 import { App, TFile } from "obsidian";
+import { getExternalBlobUrl } from "../shared/slideshow";
 import { getSlideshowMaxImages } from "./style-settings";
 
 /**
@@ -602,7 +603,15 @@ export async function extractImageEmbeds(
     const position = match.index;
     if (!isInsideCode(position, fencedBlocks, indentedBlocks, inlineRanges)) {
       // Strip optional title from URL
-      const url = match[1].trim().replace(MD_IMAGE_TITLE_REGEX, "");
+      let url = match[1].trim().replace(MD_IMAGE_TITLE_REGEX, "");
+      // Decode URL-encoded characters (e.g., %20 -> space) for local paths
+      if (!isExternalUrl(url)) {
+        try {
+          url = decodeURIComponent(url);
+        } catch {
+          // Keep original if decode fails
+        }
+      }
       embeds.push({
         type: "markdown",
         path: url,
@@ -644,8 +653,11 @@ export async function extractImageEmbeds(
         continue;
       }
 
-      // Regular external URL - pass through without validation
-      resultUrls.push(path);
+      // Validate external URL - only include if successfully cached
+      const blobUrl = await getExternalBlobUrl(path);
+      if (blobUrl) {
+        resultUrls.push(blobUrl);
+      }
     } else {
       // Internal path - resolve via metadata cache
       const targetFile = app.metadataCache.getFirstLinkpathDest(

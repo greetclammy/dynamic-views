@@ -6,6 +6,7 @@ import {
 } from "../utils/image";
 import { loadFilePreview } from "../utils/text-preview";
 import { getSlideshowMaxImages } from "../utils/style-settings";
+import { getExternalBlobUrl } from "./slideshow";
 
 // Track in-flight loads - Map to Promises so concurrent requests can await
 const inFlightTextPreviews = new Map<string, Promise<string>>();
@@ -58,7 +59,7 @@ export async function loadImageForEntry(
   file: TFile,
   app: App,
   imagePropertyValues: unknown[],
-  fallbackToEmbeds: "always" | "if-empty" | "never",
+  fallbackToEmbeds: "always" | "if-unavailable" | "never",
   imageCache: Record<string, string | string[]>,
   hasImageCache: Record<string, boolean>,
   embedOptions?: {
@@ -104,10 +105,15 @@ export async function loadImageForEntry(
       // Process image paths using shared utility (sync - no validation needed)
       const { internalPaths, externalUrls } = processImagePaths(validPaths);
 
+      // Validate external URLs - returns blob URL if valid, null if failed
+      const validatedExternalUrls = (
+        await Promise.all(externalUrls.map((url) => getExternalBlobUrl(url)))
+      ).filter((url): url is string => url !== null);
+
       // Convert internal paths to resource URLs using shared utility
       let validImages: string[] = [
         ...resolveInternalImagePaths(internalPaths, path, app),
-        ...externalUrls, // External URLs passed through - browser handles load/error
+        ...validatedExternalUrls,
       ];
 
       // Handle embed images based on fallbackToEmbeds mode
@@ -118,8 +124,8 @@ export async function loadImageForEntry(
           const embedImages = await extractImageEmbeds(file, app, embedOptions);
           validImages = [...validImages, ...embedImages];
         }
-      } else if (fallbackToEmbeds === "if-empty") {
-        // Only use embeds if property missing/empty
+      } else if (fallbackToEmbeds === "if-unavailable") {
+        // Only use embeds if no valid property images
         if (validImages.length === 0) {
           validImages = await extractImageEmbeds(file, app, embedOptions);
         }
@@ -177,7 +183,7 @@ export async function loadImagesForEntries(
     file: TFile;
     imagePropertyValues: unknown[];
   }>,
-  fallbackToEmbeds: "always" | "if-empty" | "never",
+  fallbackToEmbeds: "always" | "if-unavailable" | "never",
   app: App,
   imageCache: Record<string, string | string[]>,
   hasImageCache: Record<string, boolean>,

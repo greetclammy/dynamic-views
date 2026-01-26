@@ -16,6 +16,7 @@ import {
 import { CardData } from "../shared/card-renderer";
 import {
   setupImageLoadHandler,
+  setupBackdropImageLoader,
   handleImageLoad,
   DEFAULT_ASPECT_RATIO,
 } from "../shared/image-loader";
@@ -43,15 +44,7 @@ import {
   getSlideshowMaxImages,
   getUrlIcon,
   getCompactBreakpoint,
-  isBackdropTintDisabled,
-  isBackdropAdaptiveTextEnabled,
 } from "../utils/style-settings";
-import {
-  extractDominantColor,
-  calculateLuminanceFromTuple,
-  LUMINANCE_LIGHT_THRESHOLD,
-} from "../utils/ambient-color";
-import { isExternalUrl } from "../utils/image";
 import {
   getPropertyLabel,
   normalizePropertyName,
@@ -72,13 +65,17 @@ import type { Settings } from "../types";
 import {
   createSlideshowNavigator,
   getCachedBlobUrl,
-  isFailedExternalUrl,
-  markExternalUrlAsFailed,
+  getExternalBlobUrl,
+  isCachedOrInternal,
+  setupHoverZoomEligibility,
   setupImagePreload,
   setupSwipeGestures,
 } from "../shared/slideshow";
 import { handleArrowNavigation, isArrowKey } from "../shared/keyboard-nav";
-import { CHECKBOX_MARKER_PREFIX } from "../shared/constants";
+import {
+  CHECKBOX_MARKER_PREFIX,
+  THUMBNAIL_STACK_MULTIPLIER,
+} from "../shared/constants";
 import {
   shouldUseNotebookNavigator,
   navigateToTagInNotebookNavigator,
@@ -197,7 +194,7 @@ export function initializeTitleTruncation(container: HTMLElement): void {
     const width = titleEl.offsetWidth;
 
     // Skip if not visible
-    if (width === 0) continue;
+    if (width <= 0) continue;
 
     measurements.push({
       textEl,
@@ -223,6 +220,77 @@ declare module "obsidian" {
       onDragStart(evt: DragEvent, dragData: unknown): void;
     };
   }
+}
+
+/**
+ * Batch-sync responsive classes (compact-mode, thumbnail-stack) for cards.
+ * Uses read-then-write pattern to avoid layout thrashing:
+ * - Phase 1: Read all card/thumbnail dimensions (1 layout recalc)
+ * - Phase 2: Apply all class changes (no layout reads)
+ *
+ * @param cards - Array of card elements to sync
+ * @returns true if any classes were changed (layout may need recalc)
+ */
+export function syncResponsiveClasses(cards: HTMLElement[]): boolean {
+  const compactBreakpoint = getCompactBreakpoint();
+  if (compactBreakpoint === 0 || cards.length === 0) return false;
+
+  // Phase 1: Read all dimensions and current classes (forces 1 layout recalc)
+  const measurements: Array<{
+    card: HTMLElement;
+    cardWidth: number;
+    thumb: HTMLElement | null;
+    thumbWidth: number;
+    wasCompact: boolean;
+    wasStacked: boolean;
+  }> = [];
+
+  for (const card of cards) {
+    const cardWidth = card.offsetWidth;
+    if (cardWidth <= 0) continue;
+
+    const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
+    const thumbWidth = thumb?.offsetWidth ?? 0;
+    const wasCompact = card.classList.contains("compact-mode");
+    const wasStacked = card.classList.contains("thumbnail-stack");
+
+    measurements.push({
+      card,
+      cardWidth,
+      thumb,
+      thumbWidth,
+      wasCompact,
+      wasStacked,
+    });
+  }
+
+  // Phase 2: Apply all class changes (no layout reads)
+  let anyChanged = false;
+  for (const {
+    card,
+    cardWidth,
+    thumb,
+    thumbWidth,
+    wasCompact,
+    wasStacked,
+  } of measurements) {
+    const shouldBeCompact = cardWidth < compactBreakpoint;
+    const shouldBeStacked =
+      thumb !== null &&
+      thumbWidth > 0 &&
+      cardWidth < thumbWidth * THUMBNAIL_STACK_MULTIPLIER;
+
+    if (shouldBeCompact !== wasCompact) {
+      card.classList.toggle("compact-mode", shouldBeCompact);
+      anyChanged = true;
+    }
+    if (thumb && shouldBeStacked !== wasStacked) {
+      card.classList.toggle("thumbnail-stack", shouldBeStacked);
+      anyChanged = true;
+    }
+  }
+
+  return anyChanged;
 }
 
 export class SharedCardRenderer {
@@ -383,7 +451,6 @@ export class SharedCardRenderer {
         "error",
         () => {
           if (signal?.aborted) return; // Guard against race with cleanup
-          markExternalUrlAsFailed(img.src);
           img.style.display = "none";
         },
         { signal, once: true },
@@ -459,11 +526,11 @@ export class SharedCardRenderer {
 
     // Parse imageFormat to extract format and position
     const imageFormat = settings.imageFormat;
-    let format: "none" | "thumbnail" | "cover" | "background" = "none";
+    let format: "none" | "thumbnail" | "cover" | "backdrop" = "none";
     let position: "left" | "right" | "top" | "bottom" = "right";
 
-    if (imageFormat === "background") {
-      format = "background";
+    if (imageFormat === "backdrop") {
+      format = "backdrop";
     } else if (imageFormat.startsWith("thumbnail-")) {
       format = "thumbnail";
       position = imageFormat.split("-")[1] as "left" | "right";
@@ -481,7 +548,7 @@ export class SharedCardRenderer {
       cardEl.classList.add("image-format-cover");
     } else if (format === "thumbnail") {
       cardEl.classList.add("image-format-thumbnail");
-    } else if (format === "background") {
+    } else if (format === "backdrop") {
       cardEl.classList.add("image-format-backdrop");
     }
 
@@ -491,6 +558,8 @@ export class SharedCardRenderer {
       cardEl.classList.add(`card-thumbnail-${settings.imageFit}`);
     } else if (format === "cover") {
       cardEl.classList.add(`card-cover-${position}`);
+      cardEl.classList.add(`card-cover-${settings.imageFit}`);
+    } else if (format === "backdrop") {
       cardEl.classList.add(`card-cover-${settings.imageFit}`);
     }
 
@@ -979,6 +1048,7 @@ export class SharedCardRenderer {
             format,
             position,
             settings,
+            card.path,
           );
         } else {
           const imageEl = coverWrapper.createDiv("card-cover");
@@ -1042,8 +1112,8 @@ export class SharedCardRenderer {
               const target = entry.target as HTMLElement;
               const newCardWidth = target.offsetWidth;
 
-              // Skip if card not yet rendered (width = 0)
-              if (newCardWidth === 0) {
+              // Skip if card not yet rendered (width <= 0)
+              if (newCardWidth <= 0) {
                 continue;
               }
 
@@ -1069,102 +1139,20 @@ export class SharedCardRenderer {
       }
     }
 
-    // BACKGROUND: absolute-positioned image fills entire card
-    if (format === "background" && hasImage) {
+    // BACKDROP: absolute-positioned image fills entire card
+    if (format === "backdrop" && hasImage) {
       const bgWrapper = cardEl.createDiv("card-backdrop");
       const img = bgWrapper.createEl("img", {
         attr: { src: imageUrls[0], alt: "" },
       });
-      img.addEventListener(
-        "load",
-        () => {
-          // Guard against race with cleanup
-          if (signal.aborted) return;
-          // Extract luminance for adaptive text when tint is disabled
-          if (isBackdropTintDisabled() && isBackdropAdaptiveTextEnabled()) {
-            if (!isExternalUrl(img.src)) {
-              const rgb = extractDominantColor(img);
-              if (rgb) {
-                const luminance = calculateLuminanceFromTuple(rgb);
-                const theme =
-                  luminance > LUMINANCE_LIGHT_THRESHOLD ? "light" : "dark";
-                cardEl.setAttribute("data-backdrop-theme", theme);
-              }
-            } else {
-              // Clear theme for uncached external images
-              cardEl.removeAttribute("data-backdrop-theme");
-            }
-          }
-          // Double rAF for CSS fade-in transition (consistent with cover/thumbnail)
-          requestAnimationFrame(() => {
-            if (signal.aborted || !cardEl.isConnected) return;
-            requestAnimationFrame(() => {
-              if (signal.aborted || !cardEl.isConnected) return;
-              cardEl.classList.add("cover-ready");
-              this.updateLayoutRef.current?.();
-            });
-          });
-        },
-        { signal },
+      setupBackdropImageLoader(
+        img,
+        bgWrapper,
+        cardEl,
+        imageUrls,
+        this.updateLayoutRef.current,
+        signal,
       );
-      // Fallback to next valid image if current fails (consistency with cover/thumbnail)
-      if (imageUrls.length > 1) {
-        let currentUrlIndex = 0;
-        const tryNextBackdropImage = () => {
-          // Guard against race with cleanup (signal aborted during execution)
-          if (signal.aborted) return;
-          // Mark current URL as failed
-          if (img.src) {
-            markExternalUrlAsFailed(img.src);
-          }
-          currentUrlIndex++;
-          // Try next valid URL
-          while (currentUrlIndex < imageUrls.length) {
-            if (signal.aborted) return; // Check in loop for long image lists
-            if (!isFailedExternalUrl(imageUrls[currentUrlIndex])) {
-              if (signal.aborted) return; // Guard before DOM mutation
-              img.style.display = "";
-              const effectiveUrl = getCachedBlobUrl(imageUrls[currentUrlIndex]);
-              img.src = effectiveUrl;
-              return;
-            }
-            currentUrlIndex++;
-          }
-          // All images failed - use double rAF for cover-ready
-          if (signal.aborted) return;
-          requestAnimationFrame(() => {
-            if (signal.aborted || !cardEl.isConnected) return;
-            requestAnimationFrame(() => {
-              if (signal.aborted || !cardEl.isConnected) return;
-              img.style.display = "none";
-              cardEl.removeAttribute("data-backdrop-theme");
-              cardEl.classList.add("cover-ready");
-              this.updateLayoutRef.current?.();
-            });
-          });
-        };
-        img.addEventListener("error", tryNextBackdropImage, { signal });
-      } else {
-        img.addEventListener(
-          "error",
-          () => {
-            if (signal.aborted) return;
-            markExternalUrlAsFailed(img.src);
-            // Double rAF for cover-ready (consistent with load handler)
-            requestAnimationFrame(() => {
-              if (signal.aborted || !cardEl.isConnected) return;
-              requestAnimationFrame(() => {
-                if (signal.aborted || !cardEl.isConnected) return;
-                img.style.display = "none";
-                cardEl.removeAttribute("data-backdrop-theme");
-                cardEl.classList.add("cover-ready");
-                this.updateLayoutRef.current?.();
-              });
-            });
-          },
-          { signal },
-        );
-      }
     }
 
     // Determine if card-content will have children
@@ -1230,22 +1218,25 @@ export class SharedCardRenderer {
     let isStacked = thumbnailEl?.parentElement === cardEl;
 
     const cardObserver = new ResizeObserver((entries) => {
-      if (signal.aborted) return; // Guard against race with cleanup
+      // Guard against race with cleanup or element removal
+      if (signal.aborted || !cardEl.isConnected) return;
       for (const entry of entries) {
         const cardWidth = entry.contentRect.width;
 
         // Skip if card hasn't been sized yet (masonry sets width)
-        if (cardWidth === 0) continue;
+        if (cardWidth <= 0) continue;
 
         // Compact mode
         if (breakpoint > 0) {
           cardEl.classList.toggle("compact-mode", cardWidth < breakpoint);
         }
 
-        // Thumbnail stacking
-        if (thumbnailEl && contentEl) {
+        // Thumbnail stacking (consistent threshold with syncResponsiveClasses)
+        if (thumbnailEl && contentEl && thumbnailEl.isConnected) {
           const thumbnailWidth = thumbnailEl.offsetWidth;
-          const shouldStack = cardWidth < thumbnailWidth * 3;
+          const shouldStack =
+            thumbnailWidth > 0 &&
+            cardWidth < thumbnailWidth * THUMBNAIL_STACK_MULTIPLIER;
 
           if (shouldStack && !isStacked) {
             // Left: thumbnail above content, Right: thumbnail below content
@@ -1281,6 +1272,7 @@ export class SharedCardRenderer {
     format: "thumbnail" | "cover",
     position: "left" | "right" | "top" | "bottom",
     settings: Settings,
+    cardPath: string,
   ): void {
     // Create AbortController for cleanup
     const controller = new AbortController();
@@ -1305,7 +1297,7 @@ export class SharedCardRenderer {
       (e) => {
         handleImageViewerClick(
           e,
-          cardEl?.getAttribute("data-path") || "",
+          cardPath,
           this.app,
           this.viewerCleanupFns,
           this.viewerClones,
@@ -1340,8 +1332,15 @@ export class SharedCardRenderer {
       setupImagePreload(cardEl, imageUrls, signal);
     }
 
+    // Hover zoom eligibility: only first hovered slide gets zoom effect
+    const clearHoverZoom = setupHoverZoomEligibility(
+      slideshowEl,
+      imageEmbedContainer,
+      signal,
+    );
+
     // Create navigator with shared logic
-    const { navigate } = createSlideshowNavigator(
+    const { navigate, reset } = createSlideshowNavigator(
       imageUrls,
       () => {
         const currImg = imageEmbedContainer.querySelector(
@@ -1366,6 +1365,7 @@ export class SharedCardRenderer {
           }
         },
         onAnimationComplete: () => {
+          clearHoverZoom();
           if (this.updateLayoutRef.current) {
             this.updateLayoutRef.current("slideshow-animation-complete");
           }
@@ -1373,20 +1373,29 @@ export class SharedCardRenderer {
       },
     );
 
+    // Reset to slide 1 when view becomes visible (reading/editing views are separate DOMs)
+    const visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          reset();
+        }
+      },
+      { threshold: 0 },
+    );
+    visibilityObserver.observe(slideshowEl);
+    signal.addEventListener("abort", () => visibilityObserver.disconnect(), {
+      once: true,
+    });
+
     // Auto-advance if first image fails to load (skip animation for instant display)
-    const expectedFirstUrl = imageUrls[0];
+    const expectedFirstUrl = getCachedBlobUrl(imageUrls[0]);
     currentImg.addEventListener(
       "error",
-      () => {
-        if (signal.aborted) return; // Guard against race with cleanup
-        // Ignore errors from src being cleared (resolves to index.html)
-        if (
-          !currentImg.src ||
-          !currentImg.src.includes(expectedFirstUrl.split("?")[0].slice(-30))
-        ) {
-          return;
-        }
-        markExternalUrlAsFailed(currentImg.src);
+      (e) => {
+        if (signal.aborted) return;
+        // Only handle errors for the URL we set (ignore cleared src or changed URL)
+        const targetSrc = (e.target as HTMLImageElement).src;
+        if (targetSrc !== expectedFirstUrl) return;
         currentImg.style.display = "none";
         navigate(1, false, true);
       },
@@ -1487,35 +1496,34 @@ export class SharedCardRenderer {
       const tryNextImage = () => {
         // Guard against race with cleanup (signal aborted during execution)
         if (signal?.aborted) return;
-        // Mark current URL as failed
-        if (imgEl.src) {
-          markExternalUrlAsFailed(imgEl.src);
-        }
         currentUrlIndex++;
-        while (currentUrlIndex < imageUrls.length) {
-          if (signal?.aborted) return; // Check in loop for long image lists
-          const nextUrl = imageUrls[currentUrlIndex];
-          if (!isFailedExternalUrl(nextUrl)) {
-            imgEl.style.display = ""; // Unhide
-            imgEl.src = getCachedBlobUrl(nextUrl);
-            return;
-          }
-          currentUrlIndex++;
+        // Try next URL (pre-validated, should not fail)
+        if (currentUrlIndex < imageUrls.length) {
+          if (signal?.aborted || !imgEl.isConnected) return; // Guard before DOM mutation
+          imgEl.style.display = ""; // Unhide
+          imgEl.src = getCachedBlobUrl(imageUrls[currentUrlIndex]);
+          return;
         }
-        // All images failed - complete fallback handling
-        if (signal?.aborted) return; // Guard before final DOM mutations
-        imgEl.style.display = "none";
-        if (!cardEl.classList.contains("cover-ready")) {
-          cardEl.classList.add("cover-ready");
-          cardEl.style.setProperty(
-            "--actual-aspect-ratio",
-            DEFAULT_ASPECT_RATIO.toString(),
-          );
-          // Trigger layout update for cover format
-          if (format === "cover" && this.updateLayoutRef.current) {
-            this.updateLayoutRef.current();
-          }
-        }
+        // All images failed - use double rAF for cover-ready (consistent with backdrop)
+        if (signal?.aborted) return;
+        requestAnimationFrame(() => {
+          if (signal?.aborted || !cardEl.isConnected) return;
+          requestAnimationFrame(() => {
+            if (signal?.aborted || !cardEl.isConnected) return;
+            imgEl.style.display = "none";
+            if (!cardEl.classList.contains("cover-ready")) {
+              cardEl.classList.add("cover-ready");
+              cardEl.style.setProperty(
+                "--actual-aspect-ratio",
+                DEFAULT_ASPECT_RATIO.toString(),
+              );
+              // Trigger layout update for cover format
+              if (format === "cover" && this.updateLayoutRef.current) {
+                this.updateLayoutRef.current();
+              }
+            }
+          });
+        });
       };
       imgEl.addEventListener(
         "error",
@@ -1565,11 +1573,16 @@ export class SharedCardRenderer {
             ),
           );
           const rawUrl = scrubbableUrls[index];
-          // Skip failed external images
-          if (isFailedExternalUrl(rawUrl)) return;
-          const targetUrl = getCachedBlobUrl(rawUrl);
-          if (imgEl.src !== targetUrl) {
-            imgEl.src = targetUrl;
+          if (isCachedOrInternal(rawUrl)) {
+            imgEl.style.display = "";
+            const targetUrl = getCachedBlobUrl(rawUrl);
+            if (imgEl.src !== targetUrl) {
+              imgEl.src = targetUrl;
+            }
+          } else {
+            // Uncached external: show placeholder, fetch in background
+            imgEl.style.display = "none";
+            void getExternalBlobUrl(rawUrl);
           }
         },
         { signal },
@@ -1580,12 +1593,11 @@ export class SharedCardRenderer {
         () => {
           // Invalidate cached rect for next hover (handles resize)
           cachedRect = null;
-          // Find first valid URL
-          const firstValidUrl = scrubbableUrls.find(
-            (url) => !isFailedExternalUrl(url),
-          );
-          if (!firstValidUrl) return;
-          imgEl.src = getCachedBlobUrl(firstValidUrl);
+          const firstUrl = scrubbableUrls[0];
+          if (!firstUrl) return;
+          // First image is pre-validated, always show it
+          imgEl.style.display = "";
+          imgEl.src = getCachedBlobUrl(firstUrl);
         },
         { signal },
       );
@@ -1969,13 +1981,18 @@ export class SharedCardRenderer {
           items: string[];
         };
         if (arrayData.type === "array" && Array.isArray(arrayData.items)) {
+          // Filter out empty strings to avoid rendering separators between invisible items
+          const nonEmptyItems = arrayData.items.filter(
+            (item) => item.trim().length > 0,
+          );
+          if (nonEmptyItems.length === 0) return;
           const listWrapper = propertyContent.createSpan("list-wrapper");
           const separator = getListSeparator();
-          arrayData.items.forEach((item, idx) => {
+          nonEmptyItems.forEach((item, idx) => {
             const span = listWrapper.createSpan();
             const listItem = span.createSpan({ cls: "list-item" });
             this.renderTextWithLinks(listItem, item, signal);
-            if (idx < arrayData.items.length - 1) {
+            if (idx < nonEmptyItems.length - 1) {
               span.createSpan({ cls: "list-separator", text: separator });
             }
           });

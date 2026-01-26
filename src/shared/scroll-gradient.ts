@@ -14,12 +14,9 @@ const contentCache = new WeakMap<HTMLElement, HTMLElement | null>();
 /** Cache for current gradient class to skip no-op updates */
 const gradientClassCache = new WeakMap<HTMLElement, string | null>();
 
-/** Cache for throttled update functions per element */
-const throttleCache = new WeakMap<HTMLElement, () => void>();
-
 /**
- * Creates a throttled version of a function
- * Uses requestAnimationFrame for smooth 60fps throttling
+ * Creates a throttled version of a function using requestAnimationFrame.
+ * Limits execution to once per animation frame for smooth updates.
  */
 function throttleRAF<T extends (...args: unknown[]) => void>(
   fn: T,
@@ -107,17 +104,17 @@ export function updateScrollGradient(element: HTMLElement): void {
     return;
   }
 
-  // Get cached refs or query once and cache
+  // Get cached refs or query once and cache (only cache successful finds)
   let wrapper = wrapperCache.get(element);
   let content = contentCache.get(element);
 
-  if (wrapper === undefined) {
+  if (!wrapper) {
     wrapper = element.querySelector<HTMLElement>(".property-content-wrapper");
-    wrapperCache.set(element, wrapper);
+    if (wrapper) wrapperCache.set(element, wrapper);
   }
-  if (content === undefined) {
+  if (!content) {
     content = element.querySelector<HTMLElement>(".property-content");
-    contentCache.set(element, content);
+    if (content) contentCache.set(element, content);
   }
 
   if (!wrapper || !content) {
@@ -145,10 +142,10 @@ export function updateScrollGradient(element: HTMLElement): void {
   // Mark field as scrollable for conditional alignment
   element.classList.add("is-scrollable");
 
-  // Calculate and apply gradient class (reuse wrapperWidth)
+  // Calculate and apply gradient class (use contentScrollWidth for consistency)
   const targetClass = getGradientClass(
     wrapper.scrollLeft,
-    wrapper.scrollWidth,
+    contentScrollWidth,
     wrapperWidth,
   );
   setGradientClasses(wrapper, targetClass);
@@ -179,19 +176,15 @@ export function setupElementScrollGradient(
 }
 
 /**
- * Gets or creates a throttled update function for an element
- * Reuses existing throttle instances to avoid creating 1400+ closures
+ * Creates a throttled update function for an element.
+ * No caching - each call creates fresh closure to avoid stale function references.
+ * Modern JS engines handle 1400+ closures efficiently.
  */
-function getThrottledUpdate(
+function createThrottledUpdate(
   element: HTMLElement,
   updateGradientFn: (element: HTMLElement) => void,
 ): () => void {
-  let throttled = throttleCache.get(element);
-  if (!throttled) {
-    throttled = throttleRAF(() => updateGradientFn(element));
-    throttleCache.set(element, throttled);
-  }
-  return throttled;
+  return throttleRAF(() => updateGradientFn(element));
 }
 
 /**
@@ -213,17 +206,17 @@ export function setupScrollGradients(
   scrollables.forEach((el) => {
     const element = el as HTMLElement;
 
-    // Get cached wrapper or query and cache
+    // Get cached wrapper or query and cache (only cache successful finds)
     let wrapper = wrapperCache.get(element);
-    if (wrapper === undefined) {
+    if (!wrapper) {
       wrapper = element.querySelector<HTMLElement>(".property-content-wrapper");
-      wrapperCache.set(element, wrapper);
+      if (wrapper) wrapperCache.set(element, wrapper);
     }
 
     if (!wrapper) return;
 
-    // Get or create throttled update (reuses existing instance)
-    const throttledUpdate = getThrottledUpdate(element, updateGradientFn);
+    // Create throttled update (fresh closure each call to avoid stale refs)
+    const throttledUpdate = createThrottledUpdate(element, updateGradientFn);
 
     // Attach scroll listener to wrapper for user scroll interaction
     wrapper.addEventListener("scroll", throttledUpdate, { signal });
@@ -262,17 +255,17 @@ export function initializeScrollGradients(container: HTMLElement): void {
       ?.classList.contains("compact-mode");
     if (isSideBySide && !isMeasured && !isCompact) return;
 
-    // Get cached refs or query and cache
+    // Get cached refs or query and cache (only cache successful finds)
     let wrapper = wrapperCache.get(field);
     let content = contentCache.get(field);
 
-    if (wrapper === undefined) {
+    if (!wrapper) {
       wrapper = field.querySelector<HTMLElement>(".property-content-wrapper");
-      wrapperCache.set(field, wrapper);
+      if (wrapper) wrapperCache.set(field, wrapper);
     }
-    if (content === undefined) {
+    if (!content) {
       content = field.querySelector<HTMLElement>(".property-content");
-      contentCache.set(field, content);
+      if (content) contentCache.set(field, content);
     }
 
     if (!wrapper || !content) return;
@@ -286,7 +279,7 @@ export function initializeScrollGradients(container: HTMLElement): void {
 
     const isScrollable = contentScrollWidth > wrapperWidth;
     const targetClass = isScrollable
-      ? getGradientClass(wrapper.scrollLeft, wrapper.scrollWidth, wrapperWidth)
+      ? getGradientClass(wrapper.scrollLeft, contentScrollWidth, wrapperWidth)
       : null;
 
     measurements.push({ field, wrapper, isScrollable, targetClass });

@@ -9,6 +9,16 @@ import {
 } from "../../src/utils/image";
 import { App, TFile } from "obsidian";
 
+// Mock slideshow utilities (getExternalBlobUrl validates external URLs)
+jest.mock("../../src/shared/slideshow", () => ({
+  getExternalBlobUrl: jest.fn((url: string) => Promise.resolve(url)),
+}));
+
+// Mock style settings
+jest.mock("../../src/utils/style-settings", () => ({
+  getSlideshowMaxImages: jest.fn(() => 10),
+}));
+
 describe("image", () => {
   describe("isExternalUrl", () => {
     it("should return true for http URLs", () => {

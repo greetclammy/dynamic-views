@@ -15,12 +15,12 @@ import {
   getMinGridColumns,
   getCardSpacing,
   clearStyleSettingsCache,
-  getCompactBreakpoint,
 } from "../utils/style-settings";
 import { initializeScrollGradients } from "../shared/scroll-gradient";
 import {
   SharedCardRenderer,
   initializeTitleTruncation,
+  syncResponsiveClasses,
 } from "./shared-renderer";
 import {
   PANE_MULTIPLIER,
@@ -558,24 +558,9 @@ export class DynamicViewsCardView extends BasesView {
 
       // Batch-initialize scroll gradients and title truncation after all cards rendered
       // Sync responsive classes before gradient init (ResizeObservers are async)
-      const compactBreakpoint = getCompactBreakpoint();
-      if (compactBreakpoint > 0) {
-        feedEl.querySelectorAll<HTMLElement>(".card").forEach((card) => {
-          // Read all widths before writes to avoid layout thrashing
-          const cardWidth = card.offsetWidth;
-          if (cardWidth === 0) return; // Skip unmeasured cards
-          const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
-          const thumbWidth = thumb?.offsetWidth ?? 0;
-
-          card.classList.toggle("compact-mode", cardWidth < compactBreakpoint);
-          if (thumb && thumbWidth > 0) {
-            card.classList.toggle(
-              "thumbnail-stack",
-              cardWidth < thumbWidth * 3,
-            );
-          }
-        });
-      }
+      syncResponsiveClasses(
+        Array.from(feedEl.querySelectorAll<HTMLElement>(".card")),
+      );
       initializeScrollGradients(feedEl);
       initializeTitleTruncation(feedEl);
 
@@ -615,6 +600,21 @@ export class DynamicViewsCardView extends BasesView {
                 );
                 if (scrollBefore > 0) {
                   this.scrollEl.scrollTop = scrollBefore;
+                }
+
+                // Re-initialize gradients after column change (card widths changed)
+                const feed = this.feedContainerRef.current;
+                if (feed) {
+                  requestAnimationFrame(() => {
+                    // Guard: skip if stale render or disconnected
+                    if (!feed.isConnected) return;
+
+                    // Sync responsive classes before gradient init
+                    syncResponsiveClasses(
+                      Array.from(feed.querySelectorAll<HTMLElement>(".card")),
+                    );
+                    initializeScrollGradients(feed);
+                  });
                 }
               }
             } finally {
@@ -892,23 +892,7 @@ export class DynamicViewsCardView extends BasesView {
     // Batch-initialize scroll gradients and title truncation for newly rendered cards only
     if (newCardEls.length > 0) {
       // Sync responsive classes before gradient init (ResizeObservers are async)
-      const compactBreakpoint = getCompactBreakpoint();
-      if (compactBreakpoint > 0) {
-        newCardEls.forEach((card) => {
-          const cardWidth = card.offsetWidth;
-          if (cardWidth === 0) return;
-          const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
-          const thumbWidth = thumb?.offsetWidth ?? 0;
-
-          card.classList.toggle("compact-mode", cardWidth < compactBreakpoint);
-          if (thumb && thumbWidth > 0) {
-            card.classList.toggle(
-              "thumbnail-stack",
-              cardWidth < thumbWidth * 3,
-            );
-          }
-        });
-      }
+      syncResponsiveClasses(newCardEls);
       // Initialize gradients/truncation (uses caching to skip already-processed fields)
       if (this.feedContainerRef.current) {
         initializeScrollGradients(this.feedContainerRef.current);

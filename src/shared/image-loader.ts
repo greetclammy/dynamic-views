@@ -2,18 +2,17 @@ import {
   extractDominantColor,
   formatAmbientColor,
   calculateLuminanceFromTuple,
-  LUMINANCE_LIGHT_THRESHOLD,
   type RGBTuple,
 } from "../utils/ambient-color";
+import { LUMINANCE_LIGHT_THRESHOLD } from "./constants";
 import {
   isCardBackgroundAmbient,
   isCoverBackgroundAmbient,
   getCardAmbientOpacity,
-  isBackdropTintDisabled,
-  isBackdropAdaptiveTextEnabled,
+  shouldUseBackdropLuminance,
 } from "../utils/style-settings";
 import { isExternalUrl } from "../utils/image";
-import { cacheExternalImage, markExternalUrlAsFailed } from "./slideshow";
+import { cacheExternalImage, getCachedBlobUrl } from "./slideshow";
 import type { RefObject } from "../datacore/types";
 
 // Cache image metadata (RGB tuple + aspect ratio) by URL to avoid flash on re-render
@@ -54,6 +53,9 @@ export function reapplyAmbientColors(): void {
 
       const cached = imageMetadataCache.get(imgEl.src);
       if (!cached?.rgb || !cached?.theme) return;
+
+      // Guard against unmounted elements during iteration
+      if (!card.isConnected || !imageEmbedEl.isConnected) return;
 
       const isCoverImage = card.classList.contains("image-format-cover");
       applyAmbientStyles(
@@ -112,6 +114,9 @@ function applyAmbientStyles(
   cardEl: HTMLElement,
   isCoverImage: boolean,
 ): void {
+  // Guard against unmounted elements
+  if (!cardEl.isConnected) return;
+
   // Card background uses setting-defined opacity, cover background uses 0.33
   const cardOpacity = getCardAmbientOpacity();
   const coverOpacity = 0.33;
@@ -122,7 +127,7 @@ function applyAmbientStyles(
   // Cover container gets subtle opacity for letterbox
   // Set on .card-cover (parent of imageEmbedContainer), not imageEmbedContainer itself
   const cardCover = imageEmbedContainer.closest(".card-cover");
-  if (cardCover instanceof HTMLElement) {
+  if (cardCover instanceof HTMLElement && cardCover.isConnected) {
     cardCover.style.setProperty("--ambient-color", coverColor);
   }
   // Card gets opacity based on card ambient setting
@@ -130,7 +135,7 @@ function applyAmbientStyles(
     "--ambient-color",
     isCoverImage && !isCardBackgroundAmbient() ? coverColor : cardColor,
   );
-  cardEl.setAttribute("data-ambient-theme", theme);
+  cardEl.setAttribute("data-adaptive-text", theme);
   if (luminance !== undefined) {
     cardEl.style.setProperty("--ambient-luminance", luminance.toFixed(3));
   }
@@ -144,12 +149,15 @@ function clearAmbientStyles(
   imageEmbedContainer: HTMLElement,
   cardEl: HTMLElement,
 ): void {
+  // Guard against unmounted elements
+  if (!cardEl.isConnected) return;
+
   const cardCover = imageEmbedContainer.closest(".card-cover");
-  if (cardCover instanceof HTMLElement) {
+  if (cardCover instanceof HTMLElement && cardCover.isConnected) {
     cardCover.style.removeProperty("--ambient-color");
   }
   cardEl.style.removeProperty("--ambient-color");
-  cardEl.removeAttribute("data-ambient-theme");
+  cardEl.removeAttribute("data-adaptive-text");
   cardEl.style.removeProperty("--ambient-luminance");
 }
 
@@ -167,17 +175,15 @@ export function applyCachedImageMetadata(
   const cached = imageMetadataCache.get(imgSrc);
   if (!cached) return;
 
+  // Guard against unmounted elements
+  if (!cardEl.isConnected || !imageEmbedContainer.isConnected) return;
+
   // Don't apply ambient styles here - let handleImageLoad apply them in double rAF
   // so the transition animates. Aspect ratio can be applied immediately.
 
   // Apply cached backdrop theme for luminance-based adaptive text
-  if (
-    isBackdropImage &&
-    cached.theme &&
-    isBackdropTintDisabled() &&
-    isBackdropAdaptiveTextEnabled()
-  ) {
-    cardEl.setAttribute("data-backdrop-theme", cached.theme);
+  if (isBackdropImage && cached.theme && shouldUseBackdropLuminance()) {
+    cardEl.setAttribute("data-adaptive-text", cached.theme);
   }
 
   if (cached.aspectRatio !== undefined) {
@@ -232,13 +238,12 @@ export function handleImageLoad(
   const isCover =
     isCoverImage ?? cardEl.classList.contains("image-format-cover");
   const needsAmbient =
-    isCardBackgroundAmbient() || (isCover && isCoverBackgroundAmbient());
+    !isBackdropImage &&
+    (isCardBackgroundAmbient() || (isCover && isCoverBackgroundAmbient()));
 
-  // Backdrop needs luminance when tint is disabled (for adaptive text based on image)
+  // Backdrop needs luminance when tint disabled or overlay transparent
   const needsBackdropLuminance =
-    isBackdropImage &&
-    isBackdropTintDisabled() &&
-    isBackdropAdaptiveTextEnabled();
+    isBackdropImage && shouldUseBackdropLuminance();
 
   if (needsAmbient || needsBackdropLuminance) {
     // Skip non-cached external images - blob URLs (cached via requestUrl) work
@@ -249,7 +254,8 @@ export function handleImageLoad(
         rgb = extracted;
         // Calculate luminance directly from tuple (no string conversion)
         luminance = calculateLuminanceFromTuple(rgb);
-        colorTheme = luminance > LUMINANCE_LIGHT_THRESHOLD ? "light" : "dark";
+        // Invert: light image needs dark text, dark image needs light text
+        colorTheme = luminance > LUMINANCE_LIGHT_THRESHOLD ? "dark" : "light";
       }
     }
   }
@@ -273,9 +279,9 @@ export function handleImageLoad(
 
   // Apply backdrop theme immediately (no animation needed)
   if (isBackdropImage && colorTheme && needsBackdropLuminance) {
-    cardEl.setAttribute("data-backdrop-theme", colorTheme);
+    cardEl.setAttribute("data-adaptive-text", colorTheme);
   } else if (isBackdropImage && isExternalUrl(imgEl.src)) {
-    cardEl.removeAttribute("data-backdrop-theme");
+    cardEl.removeAttribute("data-adaptive-text");
   }
 
   // Double rAF ensures browser paints initial state before triggering transitions
@@ -291,6 +297,7 @@ export function handleImageLoad(
         onLayoutUpdate();
       }
       // Apply ambient color in same frame - both transitions start together
+      // cardEl.isConnected checked at rAF entry; imageEmbedContainer used for closest() query
       if (rgb && colorTheme && imageEmbedContainer.isConnected) {
         applyAmbientStyles(
           rgb,
@@ -376,25 +383,28 @@ export function setupImageLoadHandler(
     );
   };
   const errorHandler = () => {
-    // Mark external URL as failed to prevent retry attempts
-    if (imgEl.src) {
-      markExternalUrlAsFailed(imgEl.src);
-    }
-    // Hide broken image to prevent placeholder icon
-    imgEl.style.display = "none";
-
     if (cardEl.classList.contains("cover-ready")) return;
-    cardEl.classList.add("cover-ready");
-    // Set default aspect ratio on error
-    cardEl.style.setProperty(
-      "--actual-aspect-ratio",
-      DEFAULT_ASPECT_RATIO.toString(),
-    );
-    // Clear any stale backdrop theme from previous image (consistency with handleJsxImageError)
-    cardEl.removeAttribute("data-backdrop-theme");
-    if (onLayoutUpdate) {
-      onLayoutUpdate();
-    }
+
+    // Double rAF for cover-ready (consistent with multi-image error handlers)
+    requestAnimationFrame(() => {
+      if (!cardEl.isConnected || !imgEl.isConnected) return;
+      requestAnimationFrame(() => {
+        if (!cardEl.isConnected || !imgEl.isConnected) return;
+        // Hide broken image to prevent placeholder icon
+        imgEl.style.display = "none";
+        cardEl.classList.add("cover-ready");
+        // Set default aspect ratio on error
+        cardEl.style.setProperty(
+          "--actual-aspect-ratio",
+          DEFAULT_ASPECT_RATIO.toString(),
+        );
+        // Clear any stale backdrop theme from previous image
+        cardEl.removeAttribute("data-adaptive-text");
+        if (onLayoutUpdate) {
+          onLayoutUpdate();
+        }
+      });
+    });
   };
 
   // Add load/error listeners for pending images
@@ -533,11 +543,6 @@ export function handleJsxImageError(
 ): void {
   const imgEl = e.currentTarget as HTMLImageElement;
 
-  // Mark external URL as failed to prevent retry attempts
-  if (imgEl.src) {
-    markExternalUrlAsFailed(imgEl.src);
-  }
-
   // Hide broken image to prevent placeholder icon
   imgEl.style.display = "none";
 
@@ -556,7 +561,92 @@ export function handleJsxImageError(
     "--actual-aspect-ratio",
     DEFAULT_ASPECT_RATIO.toString(),
   );
-  // Clear any stale backdrop theme from previous image
-  cardEl.removeAttribute("data-backdrop-theme");
+  // Clear any stale adaptive text from previous image
+  cardEl.removeAttribute("data-adaptive-text");
   if (updateLayoutRef.current) updateLayoutRef.current();
+}
+
+/**
+ * Setup backdrop image loader with AbortSignal support and multi-image fallback
+ * Consolidates backdrop-specific handling from shared-renderer.ts
+ *
+ * @param imgEl - The backdrop image element
+ * @param containerEl - The .card-backdrop container
+ * @param cardEl - The card element
+ * @param imageUrls - Array of image URLs for fallback
+ * @param onLayoutUpdate - Optional callback to trigger layout update
+ * @param signal - AbortSignal for cleanup
+ */
+export function setupBackdropImageLoader(
+  imgEl: HTMLImageElement,
+  containerEl: HTMLElement,
+  cardEl: HTMLElement,
+  imageUrls: string[],
+  onLayoutUpdate?: (() => void) | null,
+  signal?: AbortSignal,
+): void {
+  // Apply cached metadata immediately (prevents flash on re-render)
+  applyCachedImageMetadata(imgEl.src, containerEl, cardEl, false, true);
+
+  // Load handler - handleImageLoad has internal double-rAF, just guard abort here
+  imgEl.addEventListener(
+    "load",
+    () => {
+      if (signal?.aborted) return;
+      handleImageLoad(imgEl, containerEl, cardEl, onLayoutUpdate, false, true);
+    },
+    { signal },
+  );
+
+  // Multi-image fallback
+  if (imageUrls.length > 1) {
+    let currentIndex = 0;
+    const tryNextImage = () => {
+      if (signal?.aborted) return;
+      currentIndex++;
+      if (currentIndex < imageUrls.length) {
+        if (signal?.aborted || !cardEl.isConnected || !imgEl.isConnected)
+          return;
+        imgEl.style.display = "";
+        imgEl.src = getCachedBlobUrl(imageUrls[currentIndex]);
+        return;
+      }
+      // All images failed - cleanup with double rAF
+      if (signal?.aborted) return;
+      requestAnimationFrame(() => {
+        if (signal?.aborted || !cardEl.isConnected || !imgEl.isConnected)
+          return;
+        requestAnimationFrame(() => {
+          if (signal?.aborted || !cardEl.isConnected || !imgEl.isConnected)
+            return;
+          imgEl.style.display = "none";
+          cardEl.removeAttribute("data-adaptive-text");
+          cardEl.classList.add("cover-ready");
+          onLayoutUpdate?.();
+        });
+      });
+    };
+    imgEl.addEventListener("error", tryNextImage, { signal });
+  } else {
+    // Single image error handler
+    imgEl.addEventListener(
+      "error",
+      () => {
+        if (signal?.aborted) return;
+        requestAnimationFrame(() => {
+          if (signal?.aborted || !cardEl.isConnected || !imgEl.isConnected)
+            return;
+          requestAnimationFrame(() => {
+            if (signal?.aborted || !cardEl.isConnected || !imgEl.isConnected)
+              return;
+            imgEl.style.display = "none";
+            cardEl.removeAttribute("data-adaptive-text");
+            cardEl.classList.add("cover-ready");
+            onLayoutUpdate?.();
+          });
+        });
+      },
+      { signal },
+    );
+  }
 }

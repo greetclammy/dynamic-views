@@ -41,8 +41,9 @@ import { handleImageViewerClick, cleanupAllViewers } from "./image-viewer";
 import {
   createSlideshowNavigator,
   getCachedBlobUrl,
-  isFailedExternalUrl,
-  markExternalUrlAsFailed,
+  getExternalBlobUrl,
+  isCachedOrInternal,
+  setupHoverZoomEligibility,
   setupImagePreload,
   setupSwipeGestures,
 } from "./slideshow";
@@ -335,6 +336,135 @@ function renderTextWithLinks(text: string, app: App): JSX.Element | string {
   return <>{elements}</>;
 }
 
+/**
+ * Renders a list of tags with click handlers for search navigation
+ * Used by both 'tags' (YAML only) and 'file.tags' (YAML + body) properties
+ */
+function renderTagsList(tags: string[], app: App, showHashPrefix: boolean) {
+  return (
+    <div className="tags-wrapper">
+      {tags.map(
+        (tag): JSX.Element => (
+          <a
+            key={tag}
+            href="#"
+            className="tag"
+            tabIndex={-1}
+            onClick={(e: MouseEvent) => {
+              e.preventDefault();
+              if (
+                shouldUseNotebookNavigator(app, "tag") &&
+                navigateToTagInNotebookNavigator(app, tag)
+              ) {
+                return;
+              }
+              const searchPlugin = app.internalPlugins.plugins["global-search"];
+              if (searchPlugin?.instance?.openGlobalSearch) {
+                searchPlugin.instance.openGlobalSearch("tag:" + tag);
+              }
+            }}
+          >
+            {showHashPrefix ? "#" + tag : tag}
+          </a>
+        ),
+      )}
+    </div>
+  );
+}
+
+/**
+ * Renders a folder path segment with click and context menu handlers
+ * Used by both 'file.path' (folder portions) and 'file.folder' properties
+ */
+function renderFolderSegment(
+  folder: string,
+  cumulativePath: string,
+  isLast: boolean,
+  app: App,
+) {
+  return (
+    <span key={cumulativePath} className="path-segment-wrapper">
+      <span
+        className="path-segment folder-segment"
+        onClick={(e: MouseEvent) => {
+          e.stopPropagation();
+          const folderFile = app.vault.getAbstractFileByPath(cumulativePath);
+          if (shouldUseNotebookNavigator(app, "folder")) {
+            if (
+              folderFile instanceof TFolder &&
+              navigateToFolderInNotebookNavigator(app, folderFile)
+            ) {
+              return;
+            }
+          }
+          const fileExplorer = app.internalPlugins?.plugins?.["file-explorer"];
+          if (fileExplorer?.instance?.revealInFolder && folderFile) {
+            fileExplorer.instance.revealInFolder(folderFile);
+          }
+        }}
+        onContextMenu={(e: MouseEvent) => {
+          e.stopPropagation();
+          e.preventDefault();
+          const folderFile = app.vault.getAbstractFileByPath(cumulativePath);
+          if (folderFile instanceof TFolder) {
+            const menu = new Menu();
+            app.workspace.trigger(
+              "file-menu",
+              menu,
+              folderFile,
+              "file-explorer",
+            );
+            menu.showAtMouseEvent(e);
+          }
+        }}
+      >
+        {folder}
+      </span>
+      {!isLast && <span className="path-separator">/</span>}
+    </span>
+  );
+}
+
+/**
+ * Renders a filename segment with click and context menu handlers
+ * Used by 'file.path' property for the final segment
+ */
+function renderFilenameSegment(filename: string, filePath: string, app: App) {
+  return (
+    <span key={filePath} className="path-segment-wrapper">
+      <span
+        className="path-segment filename-segment"
+        onClick={(e: MouseEvent) => {
+          e.stopPropagation();
+          const file = app.vault.getAbstractFileByPath(filePath);
+          if (shouldUseNotebookNavigator(app, "file")) {
+            if (
+              file instanceof TFile &&
+              revealFileInNotebookNavigator(app, file)
+            ) {
+              return;
+            }
+          }
+          const fileExplorer = app.internalPlugins?.plugins?.["file-explorer"];
+          if (fileExplorer?.instance?.revealInFolder && file) {
+            fileExplorer.instance.revealInFolder(file);
+          }
+        }}
+        onContextMenu={(e: MouseEvent) => {
+          e.stopPropagation();
+          e.preventDefault();
+          const file = app.vault.getAbstractFileByPath(filePath);
+          if (file instanceof TFile) {
+            showFileContextMenu(e, app, file, filePath);
+          }
+        }}
+      >
+        {filename}
+      </span>
+    </span>
+  );
+}
+
 // Module-level Maps to store zoom cleanup functions and original parents
 const viewerCleanupFns = new Map<HTMLElement, () => void>();
 const viewerClones = new Map<HTMLElement, HTMLElement>();
@@ -350,6 +480,9 @@ const cardPropertyObservers = new Map<string, ResizeObserver[]>();
 
 // Module-level Map to store AbortControllers for scroll listener cleanup
 const cardScrollAbortControllers = new Map<string, AbortController>();
+
+// Module-level WeakMap to track container cleanup functions (avoids stale closure per render)
+const containerCleanupMap = new WeakMap<HTMLElement, () => void>();
 
 /**
  * Cleanup ResizeObserver for a card when it's removed
@@ -596,8 +729,15 @@ function CoverSlideshow({
       setupImagePreload(cardEl, imageArray, signal);
     }
 
+    // Hover zoom eligibility: only first hovered slide gets zoom effect
+    const clearHoverZoom = setupHoverZoomEligibility(
+      slideshowEl,
+      imageEmbed,
+      signal,
+    );
+
     // Create navigator with shared logic
-    const { navigate } = createSlideshowNavigator(
+    const { navigate, reset } = createSlideshowNavigator(
       imageArray,
       () => {
         const currImg = imageEmbed.querySelector(
@@ -622,10 +762,25 @@ function CoverSlideshow({
           }
         },
         onAnimationComplete: () => {
+          clearHoverZoom();
           if (updateLayoutRef.current) updateLayoutRef.current();
         },
       },
     );
+
+    // Reset to slide 1 when view becomes visible (reading/editing views are separate DOMs)
+    const visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          reset();
+        }
+      },
+      { threshold: 0 },
+    );
+    visibilityObserver.observe(slideshowEl);
+    signal.addEventListener("abort", () => visibilityObserver.disconnect(), {
+      once: true,
+    });
 
     // Auto-advance if first image fails to load (skip animation for instant display)
     const firstImg = imageEmbed.querySelector(
@@ -642,7 +797,6 @@ function CoverSlideshow({
           if (!targetSrc || targetSrc !== expectedSrc) {
             return;
           }
-          markExternalUrlAsFailed(targetSrc);
           firstImg.style.display = "none";
           navigate(1, false, true);
         },
@@ -703,24 +857,12 @@ function CoverSlideshow({
         <img className="slideshow-img slideshow-img-next" src="" alt="" />
       </div>
       {isSlideshowIndicatorEnabled() && (
-        <div className="slideshow-indicator">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="5" y="7" width="13" height="10" rx="1"></rect>
-            <polyline points="4 2,8 2,8 7"></polyline>
-            <polyline points="8 2,16 2,16 7"></polyline>
-            <polyline points="16 2,20 2,20 7"></polyline>
-          </svg>
-        </div>
+        <div
+          className="slideshow-indicator"
+          ref={(el: HTMLElement | null) => {
+            if (el) setIcon(el, "lucide-images");
+          }}
+        />
       )}
       <div className="slideshow-nav-left">
         <svg
@@ -970,42 +1112,13 @@ function renderProperty(
     card.yamlTags.length > 0
   ) {
     // YAML tags only
-    const showHashPrefix = showTagHashPrefix();
-
     return (
       <>
         {labelAbove}
         {labelInline}
         <div className="property-content-wrapper" tabIndex={-1}>
           <div className="property-content">
-            <div className="tags-wrapper">
-              {card.yamlTags.map(
-                (tag): JSX.Element => (
-                  <a
-                    key={tag}
-                    href="#"
-                    className="tag"
-                    tabIndex={-1}
-                    onClick={(e: MouseEvent) => {
-                      e.preventDefault();
-                      if (
-                        shouldUseNotebookNavigator(app, "tag") &&
-                        navigateToTagInNotebookNavigator(app, tag)
-                      ) {
-                        return;
-                      }
-                      const searchPlugin =
-                        app.internalPlugins.plugins["global-search"];
-                      if (searchPlugin?.instance?.openGlobalSearch) {
-                        searchPlugin.instance.openGlobalSearch("tag:" + tag);
-                      }
-                    }}
-                  >
-                    {showHashPrefix ? "#" + tag : tag}
-                  </a>
-                ),
-              )}
-            </div>
+            {renderTagsList(card.yamlTags, app, showTagHashPrefix())}
           </div>
         </div>
       </>
@@ -1015,42 +1128,13 @@ function renderProperty(
     card.tags.length > 0
   ) {
     // tags in YAML + note body
-    const showHashPrefix = showTagHashPrefix();
-
     return (
       <>
         {labelAbove}
         {labelInline}
         <div className="property-content-wrapper" tabIndex={-1}>
           <div className="property-content">
-            <div className="tags-wrapper">
-              {card.tags.map(
-                (tag): JSX.Element => (
-                  <a
-                    key={tag}
-                    href="#"
-                    className="tag"
-                    tabIndex={-1}
-                    onClick={(e: MouseEvent) => {
-                      e.preventDefault();
-                      if (
-                        shouldUseNotebookNavigator(app, "tag") &&
-                        navigateToTagInNotebookNavigator(app, tag)
-                      ) {
-                        return;
-                      }
-                      const searchPlugin =
-                        app.internalPlugins.plugins["global-search"];
-                      if (searchPlugin?.instance?.openGlobalSearch) {
-                        searchPlugin.instance.openGlobalSearch("tag:" + tag);
-                      }
-                    }}
-                  >
-                    {showHashPrefix ? "#" + tag : tag}
-                  </a>
-                ),
-              )}
-            </div>
+            {renderTagsList(card.tags, app, showTagHashPrefix())}
           </div>
         </div>
       </>
@@ -1061,7 +1145,7 @@ function renderProperty(
       propertyName === "file path") &&
     resolvedValue
   ) {
-    // File path property: render as pure Preact JSX
+    // File path property: folder segments + filename segment
     const segments = resolvedValue.split("/").filter((f: string) => f);
 
     return (
@@ -1075,77 +1159,9 @@ function renderProperty(
                 const isLastSegment = idx === segments.length - 1;
                 const cumulativePath = segments.slice(0, idx + 1).join("/");
 
-                return (
-                  <span key={cumulativePath} className="path-segment-wrapper">
-                    <span
-                      className={
-                        isLastSegment
-                          ? "path-segment filename-segment"
-                          : "path-segment folder-segment"
-                      }
-                      onClick={(e: MouseEvent) => {
-                        e.stopPropagation();
-                        // Cache file lookup (used by both NotebookNavigator and file-explorer)
-                        const target =
-                          app.vault.getAbstractFileByPath(cumulativePath);
-                        if (isLastSegment) {
-                          if (shouldUseNotebookNavigator(app, "file")) {
-                            if (
-                              target instanceof TFile &&
-                              revealFileInNotebookNavigator(app, target)
-                            ) {
-                              return;
-                            }
-                          }
-                        } else {
-                          if (shouldUseNotebookNavigator(app, "folder")) {
-                            if (
-                              target instanceof TFolder &&
-                              navigateToFolderInNotebookNavigator(app, target)
-                            ) {
-                              return;
-                            }
-                          }
-                        }
-                        const fileExplorer =
-                          app.internalPlugins?.plugins?.["file-explorer"];
-                        if (fileExplorer?.instance?.revealInFolder && target) {
-                          fileExplorer.instance.revealInFolder(target);
-                        }
-                      }}
-                      onContextMenu={(e: MouseEvent) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (isLastSegment) {
-                          const file = app.vault.getAbstractFileByPath(
-                            card.path,
-                          );
-                          if (file instanceof TFile) {
-                            showFileContextMenu(e, app, file, card.path);
-                          }
-                        } else {
-                          const folderFile =
-                            app.vault.getAbstractFileByPath(cumulativePath);
-                          if (folderFile instanceof TFolder) {
-                            const menu = new Menu();
-                            app.workspace.trigger(
-                              "file-menu",
-                              menu,
-                              folderFile,
-                              "file-explorer",
-                            );
-                            menu.showAtMouseEvent(e);
-                          }
-                        }
-                      }}
-                    >
-                      {segment}
-                    </span>
-                    {idx < segments.length - 1 && (
-                      <span className="path-separator">/</span>
-                    )}
-                  </span>
-                );
+                return isLastSegment
+                  ? renderFilenameSegment(segment, cumulativePath, app)
+                  : renderFolderSegment(segment, cumulativePath, false, app);
               })}
             </div>
           </div>
@@ -1157,7 +1173,7 @@ function renderProperty(
     card.folderPath &&
     card.folderPath.length > 0
   ) {
-    // Folder property: render as pure Preact JSX (consistent with file.path)
+    // Folder property: all segments are folders
     const folders = card.folderPath.split("/").filter((f: string) => f);
 
     return (
@@ -1169,55 +1185,11 @@ function renderProperty(
             <div className="path-wrapper">
               {folders.map((folder: string, idx: number) => {
                 const cumulativePath = folders.slice(0, idx + 1).join("/");
-
-                return (
-                  <span key={cumulativePath} className="path-segment-wrapper">
-                    <span
-                      className="path-segment folder-segment"
-                      onClick={(e: MouseEvent) => {
-                        e.stopPropagation();
-                        // Cache folder lookup
-                        const folderFile =
-                          app.vault.getAbstractFileByPath(cumulativePath);
-                        if (shouldUseNotebookNavigator(app, "folder")) {
-                          if (
-                            folderFile instanceof TFolder &&
-                            navigateToFolderInNotebookNavigator(app, folderFile)
-                          ) {
-                            return;
-                          }
-                        }
-                        const fileExplorer =
-                          app.internalPlugins?.plugins?.["file-explorer"];
-                        if (fileExplorer?.instance?.revealInFolder) {
-                          if (folderFile) {
-                            fileExplorer.instance.revealInFolder(folderFile);
-                          }
-                        }
-                      }}
-                      onContextMenu={(e: MouseEvent) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const folderFile =
-                          app.vault.getAbstractFileByPath(cumulativePath);
-                        if (folderFile instanceof TFolder) {
-                          const menu = new Menu();
-                          app.workspace.trigger(
-                            "file-menu",
-                            menu,
-                            folderFile,
-                            "file-explorer",
-                          );
-                          menu.showAtMouseEvent(e);
-                        }
-                      }}
-                    >
-                      {folder}
-                    </span>
-                    {idx < folders.length - 1 && (
-                      <span className="path-separator">/</span>
-                    )}
-                  </span>
+                return renderFolderSegment(
+                  folder,
+                  cumulativePath,
+                  idx === folders.length - 1,
+                  app,
                 );
               })}
             </div>
@@ -1255,12 +1227,12 @@ export function CardRenderer({
   onCardClick,
   onFocusChange,
 }: CardRendererProps): unknown {
-  // Closure variable for cleanup - persists across ref callback calls
-  let containerCleanup: (() => void) | null = null;
-
   return (
     <div
       ref={(el: HTMLElement | null) => {
+        // Get previous element before updating ref (for cleanup lookup)
+        const prevEl = containerRef?.current;
+
         // Store in containerRef
         if (containerRef) {
           (containerRef as { current: HTMLElement | null }).current = el;
@@ -1268,13 +1240,17 @@ export function CardRenderer({
 
         // Call cleanup when element is removed (unmount)
         if (!el) {
-          containerCleanup?.();
-          containerCleanup = null;
+          // Get cleanup from WeakMap using previous element
+          if (prevEl) {
+            const cleanup = containerCleanupMap.get(prevEl);
+            cleanup?.();
+            containerCleanupMap.delete(prevEl);
+          }
           return;
         }
 
         // Skip if already setup (avoid duplicates on re-render)
-        if (containerCleanup) {
+        if (containerCleanupMap.has(el)) {
           return;
         }
 
@@ -1402,8 +1378,8 @@ export function CardRenderer({
         el.addEventListener("mousedown", handleMouseDown, { capture: true });
         document.addEventListener("mouseup", handleMouseUp, { capture: true });
 
-        // Store cleanup function in closure (not on element)
-        containerCleanup = () => {
+        // Store cleanup function in WeakMap keyed by element (survives across renders)
+        containerCleanupMap.set(el, () => {
           document.removeEventListener("keydown", handleKeydown, {
             capture: true,
           });
@@ -1416,7 +1392,7 @@ export function CardRenderer({
           document.removeEventListener("mouseup", handleMouseUp, {
             capture: true,
           });
-        };
+        });
       }}
       tabIndex={0}
       onFocus={(e: FocusEvent) => {
@@ -1544,13 +1520,13 @@ function Card({
 
   // Parse imageFormat to extract format and position
   const imageFormat = settings.imageFormat;
-  let format: "none" | "thumbnail" | "cover" | "background" = "none";
+  let format: "none" | "thumbnail" | "cover" | "backdrop" = "none";
   let position: "left" | "right" | "top" | "bottom" = "right";
 
   if (imageFormat === "none") {
     format = "none";
-  } else if (imageFormat === "background") {
-    format = "background";
+  } else if (imageFormat === "backdrop") {
+    format = "backdrop";
   } else if (imageFormat.startsWith("thumbnail-")) {
     format = "thumbnail";
     position = imageFormat.split("-")[1] as "left" | "right" | "top" | "bottom";
@@ -1569,17 +1545,17 @@ function Card({
     cardClasses.push("image-format-thumbnail");
     cardClasses.push(`card-thumbnail-${position}`);
     cardClasses.push(`card-thumbnail-${settings.imageFit}`);
-  } else if (format === "background") {
+  } else if (format === "backdrop") {
     cardClasses.push("image-format-backdrop");
+    cardClasses.push(`card-cover-${settings.imageFit}`);
   }
 
   // Drag handler for card-level drag (reuses shared utility)
   const handleDrag = createFileDragHandler(app, card.path);
 
-  // Create AbortController for scroll listener cleanup (before return so child refs can access it)
-  cleanupCardScrollListeners(card.path);
+  // Create AbortController for scroll listeners (accessible to child refs)
+  // Only registered in map when card mounts (avoids orphaned controllers)
   const scrollController = new AbortController();
-  cardScrollAbortControllers.set(card.path, scrollController);
 
   // Cache scroll mode checks (avoid repeated DOM queries in ref callbacks)
   const isTitleScrollMode = document.body.classList.contains(
@@ -1702,7 +1678,15 @@ function Card({
       className={cardClasses.join(" ")}
       data-path={card.path}
       ref={(cardEl: HTMLElement | null) => {
-        if (!cardEl) return;
+        if (!cardEl) {
+          // Cleanup scroll listeners when card unmounts
+          cleanupCardScrollListeners(card.path);
+          return;
+        }
+
+        // Register controller only when card mounts (cleanup existing first)
+        cleanupCardScrollListeners(card.path);
+        cardScrollAbortControllers.set(card.path, scrollController);
 
         // Setup scroll gradients for property fields (setupScrollGradients has internal double RAF)
         setupScrollGradients(
@@ -2080,8 +2064,8 @@ function Card({
         </div>
       )}
 
-      {/* Background: absolute-positioned image fills entire card */}
-      {format === "background" && imageArray.length > 0 && (
+      {/* Backdrop: absolute-positioned image fills entire card */}
+      {format === "backdrop" && imageArray.length > 0 && (
         <div className="card-backdrop">
           <img
             src={imageArray[0] || ""}
@@ -2125,15 +2109,20 @@ function Card({
                           Math.min(section, imageArray.length - 1),
                         );
                         const rawUrl = imageArray[newIndex];
-                        if (isFailedExternalUrl(rawUrl)) return;
                         const imgEl = (
                           e.currentTarget as HTMLElement
                         ).querySelector("img");
-                        const newSrc = getCachedBlobUrl(rawUrl);
-                        if (imgEl && newSrc) {
-                          const currentSrc = imgEl.src;
-                          if (currentSrc !== newSrc) {
-                            imgEl.src = newSrc;
+                        if (imgEl) {
+                          if (isCachedOrInternal(rawUrl)) {
+                            imgEl.style.display = "";
+                            const newSrc = getCachedBlobUrl(rawUrl);
+                            if (imgEl.src !== newSrc) {
+                              imgEl.src = newSrc;
+                            }
+                          } else {
+                            // Uncached external: show placeholder, fetch in background
+                            imgEl.style.display = "none";
+                            void getExternalBlobUrl(rawUrl);
                           }
                         }
                       }
@@ -2142,15 +2131,15 @@ function Card({
                 onMouseLeave={
                   enableScrubbing
                     ? (e: MouseEvent) => {
-                        const firstValidUrl = imageArray.find(
-                          (url) => !isFailedExternalUrl(url),
-                        );
-                        if (!firstValidUrl) return;
+                        const firstUrl = imageArray[0];
+                        if (!firstUrl) return;
                         const imgEl = (
                           e.currentTarget as HTMLElement
                         ).querySelector("img");
-                        const firstSrc = getCachedBlobUrl(firstValidUrl);
+                        const firstSrc = getCachedBlobUrl(firstUrl);
                         if (imgEl && firstSrc) {
+                          // First image is pre-validated, always show it
+                          imgEl.style.display = "";
                           imgEl.src = firstSrc;
                         }
                       }
@@ -2195,7 +2184,6 @@ function Card({
                           "error",
                           () => {
                             if (controller.signal.aborted) return;
-                            if (imgEl.src) markExternalUrlAsFailed(imgEl.src);
                             // Find current position by URL match (handles scrubbing)
                             const failedSrc = imgEl.src;
                             let startIndex = imageArray.findIndex(
@@ -2204,20 +2192,21 @@ function Card({
                                 url === failedSrc,
                             );
                             if (startIndex === -1) startIndex = 0;
-                            // Try subsequent URLs
-                            for (
-                              let i = startIndex + 1;
-                              i < imageArray.length;
-                              i++
-                            ) {
-                              if (!isFailedExternalUrl(imageArray[i])) {
-                                imgEl.style.display = "";
-                                const effectiveUrl = getCachedBlobUrl(
-                                  imageArray[i],
-                                );
-                                imgEl.src = effectiveUrl;
+                            // Try next URL (pre-validated, should not fail)
+                            const nextIndex = startIndex + 1;
+                            if (nextIndex < imageArray.length) {
+                              // Guard before DOM mutation
+                              if (
+                                controller.signal.aborted ||
+                                !imgEl.isConnected
+                              )
                                 return;
-                              }
+                              imgEl.style.display = "";
+                              const effectiveUrl = getCachedBlobUrl(
+                                imageArray[nextIndex],
+                              );
+                              imgEl.src = effectiveUrl;
+                              return;
                             }
                             // All images failed - complete cleanup with double rAF
                             const cardEl = imgEl.closest(
@@ -2230,13 +2219,15 @@ function Card({
                               requestAnimationFrame(() => {
                                 if (
                                   controller.signal.aborted ||
-                                  !cardEl.isConnected
+                                  !cardEl.isConnected ||
+                                  !imgEl.isConnected
                                 )
                                   return;
                                 requestAnimationFrame(() => {
                                   if (
                                     controller.signal.aborted ||
-                                    !cardEl.isConnected
+                                    !cardEl.isConnected ||
+                                    !imgEl.isConnected
                                   )
                                     return;
                                   imgEl.style.display = "none";
@@ -2244,7 +2235,7 @@ function Card({
                                     "--actual-aspect-ratio",
                                     DEFAULT_ASPECT_RATIO.toString(),
                                   );
-                                  cardEl.removeAttribute("data-backdrop-theme");
+                                  cardEl.removeAttribute("data-adaptive-text");
                                   cardEl.classList.add("cover-ready");
                                   if (updateLayoutRef.current)
                                     updateLayoutRef.current();
@@ -2389,44 +2380,38 @@ function Card({
           ),
         ];
 
-        // Check if any property set has content
-        // When labels are enabled, show set if property is configured (even if value is empty)
+        // Check if any property set has content (consistent with shared-renderer.ts)
+        // When labels are enabled, show set if property is configured (non-empty name)
         // When labels are hidden, only show set if value exists
-        const set1HasContent =
-          propertyLabels !== "hide"
-            ? card.propertyName1 !== undefined ||
-              card.propertyName2 !== undefined
-            : card.property1 !== null || card.property2 !== null;
-        const set2HasContent =
-          propertyLabels !== "hide"
-            ? card.propertyName3 !== undefined ||
-              card.propertyName4 !== undefined
-            : card.property3 !== null || card.property4 !== null;
-        const set3HasContent =
-          propertyLabels !== "hide"
-            ? card.propertyName5 !== undefined ||
-              card.propertyName6 !== undefined
-            : card.property5 !== null || card.property6 !== null;
-        const set4HasContent =
-          propertyLabels !== "hide"
-            ? card.propertyName7 !== undefined ||
-              card.propertyName8 !== undefined
-            : card.property7 !== null || card.property8 !== null;
-        const set5HasContent =
-          propertyLabels !== "hide"
-            ? card.propertyName9 !== undefined ||
-              card.propertyName10 !== undefined
-            : card.property9 !== null || card.property10 !== null;
-        const set6HasContent =
-          propertyLabels !== "hide"
-            ? card.propertyName11 !== undefined ||
-              card.propertyName12 !== undefined
-            : card.property11 !== null || card.property12 !== null;
-        const set7HasContent =
-          propertyLabels !== "hide"
-            ? card.propertyName13 !== undefined ||
-              card.propertyName14 !== undefined
-            : card.property13 !== null || card.property14 !== null;
+        const showConfiguredProps = propertyLabels !== "hide" || !hideMissing;
+        const set1HasContent = showConfiguredProps
+          ? (card.propertyName1 ?? "") !== "" ||
+            (card.propertyName2 ?? "") !== ""
+          : card.property1 !== null || card.property2 !== null;
+        const set2HasContent = showConfiguredProps
+          ? (card.propertyName3 ?? "") !== "" ||
+            (card.propertyName4 ?? "") !== ""
+          : card.property3 !== null || card.property4 !== null;
+        const set3HasContent = showConfiguredProps
+          ? (card.propertyName5 ?? "") !== "" ||
+            (card.propertyName6 ?? "") !== ""
+          : card.property5 !== null || card.property6 !== null;
+        const set4HasContent = showConfiguredProps
+          ? (card.propertyName7 ?? "") !== "" ||
+            (card.propertyName8 ?? "") !== ""
+          : card.property7 !== null || card.property8 !== null;
+        const set5HasContent = showConfiguredProps
+          ? (card.propertyName9 ?? "") !== "" ||
+            (card.propertyName10 ?? "") !== ""
+          : card.property9 !== null || card.property10 !== null;
+        const set6HasContent = showConfiguredProps
+          ? (card.propertyName11 ?? "") !== "" ||
+            (card.propertyName12 ?? "") !== ""
+          : card.property11 !== null || card.property12 !== null;
+        const set7HasContent = showConfiguredProps
+          ? (card.propertyName13 ?? "") !== "" ||
+            (card.propertyName14 ?? "") !== ""
+          : card.property13 !== null || card.property14 !== null;
 
         if (
           !set1HasContent &&

@@ -23,7 +23,10 @@ import {
   toggleShuffleActiveView,
   getPaneType,
 } from "./src/utils/randomize";
-import { cleanupExternalBlobCache } from "./src/shared/slideshow";
+import {
+  cleanupExternalBlobCache,
+  initExternalBlobCache,
+} from "./src/shared/slideshow";
 import { clearInFlightLoads } from "./src/shared/content-loader";
 import { invalidateCacheForFile } from "./src/shared/image-loader";
 
@@ -49,6 +52,9 @@ export default class DynamicViewsPlugin extends Plugin {
   }
 
   async onload() {
+    // Initialize blob cache (reset cleanup flag from previous session)
+    initExternalBlobCache();
+
     this.persistenceManager = new PersistenceManager(this);
     await this.persistenceManager.load();
 
@@ -114,36 +120,32 @@ export default class DynamicViewsPlugin extends Plugin {
       },
     });
 
-    // Add ribbon icons for Random and Shuffle (if enabled in settings)
-    if (settings.showRandomInRibbon) {
-      this.addRibbonIcon(
-        "dices",
-        "Open random file from bases view",
-        async (evt: MouseEvent) => {
-          // Close any zoomed images
-          document
-            .querySelectorAll(".dynamic-views-image-embed.is-zoomed")
-            .forEach((el) => {
-              el.classList.remove("is-zoomed");
-            });
-          const defaultInNewTab =
-            this.persistenceManager.getGlobalSettings().openRandomInNewTab;
-          await openRandomFile(this.app, getPaneType(evt, defaultInNewTab));
-        },
-      );
-    }
-
-    if (settings.showShuffleInRibbon) {
-      this.addRibbonIcon("shuffle", "Shuffle bases view", () => {
+    // Add ribbon icons
+    this.addRibbonIcon(
+      "dices",
+      "Open random file from bases view",
+      async (evt: MouseEvent) => {
         // Close any zoomed images
         document
           .querySelectorAll(".dynamic-views-image-embed.is-zoomed")
           .forEach((el) => {
             el.classList.remove("is-zoomed");
           });
-        toggleShuffleActiveView(this.app);
-      });
-    }
+        const defaultInNewTab =
+          this.persistenceManager.getGlobalSettings().openRandomInNewTab;
+        await openRandomFile(this.app, getPaneType(evt, defaultInNewTab));
+      },
+    );
+
+    this.addRibbonIcon("shuffle", "Shuffle bases view", () => {
+      // Close any zoomed images
+      document
+        .querySelectorAll(".dynamic-views-image-embed.is-zoomed")
+        .forEach((el) => {
+          el.classList.remove("is-zoomed");
+        });
+      toggleShuffleActiveView(this.app);
+    });
 
     // Add commands for Random and Shuffle
     this.addCommand({

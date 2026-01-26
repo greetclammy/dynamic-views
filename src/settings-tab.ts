@@ -18,6 +18,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: DynamicViewsPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.icon = "database-zap";
   }
 
   /**
@@ -102,11 +103,16 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
     const settings = this.plugin.persistenceManager.getGlobalSettings();
 
     // Smart timestamp variables - declared before SettingGroup for use in callbacks
-    let smartTimestampSetting: Setting;
-    // eslint-disable-next-line prefer-const
+    let smartTimestampSetting: Setting | undefined;
     let conditionalText: HTMLSpanElement;
     // eslint-disable-next-line prefer-const
     let smartTimestampSubSettingsEl: HTMLDivElement;
+
+    // Helper function to update smart timestamp visibility
+    const updateSmartTimestampVisibility = (enabled: boolean) => {
+      smartTimestampSubSettingsEl.toggleClass("dynamic-views-hidden", !enabled);
+      conditionalText.toggleClass("dynamic-views-hidden", !enabled);
+    };
 
     // Appearance section - description text only, no settings
     new SettingGroup(containerEl).addClass("dynamic-views-appearance-group");
@@ -138,6 +144,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
 
     // General settings (no heading)
     new SettingGroup(containerEl)
+      .addClass("dynamic-views-general-group")
       .addSetting((s) =>
         s
           .setName("Open file action")
@@ -199,6 +206,22 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
               }),
           ),
       )
+      .addSetting((s) =>
+        s
+          .setName("Open random file in new tab")
+          .setDesc(
+            "When opening a random file, open it in a new tab instead of the same tab.",
+          )
+          .addToggle((toggle) =>
+            toggle
+              .setValue(settings.openRandomInNewTab)
+              .onChange(async (value) => {
+                await this.plugin.persistenceManager.setGlobalSettings({
+                  openRandomInNewTab: value,
+                });
+              }),
+          ),
+      )
       // Smart timestamp toggle (sub-settings in separate container below)
       .addSetting((s) => {
         smartTimestampSetting = s;
@@ -207,28 +230,24 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
             await this.plugin.persistenceManager.setGlobalSettings({
               smartTimestamp: value,
             });
-            if (value) {
-              conditionalText.removeClass("dynamic-views-hidden");
-              smartTimestampSubSettingsEl.removeClass("dynamic-views-hidden");
-            } else {
-              conditionalText.addClass("dynamic-views-hidden");
-              smartTimestampSubSettingsEl.addClass("dynamic-views-hidden");
-            }
+            updateSmartTimestampVisibility(value);
           }),
         );
       });
 
-    const smartTimestampDesc = smartTimestampSetting!.descEl;
-    smartTimestampDesc.createSpan({
-      text: "Automatically switch between created time and modified time to match sort order. ",
-    });
-    conditionalText = smartTimestampDesc.createSpan({
-      text: "One of the properties below must be displayed.",
-    });
+    if (smartTimestampSetting) {
+      const smartTimestampDesc = smartTimestampSetting.descEl;
+      smartTimestampDesc.createSpan({
+        text: "Automatically switch between created time and modified time to match sort order. ",
+      });
+      conditionalText = smartTimestampDesc.createSpan({
+        text: "One of the properties below must be displayed.",
+      });
+    }
 
-    // Create container for child settings inside the General SettingGroup (2nd group)
+    // Create container for child settings inside the General SettingGroup
     const generalGroupItems = containerEl.querySelector(
-      ".setting-group:nth-child(2) .setting-items",
+      ".dynamic-views-general-group .setting-items",
     );
     smartTimestampSubSettingsEl = (generalGroupItems ?? containerEl).createDiv(
       "setting-sub-items",
@@ -263,13 +282,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       );
 
     // Initialize visibility
-    if (settings.smartTimestamp) {
-      conditionalText.removeClass("dynamic-views-hidden");
-      smartTimestampSubSettingsEl.removeClass("dynamic-views-hidden");
-    } else {
-      conditionalText.addClass("dynamic-views-hidden");
-      smartTimestampSubSettingsEl.addClass("dynamic-views-hidden");
-    }
+    updateSmartTimestampVisibility(settings.smartTimestamp);
 
     new SettingGroup(containerEl)
       .setHeading("Integrations")
@@ -348,57 +361,6 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
           ),
       );
 
-    new SettingGroup(containerEl)
-      .setHeading("Ribbon")
-      .addSetting((s) =>
-        s
-          .setName("Show 'Shuffle' button")
-          .setDesc(
-            "Display the shuffle button in the left sidebar ribbon. Reload plugin or Obsidian to apply.",
-          )
-          .addToggle((toggle) =>
-            toggle
-              .setValue(settings.showShuffleInRibbon)
-              .onChange(async (value) => {
-                await this.plugin.persistenceManager.setGlobalSettings({
-                  showShuffleInRibbon: value,
-                });
-              }),
-          ),
-      )
-      .addSetting((s) =>
-        s
-          .setName("Show 'Open random file' button")
-          .setDesc(
-            "Display the random file button in the left sidebar ribbon. Reload plugin or Obsidian to apply.",
-          )
-          .addToggle((toggle) =>
-            toggle
-              .setValue(settings.showRandomInRibbon)
-              .onChange(async (value) => {
-                await this.plugin.persistenceManager.setGlobalSettings({
-                  showRandomInRibbon: value,
-                });
-              }),
-          ),
-      )
-      .addSetting((s) =>
-        s
-          .setName("Open random file in new tab")
-          .setDesc(
-            "When opening a random file, open it in a new tab instead of the same tab.",
-          )
-          .addToggle((toggle) =>
-            toggle
-              .setValue(settings.openRandomInNewTab)
-              .onChange(async (value) => {
-                await this.plugin.persistenceManager.setGlobalSettings({
-                  openRandomInNewTab: value,
-                });
-              }),
-          ),
-      );
-
     // Configuration section
     new SettingGroup(containerEl)
       .setHeading("Configuration")
@@ -417,95 +379,105 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
               input.onchange = () => {
                 const selectedFile = input.files?.[0];
 
-                if (selectedFile) {
-                  const reader = new FileReader();
-                  reader.readAsText(selectedFile, "UTF-8");
-                  reader.onload = async (readerEvent) => {
-                    let importedJson:
-                      | {
-                          globalSettings?: Partial<Settings>;
-                          defaultViewSettings?: Partial<DefaultViewSettings>;
-                        }
-                      | undefined;
-                    const content = readerEvent.target?.result;
-                    if (typeof content === "string") {
-                      try {
-                        importedJson = JSON.parse(content) as {
-                          globalSettings?: Partial<Settings>;
-                          defaultViewSettings?: Partial<DefaultViewSettings>;
-                        };
-                      } catch {
-                        new Notice("Invalid import file");
-                        console.error("Invalid import file");
-                        return;
-                      }
-                    }
-
-                    if (importedJson) {
-                      // Merge imported settings with DEFAULT_SETTINGS structure
-                      const newGlobalSettings: Settings = Object.assign(
-                        {},
-                        DEFAULT_SETTINGS,
-                      );
-                      const newDefaultViewSettings: DefaultViewSettings =
-                        Object.assign({}, DEFAULT_VIEW_SETTINGS);
-
-                      // Import global settings
-                      if (importedJson.globalSettings) {
-                        for (const setting in importedJson.globalSettings) {
-                          if (setting in newGlobalSettings) {
-                            (
-                              newGlobalSettings as unknown as Record<
-                                string,
-                                unknown
-                              >
-                            )[setting] = (
-                              importedJson.globalSettings as Record<
-                                string,
-                                unknown
-                              >
-                            )[setting];
-                          }
-                        }
-                      }
-
-                      // Import default view settings
-                      if (importedJson.defaultViewSettings) {
-                        for (const setting in importedJson.defaultViewSettings) {
-                          if (setting in newDefaultViewSettings) {
-                            (
-                              newDefaultViewSettings as unknown as Record<
-                                string,
-                                unknown
-                              >
-                            )[setting] = (
-                              importedJson.defaultViewSettings as Record<
-                                string,
-                                unknown
-                              >
-                            )[setting];
-                          }
-                        }
-                      }
-
-                      // Save both settings - need to set the full objects
-                      await this.plugin.persistenceManager.setGlobalSettings(
-                        newGlobalSettings,
-                      );
-                      await this.plugin.persistenceManager.setDefaultViewSettings(
-                        newDefaultViewSettings,
-                      );
-
-                      // Show notification
-                      new Notice("Settings imported");
-
-                      // Re-render settings tab
-                      this.display();
-                    }
-
-                    input.remove();
-                  };
+                if (!selectedFile) {
+                  input.remove();
+                  return;
                 }
+
+                const reader = new FileReader();
+                reader.readAsText(selectedFile, "UTF-8");
+
+                reader.onerror = () => {
+                  new Notice("Failed to read import file");
+                  input.remove();
+                };
+
+                reader.onload = async (readerEvent) => {
+                  let importedJson:
+                    | {
+                        globalSettings?: Partial<Settings>;
+                        defaultViewSettings?: Partial<DefaultViewSettings>;
+                      }
+                    | undefined;
+                  const content = readerEvent.target?.result;
+                  if (typeof content === "string") {
+                    try {
+                      importedJson = JSON.parse(content) as {
+                        globalSettings?: Partial<Settings>;
+                        defaultViewSettings?: Partial<DefaultViewSettings>;
+                      };
+                    } catch {
+                      new Notice("Invalid import file");
+                      console.error("Invalid import file");
+                      input.remove();
+                      return;
+                    }
+                  }
+
+                  if (importedJson) {
+                    // Merge imported settings with DEFAULT_SETTINGS structure
+                    const newGlobalSettings: Settings = Object.assign(
+                      {},
+                      DEFAULT_SETTINGS,
+                    );
+                    const newDefaultViewSettings: DefaultViewSettings =
+                      Object.assign({}, DEFAULT_VIEW_SETTINGS);
+
+                    // Import global settings
+                    if (importedJson.globalSettings) {
+                      for (const setting in importedJson.globalSettings) {
+                        if (setting in newGlobalSettings) {
+                          (
+                            newGlobalSettings as unknown as Record<
+                              string,
+                              unknown
+                            >
+                          )[setting] = (
+                            importedJson.globalSettings as Record<
+                              string,
+                              unknown
+                            >
+                          )[setting];
+                        }
+                      }
+                    }
+
+                    // Import default view settings
+                    if (importedJson.defaultViewSettings) {
+                      for (const setting in importedJson.defaultViewSettings) {
+                        if (setting in newDefaultViewSettings) {
+                          (
+                            newDefaultViewSettings as unknown as Record<
+                              string,
+                              unknown
+                            >
+                          )[setting] = (
+                            importedJson.defaultViewSettings as Record<
+                              string,
+                              unknown
+                            >
+                          )[setting];
+                        }
+                      }
+                    }
+
+                    // Save both settings - need to set the full objects
+                    await this.plugin.persistenceManager.setGlobalSettings(
+                      newGlobalSettings,
+                    );
+                    await this.plugin.persistenceManager.setDefaultViewSettings(
+                      newDefaultViewSettings,
+                    );
+
+                    // Show notification
+                    new Notice("Settings imported");
+
+                    // Re-render settings tab
+                    this.display();
+                  }
+
+                  input.remove();
+                };
               };
 
               input.click();
@@ -558,7 +530,6 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
                 href: `data:application/json;charset=utf-8,${encodeURIComponent(settingsText)}`,
               });
               exportLink.click();
-              exportLink.remove();
             }),
           ),
       )

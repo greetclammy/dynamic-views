@@ -8,7 +8,7 @@ export interface Settings {
   subtitleProperty: string;
   showTextPreview: boolean;
   fallbackToContent: boolean;
-  fallbackToEmbeds: "always" | "if-empty" | "never";
+  fallbackToEmbeds: "always" | "if-unavailable" | "never";
   propertyDisplay1: string;
   propertyDisplay2: string;
   propertyDisplay3: string;
@@ -40,7 +40,7 @@ export interface Settings {
   propertyLabels: "hide" | "inline" | "above";
   imageFormat:
     | "none"
-    | "background"
+    | "backdrop"
     | "thumbnail-left"
     | "thumbnail-right"
     | "thumbnail-top"
@@ -56,8 +56,6 @@ export interface Settings {
   queryHeight: number;
   openFileAction: "card" | "title";
   openRandomInNewTab: boolean;
-  showShuffleInRibbon: boolean;
-  showRandomInRibbon: boolean;
   smartTimestamp: boolean;
   createdTimeProperty: string;
   modifiedTimeProperty: string;
@@ -114,10 +112,10 @@ export interface DefaultViewSettings {
   subtitleProperty: string;
   showTextPreview: boolean;
   fallbackToContent: boolean;
-  fallbackToEmbeds: "always" | "if-empty" | "never";
+  fallbackToEmbeds: "always" | "if-unavailable" | "never";
   imageFormat:
     | "none"
-    | "background"
+    | "backdrop"
     | "thumbnail-left"
     | "thumbnail-right"
     | "thumbnail-top"
@@ -142,14 +140,6 @@ export interface PluginData {
 
 export type ViewMode = "card" | "masonry" | "list";
 export type WidthMode = "normal" | "wide" | "max";
-export type SortMethod =
-  | "mtime-desc"
-  | "mtime-asc"
-  | "ctime-desc"
-  | "ctime-asc"
-  | "title"
-  | "size"
-  | "random";
 
 // ============================================================================
 // View State Interfaces (shared between grid-view.ts and masonry-view.ts)

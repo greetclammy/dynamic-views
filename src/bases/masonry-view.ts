@@ -14,7 +14,6 @@ import {
   getMinMasonryColumns,
   getCardSpacing,
   clearStyleSettingsCache,
-  getCompactBreakpoint,
 } from "../utils/style-settings";
 import { initializeScrollGradients } from "../shared/scroll-gradient";
 import {
@@ -26,6 +25,7 @@ import {
 import {
   SharedCardRenderer,
   initializeTitleTruncation,
+  syncResponsiveClasses,
 } from "./shared-renderer";
 import {
   getCachedAspectRatio,
@@ -298,6 +298,15 @@ export class DynamicViewsMasonryView extends BasesView {
         scheduleIdleCallback(() => {
           if (!this.containerEl?.isConnected) return;
           this.updateLayoutRef.current?.("property-measured");
+          // Sync responsive classes and gradients after measurement (widths may have changed)
+          if (this.masonryContainer) {
+            const cards = Array.from(
+              this.masonryContainer.querySelectorAll<HTMLElement>(".card"),
+            );
+            syncResponsiveClasses(cards);
+            initializeScrollGradients(this.masonryContainer);
+            initializeTitleTruncation(this.masonryContainer);
+          }
         });
       }, 100);
     };
@@ -659,30 +668,11 @@ export class DynamicViewsMasonryView extends BasesView {
       // Sync responsive classes after layout sets widths (ResizeObservers are async)
       // Must run before gradient init which checks compact-mode state
       if (this.masonryContainer) {
-        const compactBreakpoint = getCompactBreakpoint();
-        if (compactBreakpoint > 0) {
-          this.masonryContainer
-            .querySelectorAll<HTMLElement>(".card")
-            .forEach((card) => {
-              // Read all widths before writes to avoid layout thrashing
-              const cardWidth = card.offsetWidth;
-              if (cardWidth === 0) return; // Skip unmeasured cards
-              const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
-              const thumbWidth = thumb?.offsetWidth ?? 0;
-
-              card.classList.toggle(
-                "compact-mode",
-                cardWidth < compactBreakpoint,
-              );
-              if (thumb && thumbWidth > 0) {
-                card.classList.toggle(
-                  "thumbnail-stack",
-                  cardWidth < thumbWidth * 3,
-                );
-              }
-            });
-
-          // Re-run layout to recalculate positions with new heights
+        const cards = Array.from(
+          this.masonryContainer.querySelectorAll<HTMLElement>(".card"),
+        );
+        // Re-run layout only if responsive classes changed (affects card heights)
+        if (syncResponsiveClasses(cards)) {
           this.updateLayoutRef.current?.("compact-mode-sync");
         }
 
@@ -1048,6 +1038,11 @@ export class DynamicViewsMasonryView extends BasesView {
     if (anyHeightChanged && this.updateLayoutRef.current) {
       this.updateLayoutRef.current("content-update");
     }
+
+    // Re-initialize gradients unconditionally (content changed even if height didn't)
+    if (this.masonryContainer) {
+      initializeScrollGradients(this.masonryContainer);
+    }
   }
 
   private async appendBatch(
@@ -1240,7 +1235,7 @@ export class DynamicViewsMasonryView extends BasesView {
     if (groupsWithNewCards > 1) {
       // Batch spanned multiple groups - trigger full recalc to position all
       this.updateLayoutRef.current?.("multi-group-fallback");
-      // Initialize gradients after layout
+      // Initialize gradients for ALL groups (not just last) when batch spans multiple
       if (this.masonryContainer) {
         initializeScrollGradients(this.masonryContainer);
         initializeTitleTruncation(this.masonryContainer);
@@ -1287,27 +1282,7 @@ export class DynamicViewsMasonryView extends BasesView {
         }
 
         // Sync responsive classes before measuring (ResizeObservers are async)
-        const compactBreakpoint = getCompactBreakpoint();
-        if (compactBreakpoint > 0) {
-          newCards.forEach((card) => {
-            // Read all widths before writes to avoid layout thrashing
-            const cardWidth = card.offsetWidth;
-            if (cardWidth === 0) return; // Skip unmeasured cards
-            const thumb = card.querySelector<HTMLElement>(".card-thumbnail");
-            const thumbWidth = thumb?.offsetWidth ?? 0;
-
-            card.classList.toggle(
-              "compact-mode",
-              cardWidth < compactBreakpoint,
-            );
-            if (thumb && thumbWidth > 0) {
-              card.classList.toggle(
-                "thumbnail-stack",
-                cardWidth < thumbWidth * 3,
-              );
-            }
-          });
-        }
+        syncResponsiveClasses(newCards);
 
         // Force synchronous reflow so heights reflect new widths
         void targetContainer.offsetHeight;
