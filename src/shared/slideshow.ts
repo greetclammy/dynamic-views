@@ -236,13 +236,11 @@ export function createSlideshowNavigator(
 
     // For uncached external images: show placeholder, fetch in background
     if (isUncachedExternal) {
-      console.log(`[Slideshow DEBUG] Uncached external: Setting nextImg.style.display = "none"`);
       nextImg.style.display = "none";
       void getExternalBlobUrl(newUrl).then((blobUrl) => {
         if (signal.aborted) return;
         if (!blobUrl) {
           // Fetch failed - track and auto-advance (unless all failed)
-          console.log(`[Slideshow DEBUG] Fetch failed for index ${newIndex}, clearing display style`);
           failedIndices.add(newIndex);
           if (failedIndices.size >= imageUrls.length) return; // All failed, stop
           nextImg.style.display = "";
@@ -250,7 +248,6 @@ export function createSlideshowNavigator(
           navigate(direction);
           return;
         }
-        console.log(`[Slideshow DEBUG] Fetch succeeded for index ${newIndex}, setting src and clearing display style`);
         nextImg.src = blobUrl;
         nextImg.style.display = "";
       });
@@ -278,18 +275,12 @@ export function createSlideshowNavigator(
         // Ignore errors from src being cleared (resolves to index.html) or changed
         // Only handle errors for the URL we actually set (use event target, not element ref)
         const targetSrc = (e.target as HTMLImageElement).src;
-        console.log(`[Slideshow DEBUG] Image error event - targetSrc: ${targetSrc}, expectedSrc: ${effectiveUrl}`);
-        if (targetSrc !== effectiveUrl) {
-          console.log(`[Slideshow DEBUG] Ignoring error (URL mismatch)`);
-          return;
-        }
+        if (targetSrc !== effectiveUrl) return;
 
-        console.log(`[Slideshow DEBUG] Image load failed for index ${newIndex}, hiding and auto-advancing`);
         // Track failed index to prevent infinite loop
         failedIndices.add(newIndex);
         if (failedIndices.size >= imageUrls.length) {
           // All images failed - stop trying
-          console.log(`[Slideshow DEBUG] All images failed, stopping`);
           isAnimating = false;
           return;
         }
@@ -300,7 +291,6 @@ export function createSlideshowNavigator(
         const timeoutId = setTimeout(() => {
           pendingTimeouts.delete(timeoutId);
           if (!signal.aborted) {
-            console.log(`[Slideshow DEBUG] Auto-advance timeout: clearing display style and navigating`);
             nextImg.style.display = "";
             isAnimating = false;
             navigate(direction, honorGestureDirection);
@@ -313,7 +303,6 @@ export function createSlideshowNavigator(
 
     // Skip animation: directly update current image
     if (skipAnimation) {
-      console.log(`[Slideshow DEBUG] Skip animation: Setting currImg.src to ${effectiveUrl}`);
       currImg.src = effectiveUrl;
       currImg.style.display = "";
       currentIndex = newIndex;
@@ -334,12 +323,7 @@ export function createSlideshowNavigator(
 
     // Only set src if cached (uncached external handled above with placeholder)
     if (!isUncachedExternal) {
-      console.log(`[Slideshow DEBUG] Setting nextImg.src to ${effectiveUrl} (index ${newIndex})`);
-      console.log(`[Slideshow DEBUG] Before src set - nextImg classes:`, nextImg.className);
-      console.log(`[Slideshow DEBUG] Before src set - nextImg.style.display:`, nextImg.style.display);
       nextImg.src = effectiveUrl;
-    } else {
-      console.log(`[Slideshow DEBUG] Uncached external - will fetch async (index ${newIndex})`);
     }
 
     // Check if this is an "undo" of recent First→Last navigation
@@ -387,53 +371,18 @@ export function createSlideshowNavigator(
       pendingTimeouts.delete(animTimeoutId);
       if (signal.aborted) return;
 
-      console.log(`[Slideshow DEBUG] Animation complete. About to swap roles.`);
-      console.log(`[Slideshow DEBUG] BEFORE swap - currImg:`, {
-        classes: currImg.className,
-        src: currImg.src,
-        display: currImg.style.display,
-      });
-      console.log(`[Slideshow DEBUG] BEFORE swap - nextImg:`, {
-        classes: nextImg.className,
-        src: nextImg.src,
-        display: nextImg.style.display,
-      });
+      // Remove animation classes
+      currImg.classList.remove(exitClass);
+      nextImg.classList.remove(enterClass);
 
-      // Swap roles FIRST (before removing animation classes)
-      // This prevents nextImg from becoming .slideshow-img-next without animation classes
-      // (which would trigger visibility:hidden in CSS)
+      // Swap roles
       currImg.classList.remove("slideshow-img-current");
       currImg.classList.add("slideshow-img-next");
       nextImg.classList.remove("slideshow-img-next");
       nextImg.classList.add("slideshow-img-current");
 
-      console.log(`[Slideshow DEBUG] AFTER role swap (before removing animation) - nextImg:`, {
-        classes: nextImg.className,
-        display: nextImg.style.display,
-      });
-
-      // Remove animation classes AFTER role swap
-      currImg.classList.remove(exitClass);
-      nextImg.classList.remove(enterClass);
-
-      console.log(`[Slideshow DEBUG] AFTER removing animation classes - nextImg:`, {
-        classes: nextImg.className,
-        display: nextImg.style.display,
-      });
-
-      console.log(`[Slideshow DEBUG] AFTER role swap - currImg (now next):`, {
-        classes: currImg.className,
-        src: currImg.src,
-        display: currImg.style.display,
-      });
-      console.log(`[Slideshow DEBUG] AFTER role swap - nextImg (now current):`, {
-        classes: nextImg.className,
-        src: nextImg.src,
-        display: nextImg.style.display,
-      });
-
-      // Don't clear src - it triggers error events that consume { once: true } handlers
-      // The element is hidden via CSS anyway (visibility: hidden on .slideshow-img-next)
+      // Clear src on the now-next element
+      currImg.src = "";
 
       currentIndex = newIndex;
       isAnimating = false;
