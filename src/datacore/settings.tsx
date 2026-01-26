@@ -233,7 +233,6 @@ export function Settings({
           group.secondProp,
           "Enter property name",
         )}
-        {renderToggle("Show side-by-side", group.sideBySide)}
         <div className="setting-item setting-item-dropdown">
           <div className="setting-item-info">
             <label>Position</label>
@@ -252,6 +251,7 @@ export function Settings({
             <option value="bottom">Bottom</option>
           </select>
         </div>
+        {renderToggle("Show side-by-side", group.sideBySide)}
       </div>
     </div>
   );
@@ -280,16 +280,25 @@ export function Settings({
         </div>
       </div>
 
-      {/* Title Section */}
+      {/* Header Section */}
       <div className="settings-section">
-        {renderSectionHeader("title", "Title")}
+        {renderSectionHeader("title", "Header")}
         <div
           className={`settings-section-content ${expandedSections.title ? "" : "collapsed"}`}
         >
-          {renderToggle("Show title", "showTitle")}
           {renderTextInput(
             "Title property",
             "titleProperty",
+            "Comma-separated if multiple",
+          )}
+          {renderTextInput(
+            "Subtitle property",
+            "subtitleProperty",
+            "Comma-separated if multiple",
+          )}
+          {renderTextInput(
+            "URL property",
+            "urlProperty",
             "Comma-separated if multiple",
           )}
         </div>
@@ -301,7 +310,6 @@ export function Settings({
         <div
           className={`settings-section-content ${expandedSections.textPreview ? "" : "collapsed"}`}
         >
-          {renderToggle("Show text preview", "showTextPreview")}
           {renderTextInput(
             "Text preview property",
             "textPreviewProperty",
@@ -355,7 +363,6 @@ export function Settings({
               <option value="thumbnail">Thumbnail</option>
               <option value="cover">Cover</option>
               <option value="backdrop">Backdrop</option>
-              <option value="none">No image</option>
             </select>
           </div>
           {settings.imageFormat !== "none" &&
@@ -488,16 +495,6 @@ export function Settings({
         <div
           className={`settings-section-content ${expandedSections.properties ? "" : "collapsed"}`}
         >
-          {renderTextInput(
-            "Subtitle property",
-            "subtitleProperty",
-            "Comma-separated if multiple",
-          )}
-          {renderTextInput(
-            "URL property",
-            "urlProperty",
-            "Comma-separated if multiple",
-          )}
           <div className="setting-item setting-item-dropdown">
             <div className="setting-item-info">
               <label>Property labels</label>

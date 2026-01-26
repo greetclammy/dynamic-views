@@ -156,8 +156,6 @@ export function View({
       "propertySet6Position",
       "propertySet7Position",
       "propertyLabels",
-      "showTitle",
-      "showTextPreview",
       "fallbackToContent",
       "fallbackToEmbeds",
       "imageFormat",
@@ -549,8 +547,6 @@ export function View({
           propertySet6Position: settings.propertySet6Position,
           propertySet7Position: settings.propertySet7Position,
           propertyLabels: settings.propertyLabels,
-          showTitle: settings.showTitle,
-          showTextPreview: settings.showTextPreview,
           fallbackToContent: settings.fallbackToContent,
           fallbackToEmbeds: settings.fallbackToEmbeds,
           imageFormat: settings.imageFormat,
@@ -869,8 +865,6 @@ export function View({
       propertyDisplay13: settings.propertyDisplay13,
       propertyDisplay14: settings.propertyDisplay14,
       propertyLabels: settings.propertyLabels,
-      showTitle: settings.showTitle,
-      showTextPreview: settings.showTextPreview,
       imageFormat: settings.imageFormat,
       imageFit: settings.imageFit,
       imageAspectRatio: settings.imageAspectRatio,
@@ -900,8 +894,6 @@ export function View({
         propertyDisplay13: settings.propertyDisplay13,
         propertyDisplay14: settings.propertyDisplay14,
         propertyLabels: settings.propertyLabels,
-        showTitle: settings.showTitle,
-        showTextPreview: settings.showTextPreview,
         imageFormat: settings.imageFormat,
         imageFit: settings.imageFit,
         imageAspectRatio: settings.imageAspectRatio,
@@ -974,7 +966,11 @@ export function View({
   // Load file contents asynchronously (only for displayed items)
   dc.useEffect(() => {
     // Skip entirely if both previews and thumbnails are off
-    if (!settings.showTextPreview && settings.imageFormat === "none") {
+    if (
+      !settings.textPreviewProperty &&
+      !settings.fallbackToContent &&
+      settings.imageFormat === "none"
+    ) {
       setTextPreviews({});
       setImages({});
       setHasImageAvailable({});
@@ -995,7 +991,7 @@ export function View({
       );
 
       // Prepare entries for text preview loading
-      if (settings.showTextPreview) {
+      if (settings.textPreviewProperty || settings.fallbackToContent) {
         // Copy existing cached entries that are still in results
         for (const path of currentPaths) {
           const cached = textPreviews[path];
@@ -1161,7 +1157,6 @@ export function View({
   }, [
     sorted,
     displayedCount,
-    settings.showTextPreview,
     settings.imageFormat,
     settings.textPreviewProperty,
     settings.titleProperty,

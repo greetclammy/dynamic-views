@@ -4,9 +4,7 @@ export interface Settings {
   imageProperty: string;
   urlProperty: string;
   omitFirstLine: "always" | "ifMatchesTitle" | "never";
-  showTitle: boolean;
   subtitleProperty: string;
-  showTextPreview: boolean;
   fallbackToContent: boolean;
   fallbackToEmbeds: "always" | "if-unavailable" | "never";
   propertyDisplay1: string;
@@ -108,9 +106,7 @@ export interface DefaultViewSettings {
   propertySet6Position: "top" | "bottom";
   propertySet7Position: "top" | "bottom";
   propertyLabels: "hide" | "inline" | "above";
-  showTitle: boolean;
   subtitleProperty: string;
-  showTextPreview: boolean;
   fallbackToContent: boolean;
   fallbackToEmbeds: "always" | "if-unavailable" | "never";
   imageFormat:

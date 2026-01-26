@@ -603,7 +603,7 @@ export async function loadContentForEntries(
   hasImageAvailable: Record<string, boolean>,
 ): Promise<void> {
   // Load text previews
-  if (settings.showTextPreview) {
+  if (settings.textPreviewProperty || settings.fallbackToContent) {
     const textPreviewEntries = entries
       .filter((entry) => !(entry.file.path in textPreviews))
       .map((entry) => {

@@ -1476,12 +1476,6 @@ function Card({
   onCardClick,
   onFocusChange,
 }: CardProps): unknown {
-  // Edge case: if openFileAction is "title" but title is hidden, treat as "card"
-  const effectiveOpenFileAction =
-    settings.openFileAction === "title" && !settings.showTitle
-      ? "card"
-      : settings.openFileAction;
-
   // Determine which timestamp to show
   const useCreatedTime = sortMethod.startsWith("ctime") && !isShuffled;
   // Determine time icon (calendar for ctime, clock for mtime)
@@ -1496,6 +1490,8 @@ function Card({
   const displayTitle = isFullname
     ? stripExtFromTitle(card.title, card.path, true)
     : card.title;
+  // Show "..." if title is empty
+  const finalTitle = displayTitle || "...";
 
   // Compute extension info once for use in title data-ext and renderFileExt
   const extInfo = getFileExtInfo(card.path, isFullname);
@@ -1567,8 +1563,6 @@ function Card({
 
   // Helper function to render title JSX
   const renderTitle = () => {
-    if (!settings.showTitle) return null;
-
     return (
       <div
         className="card-title"
@@ -1584,7 +1578,7 @@ function Card({
       >
         {renderFileTypeIcon(card.path)}
         {renderFileExt(extInfo)}
-        {effectiveOpenFileAction === "title" ? (
+        {settings.openFileAction === "title" ? (
           <span
             className="card-title-link"
             data-href={card.path}
@@ -1615,14 +1609,14 @@ function Card({
               });
             }}
           >
-            <span className="card-title-text">{displayTitle}</span>
+            <span className="card-title-text">{finalTitle}</span>
             {extNoDot && (
               <span className="card-title-ext-suffix">.{extNoDot}</span>
             )}
           </span>
         ) : (
           <>
-            <span className="card-title-text">{displayTitle}</span>
+            <span className="card-title-text">{finalTitle}</span>
             {extNoDot && (
               <span className="card-title-ext-suffix">.{extNoDot}</span>
             )}
@@ -1670,7 +1664,7 @@ function Card({
   };
 
   // Check if title or subtitle will be rendered
-  const hasTitle = settings.showTitle;
+  const hasTitle = true;
   const hasSubtitle = settings.subtitleProperty && card.subtitle;
 
   return (
@@ -1804,7 +1798,6 @@ function Card({
         const needsThumbnailStacking =
           format === "thumbnail" &&
           (position === "left" || position === "right") &&
-          settings.showTextPreview &&
           card.textPreview;
 
         const responsiveObserver = new ResizeObserver((entries) => {
@@ -1830,13 +1823,13 @@ function Card({
         responsiveObserver.observe(cardEl);
         cardResponsiveObservers.set(card.path, responsiveObserver);
       }}
-      draggable={effectiveOpenFileAction === "card"}
-      onDragStart={effectiveOpenFileAction === "card" ? handleDrag : undefined}
+      draggable={settings.openFileAction === "card"}
+      onDragStart={settings.openFileAction === "card" ? handleDrag : undefined}
       tabIndex={index === focusableCardIndex ? 0 : -1}
       onClick={(e: MouseEvent) => {
         // Only handle card-level clicks when openFileAction is 'card'
         // When openFileAction is 'title', the title link handles its own clicks
-        if (effectiveOpenFileAction === "card") {
+        if (settings.openFileAction === "card") {
           const target = e.target as HTMLElement;
           // Don't open if clicking on links, tags, path segments, or images (when zoom enabled)
           const isLink = target.tagName === "A" || target.closest("a");
@@ -1905,7 +1898,7 @@ function Card({
           e.currentTarget as HTMLElement;
 
         // Trigger Obsidian's hover preview (only on card when openFileAction is 'card')
-        if (effectiveOpenFileAction === "card") {
+        if (settings.openFileAction === "card") {
           app.workspace.trigger("hover-link", {
             event: e,
             source: "file-explorer",
@@ -1931,8 +1924,8 @@ function Card({
         (hoveredCardRef as { current: HTMLElement | null }).current = null;
       }}
       onContextMenu={(e: MouseEvent) => {
-        // Show file context menu when effectiveOpenFileAction is 'card'
-        if (effectiveOpenFileAction === "card") {
+        // Show file context menu when settings.openFileAction is 'card'
+        if (settings.openFileAction === "card") {
           const file = app.vault.getAbstractFileByPath(card.path);
           if (file instanceof TFile) {
             showFileContextMenu(e, app, file, card.path);
@@ -1943,12 +1936,12 @@ function Card({
         // Stop propagation in capture phase to prevent CodeMirror's capture-phase
         // handler on cm-scroller from intercepting text selection
         // when openFileAction is 'title' (card content should be selectable)
-        if (effectiveOpenFileAction === "title") {
+        if (settings.openFileAction === "title") {
           e.stopPropagation();
         }
       }}
       style={{
-        cursor: effectiveOpenFileAction === "card" ? "pointer" : "default",
+        cursor: settings.openFileAction === "card" ? "pointer" : "default",
       }}
     >
       {/* Title and Subtitle - wrapped in card-header when URL button present */}
@@ -2021,7 +2014,7 @@ function Card({
                     updateLayoutRef={updateLayoutRef}
                     cardPath={card.path}
                     app={app}
-                    openFileAction={effectiveOpenFileAction}
+                    openFileAction={settings.openFileAction}
                   />
                 );
               }
@@ -2037,7 +2030,7 @@ function Card({
                         app,
                         viewerCleanupFns,
                         viewerClones,
-                        effectiveOpenFileAction,
+                        settings.openFileAction,
                       );
                     }}
                   >
@@ -2081,10 +2074,9 @@ function Card({
 
       {/* Content container - only render if it will have children */}
       {/* Always create for thumbnail format to allow placeholder rendering */}
-      {((settings.showTextPreview && card.textPreview) ||
-        format === "thumbnail") && (
+      {(card.textPreview || format === "thumbnail") && (
         <div className="card-content">
-          {settings.showTextPreview && card.textPreview && (
+          {card.textPreview && (
             <div className="card-text-preview-wrapper">
               <div className="card-text-preview">{card.textPreview}</div>
             </div>
@@ -2155,7 +2147,7 @@ function Card({
                       app,
                       viewerCleanupFns,
                       viewerClones,
-                      effectiveOpenFileAction,
+                      settings.openFileAction,
                     );
                   }}
                 >

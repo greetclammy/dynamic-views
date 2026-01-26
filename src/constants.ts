@@ -1,10 +1,10 @@
 import { Settings, DefaultViewSettings } from "./types";
 
 export const DEFAULT_VIEW_SETTINGS: DefaultViewSettings = {
-  titleProperty: "",
+  titleProperty: "file.name",
   textPreviewProperty: "",
   imageProperty: "",
-  urlProperty: "",
+  urlProperty: "url",
   propertyDisplay1: "file.tags",
   propertyDisplay2: "file.mtime",
   propertyDisplay3: "",
@@ -34,9 +34,7 @@ export const DEFAULT_VIEW_SETTINGS: DefaultViewSettings = {
   propertySet6Position: "bottom",
   propertySet7Position: "bottom",
   propertyLabels: "hide",
-  showTitle: true,
   subtitleProperty: "file.folder",
-  showTextPreview: true,
   fallbackToContent: true,
   fallbackToEmbeds: "always",
   imageFormat: "thumbnail-right",
@@ -48,14 +46,12 @@ export const DEFAULT_VIEW_SETTINGS: DefaultViewSettings = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  titleProperty: "",
+  titleProperty: "file.name",
   textPreviewProperty: "",
   imageProperty: "",
-  urlProperty: "",
+  urlProperty: "url",
   omitFirstLine: "ifMatchesTitle",
-  showTitle: true,
   subtitleProperty: "file.folder",
-  showTextPreview: true,
   fallbackToContent: true,
   fallbackToEmbeds: "always",
   propertyDisplay1: "file.tags",

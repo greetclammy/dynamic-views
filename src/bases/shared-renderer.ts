@@ -565,20 +565,15 @@ export class SharedCardRenderer {
 
     cardEl.setAttribute("data-path", card.path);
 
-    // Edge case: if openFileAction is "title" but title is hidden, treat as "card"
-    const effectiveOpenFileAction =
-      settings.openFileAction === "title" && !settings.showTitle
-        ? "card"
-        : settings.openFileAction;
 
     // Only make card draggable when openFileAction is 'card'
-    if (effectiveOpenFileAction === "card") {
+    if (settings.openFileAction === "card") {
       cardEl.setAttribute("draggable", "true");
     }
     // Only show pointer cursor when entire card is clickable
     cardEl.classList.toggle(
       "clickable-card",
-      effectiveOpenFileAction === "card",
+      settings.openFileAction === "card",
     );
 
     // Create AbortController for event listener cleanup
@@ -707,7 +702,7 @@ export class SharedCardRenderer {
       (e) => {
         // Only handle card-level clicks when openFileAction is 'card'
         // When openFileAction is 'title', the title link handles its own clicks
-        if (effectiveOpenFileAction === "card") {
+        if (settings.openFileAction === "card") {
           const target = e.target as HTMLElement;
           // Don't open if clicking on links, tags, path segments, or images (when zoom enabled)
           const isLink = target.tagName === "A" || target.closest("a");
@@ -758,7 +753,7 @@ export class SharedCardRenderer {
 
     // Handle hover for page preview (only on card when openFileAction is 'card')
     // Use mouseenter (not mouseover) to prevent multiple triggers from child elements
-    if (effectiveOpenFileAction === "card") {
+    if (settings.openFileAction === "card") {
       cardEl.addEventListener(
         "mouseenter",
         (e) => {
@@ -779,8 +774,8 @@ export class SharedCardRenderer {
       showFileContextMenu(e, this.app, entry.file, card.path);
     };
 
-    // Attach context menu to card when effectiveOpenFileAction is 'card'
-    if (effectiveOpenFileAction === "card") {
+    // Attach context menu to card when settings.openFileAction is 'card'
+    if (settings.openFileAction === "card") {
       cardEl.addEventListener("contextmenu", handleContextMenu, { signal });
     }
 
@@ -823,7 +818,7 @@ export class SharedCardRenderer {
       }
 
       // Add title text
-      if (effectiveOpenFileAction === "title") {
+      if (settings.openFileAction === "title") {
         // Render as clickable, draggable link
         const link = titleEl.createEl("a", {
           cls: "internal-link card-title-text",
@@ -948,7 +943,7 @@ export class SharedCardRenderer {
     };
 
     // Check if title or subtitle will be rendered
-    const hasTitle = settings.showTitle;
+    const hasTitle = true;
     const hasSubtitle = settings.subtitleProperty && card.subtitle;
 
     // Title and Subtitle - wrapped in card-header when URL button present
@@ -1000,8 +995,8 @@ export class SharedCardRenderer {
       }
     }
 
-    // Make card draggable when effectiveOpenFileAction is 'card'
-    if (effectiveOpenFileAction === "card") {
+    // Make card draggable when settings.openFileAction is 'card'
+    if (settings.openFileAction === "card") {
       cardEl.addEventListener("dragstart", handleDrag, { signal });
     }
 
@@ -1156,7 +1151,7 @@ export class SharedCardRenderer {
     }
 
     // Determine if card-content will have children
-    const hasTextPreview = settings.showTextPreview && card.textPreview;
+    const hasTextPreview = card.textPreview;
     const isThumbnailFormat = format === "thumbnail";
 
     // Only create card-content if it will have children
@@ -1202,7 +1197,6 @@ export class SharedCardRenderer {
     const needsThumbnailStacking =
       format === "thumbnail" &&
       (position === "left" || position === "right") &&
-      settings.showTextPreview &&
       card.textPreview;
 
     const thumbnailEl = needsThumbnailStacking
@@ -1279,12 +1273,6 @@ export class SharedCardRenderer {
     const { signal } = controller;
     this.slideshowCleanups.push(() => controller.abort());
 
-    // Compute effective open file action
-    const effectiveOpenFileAction =
-      settings.openFileAction === "title" && !settings.showTitle
-        ? "card"
-        : settings.openFileAction;
-
     // Create image embed with two stacked images
     const imageEmbedContainer = slideshowEl.createDiv(
       "dynamic-views-image-embed",
@@ -1301,7 +1289,7 @@ export class SharedCardRenderer {
           this.app,
           this.viewerCleanupFns,
           this.viewerClones,
-          effectiveOpenFileAction,
+          settings.openFileAction,
         );
       },
       { signal },
@@ -1449,12 +1437,6 @@ export class SharedCardRenderer {
     cardEl: HTMLElement,
     signal?: AbortSignal,
   ): void {
-    // Compute effective open file action
-    const effectiveOpenFileAction =
-      settings.openFileAction === "title" && !settings.showTitle
-        ? "card"
-        : settings.openFileAction;
-
     const imageEmbedContainer = imageEl.createDiv("dynamic-views-image-embed");
 
     // Add zoom handler with cleanup via AbortController
@@ -1467,7 +1449,7 @@ export class SharedCardRenderer {
           this.app,
           this.viewerCleanupFns,
           this.viewerClones,
-          effectiveOpenFileAction,
+          settings.openFileAction,
         );
       },
       signal ? { signal } : undefined,

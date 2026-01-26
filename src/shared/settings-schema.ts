@@ -29,14 +29,8 @@ export function getBasesViewOptions(): any[] {
     },
     {
       type: "group",
-      displayName: "Title",
+      displayName: "Header",
       items: [
-        {
-          type: "toggle",
-          displayName: "Show title",
-          key: "showTitle",
-          default: DEFAULT_VIEW_SETTINGS.showTitle,
-        },
         {
           type: "text",
           displayName: "Title property",
@@ -44,18 +38,26 @@ export function getBasesViewOptions(): any[] {
           placeholder: "Comma-separated if multiple",
           default: DEFAULT_VIEW_SETTINGS.titleProperty,
         },
+        {
+          type: "text",
+          displayName: "Subtitle property",
+          key: "subtitleProperty",
+          placeholder: "Comma-separated if multiple",
+          default: DEFAULT_VIEW_SETTINGS.subtitleProperty,
+        },
+        {
+          type: "text",
+          displayName: "URL property",
+          key: "urlProperty",
+          placeholder: "Comma-separated if multiple",
+          default: DEFAULT_VIEW_SETTINGS.urlProperty,
+        },
       ],
     },
     {
       type: "group",
       displayName: "Text preview",
       items: [
-        {
-          type: "toggle",
-          displayName: "Show text preview",
-          key: "showTextPreview",
-          default: DEFAULT_VIEW_SETTINGS.showTextPreview,
-        },
         {
           type: "text",
           displayName: "Text preview property",
@@ -65,8 +67,7 @@ export function getBasesViewOptions(): any[] {
         },
         {
           type: "toggle",
-          displayName:
-            "Show note content if text preview property missing or empty",
+          displayName: "Show note content if property missing or empty",
           key: "fallbackToContent",
           default: DEFAULT_VIEW_SETTINGS.fallbackToContent,
         },
@@ -84,7 +85,6 @@ export function getBasesViewOptions(): any[] {
             thumbnail: "Thumbnail",
             cover: "Cover",
             backdrop: "Backdrop",
-            none: "No image",
           },
           default: "thumbnail",
         },
@@ -144,20 +144,6 @@ export function getBasesViewOptions(): any[] {
       displayName: "Properties",
       items: [
         {
-          type: "text",
-          displayName: "Subtitle property",
-          key: "subtitleProperty",
-          placeholder: "Comma-separated if multiple",
-          default: DEFAULT_VIEW_SETTINGS.subtitleProperty,
-        },
-        {
-          type: "text",
-          displayName: "URL property",
-          key: "urlProperty",
-          placeholder: "Comma-separated if multiple",
-          default: "",
-        },
-        {
           type: "dropdown",
           displayName: "Property labels",
           key: "propertyLabels",
@@ -189,12 +175,6 @@ export function getBasesViewOptions(): any[] {
           default: DEFAULT_VIEW_SETTINGS.propertyDisplay2,
         },
         {
-          type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet1SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet1SideBySide,
-        },
-        {
           type: "dropdown",
           displayName: "Position",
           key: "propertySet1Position",
@@ -203,6 +183,12 @@ export function getBasesViewOptions(): any[] {
             bottom: "Bottom",
           },
           default: DEFAULT_VIEW_SETTINGS.propertySet1Position,
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet1SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet1SideBySide,
         },
       ],
     },
@@ -225,12 +211,6 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet2SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet2SideBySide,
-        },
-        {
           type: "dropdown",
           displayName: "Position",
           key: "propertySet2Position",
@@ -239,6 +219,12 @@ export function getBasesViewOptions(): any[] {
             bottom: "Bottom",
           },
           default: DEFAULT_VIEW_SETTINGS.propertySet2Position,
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet2SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet2SideBySide,
         },
       ],
     },
@@ -261,12 +247,6 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet3SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet3SideBySide,
-        },
-        {
           type: "dropdown",
           displayName: "Position",
           key: "propertySet3Position",
@@ -275,6 +255,12 @@ export function getBasesViewOptions(): any[] {
             bottom: "Bottom",
           },
           default: DEFAULT_VIEW_SETTINGS.propertySet3Position,
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet3SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet3SideBySide,
         },
       ],
     },
@@ -297,12 +283,6 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet4SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet4SideBySide,
-        },
-        {
           type: "dropdown",
           displayName: "Position",
           key: "propertySet4Position",
@@ -311,6 +291,12 @@ export function getBasesViewOptions(): any[] {
             bottom: "Bottom",
           },
           default: DEFAULT_VIEW_SETTINGS.propertySet4Position,
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet4SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet4SideBySide,
         },
       ],
     },
@@ -333,12 +319,6 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet5SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet5SideBySide,
-        },
-        {
           type: "dropdown",
           displayName: "Position",
           key: "propertySet5Position",
@@ -347,6 +327,12 @@ export function getBasesViewOptions(): any[] {
             bottom: "Bottom",
           },
           default: DEFAULT_VIEW_SETTINGS.propertySet5Position,
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet5SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet5SideBySide,
         },
       ],
     },
@@ -369,12 +355,6 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet6SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet6SideBySide,
-        },
-        {
           type: "dropdown",
           displayName: "Position",
           key: "propertySet6Position",
@@ -383,6 +363,12 @@ export function getBasesViewOptions(): any[] {
             bottom: "Bottom",
           },
           default: DEFAULT_VIEW_SETTINGS.propertySet6Position,
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet6SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet6SideBySide,
         },
       ],
     },
@@ -405,12 +391,6 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet7SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet7SideBySide,
-        },
-        {
           type: "dropdown",
           displayName: "Position",
           key: "propertySet7Position",
@@ -419,6 +399,12 @@ export function getBasesViewOptions(): any[] {
             bottom: "Bottom",
           },
           default: DEFAULT_VIEW_SETTINGS.propertySet7Position,
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet7SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet7SideBySide,
         },
       ],
     },
@@ -511,8 +497,6 @@ export function readBasesSettings(
     subtitleProperty: getString("subtitleProperty", defaults.subtitleProperty),
 
     // Boolean properties
-    showTitle: getBool("showTitle", defaults.showTitle),
-    showTextPreview: getBool("showTextPreview", defaults.showTextPreview),
     fallbackToContent: getBool("fallbackToContent", defaults.fallbackToContent),
 
     // Enum: fallbackToEmbeds

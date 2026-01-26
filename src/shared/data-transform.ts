@@ -258,7 +258,9 @@ export function datacoreResultToCardData(
       }
     }
   }
-  if (!title) {
+  // Fallback to $name if title property was set but didn't resolve
+  // (e.g., property doesn't exist on this file, or value is empty)
+  if (!title && settings.titleProperty) {
     title = result.$name || "";
   }
 
@@ -450,7 +452,9 @@ export function basesEntryToCardData(
       }
     }
   }
-  if (!title) {
+  // Fallback to file name if title property was set but didn't resolve
+  // (e.g., property doesn't exist on this file, or value is empty)
+  if (!title && settings.titleProperty) {
     title = fileName;
   }
 
