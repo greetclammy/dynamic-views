@@ -3,7 +3,7 @@
  * Primary implementation using Bases API
  */
 
-import { BasesView, BasesEntry, QueryController, TFile } from "obsidian";
+import { BasesView, BasesEntry, QueryController } from "obsidian";
 import { CardData } from "../shared/card-renderer";
 import { reapplyAmbientColors } from "../shared/image-loader";
 import { transformBasesEntries } from "../shared/data-transform";
@@ -42,9 +42,6 @@ import {
   setGroupKeyDataset,
   initializeViewDefaults,
   tryGetAllConfig,
-  disableOtherViewTemplates,
-  isCurrentTemplateView,
-  INIT_MARKER,
 } from "./utils";
 import {
   initializeContainerFocus,
@@ -77,7 +74,7 @@ declare module "obsidian" {
 
 export const GRID_VIEW_TYPE = "dynamic-views-grid";
 
-export class DynamicViewsGridView extends BasesView {
+export class DynamicViewsCardView extends BasesView {
   readonly type = GRID_VIEW_TYPE;
   private scrollEl: HTMLElement;
   private leafId: string;
@@ -112,8 +109,6 @@ export class DynamicViewsGridView extends BasesView {
   };
   private focusState: FocusState = { cardIndex: 0, hoveredEl: null };
   private focusCleanup: (() => void) | null = null;
-  private previousIsTemplate: boolean | undefined = undefined;
-  private hasInitializedDefaults = false;
 
   // Public accessors for sortState (used by randomize.ts)
   get isShuffled(): boolean {
@@ -182,133 +177,29 @@ export class DynamicViewsGridView extends BasesView {
     );
   }
 
-  /**
-   * Handle template toggle changes
-   * Called from onDataUpdated() since Obsidian calls that for config changes
-   */
-  private handleTemplateToggle(): void {
-    // Read current template state from config
+  // Called by Obsidian when view settings change - trigger re-render
+  setSettings = (): void => {
+    // Sync template with snapshot storage
     const isTemplate = this.config.get("__isTemplate") === true;
+    const hasSnapshot =
+      this.plugin.persistenceManager.getTemplateSnapshot("grid") !== null;
 
-    // Only process if __isTemplate actually changed
-    if (this.previousIsTemplate === isTemplate) {
-      return;
-    }
-    this.previousIsTemplate = isTemplate;
-
-    // Read saved snapshot
-    const savedSnapshot =
-      this.plugin.persistenceManager.getTemplateSnapshot("grid");
-    const hasSnapshot = savedSnapshot !== null;
-
-    // Make isTemplate mutable for validation logic
-    let currentIsTemplate = isTemplate;
-
-    // VALIDATION: Check if this view's toggle is stale (another view overrode template)
-    // Only validate if view already has a timestamp (was previously template)
-    // If no timestamp, user is intentionally making this the new template
-    if (currentIsTemplate && hasSnapshot) {
-      const viewTimestamp = this.config.get("__templateSetAt") as
-        | number
-        | undefined;
-
-      // Only validate views that were previously template (have timestamp)
-      if (viewTimestamp !== undefined) {
-        const isActualTemplate = isCurrentTemplateView(
-          this.config,
-          "grid",
-          this.plugin,
-        );
-        if (!isActualTemplate) {
-          console.log(
-            `[grid-view] Template toggle is stale - another view overrode template (view: ${viewTimestamp}, snapshot: ${savedSnapshot.setAt}), disabling toggle`,
-          );
-          // Disable stale toggle
-          this.config.set("__isTemplate", false);
-          this.previousIsTemplate = false; // Update tracked state
-          currentIsTemplate = false; // Update local var to skip snapshot save
-        }
-      }
-    }
-
-    if (currentIsTemplate) {
-      // Get or create timestamp for this template
-      let timestamp = this.config.get("__templateSetAt") as number | undefined;
-      if (!timestamp) {
-        // First time this view became template - generate new timestamp
-        timestamp = Date.now();
-        this.config.set("__templateSetAt", timestamp);
-        console.log(
-          `[grid-view] Generated new template timestamp: ${timestamp}`,
-        );
-      }
-
-      // MUTUAL EXCLUSION: Disable template in all other Grid views
-      disableOtherViewTemplates(this.app, GRID_VIEW_TYPE, this);
-
+    if (isTemplate) {
       // Template enabled - extract current settings and save/update snapshot
       const defaults = this.plugin.persistenceManager.getDefaultViewSettings();
-      const settings = extractBasesSnapshot(this.config, defaults);
-      console.log("[grid-view] Saving template snapshot (full):", settings);
-      void this.plugin.persistenceManager.setTemplateSnapshot("grid", {
-        settings,
-        setAt: timestamp,
-      });
-    } else if (!currentIsTemplate && hasSnapshot) {
-      // Only clear snapshot if THIS view was the template
-      const wasThisViewTemplate =
-        this.config.get("__templateSetAt") !== undefined;
-      if (wasThisViewTemplate) {
-        // User disabled template in the view that was the template - clear snapshot and timestamp
-        console.log("[grid-view] Clearing template snapshot");
-        this.config.set("__templateSetAt", undefined);
-        void this.plugin.persistenceManager.setTemplateSnapshot("grid", null);
-      }
+      const snapshot = extractBasesSnapshot(this.config, defaults);
+      void this.plugin.persistenceManager.setTemplateSnapshot("grid", snapshot);
+    } else if (!isTemplate && hasSnapshot) {
+      // User disabled template - clear snapshot
+      void this.plugin.persistenceManager.setTemplateSnapshot("grid", null);
     }
-    // Note: If !currentIsTemplate && !hasSnapshot, no action needed (normal view)
-  }
+    // Note: If !isTemplate && !hasSnapshot, no action needed (normal view)
+
+    this.onDataUpdated();
+  };
 
   constructor(controller: QueryController, scrollEl: HTMLElement) {
-    console.log("[grid-view] constructor - Creating new grid view");
     super(controller);
-
-    console.log("[grid-view] constructor - this.config exists?", !!this.config);
-    console.log(
-      "[grid-view] constructor - this.config type:",
-      typeof this.config,
-    );
-
-    // Initialize template defaults immediately for settings UI
-    // Settings UI reads config right after construction, before onDataUpdated
-    // Guard: config might not be initialized yet in constructor
-    if (this.config) {
-      const isNewView = this.config.get(INIT_MARKER) === undefined;
-      console.log("[grid-view] constructor - isNewView:", isNewView);
-      if (isNewView) {
-        console.log("[grid-view] constructor - NEW view, applying template");
-        // Access plugin from controller's app
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-        const plugin = (this.app as any).plugins.plugins[
-          "dynamic-views"
-        ] as DynamicViewsPlugin;
-        const templateSnapshot =
-          plugin.persistenceManager.getTemplateSnapshot("grid");
-
-        if (templateSnapshot) {
-          const defaults = templateSnapshot.settings;
-          // Write key template values immediately so settings UI sees them
-          if (defaults.titleProperty !== undefined) {
-            this.config.set("titleProperty", defaults.titleProperty);
-          }
-          if (defaults.cardSize !== undefined) {
-            this.config.set("cardSize", defaults.cardSize);
-          }
-          // Mark as initialized so onDataUpdated knows to skip full initialization
-          this.config.set(INIT_MARKER, true);
-        }
-      }
-    }
-
     // Store scroll parent reference
     this.scrollEl = scrollEl;
     // Find leaf by matching container (getLeaf() creates new leaf if pinned, activeLeaf is deprecated)
@@ -379,42 +270,12 @@ export class DynamicViewsGridView extends BasesView {
   }
 
   onload(): void {
+    // Ensure view is fully initialized before Obsidian renders it
+    // This prevents race conditions when view is embedded in notes
     super.onload();
   }
 
   onDataUpdated(): void {
-    // Handle template toggle changes (Obsidian calls onDataUpdated for config changes)
-    this.handleTemplateToggle();
-
-    // Initialize view defaults on first render (config is now available)
-    if (!this.hasInitializedDefaults) {
-      const allKeys = tryGetAllConfig(this.config);
-      console.log(
-        "[grid-view] onDataUpdated - First render, allKeys:",
-        allKeys,
-      );
-      if (allKeys) {
-        try {
-          initializeViewDefaults(
-            this.config,
-            allKeys,
-            this.plugin,
-            this.file,
-            "grid",
-          );
-          console.log(
-            "[grid-view] onDataUpdated - initializeViewDefaults completed",
-          );
-        } catch (e) {
-          console.warn(
-            "[dynamic-views] Failed to initialize view defaults:",
-            e,
-          );
-        }
-      }
-      this.hasInitializedDefaults = true;
-    }
-
     void (async () => {
       // Guard: return early if data not yet initialized (race condition with MutationObserver)
       if (!this.data) {
@@ -443,9 +304,30 @@ export class DynamicViewsGridView extends BasesView {
       const groupedData = this.data.groupedData;
       const allEntries = this.data.data;
 
-      // Read settings from Bases config
-      // Template values are written to config once in initializeViewDefaults()
-      // After that, only global defaults are used as fallbacks
+      // Initialize default property values for new views (before reading settings)
+      // This persists defaults so clearing them works correctly
+      // Only run on first render to avoid triggering infinite re-render loop
+      if (this.renderState.version === 1) {
+        const allKeys = tryGetAllConfig(this.config);
+        if (allKeys) {
+          try {
+            initializeViewDefaults(
+              this.config,
+              allKeys,
+              this.plugin,
+              this.file,
+              "grid",
+            );
+          } catch (e) {
+            console.warn(
+              "[dynamic-views] Failed to initialize view defaults:",
+              e,
+            );
+          }
+        }
+      }
+
+      // Read settings from Bases config (before hash check so we can include settings)
       const settings = readBasesSettings(
         this.config,
         this.plugin.persistenceManager.getGlobalSettings(),
@@ -948,7 +830,7 @@ export class DynamicViewsGridView extends BasesView {
 
     const groupedData = this.data.groupedData;
 
-    // Read settings - template values are in config, global defaults as fallbacks
+    // Read settings
     const settings = readBasesSettings(
       this.config,
       this.plugin.persistenceManager.getGlobalSettings(),

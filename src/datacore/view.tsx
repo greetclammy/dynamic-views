@@ -18,7 +18,6 @@ import {
   SCROLL_THROTTLE_MS,
   RESIZE_THROTTLE_MS,
 } from "../shared/constants";
-import { PersistenceManager } from "../persistence";
 import { CardView } from "./card-view";
 import {
   cleanupAllCardObservers,

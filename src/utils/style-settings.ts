@@ -459,24 +459,29 @@ export function setupStyleSettingsObserver(
           )
           .sort();
 
-        const dynamicViewsChanged = oldFiltered.join() !== newFiltered.join();
+        const oldJoined = oldFiltered.join();
+        const newJoined = newFiltered.join();
+        const dynamicViewsChanged = oldJoined !== newJoined;
 
         if (dynamicViewsChanged) {
+          console.log("[style-settings] DIFFERENCE DETECTED");
+
+          // Find which classes are in new but not old
+          const addedClasses = newFiltered.filter(
+            (c) => !oldFiltered.includes(c),
+          );
+          // Find which classes are in old but not new
+          const removedClasses = oldFiltered.filter(
+            (c) => !newFiltered.includes(c),
+          );
+
           console.log(
-            "[style-settings] Body class changed, old classes (ALL):",
-            oldClasses.filter((c) => c.startsWith("dynamic-views-")),
+            "[style-settings] Added classes (after filtering):",
+            addedClasses,
           );
           console.log(
-            "[style-settings] Body class changed, new classes (ALL):",
-            newClasses.filter((c) => c.startsWith("dynamic-views-")),
-          );
-          console.log(
-            "[style-settings] After filtering ignored classes, old:",
-            oldFiltered,
-          );
-          console.log(
-            "[style-settings] After filtering ignored classes, new:",
-            newFiltered,
+            "[style-settings] Removed classes (after filtering):",
+            removedClasses,
           );
 
           // Check if ambient settings specifically changed (including subtle↔dramatic)

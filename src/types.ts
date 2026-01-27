@@ -129,15 +129,24 @@ export interface DefaultViewSettings {
   cardSize: number;
 }
 
+/**
+ * Template snapshot with timestamp for validation
+ * Timestamp identifies which view is the current template
+ */
+export interface TemplateSnapshot {
+  settings: Partial<DefaultViewSettings>;
+  setAt: number; // Unix timestamp (milliseconds) when template was enabled
+}
+
 export interface PluginData {
   globalSettings: Settings;
   defaultViewSettings: DefaultViewSettings;
   queryStates: Record<string, UIState>;
   viewSettings: Record<string, Partial<DefaultViewSettings>>;
   defaultTemplateViews: {
-    grid: number | null;
-    masonry: number | null;
-    list: number | null;
+    grid: TemplateSnapshot | null;
+    masonry: TemplateSnapshot | null;
+    list: TemplateSnapshot | null;
   };
 }
 

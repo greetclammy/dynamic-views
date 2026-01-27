@@ -3,7 +3,7 @@
  * Masonry layout view using Bases API
  */
 
-import { BasesView, BasesEntry, QueryController, TFile } from "obsidian";
+import { BasesView, BasesEntry, QueryController } from "obsidian";
 import { CardData } from "../shared/card-renderer";
 import { transformBasesEntries } from "../shared/data-transform";
 import {
@@ -53,9 +53,6 @@ import {
   getGroupKeyDataset,
   initializeViewDefaults,
   tryGetAllConfig,
-  disableOtherViewTemplates,
-  isCurrentTemplateView,
-  INIT_MARKER,
 } from "./utils";
 import {
   initializeContainerFocus,
@@ -125,8 +122,6 @@ export class DynamicViewsMasonryView extends BasesView {
   };
   private focusState: FocusState = { cardIndex: 0, hoveredEl: null };
   private focusCleanup: (() => void) | null = null;
-  private previousIsTemplate: boolean | undefined = undefined;
-  private hasInitializedDefaults = false;
 
   // Public accessors for sortState (used by randomize.ts)
   get isShuffled(): boolean {
@@ -233,132 +228,42 @@ export class DynamicViewsMasonryView extends BasesView {
     }
   }
 
-  /**
-   * Handle template toggle changes
-   * Called from onDataUpdated() since Obsidian calls that for config changes
-   */
-  private handleTemplateToggle(): void {
-    // Read current template state from config
+  // Called by Obsidian when view settings change - trigger re-render
+  setSettings = (): void => {
+    // Sync template with snapshot storage
     const isTemplate = this.config.get("__isTemplate") === true;
-
-    // Only process if __isTemplate actually changed
-    if (this.previousIsTemplate === isTemplate) {
-      return;
-    }
-    this.previousIsTemplate = isTemplate;
-
-    // Read saved snapshot
-    const savedSnapshot =
-      this.plugin.persistenceManager.getTemplateSnapshot("masonry");
-    const hasSnapshot = savedSnapshot !== null;
+    const hasSnapshot =
+      this.plugin.persistenceManager.getTemplateSnapshot("masonry") !== null;
 
     console.log(
       `[masonry-view] setSettings - isTemplate=${isTemplate}, hasSnapshot=${hasSnapshot}`,
     );
 
-    // Make isTemplate mutable for validation logic
-    let currentIsTemplate = isTemplate;
-
-    // VALIDATION: Check if this view's toggle is stale (another view overrode template)
-    // Only validate if view already has a timestamp (was previously template)
-    // If no timestamp, user is intentionally making this the new template
-    if (currentIsTemplate && hasSnapshot) {
-      const viewTimestamp = this.config.get("__templateSetAt") as
-        | number
-        | undefined;
-
-      // Only validate views that were previously template (have timestamp)
-      if (viewTimestamp !== undefined) {
-        const isActualTemplate = isCurrentTemplateView(
-          this.config,
-          "masonry",
-          this.plugin,
-        );
-        if (!isActualTemplate) {
-          console.log(
-            `[masonry-view] Template toggle is stale - another view overrode template (view: ${viewTimestamp}, snapshot: ${savedSnapshot.setAt}), disabling toggle`,
-          );
-          // Disable stale toggle
-          this.config.set("__isTemplate", false);
-          this.previousIsTemplate = false; // Update tracked state
-          currentIsTemplate = false; // Update local var to skip snapshot save
-        }
-      }
-    }
-
-    if (currentIsTemplate) {
-      // Get or create timestamp for this template
-      let timestamp = this.config.get("__templateSetAt") as number | undefined;
-      if (!timestamp) {
-        // First time this view became template - generate new timestamp
-        timestamp = Date.now();
-        this.config.set("__templateSetAt", timestamp);
-        console.log(
-          `[masonry-view] Generated new template timestamp: ${timestamp}`,
-        );
-      }
-
-      // MUTUAL EXCLUSION: Disable template in all other Masonry views
-      disableOtherViewTemplates(this.app, MASONRY_VIEW_TYPE, this);
-
+    if (isTemplate) {
       // Template enabled - extract current settings and save/update snapshot
       const defaults = this.plugin.persistenceManager.getDefaultViewSettings();
-      const settings = extractBasesSnapshot(this.config, defaults);
-      console.log("[masonry-view] Saving template snapshot (full):", settings);
-      void this.plugin.persistenceManager.setTemplateSnapshot("masonry", {
-        settings,
-        setAt: timestamp,
+      const snapshot = extractBasesSnapshot(this.config, defaults);
+      console.log("[masonry-view] Saving template snapshot:", {
+        propertyDisplay1: snapshot.propertyDisplay1,
+        propertyDisplay2: snapshot.propertyDisplay2,
+        cardSize: snapshot.cardSize,
       });
-    } else if (!currentIsTemplate && hasSnapshot) {
-      // Only clear snapshot if THIS view was the template
-      const wasThisViewTemplate =
-        this.config.get("__templateSetAt") !== undefined;
-      if (wasThisViewTemplate) {
-        // User disabled template in the view that was the template - clear snapshot and timestamp
-        console.log("[masonry-view] Clearing template snapshot");
-        this.config.set("__templateSetAt", undefined);
-        void this.plugin.persistenceManager.setTemplateSnapshot(
-          "masonry",
-          null,
-        );
-      }
+      void this.plugin.persistenceManager.setTemplateSnapshot(
+        "masonry",
+        snapshot,
+      );
+    } else if (!isTemplate && hasSnapshot) {
+      // User disabled template - clear snapshot
+      console.log("[masonry-view] Clearing template snapshot");
+      void this.plugin.persistenceManager.setTemplateSnapshot("masonry", null);
     }
-    // Note: If !currentIsTemplate && !hasSnapshot, no action needed (normal view)
-  }
+    // Note: If !isTemplate && !hasSnapshot, no action needed (normal view)
+
+    this.onDataUpdated();
+  };
 
   constructor(controller: QueryController, scrollEl: HTMLElement) {
     super(controller);
-
-    // Initialize template defaults immediately for settings UI
-    // Settings UI reads config right after construction, before onDataUpdated
-    // Guard: config might not be initialized yet in constructor
-    if (this.config) {
-      const isNewView = this.config.get(INIT_MARKER) === undefined;
-      if (isNewView) {
-        console.log("[masonry-view] constructor - NEW view, applying template");
-        // Access plugin from controller's app
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-        const plugin = (this.app as any).plugins.plugins[
-          "dynamic-views"
-        ] as DynamicViewsPlugin;
-        const templateSnapshot =
-          plugin.persistenceManager.getTemplateSnapshot("masonry");
-
-        if (templateSnapshot) {
-          const defaults = templateSnapshot.settings;
-          // Write key template values immediately so settings UI sees them
-          if (defaults.titleProperty !== undefined) {
-            this.config.set("titleProperty", defaults.titleProperty);
-          }
-          if (defaults.cardSize !== undefined) {
-            this.config.set("cardSize", defaults.cardSize);
-          }
-          // Mark as initialized so onDataUpdated knows to skip full initialization
-          this.config.set(INIT_MARKER, true);
-        }
-      }
-    }
-
     // Store scroll parent reference
     this.scrollEl = scrollEl;
     // Find leaf by matching container (getLeaf() creates new leaf if pinned, activeLeaf is deprecated)
@@ -487,38 +392,6 @@ export class DynamicViewsMasonryView extends BasesView {
   }
 
   onDataUpdated(): void {
-    // Handle template toggle changes (Obsidian calls onDataUpdated for config changes)
-    this.handleTemplateToggle();
-
-    // Initialize view defaults on first render (config is now available)
-    if (!this.hasInitializedDefaults) {
-      const allKeys = tryGetAllConfig(this.config);
-      console.log(
-        "[masonry-view] onDataUpdated - First render, allKeys:",
-        allKeys,
-      );
-      if (allKeys) {
-        try {
-          initializeViewDefaults(
-            this.config,
-            allKeys,
-            this.plugin,
-            this.file,
-            "masonry",
-          );
-          console.log(
-            "[masonry-view] onDataUpdated - initializeViewDefaults completed",
-          );
-        } catch (e) {
-          console.warn(
-            "[dynamic-views] Failed to initialize view defaults:",
-            e,
-          );
-        }
-      }
-      this.hasInitializedDefaults = true;
-    }
-
     void (async () => {
       // DEBUG: Log when onDataUpdated is called
       console.log("[masonry-view] onDataUpdated - CALLED");
@@ -571,7 +444,30 @@ export class DynamicViewsMasonryView extends BasesView {
       // Track total entries for end indicator
       this.totalEntries = allEntries.length;
 
-      // Read settings - template values are in config, global defaults as fallbacks
+      // Initialize default property values for new views (before reading settings)
+      // This persists defaults so clearing them works correctly
+      // Only run on first render to avoid triggering infinite re-render loop
+      if (this.renderState.version === 1) {
+        const allKeys = tryGetAllConfig(this.config);
+        if (allKeys) {
+          try {
+            initializeViewDefaults(
+              this.config,
+              allKeys,
+              this.plugin,
+              this.file,
+              "masonry",
+            );
+          } catch (e) {
+            console.warn(
+              "[dynamic-views] Failed to initialize view defaults:",
+              e,
+            );
+          }
+        }
+      }
+
+      // Read settings from Bases config (before hash check so we can include settings)
       const settings = readBasesSettings(
         this.config,
         this.plugin.persistenceManager.getGlobalSettings(),

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
 import { App, Notice, View, BasesEntry, PaneType, Keymap } from "obsidian";
-import type { DynamicViewsCardView } from "../bases/grid-view";
+import type { DynamicViewsGridView } from "../bases/grid-view";
 import type { DynamicViewsMasonryView } from "../bases/masonry-view";
 
-type DynamicBasesView = DynamicViewsCardView | DynamicViewsMasonryView;
+type DynamicBasesView = DynamicViewsGridView | DynamicViewsMasonryView;
 
 /**
  * Calculate pane type based on modifier keys and setting.

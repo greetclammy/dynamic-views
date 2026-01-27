@@ -3,7 +3,7 @@
  * Eliminates code duplication between view implementations
  */
 
-import { BasesEntry, TFile, TFolder, Menu, App } from "obsidian";
+import { BasesEntry, TFile, TFolder, Menu, App, BasesView } from "obsidian";
 import { resolveTimestampProperty } from "../shared/data-transform";
 import {
   getFirstBasesPropertyValue,
@@ -31,7 +31,7 @@ interface BasesConfigInit {
 }
 
 /** Marker key for initialized views - plugin-scoped to avoid collisions */
-const INIT_MARKER = "_dynamic-views-initialized";
+export const INIT_MARKER = "_dynamic-views-initialized";
 
 /**
  * Safely get all config keys, validating structure
@@ -124,14 +124,19 @@ export function initializeViewDefaults(
   config: BasesConfigInit,
   allKeys: Record<string, unknown>,
   plugin: DynamicViewsPlugin,
-  file: TFile,
+  file: TFile | null,
   viewType: "grid" | "masonry",
 ): void {
+  console.log(
+    `[initializeViewDefaults] Called for ${viewType}, hasInitMarker=${INIT_MARKER in allKeys}`,
+  );
+
   // Check for initialization marker (persists even if user clears all settings)
   if (INIT_MARKER in allKeys) {
-    // View was initialized before - persist cleared state as "" so it survives reload
-    // (undefined doesn't persist to JSON, but "" does)
-    // Also handle corrupted values (non-string types)
+    // View was initialized before - preserve existing state, don't apply template
+    console.log(
+      "[initializeViewDefaults] Already initialized, preserving state",
+    );
     for (const key of PROPERTY_DISPLAY_KEYS) {
       if (needsEmptyString(allKeys[key])) {
         safeConfigSet(config, key, "");
@@ -140,20 +145,102 @@ export function initializeViewDefaults(
     return;
   }
 
-  // Fresh view - check for template or use defaults
+  // Fresh view - check for template snapshot or use defaults
   let defaults: Partial<DefaultViewSettings>;
-  const templateFile = plugin.persistenceManager.getTemplateView(viewType);
+  const templateSnapshot =
+    plugin.persistenceManager.getTemplateSnapshot(viewType);
 
-  if (templateFile) {
-    // Copy settings from template view
-    defaults = plugin.persistenceManager.getViewSettings(templateFile);
+  console.log(
+    `[initializeViewDefaults] viewType=${viewType}, hasTemplate=${!!templateSnapshot}`,
+  );
+  if (templateSnapshot) {
+    console.log(
+      "[initializeViewDefaults] Using template snapshot, titleProperty:",
+      templateSnapshot.settings.titleProperty,
+    );
+    console.log(
+      "[initializeViewDefaults] Using template snapshot, cardSize:",
+      templateSnapshot.settings.cardSize,
+    );
+  }
+
+  if (templateSnapshot) {
+    // Copy from template snapshot settings
+    defaults = templateSnapshot.settings;
   } else {
     // Use global defaults
+    console.log("[initializeViewDefaults] No template, using global defaults");
     defaults = plugin.persistenceManager.getDefaultViewSettings();
   }
 
   // Initialize with defaults
   safeConfigSet(config, INIT_MARKER, true);
+
+  // Apply all settings from template or global defaults
+  console.log(
+    "[initializeViewDefaults] About to apply titleProperty:",
+    defaults?.titleProperty,
+  );
+  if (defaults?.titleProperty !== undefined) {
+    safeConfigSet(config, "titleProperty", defaults.titleProperty);
+    console.log("[initializeViewDefaults] Applied titleProperty successfully");
+  } else {
+    console.log(
+      "[initializeViewDefaults] titleProperty is undefined, skipping",
+    );
+  }
+  if (defaults?.textPreviewProperty !== undefined) {
+    safeConfigSet(config, "textPreviewProperty", defaults.textPreviewProperty);
+  }
+  if (defaults?.imageProperty !== undefined) {
+    safeConfigSet(config, "imageProperty", defaults.imageProperty);
+  }
+  if (defaults?.urlProperty !== undefined) {
+    safeConfigSet(config, "urlProperty", defaults.urlProperty);
+  }
+  if (defaults?.subtitleProperty !== undefined) {
+    safeConfigSet(config, "subtitleProperty", defaults.subtitleProperty);
+  }
+  if (defaults?.fallbackToContent !== undefined) {
+    safeConfigSet(config, "fallbackToContent", defaults.fallbackToContent);
+  }
+  if (defaults?.fallbackToEmbeds !== undefined) {
+    safeConfigSet(config, "fallbackToEmbeds", defaults.fallbackToEmbeds);
+  }
+  if (defaults?.cssclasses !== undefined) {
+    safeConfigSet(config, "cssclasses", defaults.cssclasses);
+  }
+  if (defaults?.cardSize !== undefined) {
+    safeConfigSet(config, "cardSize", defaults.cardSize);
+  }
+  if (defaults?.imageFormat !== undefined) {
+    // Split combined format back to separate dropdowns
+    const format = defaults.imageFormat;
+    if (format === "none" || format === "backdrop") {
+      safeConfigSet(config, "imageFormat", format);
+    } else if (format.startsWith("thumbnail-") || format.startsWith("cover-")) {
+      const [baseFormat, position] = format.split("-") as [
+        "thumbnail" | "cover",
+        string,
+      ];
+      safeConfigSet(config, "imageFormat", baseFormat);
+      safeConfigSet(config, "imagePosition", position);
+    }
+  }
+  if (defaults?.imageFit !== undefined) {
+    safeConfigSet(config, "imageFit", defaults.imageFit);
+  }
+  if (defaults?.imageAspectRatio !== undefined) {
+    safeConfigSet(config, "imageAspectRatio", defaults.imageAspectRatio);
+  }
+  if (defaults?.propertyLabels !== undefined) {
+    safeConfigSet(config, "propertyLabels", defaults.propertyLabels);
+  }
+  if (defaults?.listMarker !== undefined) {
+    safeConfigSet(config, "listMarker", defaults.listMarker);
+  }
+
+  // Property display strings (1-14)
   safeConfigSet(
     config,
     "propertyDisplay1",
@@ -167,6 +254,57 @@ export function initializeViewDefaults(
   // Properties 3-14 default to "" (empty) - persist so clearing works
   for (const key of PROPERTY_DISPLAY_KEYS.slice(2)) {
     safeConfigSet(config, key, defaults?.[key] ?? "");
+  }
+
+  // Property set side-by-side booleans (1-7)
+  if (defaults?.propertySet1SideBySide !== undefined) {
+    safeConfigSet(
+      config,
+      "propertySet1SideBySide",
+      defaults.propertySet1SideBySide,
+    );
+  }
+  if (defaults?.propertySet2SideBySide !== undefined) {
+    safeConfigSet(
+      config,
+      "propertySet2SideBySide",
+      defaults.propertySet2SideBySide,
+    );
+  }
+  if (defaults?.propertySet3SideBySide !== undefined) {
+    safeConfigSet(
+      config,
+      "propertySet3SideBySide",
+      defaults.propertySet3SideBySide,
+    );
+  }
+  if (defaults?.propertySet4SideBySide !== undefined) {
+    safeConfigSet(
+      config,
+      "propertySet4SideBySide",
+      defaults.propertySet4SideBySide,
+    );
+  }
+  if (defaults?.propertySet5SideBySide !== undefined) {
+    safeConfigSet(
+      config,
+      "propertySet5SideBySide",
+      defaults.propertySet5SideBySide,
+    );
+  }
+  if (defaults?.propertySet6SideBySide !== undefined) {
+    safeConfigSet(
+      config,
+      "propertySet6SideBySide",
+      defaults.propertySet6SideBySide,
+    );
+  }
+  if (defaults?.propertySet7SideBySide !== undefined) {
+    safeConfigSet(
+      config,
+      "propertySet7SideBySide",
+      defaults.propertySet7SideBySide,
+    );
   }
 }
 
@@ -587,7 +725,11 @@ export function renderGroupHeader(
   if (!serializeGroupKey(group.key)) {
     valueEl.setText("None");
     const countEl = headerEl.createDiv("bases-group-count");
-    const countText = entryCount === 1 ? "1 result" : `${entryCount} results`;
+    const formattedCount = entryCount
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const countText =
+      entryCount === 1 ? "1 result" : `${formattedCount} results`;
     countEl.setText(countText);
     return;
   }
@@ -596,7 +738,10 @@ export function renderGroupHeader(
 
   // Render result count
   const countEl = headerEl.createDiv("bases-group-count");
-  const countText = entryCount === 1 ? "1 result" : `${entryCount} results`;
+  const formattedCount = entryCount
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const countText = entryCount === 1 ? "1 result" : `${formattedCount} results`;
   countEl.setText(countText);
 }
 
@@ -755,4 +900,92 @@ export async function loadContentForEntries(
       },
     );
   }
+}
+
+/** Interface for accessing Bases view through Obsidian's view wrapper */
+interface BasesViewWrapper {
+  controller?: {
+    view?: {
+      type?: string;
+      config: {
+        get(key: string): unknown;
+        set(key: string, value: unknown): void;
+      };
+    };
+  };
+}
+
+/**
+ * Check if a view is the current template by comparing timestamps
+ * Used to validate template toggle state on view load
+ * @param config - View's config object
+ * @param viewType - "grid" or "masonry"
+ * @param plugin - Plugin instance for accessing persistence manager
+ * @returns true if this view is the current template, false if stale
+ */
+export function isCurrentTemplateView(
+  config: BasesConfigInit,
+  viewType: "grid" | "masonry",
+  plugin: DynamicViewsPlugin,
+): boolean {
+  const savedSnapshot = plugin.persistenceManager.getTemplateSnapshot(viewType);
+
+  // No snapshot exists - this can't be the template
+  if (!savedSnapshot) {
+    return false;
+  }
+
+  // Get this view's timestamp
+  const viewTimestamp = config.get("__templateSetAt");
+
+  // Compare timestamps - only the view that most recently became template should match
+  return viewTimestamp === savedSnapshot.setAt;
+}
+
+/**
+ * Disable __isTemplate toggle in all other views of the same type
+ * Implements mutual exclusion - only one view of each type can be template
+ * @param app - Obsidian App instance
+ * @param viewType - Type identifier ("dynamic-views-grid" or "dynamic-views-masonry")
+ * @param currentView - The view that should remain enabled (optional - skip this one)
+ */
+export function disableOtherViewTemplates(
+  app: App,
+  viewType: "dynamic-views-grid" | "dynamic-views-masonry",
+  currentView?: BasesView,
+): void {
+  console.log(
+    `[disableOtherViewTemplates] Disabling templates for type: ${viewType}`,
+  );
+
+  app.workspace.iterateAllLeaves((leaf) => {
+    const view = leaf.view as BasesViewWrapper;
+    const actualView = view.controller?.view;
+
+    // Skip if not a dynamic-views view
+    if (!actualView?.type?.startsWith("dynamic-views-")) {
+      return;
+    }
+
+    // Skip if different view type (e.g., masonry when we're processing grid)
+    if (actualView.type !== viewType) {
+      return;
+    }
+
+    // Skip the current view (the one being enabled)
+    if (currentView && actualView === currentView) {
+      return;
+    }
+
+    // Check if this view has template enabled
+    const isTemplate = actualView.config.get("__isTemplate") === true;
+    if (isTemplate) {
+      console.log(
+        `[disableOtherViewTemplates] Disabling template in view`,
+        actualView,
+      );
+      // Setting config triggers setSettings() automatically
+      actualView.config.set("__isTemplate", false);
+    }
+  });
 }

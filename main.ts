@@ -11,7 +11,7 @@ import { View } from "./src/datacore/view";
 import { setDatacorePreact } from "./src/jsx-runtime";
 import { getAvailablePath } from "./src/utils/file";
 import "./src/jsx-runtime"; // Ensure h and Fragment are globally available
-import { DynamicViewsCardView, cardViewOptions } from "./src/bases/grid-view";
+import { DynamicViewsGridView, cardViewOptions } from "./src/bases/grid-view";
 import {
   DynamicViewsMasonryView,
   masonryViewOptions,
@@ -73,7 +73,7 @@ export default class DynamicViewsPlugin extends Plugin {
       name: "Grid",
       icon: "lucide-grid-2x-2",
       factory: (controller: QueryController, scrollEl: HTMLElement) =>
-        new DynamicViewsCardView(controller, scrollEl),
+        new DynamicViewsGridView(controller, scrollEl),
       options: cardViewOptions,
     });
 
@@ -196,26 +196,6 @@ export default class DynamicViewsPlugin extends Plugin {
           const ext = file.extension.toLowerCase();
           if (IMAGE_EXTENSIONS.has(ext)) {
             invalidateCacheForFile(file.path);
-          }
-        }
-      }),
-    );
-
-    // Clean up template references when files are deleted
-    this.registerEvent(
-      this.app.vault.on("delete", (file) => {
-        if (!(file instanceof TFile)) return;
-
-        const ctime = file.stat.ctime;
-        const templates = this.persistenceManager.getAllTemplateCtimes();
-
-        // Clear any template references to this file
-        for (const [viewType, templateCtime] of Object.entries(templates)) {
-          if (templateCtime === ctime) {
-            void this.persistenceManager.setTemplateView(
-              viewType as "grid" | "masonry" | "list",
-              null,
-            );
           }
         }
       }),

@@ -789,16 +789,6 @@ export class SharedCardRenderer {
 
     // Helper to render title content into a container
     const renderTitleContent = (titleEl: HTMLElement) => {
-      // Only strip extension when titleProperty is file.fullname
-      const normalized = normalizePropertyName(
-        this.app,
-        settings.titleProperty || "",
-      );
-      const isFullname = normalized === "file.fullname";
-      const displayTitle = isFullname
-        ? stripExtFromTitle(card.title, card.path, true)
-        : card.title;
-
       // Add file type icon first (hidden by default, shown via CSS when Icon mode selected)
       const icon = getFileTypeIcon(card.path);
       if (icon) {
@@ -942,7 +932,12 @@ export class SharedCardRenderer {
     };
 
     // Check if title or subtitle will be rendered
-    const hasTitle = true;
+    const normalized = normalizePropertyName(settings.titleProperty || "");
+    const isFullname = normalized === "file.fullname";
+    const displayTitle = isFullname
+      ? stripExtFromTitle(card.title, card.path, true)
+      : card.title;
+    const hasTitle = !!displayTitle;
     const hasSubtitle = settings.subtitleProperty && card.subtitle;
 
     // Title and Subtitle - wrapped in card-header when URL button present

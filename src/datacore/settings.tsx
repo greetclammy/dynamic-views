@@ -1,4 +1,8 @@
-import { Settings as SettingsType, ViewMode } from "../types";
+import {
+  Settings as SettingsType,
+  ViewMode,
+  DefaultViewSettings,
+} from "../types";
 import type { DatacoreAPI } from "./types";
 import type { TFile } from "obsidian";
 import type DynamicViewsPlugin from "../../main";
@@ -142,19 +146,80 @@ export function Settings({
   };
 
   // Datacore settings are per-file (shared across all view modes)
-  // Always use grid template since card mode (datacore) = grid view (bases)
+  // Always use "grid" template (settings shared across card/masonry/list modes)
   const templateType = "grid";
 
-  // Template toggle state (independent of current view mode)
+  // Template toggle state - check if snapshot exists
   const [isTemplate, setIsTemplate] = dc.useState(
-    plugin.persistenceManager.isTemplateView(currentFile, templateType),
+    plugin.persistenceManager.getTemplateSnapshot(templateType) !== null,
   );
 
   const handleToggleTemplate = (enabled: boolean) => {
-    void plugin.persistenceManager.setTemplateView(
-      templateType,
-      enabled ? currentFile : null,
+    console.log(
+      `[datacore-settings] handleToggleTemplate called: enabled=${enabled}`,
     );
+    if (enabled) {
+      // Extract current settings
+      const settingsSnapshot: Partial<DefaultViewSettings> = {
+        titleProperty: settings.titleProperty,
+        textPreviewProperty: settings.textPreviewProperty,
+        imageProperty: settings.imageProperty,
+        urlProperty: settings.urlProperty,
+        subtitleProperty: settings.subtitleProperty,
+        propertyDisplay1: settings.propertyDisplay1,
+        propertyDisplay2: settings.propertyDisplay2,
+        propertyDisplay3: settings.propertyDisplay3,
+        propertyDisplay4: settings.propertyDisplay4,
+        propertyDisplay5: settings.propertyDisplay5,
+        propertyDisplay6: settings.propertyDisplay6,
+        propertyDisplay7: settings.propertyDisplay7,
+        propertyDisplay8: settings.propertyDisplay8,
+        propertyDisplay9: settings.propertyDisplay9,
+        propertyDisplay10: settings.propertyDisplay10,
+        propertyDisplay11: settings.propertyDisplay11,
+        propertyDisplay12: settings.propertyDisplay12,
+        propertyDisplay13: settings.propertyDisplay13,
+        propertyDisplay14: settings.propertyDisplay14,
+        propertySet1SideBySide: settings.propertySet1SideBySide,
+        propertySet2SideBySide: settings.propertySet2SideBySide,
+        propertySet3SideBySide: settings.propertySet3SideBySide,
+        propertySet4SideBySide: settings.propertySet4SideBySide,
+        propertySet5SideBySide: settings.propertySet5SideBySide,
+        propertySet6SideBySide: settings.propertySet6SideBySide,
+        propertySet7SideBySide: settings.propertySet7SideBySide,
+        propertySet1Position: settings.propertySet1Position,
+        propertySet2Position: settings.propertySet2Position,
+        propertySet3Position: settings.propertySet3Position,
+        propertySet4Position: settings.propertySet4Position,
+        propertySet5Position: settings.propertySet5Position,
+        propertySet6Position: settings.propertySet6Position,
+        propertySet7Position: settings.propertySet7Position,
+        propertyLabels: settings.propertyLabels,
+        fallbackToContent: settings.fallbackToContent,
+        fallbackToEmbeds: settings.fallbackToEmbeds,
+        imageFormat: settings.imageFormat,
+        imageFit: settings.imageFit,
+        imageAspectRatio: settings.imageAspectRatio,
+        queryHeight: settings.queryHeight,
+        listMarker: settings.listMarker,
+        cardSize: settings.cardSize,
+        cssclasses: settings.cssclasses,
+      };
+
+      // Wrap in TemplateSnapshot with timestamp
+      const timestamp = Date.now();
+      console.log(
+        `[datacore-settings] Saving template snapshot with timestamp: ${timestamp}`,
+      );
+      void plugin.persistenceManager.setTemplateSnapshot(templateType, {
+        settings: settingsSnapshot,
+        setAt: timestamp,
+      });
+    } else {
+      // Clear template
+      console.log(`[datacore-settings] Clearing template snapshot`);
+      void plugin.persistenceManager.setTemplateSnapshot(templateType, null);
+    }
     setIsTemplate(enabled);
   };
 
@@ -555,6 +620,11 @@ export function Settings({
         <div
           className={`settings-section-content ${expandedSections.more ? "" : "collapsed"}`}
         >
+          {renderTextInput(
+            "cssclasses",
+            "cssclasses",
+            "Comma-separated if multiple",
+          )}
           <div className="setting-item setting-item-toggle">
             <div className="setting-item-info">
               <label>Use these settings for new views</label>
@@ -567,11 +637,6 @@ export function Settings({
               aria-checked={isTemplate}
             />
           </div>
-          {renderTextInput(
-            "cssclasses",
-            "cssclasses",
-            "Comma-separated if multiple",
-          )}
         </div>
       </div>
 

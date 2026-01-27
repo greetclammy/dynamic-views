@@ -17,7 +17,7 @@ interface BasesConfig {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bases API requires any for options array structure
 export function getBasesViewOptions(): any[] {
-  return [
+  const schema = [
     {
       type: "slider",
       displayName: "Card size",
@@ -136,23 +136,6 @@ export function getBasesViewOptions(): any[] {
           max: 2.5,
           step: 0.05,
           default: DEFAULT_VIEW_SETTINGS.imageAspectRatio,
-        },
-      ],
-    },
-    {
-      type: "group",
-      displayName: "Properties",
-      items: [
-        {
-          type: "dropdown",
-          displayName: "Property labels",
-          key: "propertyLabels",
-          options: {
-            inline: "Inline",
-            above: "On top",
-            hide: "Hide",
-          },
-          default: DEFAULT_VIEW_SETTINGS.propertyLabels,
         },
       ],
     },
@@ -410,13 +393,18 @@ export function getBasesViewOptions(): any[] {
     },
     {
       type: "group",
-      displayName: "More",
+      displayName: "Other",
       items: [
         {
-          type: "toggle",
-          displayName: "Use these settings for new views",
-          key: "__isTemplate",
-          default: false,
+          type: "dropdown",
+          displayName: "Property labels",
+          key: "propertyLabels",
+          options: {
+            inline: "Inline",
+            above: "On top",
+            hide: "Hide",
+          },
+          default: DEFAULT_VIEW_SETTINGS.propertyLabels,
         },
         {
           type: "text",
@@ -425,9 +413,19 @@ export function getBasesViewOptions(): any[] {
           placeholder: "Comma-separated if multiple",
           default: "",
         },
+        {
+          type: "toggle",
+          displayName: "Use these settings for new views",
+          key: "__isTemplate",
+          default: false,
+        },
       ],
     },
   ];
+  console.log(
+    "[getBasesViewOptions] Returning schema with __isTemplate toggle",
+  );
+  return schema;
 }
 
 /**
@@ -451,6 +449,7 @@ export function readBasesSettings(
   const defaults = defaultViewSettings || DEFAULT_VIEW_SETTINGS;
 
   // Helper: get string property with fallback
+  // Empty string "" is a valid user choice (intentionally cleared field)
   const getString = (key: string, fallback: string): string => {
     const value = config.get(key);
     if (value !== undefined && value !== null) {
@@ -652,5 +651,206 @@ export function readBasesSettings(
     showCardLinkCovers: globalSettings.showCardLinkCovers,
     preventSidebarSwipe: globalSettings.preventSidebarSwipe,
     revealInNotebookNavigator: globalSettings.revealInNotebookNavigator,
+  };
+}
+
+/**
+ * Extract view-specific settings snapshot from Bases config
+ * Used for template system - captures only view-specific settings
+ * @param config Bases view configuration
+ * @param defaults Default view settings for fallback values
+ * @returns Partial settings object suitable for template storage
+ */
+export function extractBasesSnapshot(
+  config: BasesConfig,
+  defaults: DefaultViewSettings,
+): Partial<DefaultViewSettings> {
+  // Helper: get string property with fallback
+  // Empty string "" is a valid user choice (intentionally cleared field)
+  const getString = (key: string, fallback: string): string => {
+    const value = config.get(key);
+    if (value !== undefined && value !== null) {
+      return typeof value === "string" ? value : fallback;
+    }
+    return fallback;
+  };
+
+  // Helper: get boolean property with fallback
+  const getBool = (key: string, fallback: boolean): boolean => {
+    const value = config.get(key);
+    return typeof value === "boolean" ? value : fallback;
+  };
+
+  // Helper: get number property with fallback
+  const getNumber = (key: string, fallback: number): number => {
+    const value = config.get(key);
+    return typeof value === "number" && Number.isFinite(value)
+      ? value
+      : fallback;
+  };
+
+  // Helper: get position property with fallback
+  const getPosition = (
+    key: string,
+    fallback: "top" | "bottom",
+  ): "top" | "bottom" => {
+    const value = config.get(key);
+    return value === "top" || value === "bottom" ? value : fallback;
+  };
+
+  // Helper: get imageFormat from separate format and position dropdowns
+  const getImageFormat = (): Settings["imageFormat"] => {
+    const format = config.get("imageFormat");
+    const position = config.get("imagePosition");
+
+    if (format === "none") return "none";
+    if (format === "backdrop") return "backdrop";
+
+    // Combine format + position (e.g., "cover" + "top" → "cover-top")
+    if (
+      (format === "thumbnail" || format === "cover") &&
+      (position === "left" ||
+        position === "right" ||
+        position === "top" ||
+        position === "bottom")
+    ) {
+      return `${format}-${position}` as Settings["imageFormat"];
+    }
+
+    return defaults.imageFormat;
+  };
+
+  return {
+    // String properties
+    titleProperty: getString("titleProperty", defaults.titleProperty),
+    textPreviewProperty: getString(
+      "textPreviewProperty",
+      defaults.textPreviewProperty,
+    ),
+    imageProperty: getString("imageProperty", defaults.imageProperty),
+    urlProperty: getString("urlProperty", defaults.urlProperty),
+    subtitleProperty: getString("subtitleProperty", defaults.subtitleProperty),
+
+    // Boolean properties
+    fallbackToContent: getBool("fallbackToContent", defaults.fallbackToContent),
+
+    // Enum: fallbackToEmbeds
+    fallbackToEmbeds: (() => {
+      const value = config.get("fallbackToEmbeds");
+      return value === "always" ||
+        value === "if-unavailable" ||
+        value === "never"
+        ? value
+        : defaults.fallbackToEmbeds;
+    })(),
+
+    // Property display strings (1-14)
+    propertyDisplay1: getString("propertyDisplay1", ""),
+    propertyDisplay2: getString("propertyDisplay2", ""),
+    propertyDisplay3: getString("propertyDisplay3", ""),
+    propertyDisplay4: getString("propertyDisplay4", ""),
+    propertyDisplay5: getString("propertyDisplay5", ""),
+    propertyDisplay6: getString("propertyDisplay6", ""),
+    propertyDisplay7: getString("propertyDisplay7", ""),
+    propertyDisplay8: getString("propertyDisplay8", ""),
+    propertyDisplay9: getString("propertyDisplay9", ""),
+    propertyDisplay10: getString("propertyDisplay10", ""),
+    propertyDisplay11: getString("propertyDisplay11", ""),
+    propertyDisplay12: getString("propertyDisplay12", ""),
+    propertyDisplay13: getString("propertyDisplay13", ""),
+    propertyDisplay14: getString("propertyDisplay14", ""),
+
+    // CSS classes for view container
+    cssclasses: getString("cssclasses", defaults.cssclasses),
+
+    // Property set side-by-side booleans (1-7)
+    propertySet1SideBySide: getBool(
+      "propertySet1SideBySide",
+      defaults.propertySet1SideBySide,
+    ),
+    propertySet2SideBySide: getBool(
+      "propertySet2SideBySide",
+      defaults.propertySet2SideBySide,
+    ),
+    propertySet3SideBySide: getBool(
+      "propertySet3SideBySide",
+      defaults.propertySet3SideBySide,
+    ),
+    propertySet4SideBySide: getBool(
+      "propertySet4SideBySide",
+      defaults.propertySet4SideBySide,
+    ),
+    propertySet5SideBySide: getBool(
+      "propertySet5SideBySide",
+      defaults.propertySet5SideBySide,
+    ),
+    propertySet6SideBySide: getBool(
+      "propertySet6SideBySide",
+      defaults.propertySet6SideBySide,
+    ),
+    propertySet7SideBySide: getBool(
+      "propertySet7SideBySide",
+      defaults.propertySet7SideBySide,
+    ),
+
+    // Property set positions (1-7)
+    propertySet1Position: getPosition(
+      "propertySet1Position",
+      defaults.propertySet1Position,
+    ),
+    propertySet2Position: getPosition(
+      "propertySet2Position",
+      defaults.propertySet2Position,
+    ),
+    propertySet3Position: getPosition(
+      "propertySet3Position",
+      defaults.propertySet3Position,
+    ),
+    propertySet4Position: getPosition(
+      "propertySet4Position",
+      defaults.propertySet4Position,
+    ),
+    propertySet5Position: getPosition(
+      "propertySet5Position",
+      defaults.propertySet5Position,
+    ),
+    propertySet6Position: getPosition(
+      "propertySet6Position",
+      defaults.propertySet6Position,
+    ),
+    propertySet7Position: getPosition(
+      "propertySet7Position",
+      defaults.propertySet7Position,
+    ),
+
+    // Enum: propertyLabels
+    propertyLabels: (() => {
+      const value = config.get("propertyLabels");
+      return value === "hide" || value === "inline" || value === "above"
+        ? value
+        : defaults.propertyLabels;
+    })(),
+
+    // Image settings
+    imageFormat: getImageFormat(),
+    imageFit: (() => {
+      const value = config.get("imageFit");
+      return value === "crop" || value === "contain"
+        ? value
+        : defaults.imageFit;
+    })(),
+    imageAspectRatio: getNumber("imageAspectRatio", defaults.imageAspectRatio),
+    cardSize: getNumber("cardSize", defaults.cardSize),
+
+    // Enum: listMarker
+    listMarker: (() => {
+      const value = config.get("listMarker");
+      return value === "bullet" || value === "number"
+        ? value
+        : defaults.listMarker;
+    })(),
+
+    // queryHeight set to 0 (not configurable in Bases)
+    queryHeight: 0,
   };
 }

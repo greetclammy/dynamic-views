@@ -2905,12 +2905,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 }
 
 /* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
-.bases-view[data-view-type="dynamic-views-grid"] .dynamic-views-grid .card,
-.dynamic-views .dynamic-views-grid .card,
-.workspace-leaf-content[data-type="bases"]
-  .dynamic-views
-  .dynamic-views-grid
-  .card {
+.dynamic-views-grid .card {
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -2945,22 +2940,11 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   order: 50;
 }
 
-/* Grid mode: push bottom properties to bottom of card */
+/* Grid mode: push bottom properties to bottom of card when it has siblings above */
 .dynamic-views
   .dynamic-views-grid
   .card
-  .card-content
-  ~ .card-properties-bottom,
-.dynamic-views
-  .dynamic-views-grid
-  .card
-  .card-title-group
-  ~ .card-properties-bottom,
-.dynamic-views
-  .dynamic-views-grid
-  .card
-  .card-header
-  ~ .card-properties-bottom {
+  .card-properties-bottom:not(:first-child) {
   margin-top: auto;
   padding-top: var(--size-4-2);
 }
@@ -3045,7 +3029,9 @@ body.dynamic-views-hide-group-count .dynamic-views .bases-group-count {
 }
 
 /* Hide group property labels when toggle enabled */
-body.dynamic-views-hide-group-property-labels .dynamic-views .bases-group-property {
+body.dynamic-views-hide-group-property-labels
+  .dynamic-views
+  .bases-group-property {
   display: none;
 }
 
@@ -3276,6 +3262,26 @@ body.dynamic-views-adaptive-text .dynamic-views .card:focus-visible::after {
 .dynamic-views
   .card:not(:has(.card-title)):not(:has(.card-header)):not(:has(.card-subtitle))
   .card-properties-top {
+  margin-top: 0;
+}
+
+/* Remove owl-pattern margin from card-content when it's visually first (no header, no cover/properties before it) */
+.dynamic-views
+  .card:not(:has(.card-title)):not(:has(.card-header)):not(
+    :has(.card-subtitle)
+  ):not(:has(.card-properties-top)):not(
+    :has(.card-cover-wrapper:not(.card-cover-wrapper-placeholder))
+  )
+  .card-content {
+  margin-top: 0;
+}
+
+/* Remove owl-pattern margin from card-content after cover-top when no header (cover margin already provides spacing) */
+.dynamic-views
+  .card.card-cover-top:not(:has(.card-title)):not(:has(.card-header)):not(
+    :has(.card-subtitle)
+  )
+  .card-content {
   margin-top: 0;
 }
 
@@ -4351,55 +4357,30 @@ body.dynamic-views-show-cover-placeholder-none
   margin-top: var(--size-4-2);
 }
 
-/* Element spacing for cards with visible placeholder */
-/* Grid view (default or explicit setting) */
-body:not(.dynamic-views-show-cover-placeholder-masonry):not(
-    .dynamic-views-show-cover-placeholder-both
-  ):not(.dynamic-views-show-cover-placeholder-none)
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  > *
-  + *:not(.card-cover-wrapper):not(.card-properties-bottom),
-body.dynamic-views-show-cover-placeholder-grid
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  > *
-  + *:not(.card-cover-wrapper):not(.card-properties-bottom),
-body.dynamic-views-show-cover-placeholder-both
-  .dynamic-views
-  .dynamic-views-grid
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  > *
-  + *:not(.card-cover-wrapper):not(.card-properties-bottom),
-/* Masonry view (when visible) */
-body.dynamic-views-show-cover-placeholder-masonry
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  > *
-  + *:not(.card-cover-wrapper):not(.card-properties-bottom),
-body.dynamic-views-show-cover-placeholder-both
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  > *
-  + *:not(.card-cover-wrapper):not(.card-properties-bottom),
-/* Masonry view (when hidden - grid-only or none setting) */
-body.dynamic-views-show-cover-placeholder-grid
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  > *
-  + *:not(.card-cover-wrapper):not(.card-properties-bottom),
-body.dynamic-views-show-cover-placeholder-none
-  .dynamic-views
-  .dynamic-views-masonry
+/* Element spacing for cards with placeholder (visibility controlled by body classes elsewhere) */
+.dynamic-views
   .card.image-format-cover:has(.card-cover-wrapper-placeholder)
   > *
   + *:not(.card-cover-wrapper):not(.card-properties-bottom) {
   margin-top: var(--size-4-2);
+}
+
+/* Remove spacing from card-content when it's first visible element (no visible header, no properties-top) */
+.dynamic-views
+  .card.image-format-cover:not(:has(.card-title)):not(:has(.card-header)):not(
+    :has(.card-subtitle)
+  ):not(:has(.card-properties-top))
+  .card-content {
+  margin-top: 0 !important;
+}
+
+/* Remove spacing from properties-top when it's first visible element (no visible header) */
+.dynamic-views
+  .card.image-format-cover:not(:has(.card-title)):not(:has(.card-header)):not(
+    :has(.card-subtitle)
+  )
+  .card-properties-top {
+  margin-top: 0 !important;
 }
 
 /* Title-subtitle gap override for cover cards (higher specificity than owl selectors above) */
@@ -4467,7 +4448,7 @@ body.dynamic-views-show-cover-placeholder-none
       var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
     )
     calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
-    var(--size-4-2)
+    var(--dynamic-views-card-padding, 8px)
     calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px));
 }
 
@@ -4476,10 +4457,16 @@ body.dynamic-views-show-cover-placeholder-none
   .card.card-cover-bottom.image-format-cover
   .card-cover-wrapper.card-cover-wrapper-placeholder {
   order: 999;
-  margin: auto
-    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
-    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
-    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px));
+  margin-top: var(--dynamic-views-card-padding, 8px);
+  margin-right: calc(
+    var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
+  );
+  margin-bottom: calc(
+    var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
+  );
+  margin-left: calc(
+    var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
+  );
 }
 
 /* Cover-bottom: wrapper at end with negative margins to bleed to edges */
@@ -4487,10 +4474,16 @@ body.dynamic-views-show-cover-placeholder-none
   .card.card-cover-bottom.image-format-cover
   .card-cover-wrapper:not(.card-cover-wrapper-placeholder) {
   order: 999; /* Last */
-  margin: var(--size-4-2)
-    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
-    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px))
-    calc(var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px));
+  margin-top: var(--dynamic-views-card-padding, 8px) !important;
+  margin-right: calc(
+    var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
+  );
+  margin-bottom: calc(
+    var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
+  );
+  margin-left: calc(
+    var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
+  );
 }
 
 /* ==================== COVER-ONLY CARDS ==================== */
@@ -4742,19 +4735,24 @@ body.dynamic-views-show-cover-border
 }
 
 /* Placeholder background: follows cover background setting */
-/* Plain */
-body.dynamic-views-cover-bg-plain
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover-placeholder {
-  background-color: var(--dynamic-views-image-background-plain);
-}
-/* Ambient: fallback to plain since no image to extract from */
+/* Plain & Ambient (ambient falls back to plain since no image to extract from) */
+body.dynamic-views-cover-bg-plain .dynamic-views .card.image-format-cover .card-cover-placeholder,
 body.dynamic-views-cover-bg-ambient
   .dynamic-views
   .card.image-format-cover
   .card-cover-placeholder {
   background-color: var(--dynamic-views-image-background-plain);
+}
+/* Plain & Ambient: dark mode variant */
+body.dynamic-views-cover-bg-plain.theme-dark
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover-placeholder,
+body.dynamic-views-cover-bg-ambient.theme-dark
+  .dynamic-views
+  .card.image-format-cover
+  .card-cover-placeholder {
+  background-color: #1a1a1a;
 }
 /* Custom */
 body.dynamic-views-cover-bg-custom
@@ -7490,22 +7488,11 @@ body.dynamic-views-no-fade-truncated-text
   min-width: 0;
 }
 
-/* Masonry: push bottom properties to bottom of card */
+/* Masonry: push bottom properties to bottom of card when it has siblings above */
 .dynamic-views
   .dynamic-views-masonry
   .card
-  .card-content
-  ~ .card-properties-bottom,
-.dynamic-views
-  .dynamic-views-masonry
-  .card
-  .card-title-group
-  ~ .card-properties-bottom,
-.dynamic-views
-  .dynamic-views-masonry
-  .card
-  .card-header
-  ~ .card-properties-bottom {
+  .card-properties-bottom:not(:first-child) {
   margin-top: auto;
   padding-top: var(--size-4-2);
 }
