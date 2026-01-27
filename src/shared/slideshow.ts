@@ -14,13 +14,19 @@ import { isExternalUrl } from "../utils/image";
 // Blob URL cache for external images to prevent re-downloads
 // Uses Obsidian's requestUrl to bypass CORS restrictions
 const externalBlobCache = new Map<string, string>();
-// FIFO cache limit - evict oldest (first inserted) when exceeded
+// Cache capacity limit - evicts oldest entry (by insertion order) when exceeded
+// Note: This is insertion-order eviction, not true LRU (accessed items aren't moved to end)
 const BLOB_CACHE_LIMIT = 150;
 // Track in-flight fetch requests to prevent duplicate concurrent fetches
 const pendingFetches = new Map<string, Promise<string | null>>();
+// Track URLs that failed validation to prevent retrying broken images
+const failedValidationUrls = new Set<string>();
 // Flag to prevent orphaned blob URLs during cleanup
 let isCleanedUp = false;
 // Time window to detect "undo" navigation (First→Last→First)
+// If user wraps backward (First→Last) then forward (Last→First) within this window,
+// animation direction is NOT reversed (treats it as accidental undo, not intentional wrap)
+// Value chosen to match typical rapid navigation time while avoiding false positives
 const UNDO_WINDOW_MS = 2500;
 
 /**
@@ -77,6 +83,7 @@ export function cleanupExternalBlobCache(): void {
   externalBlobCache.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
   externalBlobCache.clear();
   pendingFetches.clear();
+  failedValidationUrls.clear();
 }
 
 /**
@@ -90,6 +97,9 @@ export async function getExternalBlobUrl(url: string): Promise<string | null> {
   if (isCleanedUp) return null;
   if (!isExternalUrl(url)) return url;
   if (externalBlobCache.has(url)) return externalBlobCache.get(url)!;
+
+  // Skip URLs that previously failed validation to avoid wasted network requests
+  if (failedValidationUrls.has(url)) return null;
 
   // Deduplicate concurrent requests (check cleanup flag to prevent orphaned blob URLs)
   if (pendingFetches.has(url)) {
@@ -111,6 +121,7 @@ export async function getExternalBlobUrl(url: string): Promise<string | null> {
       const isValid = await validateBlobUrl(blobUrl);
       if (!isValid) {
         URL.revokeObjectURL(blobUrl);
+        failedValidationUrls.add(url); // Track failed URL to prevent retries
         return null;
       }
 
@@ -194,6 +205,20 @@ export function createSlideshowNavigator(
   let currentIndex = 0;
   let isAnimating = false;
   let lastWrapFromFirstTimestamp: number | null = null;
+
+  // Read animation duration from CSS variable at runtime
+  // Falls back to SLIDESHOW_ANIMATION_MS if variable not defined or invalid
+  let animationDuration = SLIDESHOW_ANIMATION_MS;
+  const elements = getElements();
+  if (elements) {
+    const cssValue = getComputedStyle(elements.imageEmbed).getPropertyValue(
+      "--anim-duration-moderate",
+    );
+    const parsed = parseInt(cssValue);
+    if (!isNaN(parsed) && parsed > 0) {
+      animationDuration = parsed;
+    }
+  }
 
   // Track all pending timeouts for consolidated cleanup on abort
   const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
@@ -390,7 +415,7 @@ export function createSlideshowNavigator(
       if (callbacks?.onAnimationComplete) {
         callbacks.onAnimationComplete();
       }
-    }, SLIDESHOW_ANIMATION_MS);
+    }, animationDuration);
     pendingTimeouts.add(animTimeoutId);
 
     // Remove animation classes on abort (timeout already cleared by central handler)
