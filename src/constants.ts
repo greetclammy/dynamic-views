@@ -33,6 +33,7 @@ export const DEFAULT_VIEW_SETTINGS: DefaultViewSettings = {
   propertySet5Position: "bottom",
   propertySet6Position: "bottom",
   propertySet7Position: "bottom",
+  cssclasses: "",
   propertyLabels: "hide",
   subtitleProperty: "file.folder",
   fallbackToContent: true,
@@ -82,6 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
   propertySet5Position: "bottom",
   propertySet6Position: "bottom",
   propertySet7Position: "bottom",
+  cssclasses: "",
   propertyLabels: "hide",
   imageFormat: "thumbnail-right",
   imageFit: "crop",
@@ -107,6 +109,12 @@ export const DEFAULT_UI_STATE = {
   searchQuery: "",
   resultLimit: "",
   widthMode: "normal",
+};
+
+export const DEFAULT_TEMPLATE_VIEWS = {
+  grid: null,
+  masonry: null,
+  list: null,
 };
 
 export const STORAGE_KEY_PREFIX = "dynamic-views";

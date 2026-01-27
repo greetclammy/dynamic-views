@@ -1,7 +1,8 @@
 import { ViewMode, Settings, WidthMode } from "../types";
 import { Settings as SettingsPanel } from "./settings";
 import type { DatacoreAPI, RefObject } from "./types";
-import type { App } from "obsidian";
+import type { App, TFile } from "obsidian";
+import type DynamicViewsPlugin from "../../main";
 import { setupClickOutside } from "../utils/dropdown-position";
 
 interface ResultsDropdownMenuProps {
@@ -225,6 +226,8 @@ function SearchInput({
 interface ToolbarProps {
   dc: DatacoreAPI;
   app: App;
+  plugin: DynamicViewsPlugin;
+  currentFile: TFile | null;
   // View mode
   viewMode: ViewMode;
   showViewDropdown: boolean;
@@ -294,6 +297,8 @@ interface ToolbarProps {
 export function Toolbar({
   dc,
   app,
+  plugin,
+  currentFile,
   viewMode,
   showViewDropdown,
   onToggleViewDropdown,
@@ -1184,6 +1189,9 @@ export function Toolbar({
                 settings={settings}
                 onSettingsChange={onSettingsChange}
                 menuRef={settingsMenuRef}
+                plugin={plugin}
+                currentFile={currentFile}
+                viewMode={viewMode}
               />
             ) : null}
           </div>

@@ -386,7 +386,7 @@ describe("style-settings", () => {
 
   describe("getUrlIcon", () => {
     it("should return default icon", () => {
-      expect(getUrlIcon()).toBe("square-arrow-out-up-right");
+      expect(getUrlIcon()).toBe("arrow-up-right");
     });
 
     it("should return custom value from CSS variable", () => {

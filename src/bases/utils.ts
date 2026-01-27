@@ -22,6 +22,7 @@ import {
 } from "../utils/notebook-navigator";
 import type { Settings, DefaultViewSettings } from "../types";
 import { DEFAULT_VIEW_SETTINGS } from "../constants";
+import type DynamicViewsPlugin from "../../main";
 
 // Bases config interface for initialization (get/set only - getAll handled by tryGetAllConfig)
 interface BasesConfigInit {
@@ -115,12 +116,16 @@ const PROPERTY_DISPLAY_KEYS = [
  *
  * @param config - Bases config object with get/set methods
  * @param allKeys - Pre-fetched config keys from tryGetAllConfig()
- * @param defaults - Default view settings to apply
+ * @param plugin - Plugin instance to access persistence manager
+ * @param file - TFile of the view being initialized
+ * @param viewType - Type of view (grid or masonry)
  */
 export function initializeViewDefaults(
   config: BasesConfigInit,
   allKeys: Record<string, unknown>,
-  defaults: DefaultViewSettings = DEFAULT_VIEW_SETTINGS,
+  plugin: DynamicViewsPlugin,
+  file: TFile,
+  viewType: "grid" | "masonry",
 ): void {
   // Check for initialization marker (persists even if user clears all settings)
   if (INIT_MARKER in allKeys) {
@@ -135,8 +140,19 @@ export function initializeViewDefaults(
     return;
   }
 
-  // Fresh view - set defaults and marker
-  // Only propertyDisplay1-2 have non-empty defaults; 3-14 default to ""
+  // Fresh view - check for template or use defaults
+  let defaults: Partial<DefaultViewSettings>;
+  const templateFile = plugin.persistenceManager.getTemplateView(viewType);
+
+  if (templateFile) {
+    // Copy settings from template view
+    defaults = plugin.persistenceManager.getViewSettings(templateFile);
+  } else {
+    // Use global defaults
+    defaults = plugin.persistenceManager.getDefaultViewSettings();
+  }
+
+  // Initialize with defaults
   safeConfigSet(config, INIT_MARKER, true);
   safeConfigSet(
     config,
@@ -159,7 +175,7 @@ export const EMBEDDED_VIEW_SELECTOR =
   ".markdown-preview-view, .markdown-reading-view, .markdown-source-view";
 
 /** Sentinel value for undefined group keys in dataset storage */
-export const UNDEFINED_GROUP_KEY_SENTINEL = "__dv_undefined__";
+export const UNDEFINED_GROUP_KEY_SENTINEL = "__dynamic-views-undefined__";
 
 /**
  * Write group key to element's dataset, using sentinel for undefined
@@ -554,6 +570,7 @@ export function renderGroupHeader(
   group: { hasKey(): boolean; key?: unknown },
   config: BasesConfigWithSort,
   app: App,
+  entryCount: number,
 ): void {
   // Don't render header when not grouping
   if (!config.groupBy?.property) return;
@@ -569,10 +586,18 @@ export function renderGroupHeader(
   // Show "None" for empty/missing keys (covers hasKey()=false and empty arrays)
   if (!serializeGroupKey(group.key)) {
     valueEl.setText("None");
+    const countEl = headerEl.createDiv("bases-group-count");
+    const countText = entryCount === 1 ? "1 result" : `${entryCount} results`;
+    countEl.setText(countText);
     return;
   }
 
   renderGroupValue(valueEl, group.key, app, config.groupBy.property);
+
+  // Render result count
+  const countEl = headerEl.createDiv("bases-group-count");
+  const countText = entryCount === 1 ? "1 result" : `${entryCount} results`;
+  countEl.setText(countText);
 }
 
 /**

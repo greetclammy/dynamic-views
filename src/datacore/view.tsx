@@ -1,5 +1,6 @@
-import { App, TFile, Plugin, Keymap, Notice } from "obsidian";
+import { App, TFile, Keymap, Notice } from "obsidian";
 import type { PaneType } from "obsidian";
+import type DynamicViewsPlugin from "../../main";
 import {
   Settings,
   UIState,
@@ -28,7 +29,7 @@ import { remeasurePropertyFields } from "../shared/property-measure";
 import { MasonryView } from "./masonry-view";
 import { ListView } from "./list-view";
 import { Toolbar } from "./toolbar";
-import { getCurrentFile, getFileCtime, getAvailablePath } from "../utils/file";
+import { getCurrentFile, getAvailablePath } from "../utils/file";
 import {
   ensurePageSelector,
   updateQueryInBlock,
@@ -77,10 +78,6 @@ declare module "obsidian" {
   }
 }
 
-interface DynamicViewsPlugin extends Plugin {
-  persistenceManager: PersistenceManager;
-}
-
 interface ViewProps {
   plugin: DynamicViewsPlugin;
   app: App;
@@ -102,18 +99,17 @@ export function View({
   }, [app]);
 
   const currentFilePath = currentFile?.path;
-  const ctime = getFileCtime(currentFile);
 
   // Access PersistenceManager from plugin
   const persistenceManager = plugin.persistenceManager;
 
   // Helper: get persisted settings
   const getPersistedSettings = dc.useCallback((): Settings => {
-    if (!ctime || !persistenceManager) return DEFAULT_SETTINGS;
+    if (!currentFile || !persistenceManager) return DEFAULT_SETTINGS;
 
     const globalSettings = persistenceManager.getGlobalSettings();
     const defaultViewSettings = persistenceManager.getDefaultViewSettings();
-    const viewSettings = persistenceManager.getViewSettings(ctime);
+    const viewSettings = persistenceManager.getViewSettings(currentFile);
 
     // Start with global settings as base
     const baseSettings = { ...globalSettings };
@@ -164,6 +160,7 @@ export function View({
       "queryHeight",
       "listMarker",
       "cardSize",
+      "cssclasses",
     ] as const satisfies readonly (keyof Settings &
       keyof DefaultViewSettings)[];
 
@@ -173,16 +170,16 @@ export function View({
     }
 
     return baseSettings;
-  }, [ctime, persistenceManager]);
+  }, [currentFile, persistenceManager]);
 
   // Helper: get persisted UI state value
   const getFilePersistedValue = dc.useCallback(
     <K extends keyof UIState>(key: K, defaultValue: UIState[K]): UIState[K] => {
-      if (!ctime || !persistenceManager) return defaultValue;
-      const state = persistenceManager.getUIState(ctime);
+      if (!currentFile || !persistenceManager) return defaultValue;
+      const state = persistenceManager.getUIState(currentFile);
       return state[key] ?? defaultValue;
     },
-    [ctime, persistenceManager],
+    [currentFile, persistenceManager],
   );
 
   // Initialize state
@@ -274,10 +271,10 @@ export function View({
 
   // Re-read state from persistence on layout change (Live Preview <-> Reading View sync)
   dc.useEffect(() => {
-    if (!ctime || !persistenceManager) return;
+    if (!currentFile || !persistenceManager) return;
 
     const handleLayoutChange = () => {
-      const state = persistenceManager.getUIState(ctime);
+      const state = persistenceManager.getUIState(currentFile);
       // Always set from persistence - React will bail out if values are the same
       if (state.sortMethod !== undefined) setSortMethod(state.sortMethod);
       if (state.viewMode !== undefined) setViewMode(state.viewMode as ViewMode);
@@ -291,35 +288,35 @@ export function View({
     return () => {
       app.workspace.off("layout-change", handleLayoutChange);
     };
-  }, [ctime, persistenceManager, app.workspace]);
+  }, [currentFile, persistenceManager, app.workspace]);
 
   // Persist UI state changes (only if different from persisted value to avoid overwriting on mount)
   dc.useEffect(() => {
-    if (ctime && persistenceManager) {
-      const persisted = persistenceManager.getUIState(ctime);
+    if (currentFile && persistenceManager) {
+      const persisted = persistenceManager.getUIState(currentFile);
       if (persisted.sortMethod !== sortMethod) {
-        void persistenceManager.setUIState(ctime, { sortMethod });
+        void persistenceManager.setUIState(currentFile, { sortMethod });
       }
     }
-  }, [sortMethod, ctime, persistenceManager]);
+  }, [sortMethod, currentFile, persistenceManager]);
 
   dc.useEffect(() => {
-    if (ctime && persistenceManager) {
-      const persisted = persistenceManager.getUIState(ctime);
+    if (currentFile && persistenceManager) {
+      const persisted = persistenceManager.getUIState(currentFile);
       if (persisted.viewMode !== viewMode) {
-        void persistenceManager.setUIState(ctime, { viewMode });
+        void persistenceManager.setUIState(currentFile, { viewMode });
       }
     }
-  }, [viewMode, ctime, persistenceManager]);
+  }, [viewMode, currentFile, persistenceManager]);
 
   dc.useEffect(() => {
-    if (ctime && persistenceManager) {
-      const persisted = persistenceManager.getUIState(ctime);
+    if (currentFile && persistenceManager) {
+      const persisted = persistenceManager.getUIState(currentFile);
       if (persisted.widthMode !== widthMode) {
-        void persistenceManager.setUIState(ctime, { widthMode });
+        void persistenceManager.setUIState(currentFile, { widthMode });
       }
     }
-  }, [widthMode, ctime, persistenceManager]);
+  }, [widthMode, currentFile, persistenceManager]);
 
   // Apply width mode class to section on mount and when widthMode changes
   dc.useEffect(() => {
@@ -487,22 +484,22 @@ export function View({
   }, [widthMode]);
 
   dc.useEffect(() => {
-    if (ctime && persistenceManager) {
-      const persisted = persistenceManager.getUIState(ctime);
+    if (currentFile && persistenceManager) {
+      const persisted = persistenceManager.getUIState(currentFile);
       if (persisted.searchQuery !== searchQuery) {
-        void persistenceManager.setUIState(ctime, { searchQuery });
+        void persistenceManager.setUIState(currentFile, { searchQuery });
       }
     }
-  }, [searchQuery, ctime, persistenceManager]);
+  }, [searchQuery, currentFile, persistenceManager]);
 
   dc.useEffect(() => {
-    if (ctime && persistenceManager) {
-      const persisted = persistenceManager.getUIState(ctime);
+    if (currentFile && persistenceManager) {
+      const persisted = persistenceManager.getUIState(currentFile);
       if (persisted.resultLimit !== resultLimit) {
-        void persistenceManager.setUIState(ctime, { resultLimit });
+        void persistenceManager.setUIState(currentFile, { resultLimit });
       }
     }
-  }, [resultLimit, ctime, persistenceManager]);
+  }, [resultLimit, currentFile, persistenceManager]);
 
   // Persist settings changes (debounced)
   dc.useEffect(() => {
@@ -510,7 +507,7 @@ export function View({
       clearTimeout(settingsTimeoutRef.current);
     }
     settingsTimeoutRef.current = setTimeout(() => {
-      if (ctime && persistenceManager) {
+      if (currentFile && persistenceManager) {
         // Extract only view-specific settings (those in DefaultViewSettings)
         const viewSettings: Partial<DefaultViewSettings> = {
           titleProperty: settings.titleProperty,
@@ -555,8 +552,9 @@ export function View({
           queryHeight: settings.queryHeight,
           listMarker: settings.listMarker,
           cardSize: settings.cardSize,
+          cssclasses: settings.cssclasses,
         };
-        void persistenceManager.setViewSettings(ctime, viewSettings);
+        void persistenceManager.setViewSettings(currentFile, viewSettings);
       }
     }, 300);
     return () => {
@@ -564,7 +562,7 @@ export function View({
         clearTimeout(settingsTimeoutRef.current);
       }
     };
-  }, [settings, ctime, persistenceManager]);
+  }, [settings, currentFile, persistenceManager]);
 
   // Setup swipe interception on mobile if enabled (Datacore is always embedded)
   // Note: preventSidebarSwipe intentionally omitted from deps - global settings require restart
@@ -2125,6 +2123,8 @@ export function View({
         <Toolbar
           dc={dc}
           app={app}
+          plugin={plugin}
+          currentFile={currentFile}
           viewMode={viewMode}
           showViewDropdown={showViewDropdown}
           onToggleViewDropdown={handleToggleViewDropdown}

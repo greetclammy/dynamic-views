@@ -80,15 +80,6 @@ export function hasBodyClass(className: string): boolean {
 }
 
 /**
- * Update body class based on backdrop blur setting.
- * Adds 'dynamic-views-backdrop-blur-active' when blur > 0.
- */
-export function updateBackdropBlurClass(): void {
-  const blur = getCSSVariableAsNumber("--dynamic-views-backdrop-overlay-blur", 0);
-  document.body.classList.toggle("dynamic-views-backdrop-blur-active", blur > 0);
-}
-
-/**
  * Get minimum masonry columns from CSS variable
  */
 export function getMinMasonryColumns(): number {
@@ -374,10 +365,7 @@ export function getSlideshowMaxImages(): number {
  * Accepts both "lucide-donut" and "donut" formats
  */
 export function getUrlIcon(): string {
-  let icon = getCSSTextVariable(
-    "--dynamic-views-url-icon",
-    "square-arrow-out-up-right",
-  );
+  let icon = getCSSTextVariable("--dynamic-views-url-icon", "arrow-up-right");
   // Strip "lucide-" prefix if present (case-insensitive)
   if (icon.toLowerCase().startsWith("lucide-")) {
     icon = icon.slice(7);
@@ -439,6 +427,12 @@ export function setupStyleSettingsObserver(
     "dynamic-views-cover-bg-ambient",
   ];
 
+  // Dynamic classes that should NOT trigger re-renders (added/removed by plugin at runtime)
+  const ignoredDynamicClasses = [
+    "dynamic-views-backdrop-theme-match", // Added by image viewer backdrop system
+    "dynamic-views-backdrop-height-content", // Added by image viewer backdrop system
+  ];
+
   // Observer for body class changes (Style Settings class-toggle settings)
   const bodyObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
@@ -446,20 +440,45 @@ export function setupStyleSettingsObserver(
         mutation.type === "attributes" &&
         mutation.attributeName === "class"
       ) {
-        // Check if any dynamic-views class changed
+        // Check if any dynamic-views class changed (excluding runtime-only classes)
         const oldClasses = mutation.oldValue?.split(" ") || [];
         const newClasses = document.body.className.split(" ");
-        const dynamicViewsChanged =
-          oldClasses
-            .filter((c) => c.startsWith("dynamic-views-"))
-            .sort()
-            .join() !==
-          newClasses
-            .filter((c) => c.startsWith("dynamic-views-"))
-            .sort()
-            .join();
+
+        const oldFiltered = oldClasses
+          .filter(
+            (c) =>
+              c.startsWith("dynamic-views-") &&
+              !ignoredDynamicClasses.includes(c),
+          )
+          .sort();
+        const newFiltered = newClasses
+          .filter(
+            (c) =>
+              c.startsWith("dynamic-views-") &&
+              !ignoredDynamicClasses.includes(c),
+          )
+          .sort();
+
+        const dynamicViewsChanged = oldFiltered.join() !== newFiltered.join();
 
         if (dynamicViewsChanged) {
+          console.log(
+            "[style-settings] Body class changed, old classes (ALL):",
+            oldClasses.filter((c) => c.startsWith("dynamic-views-")),
+          );
+          console.log(
+            "[style-settings] Body class changed, new classes (ALL):",
+            newClasses.filter((c) => c.startsWith("dynamic-views-")),
+          );
+          console.log(
+            "[style-settings] After filtering ignored classes, old:",
+            oldFiltered,
+          );
+          console.log(
+            "[style-settings] After filtering ignored classes, new:",
+            newFiltered,
+          );
+
           // Check if ambient settings specifically changed (including subtle↔dramatic)
           const oldAmbientSet = ambientClasses
             .filter((c) => oldClasses.includes(c))
@@ -472,9 +491,15 @@ export function setupStyleSettingsObserver(
           const ambientChanged = oldAmbientSet !== newAmbientSet;
 
           if (ambientChanged && onAmbientSettingChange) {
+            console.log(
+              "[style-settings] Ambient setting changed, calling onAmbientSettingChange",
+            );
             // Ambient-only change: call dedicated handler, skip full re-render
             onAmbientSettingChange();
           } else {
+            console.log(
+              "[style-settings] Non-ambient change, calling onStyleChange -> onDataUpdated",
+            );
             // Non-ambient change: full style refresh
             onStyleChange();
           }

@@ -565,7 +565,6 @@ export class SharedCardRenderer {
 
     cardEl.setAttribute("data-path", card.path);
 
-
     // Only make card draggable when openFileAction is 'card'
     if (settings.openFileAction === "card") {
       cardEl.setAttribute("draggable", "true");

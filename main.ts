@@ -201,6 +201,26 @@ export default class DynamicViewsPlugin extends Plugin {
       }),
     );
 
+    // Clean up template references when files are deleted
+    this.registerEvent(
+      this.app.vault.on("delete", (file) => {
+        if (!(file instanceof TFile)) return;
+
+        const ctime = file.stat.ctime;
+        const templates = this.persistenceManager.getAllTemplateCtimes();
+
+        // Clear any template references to this file
+        for (const [viewType, templateCtime] of Object.entries(templates)) {
+          if (templateCtime === ctime) {
+            void this.persistenceManager.setTemplateView(
+              viewType as "grid" | "masonry" | "list",
+              null,
+            );
+          }
+        }
+      }),
+    );
+
     // Handle editor-drop events for plugin cards
     this.registerEvent(
       this.app.workspace.on("editor-drop", (evt, editor, view) => {

@@ -320,7 +320,7 @@ export function createSlideshowNavigator(
             isAnimating = false;
             navigate(direction, honorGestureDirection);
           }
-        }, SLIDESHOW_ANIMATION_MS + 50);
+        }, animationDuration + 50);
         pendingTimeouts.add(timeoutId);
       },
       { once: true, signal },

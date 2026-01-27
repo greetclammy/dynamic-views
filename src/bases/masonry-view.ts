@@ -77,6 +77,13 @@ import type {
   FocusState,
 } from "../types";
 
+// Extend Obsidian types
+declare module "obsidian" {
+  interface BasesView {
+    file: TFile;
+  }
+}
+
 export const MASONRY_VIEW_TYPE = "dynamic-views-masonry";
 
 export class DynamicViewsMasonryView extends BasesView {
@@ -87,6 +94,7 @@ export class DynamicViewsMasonryView extends BasesView {
   private plugin: DynamicViewsPlugin;
   private scrollPreservation: ScrollPreservation | null = null;
   private cardRenderer: SharedCardRenderer;
+  private _previousCustomClasses: string[] = [];
 
   // Consolidated state objects (shared patterns with grid-view)
   private contentCache: ContentCache = {
@@ -151,6 +159,7 @@ export class DynamicViewsMasonryView extends BasesView {
   private totalEntries: number = 0;
   private displayedSoFar: number = 0;
   private propertyMeasuredTimeout: number | null = null;
+  private lastOnDataUpdatedTime: number = 0;
 
   /** Calculate batch size based on current column count */
   private getBatchSize(settings: Settings): number {
@@ -220,6 +229,20 @@ export class DynamicViewsMasonryView extends BasesView {
 
   // Called by Obsidian when view settings change - trigger re-render
   setSettings = (): void => {
+    // Sync template toggle with global registry
+    const isTemplate = this.config.get("__isTemplate") === true;
+    const currentTemplate =
+      this.plugin.persistenceManager.getTemplateView("masonry");
+    const shouldBeTemplate = currentTemplate?.path === this.file.path;
+
+    if (isTemplate && !shouldBeTemplate) {
+      // User enabled template for this view - update global registry
+      void this.plugin.persistenceManager.setTemplateView("masonry", this.file);
+    } else if (!isTemplate && shouldBeTemplate) {
+      // User disabled template for this view - clear global registry
+      void this.plugin.persistenceManager.setTemplateView("masonry", null);
+    }
+
     this.onDataUpdated();
   };
 
@@ -234,10 +257,23 @@ export class DynamicViewsMasonryView extends BasesView {
         this.leafId = getLeafProps(leaf).id ?? "";
       }
     });
+
+    // DEBUG: Log scrollEl state before creating new container
+    console.log(
+      "[masonry-view] Constructor - scrollEl children count:",
+      scrollEl.children.length,
+    );
+
     // Create container inside scroll parent
     this.containerEl = scrollEl.createDiv({
       cls: "dynamic-views dynamic-views-bases-container",
     });
+
+    // DEBUG: Log after creating new container
+    console.log(
+      "[masonry-view] Constructor - containerEl created, scrollEl children count:",
+      scrollEl.children.length,
+    );
     // Access plugin from controller's app
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
     this.plugin = (this.app as any).plugins.plugins[
@@ -341,6 +377,17 @@ export class DynamicViewsMasonryView extends BasesView {
 
   onDataUpdated(): void {
     void (async () => {
+      // DEBUG: Log when onDataUpdated is called
+      console.log("[masonry-view] onDataUpdated - CALLED");
+      console.log(
+        "[masonry-view] onDataUpdated - scrollEl children count:",
+        this.scrollEl.children.length,
+      );
+      console.log(
+        "[masonry-view] onDataUpdated - containerEl isConnected:",
+        this.containerEl?.isConnected,
+      );
+
       // Guard: return early if data not yet initialized
       if (!this.data) {
         return;
@@ -350,6 +397,17 @@ export class DynamicViewsMasonryView extends BasesView {
       if (this.isLoading) {
         return;
       }
+
+      // Guard: throttle rapid-fire calls (prevents infinite loop)
+      // Allow first call and subsequent calls after 100ms cooldown
+      const now = Date.now();
+      if (now - this.lastOnDataUpdatedTime < 100) {
+        console.log(
+          "[masonry-view] onDataUpdated - BLOCKED: throttled, too soon after last call",
+        );
+        return;
+      }
+      this.lastOnDataUpdatedTime = now;
 
       // Increment render version to cancel any in-flight stale renders
       this.renderState.version++;
@@ -372,19 +430,24 @@ export class DynamicViewsMasonryView extends BasesView {
 
       // Initialize default property values for new views (before reading settings)
       // This persists defaults so clearing them works correctly
-      const allKeys = tryGetAllConfig(this.config);
-      if (allKeys) {
-        try {
-          initializeViewDefaults(
-            this.config,
-            allKeys,
-            this.plugin.persistenceManager.getDefaultViewSettings(),
-          );
-        } catch (e) {
-          console.warn(
-            "[dynamic-views] Failed to initialize view defaults:",
-            e,
-          );
+      // Only run on first render to avoid triggering infinite re-render loop
+      if (this.renderState.version === 1) {
+        const allKeys = tryGetAllConfig(this.config);
+        if (allKeys) {
+          try {
+            initializeViewDefaults(
+              this.config,
+              allKeys,
+              this.plugin,
+              this.file,
+              "masonry",
+            );
+          } catch (e) {
+            console.warn(
+              "[dynamic-views] Failed to initialize view defaults:",
+              e,
+            );
+          }
         }
       }
 
@@ -394,6 +457,37 @@ export class DynamicViewsMasonryView extends BasesView {
         this.plugin.persistenceManager.getGlobalSettings(),
         this.plugin.persistenceManager.getDefaultViewSettings(),
       );
+
+      // Apply custom CSS classes from settings (mimics cssclasses frontmatter)
+      const customClasses = settings.cssclasses
+        .split(",")
+        .map((cls) => cls.trim())
+        .filter(Boolean);
+
+      // Only update if classes changed (prevents unnecessary DOM mutations)
+      const classesChanged =
+        !this._previousCustomClasses ||
+        this._previousCustomClasses.length !== customClasses.length ||
+        !this._previousCustomClasses.every(
+          (cls, i) => cls === customClasses[i],
+        );
+
+      if (classesChanged) {
+        // Clear previous custom classes
+        if (this._previousCustomClasses) {
+          this._previousCustomClasses.forEach((cls: string) => {
+            this.scrollEl.removeClass(cls);
+          });
+        }
+
+        // Apply new custom classes
+        customClasses.forEach((cls) => {
+          this.scrollEl.addClass(cls);
+        });
+
+        // Store for next update
+        this._previousCustomClasses = customClasses;
+      }
 
       // Check if data or settings changed - skip re-render if not (prevents tab switch flash)
       // Use null byte delimiter (cannot appear in file paths) to avoid hash collisions
@@ -447,6 +541,10 @@ export class DynamicViewsMasonryView extends BasesView {
         renderHash === this.renderState.lastRenderHash &&
         this.masonryContainer?.children.length
       ) {
+        console.log(
+          "[masonry-view] onDataUpdated - SKIPPED: render hash unchanged, version:",
+          currentVersion,
+        );
         this.scrollPreservation?.restoreAfterRender();
         return;
       }
@@ -548,8 +646,20 @@ export class DynamicViewsMasonryView extends BasesView {
       const currentHeight = this.containerEl.scrollHeight;
       this.containerEl.style.minHeight = `${currentHeight}px`;
 
+      // DEBUG: Log before clearing container
+      console.log(
+        "[masonry-view] onDataUpdated - About to clear containerEl, children:",
+        this.containerEl.children.length,
+      );
+
       // Clear and re-render
       this.containerEl.empty();
+
+      // DEBUG: Log after clearing
+      console.log(
+        "[masonry-view] onDataUpdated - After empty(), children:",
+        this.containerEl.children.length,
+      );
 
       // Reset batch append state for full re-render
       this.previousDisplayedCount = 0;
@@ -607,6 +717,7 @@ export class DynamicViewsMasonryView extends BasesView {
             processedGroup.group,
             this.config,
             this.app,
+            processedGroup.entries.length,
           );
 
           // Create group container for cards
@@ -1168,6 +1279,7 @@ export class DynamicViewsMasonryView extends BasesView {
           processedGroup.group,
           this.config,
           this.app,
+          processedGroup.entries.length,
         );
 
         // New group - create container for cards
@@ -1563,6 +1675,16 @@ export class DynamicViewsMasonryView extends BasesView {
   }
 
   onunload(): void {
+    // DEBUG: Log before cleanup
+    console.log(
+      "[masonry-view] onunload - START, scrollEl children count:",
+      this.scrollEl.children.length,
+    );
+    console.log(
+      "[masonry-view] onunload - containerEl isConnected:",
+      this.containerEl?.isConnected,
+    );
+
     this.scrollPreservation?.cleanup();
     this.swipeAbortController?.abort();
     this.renderState.abortController?.abort();
@@ -1586,6 +1708,16 @@ export class DynamicViewsMasonryView extends BasesView {
     cleanupVisibilityObserver();
     this.focusCleanup?.();
     this.cardRenderer.cleanup(true); // Force viewer cleanup on view destruction
+
+    // DEBUG: Log after cleanup (before potential DOM removal)
+    console.log(
+      "[masonry-view] onunload - END, scrollEl children count:",
+      this.scrollEl.children.length,
+    );
+    console.log(
+      "[masonry-view] onunload - containerEl still isConnected:",
+      this.containerEl?.isConnected,
+    );
   }
 
   focus(): void {

@@ -518,6 +518,22 @@ settings:
                 label: Hide
                 value: dynamic-views-timestamp-icon-hide
     -
+        id: groups-heading
+        title: Groups
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-hide-group-count
+        title: Hide result count
+        description: Hide result count in group headings
+        type: class-toggle
+    -
+        id: dynamic-views-hide-group-property-labels
+        title: Hide property labels
+        description: Hide property labels in group headings
+        type: class-toggle
+    -
         id: header-heading
         title: Header
         type: heading
@@ -2939,6 +2955,11 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   .dynamic-views-grid
   .card
   .card-title-group
+  ~ .card-properties-bottom,
+.dynamic-views
+  .dynamic-views-grid
+  .card
+  .card-header
   ~ .card-properties-bottom {
   margin-top: auto;
   padding-top: var(--size-4-2);
@@ -3009,6 +3030,23 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 .dynamic-views .bases-group-property {
   color: var(--text-muted);
   font-size: var(--font-ui-small);
+}
+
+/* Group header result count - match property label style */
+.dynamic-views .bases-group-count {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  padding-left: var(--size-2-3);
+}
+
+/* Hide group result count when toggle enabled */
+body.dynamic-views-hide-group-count .dynamic-views .bases-group-count {
+  display: none;
+}
+
+/* Hide group property labels when toggle enabled */
+body.dynamic-views-hide-group-property-labels .dynamic-views .bases-group-property {
+  display: none;
 }
 
 /* Group header value containers - match vanilla Bases structure */
@@ -3086,7 +3124,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   page-break-inside: avoid;
   transition:
     box-shadow var(--anim-duration-fast, 140ms) ease-in-out,
-    background-color 5000ms ease;
+    background-color var(--anim-duration-fast, 140ms) ease;
   /* Cover inset: user setting + 1px offset for border */
   --cover-inset-computed: calc(var(--dynamic-views-cover-inset, 0px) + 1px);
 }
@@ -3214,7 +3252,7 @@ body.dynamic-views-adaptive-text .dynamic-views .card:focus-visible::after {
   transition:
     opacity var(--anim-duration-superfast, 70ms) ease,
     box-shadow var(--anim-duration-fast, 140ms) ease-in-out,
-    background-color 5000ms ease;
+    background-color var(--anim-duration-fast, 140ms) ease;
 }
 
 /* Global spacing between card elements (exclude cover-format cards which use flexbox gap) */
@@ -3847,7 +3885,7 @@ body.dynamic-views-hide-thumbnail-shadow.dynamic-views-show-thumbnail-placeholde
   pointer-events: auto;
   border-radius: 0; /* Override theme styles; container handles border-radius */
   opacity: 0;
-  transition: opacity 5000ms ease;
+  transition: opacity var(--anim-duration-fast, 140ms) ease;
 }
 
 .dynamic-views .card.cover-ready .card-thumbnail img {
@@ -4096,7 +4134,7 @@ body.dynamic-views-cover-crop-bottom
   inset: 0;
   z-index: 0;
   background-color: var(--ambient-color, transparent);
-  transition: background-color 5000ms ease;
+  transition: background-color var(--anim-duration-fast, 140ms) ease;
   border-radius: inherit;
   pointer-events: none;
 }
@@ -4574,7 +4612,7 @@ body.dynamic-views-cover-circular
   object-position: center center;
   border-radius: 0; /* Override theme styles; container handles border-radius */
   opacity: 0;
-  transition: opacity 5000ms ease;
+  transition: opacity var(--anim-duration-fast, 140ms) ease;
 }
 
 .dynamic-views .card.image-format-cover.cover-ready .card-cover img {
@@ -4598,7 +4636,7 @@ body.dynamic-views-cover-circular
     img {
     transition:
       transform var(--anim-duration-fast, 140ms) ease,
-      opacity 5000ms ease;
+      opacity var(--anim-duration-fast, 140ms) ease;
   }
 
   /* Base transition for slideshow covers - use scale property to not conflict with slide animations */
@@ -4616,7 +4654,7 @@ body.dynamic-views-cover-circular
     img {
     transition:
       scale var(--anim-duration-fast, 140ms) ease,
-      opacity 5000ms ease;
+      opacity var(--anim-duration-fast, 140ms) ease;
   }
 
   /* Hover over cover: zoom when hovering cover element (single image) */
@@ -5243,7 +5281,7 @@ body.dynamic-views-hide-card-border .dynamic-views .card.image-format-backdrop {
   object-fit: cover;
   object-position: center;
   opacity: 0;
-  transition: opacity 5000ms ease;
+  transition: opacity var(--anim-duration-fast, 140ms) ease;
 }
 
 .dynamic-views .card.image-format-backdrop.cover-ready .card-backdrop img {
@@ -7462,6 +7500,11 @@ body.dynamic-views-no-fade-truncated-text
   .dynamic-views-masonry
   .card
   .card-title-group
+  ~ .card-properties-bottom,
+.dynamic-views
+  .dynamic-views-masonry
+  .card
+  .card-header
   ~ .card-properties-bottom {
   margin-top: auto;
   padding-top: var(--size-4-2);

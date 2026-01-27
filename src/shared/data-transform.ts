@@ -248,6 +248,11 @@ export function datacoreResultToCardData(
         title = specialValue;
         break;
       }
+      // Special case: file.name in Datacore → use $name
+      if (prop === "file.name" || prop === "file name") {
+        title = result.$name || "";
+        break;
+      }
       // Try regular property
       let rawTitle = getFirstDatacorePropertyValue(result, prop);
       if (Array.isArray(rawTitle)) rawTitle = rawTitle[0];
@@ -257,11 +262,6 @@ export function datacoreResultToCardData(
         break;
       }
     }
-  }
-  // Fallback to $name if title property was set but didn't resolve
-  // (e.g., property doesn't exist on this file, or value is empty)
-  if (!title && settings.titleProperty) {
-    title = result.$name || "";
   }
 
   // Get YAML tags only from 'tags' property
@@ -451,11 +451,6 @@ export function basesEntryToCardData(
         break;
       }
     }
-  }
-  // Fallback to file name if title property was set but didn't resolve
-  // (e.g., property doesn't exist on this file, or value is empty)
-  if (!title && settings.titleProperty) {
-    title = fileName;
   }
 
   // Get YAML tags only from 'tags' property

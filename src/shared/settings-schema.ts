@@ -408,6 +408,25 @@ export function getBasesViewOptions(): any[] {
         },
       ],
     },
+    {
+      type: "group",
+      displayName: "More",
+      items: [
+        {
+          type: "toggle",
+          displayName: "Use these settings for new views",
+          key: "__isTemplate",
+          default: false,
+        },
+        {
+          type: "text",
+          displayName: "cssclasses",
+          key: "cssclasses",
+          placeholder: "Comma-separated if multiple",
+          default: "",
+        },
+      ],
+    },
   ];
 }
 
@@ -529,6 +548,9 @@ export function readBasesSettings(
     propertyDisplay12: getString("propertyDisplay12", ""),
     propertyDisplay13: getString("propertyDisplay13", ""),
     propertyDisplay14: getString("propertyDisplay14", ""),
+
+    // CSS classes for view container
+    cssclasses: getString("cssclasses", defaults.cssclasses),
 
     // Property set side-by-side booleans (1-7)
     propertySet1SideBySide: getBool(

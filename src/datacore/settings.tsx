@@ -1,11 +1,16 @@
-import { Settings as SettingsType } from "../types";
+import { Settings as SettingsType, ViewMode } from "../types";
 import type { DatacoreAPI } from "./types";
+import type { TFile } from "obsidian";
+import type DynamicViewsPlugin from "../../main";
 
 interface SettingsProps {
   dc: DatacoreAPI;
   settings: SettingsType;
   onSettingsChange: (settings: Partial<SettingsType>) => void;
   menuRef?: { current: HTMLDivElement | null };
+  plugin: DynamicViewsPlugin;
+  currentFile: TFile | null;
+  viewMode: ViewMode;
 }
 
 // Property set configuration
@@ -107,6 +112,9 @@ export function Settings({
   settings,
   onSettingsChange,
   menuRef,
+  plugin,
+  currentFile,
+  viewMode,
 }: SettingsProps): JSX.Element {
   // Section expansion state - all collapsed by default
   const [expandedSections, setExpandedSections] = dc.useState<
@@ -123,6 +131,7 @@ export function Settings({
     propertySet5: false,
     propertySet6: false,
     propertySet7: false,
+    more: false,
   });
 
   const toggleSection = (section: string) => {
@@ -130,6 +139,23 @@ export function Settings({
       ...prev,
       [section]: !prev[section],
     }));
+  };
+
+  // Datacore settings are per-file (shared across all view modes)
+  // Always use grid template since card mode (datacore) = grid view (bases)
+  const templateType = "grid";
+
+  // Template toggle state (independent of current view mode)
+  const [isTemplate, setIsTemplate] = dc.useState(
+    plugin.persistenceManager.isTemplateView(currentFile, templateType),
+  );
+
+  const handleToggleTemplate = (enabled: boolean) => {
+    void plugin.persistenceManager.setTemplateView(
+      templateType,
+      enabled ? currentFile : null,
+    );
+    setIsTemplate(enabled);
   };
 
   // Chevron SVG for section headers
@@ -522,6 +548,32 @@ export function Settings({
 
       {/* Property Sets 1-7 */}
       {PROPERTY_SETS.map(renderPropertySet)}
+
+      {/* More Section */}
+      <div className="settings-section">
+        {renderSectionHeader("more", "More")}
+        <div
+          className={`settings-section-content ${expandedSections.more ? "" : "collapsed"}`}
+        >
+          <div className="setting-item setting-item-toggle">
+            <div className="setting-item-info">
+              <label>Use these settings for new views</label>
+            </div>
+            <div
+              className={`checkbox-container ${isTemplate ? "is-enabled" : ""}`}
+              onClick={() => handleToggleTemplate(!isTemplate)}
+              tabIndex={0}
+              role="checkbox"
+              aria-checked={isTemplate}
+            />
+          </div>
+          {renderTextInput(
+            "cssclasses",
+            "cssclasses",
+            "Comma-separated if multiple",
+          )}
+        </div>
+      </div>
 
       {/* Datacore-specific settings */}
       <div className="setting-item setting-item-dropdown">

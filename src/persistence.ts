@@ -1,9 +1,10 @@
-import { Plugin } from "obsidian";
+import { Plugin, TFile } from "obsidian";
 import { PluginData, Settings, UIState, DefaultViewSettings } from "./types";
 import {
   DEFAULT_SETTINGS,
   DEFAULT_UI_STATE,
   DEFAULT_VIEW_SETTINGS,
+  DEFAULT_TEMPLATE_VIEWS,
 } from "./constants";
 import { sanitizeObject, sanitizeString } from "./utils/sanitize";
 
@@ -18,6 +19,7 @@ export class PersistenceManager {
       defaultViewSettings: { ...DEFAULT_VIEW_SETTINGS },
       queryStates: {},
       viewSettings: {},
+      defaultTemplateViews: { ...DEFAULT_TEMPLATE_VIEWS },
     };
   }
 
@@ -36,12 +38,36 @@ export class PersistenceManager {
         },
         queryStates: loadedData.queryStates || {},
         viewSettings: loadedData.viewSettings || {},
+        defaultTemplateViews: loadedData.defaultTemplateViews || {
+          ...DEFAULT_TEMPLATE_VIEWS,
+        },
       };
     }
   }
 
   async save(): Promise<void> {
     await this.plugin.saveData(this.data);
+  }
+
+  /**
+   * Extract storage key (ctime) from TFile
+   * @private
+   */
+  private getFileKey(file: TFile | null): string | null {
+    if (!file?.stat?.ctime) return null;
+    return file.stat.ctime.toString();
+  }
+
+  /**
+   * Find TFile by ctime
+   * @private
+   */
+  private getFileFromCtime(ctime: number | null): TFile | null {
+    if (!ctime) return null;
+    return (
+      this.plugin.app.vault.getFiles().find((f) => f.stat.ctime === ctime) ??
+      null
+    );
   }
 
   getGlobalSettings(): Settings {
@@ -69,13 +95,17 @@ export class PersistenceManager {
     await this.save();
   }
 
-  getUIState(ctime: number): UIState {
-    const state = this.data.queryStates[ctime.toString()];
+  getUIState(file: TFile | null): UIState {
+    const key = this.getFileKey(file);
+    if (!key) return { ...DEFAULT_UI_STATE };
+    const state = this.data.queryStates[key];
     return state ? { ...state } : { ...DEFAULT_UI_STATE };
   }
 
-  async setUIState(ctime: number, state: Partial<UIState>): Promise<void> {
-    const key = ctime.toString();
+  async setUIState(file: TFile | null, state: Partial<UIState>): Promise<void> {
+    const key = this.getFileKey(file);
+    if (!key) return;
+
     const current = this.data.queryStates[key] || { ...DEFAULT_UI_STATE };
 
     // Sanitize and truncate searchQuery
@@ -97,21 +127,27 @@ export class PersistenceManager {
     await this.save();
   }
 
-  async clearUIState(ctime: number): Promise<void> {
-    delete this.data.queryStates[ctime.toString()];
+  async clearUIState(file: TFile | null): Promise<void> {
+    const key = this.getFileKey(file);
+    if (!key) return;
+    delete this.data.queryStates[key];
     await this.save();
   }
 
-  getViewSettings(ctime: number): Partial<DefaultViewSettings> {
-    const settings = this.data.viewSettings[ctime.toString()];
+  getViewSettings(file: TFile | null): Partial<DefaultViewSettings> {
+    const key = this.getFileKey(file);
+    if (!key) return {};
+    const settings = this.data.viewSettings[key];
     return settings ? { ...settings } : {};
   }
 
   async setViewSettings(
-    ctime: number,
+    file: TFile | null,
     settings: Partial<DefaultViewSettings>,
   ): Promise<void> {
-    const key = ctime.toString();
+    const key = this.getFileKey(file);
+    if (!key) return;
+
     const current = this.data.viewSettings[key] || {};
 
     // Sanitize settings
@@ -121,8 +157,50 @@ export class PersistenceManager {
     await this.save();
   }
 
-  async clearViewSettings(ctime: number): Promise<void> {
-    delete this.data.viewSettings[ctime.toString()];
+  async clearViewSettings(file: TFile | null): Promise<void> {
+    const key = this.getFileKey(file);
+    if (!key) return;
+    delete this.data.viewSettings[key];
     await this.save();
+  }
+
+  /**
+   * Get the template view file for a specific view type
+   */
+  getTemplateView(viewType: "grid" | "masonry" | "list"): TFile | null {
+    const ctime = this.data.defaultTemplateViews[viewType];
+    return this.getFileFromCtime(ctime);
+  }
+
+  /**
+   * Set the template view file for a specific view type
+   */
+  async setTemplateView(
+    viewType: "grid" | "masonry" | "list",
+    file: TFile | null,
+  ): Promise<void> {
+    const key = this.getFileKey(file);
+    this.data.defaultTemplateViews[viewType] = key ? parseInt(key) : null;
+    await this.save();
+  }
+
+  /**
+   * Check if a file is the template view for a specific view type
+   */
+  isTemplateView(
+    file: TFile | null,
+    viewType: "grid" | "masonry" | "list",
+  ): boolean {
+    const key = this.getFileKey(file);
+    if (!key) return false;
+    const templateCtime = this.data.defaultTemplateViews[viewType];
+    return templateCtime !== null && templateCtime.toString() === key;
+  }
+
+  /**
+   * Get all template view ctimes (for cleanup operations)
+   */
+  getAllTemplateCtimes(): Record<string, number | null> {
+    return { ...this.data.defaultTemplateViews };
   }
 }

@@ -484,6 +484,9 @@ const cardScrollAbortControllers = new Map<string, AbortController>();
 // Module-level WeakMap to track container cleanup functions (avoids stale closure per render)
 const containerCleanupMap = new WeakMap<HTMLElement, () => void>();
 
+// Module-level WeakMap to track previous cssclasses for each container (prevents unnecessary DOM mutations)
+const containerCssClassesMap = new WeakMap<HTMLElement, string[]>();
+
 /**
  * Cleanup ResizeObserver for a card when it's removed
  */
@@ -1245,8 +1248,38 @@ export function CardRenderer({
             const cleanup = containerCleanupMap.get(prevEl);
             cleanup?.();
             containerCleanupMap.delete(prevEl);
+            containerCssClassesMap.delete(prevEl);
           }
           return;
+        }
+
+        // Apply custom CSS classes from settings (mimics cssclasses frontmatter)
+        const customClasses = settings.cssclasses
+          .split(",")
+          .map((cls) => cls.trim())
+          .filter(Boolean);
+
+        // Get previous classes for this element
+        const previousClasses = containerCssClassesMap.get(el) || [];
+
+        // Only update if classes changed (prevents unnecessary DOM mutations)
+        const classesChanged =
+          previousClasses.length !== customClasses.length ||
+          !previousClasses.every((cls, i) => cls === customClasses[i]);
+
+        if (classesChanged) {
+          // Clear previous custom classes
+          previousClasses.forEach((cls) => {
+            el.classList.remove(cls);
+          });
+
+          // Apply new custom classes
+          customClasses.forEach((cls) => {
+            el.classList.add(cls);
+          });
+
+          // Store for next update
+          containerCssClassesMap.set(el, customClasses);
         }
 
         // Skip if already setup (avoid duplicates on re-render)
@@ -1490,8 +1523,7 @@ function Card({
   const displayTitle = isFullname
     ? stripExtFromTitle(card.title, card.path, true)
     : card.title;
-  // Show "..." if title is empty
-  const finalTitle = displayTitle || "...";
+  const finalTitle = displayTitle;
 
   // Compute extension info once for use in title data-ext and renderFileExt
   const extInfo = getFileExtInfo(card.path, isFullname);
@@ -1664,7 +1696,7 @@ function Card({
   };
 
   // Check if title or subtitle will be rendered
-  const hasTitle = true;
+  const hasTitle = !!displayTitle;
   const hasSubtitle = settings.subtitleProperty && card.subtitle;
 
   return (
@@ -1949,7 +1981,7 @@ function Card({
         <div className="card-header">
           {(hasTitle || hasSubtitle) && (
             <div className="card-title-group">
-              {renderTitle()}
+              {hasTitle && renderTitle()}
               {renderSubtitle()}
             </div>
           )}
@@ -1983,7 +2015,7 @@ function Card({
       ) : (
         (hasTitle || hasSubtitle) && (
           <div className="card-title-group">
-            {renderTitle()}
+            {hasTitle && renderTitle()}
             {renderSubtitle()}
           </div>
         )

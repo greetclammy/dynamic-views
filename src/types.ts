@@ -35,6 +35,7 @@ export interface Settings {
   propertySet5Position: "top" | "bottom";
   propertySet6Position: "top" | "bottom";
   propertySet7Position: "top" | "bottom";
+  cssclasses: string;
   propertyLabels: "hide" | "inline" | "above";
   imageFormat:
     | "none"
@@ -105,6 +106,7 @@ export interface DefaultViewSettings {
   propertySet5Position: "top" | "bottom";
   propertySet6Position: "top" | "bottom";
   propertySet7Position: "top" | "bottom";
+  cssclasses: string;
   propertyLabels: "hide" | "inline" | "above";
   subtitleProperty: string;
   fallbackToContent: boolean;
@@ -132,6 +134,11 @@ export interface PluginData {
   defaultViewSettings: DefaultViewSettings;
   queryStates: Record<string, UIState>;
   viewSettings: Record<string, Partial<DefaultViewSettings>>;
+  defaultTemplateViews: {
+    grid: number | null;
+    masonry: number | null;
+    list: number | null;
+  };
 }
 
 export type ViewMode = "card" | "masonry" | "list";

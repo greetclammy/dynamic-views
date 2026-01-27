@@ -61,10 +61,13 @@ import type {
   FocusState,
 } from "../types";
 
-// Extend App type to include isMobile property
+// Extend Obsidian types
 declare module "obsidian" {
   interface App {
     isMobile: boolean;
+  }
+  interface BasesView {
+    file: TFile;
   }
 }
 
@@ -78,6 +81,7 @@ export class DynamicViewsCardView extends BasesView {
   private plugin: DynamicViewsPlugin;
   private scrollPreservation: ScrollPreservation | null = null;
   private cardRenderer: SharedCardRenderer;
+  private _previousCustomClasses: string[] = [];
 
   // Consolidated state objects (shared patterns with masonry-view)
   private contentCache: ContentCache = {
@@ -133,6 +137,7 @@ export class DynamicViewsCardView extends BasesView {
   private resizeRafId: number | null = null;
   private lastObservedWidth: number = 0;
   private hasBatchAppended: boolean = false;
+  private lastOnDataUpdatedTime: number = 0;
 
   /** Calculate initial card count based on container dimensions */
   private calculateInitialCount(settings: Settings): number {
@@ -174,6 +179,23 @@ export class DynamicViewsCardView extends BasesView {
 
   // Called by Obsidian when view settings change - trigger re-render
   setSettings = (): void => {
+    console.log("[grid-view] setSettings - CALLED");
+    console.trace("[grid-view] setSettings - STACK TRACE");
+
+    // Sync template toggle with global registry
+    const isTemplate = this.config.get("__isTemplate") === true;
+    const currentTemplate =
+      this.plugin.persistenceManager.getTemplateView("grid");
+    const shouldBeTemplate = currentTemplate?.path === this.file.path;
+
+    if (isTemplate && !shouldBeTemplate) {
+      // User enabled template for this view - update global registry
+      void this.plugin.persistenceManager.setTemplateView("grid", this.file);
+    } else if (!isTemplate && shouldBeTemplate) {
+      // User disabled template for this view - clear global registry
+      void this.plugin.persistenceManager.setTemplateView("grid", null);
+    }
+
     this.onDataUpdated();
   };
 
@@ -188,10 +210,23 @@ export class DynamicViewsCardView extends BasesView {
         this.leafId = getLeafProps(leaf).id ?? "";
       }
     });
+
+    // DEBUG: Log scrollEl state before creating new container
+    console.log(
+      "[grid-view] Constructor - scrollEl children count:",
+      scrollEl.children.length,
+    );
+
     // Create container inside scroll parent
     this.containerEl = scrollEl.createDiv({
       cls: "dynamic-views dynamic-views-bases-container",
     });
+
+    // DEBUG: Log after creating new container
+    console.log(
+      "[grid-view] Constructor - containerEl created, scrollEl children count:",
+      scrollEl.children.length,
+    );
     // Access plugin from controller's app
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
     this.plugin = (this.app as any).plugins.plugins[
@@ -254,16 +289,40 @@ export class DynamicViewsCardView extends BasesView {
 
   onDataUpdated(): void {
     void (async () => {
+      // DEBUG: Log when onDataUpdated is called
+      console.log("[grid-view] onDataUpdated - CALLED");
+      console.log(
+        "[grid-view] onDataUpdated - scrollEl children count:",
+        this.scrollEl.children.length,
+      );
+      console.log(
+        "[grid-view] onDataUpdated - containerEl isConnected:",
+        this.containerEl?.isConnected,
+      );
+
       // Guard: return early if data not yet initialized (race condition with MutationObserver)
       if (!this.data) {
+        console.log("[grid-view] onDataUpdated - BLOCKED: no data yet");
         return;
       }
 
       // Guard: skip if batch loading in progress to prevent race conditions
       // The batch append will handle rendering new entries
       if (this.isLoading) {
+        console.log("[grid-view] onDataUpdated - BLOCKED: isLoading=true");
         return;
       }
+
+      // Guard: throttle rapid-fire calls (prevents infinite loop)
+      // Allow first call and subsequent calls after 100ms cooldown
+      const now = Date.now();
+      if (now - this.lastOnDataUpdatedTime < 100) {
+        console.log(
+          "[grid-view] onDataUpdated - BLOCKED: throttled, too soon after last call",
+        );
+        return;
+      }
+      this.lastOnDataUpdatedTime = now;
 
       // Increment render version to cancel any in-flight stale renders
       this.renderState.version++;
@@ -283,19 +342,24 @@ export class DynamicViewsCardView extends BasesView {
 
       // Initialize default property values for new views (before reading settings)
       // This persists defaults so clearing them works correctly
-      const allKeys = tryGetAllConfig(this.config);
-      if (allKeys) {
-        try {
-          initializeViewDefaults(
-            this.config,
-            allKeys,
-            this.plugin.persistenceManager.getDefaultViewSettings(),
-          );
-        } catch (e) {
-          console.warn(
-            "[dynamic-views] Failed to initialize view defaults:",
-            e,
-          );
+      // Only run on first render to avoid triggering infinite re-render loop
+      if (this.renderState.version === 1) {
+        const allKeys = tryGetAllConfig(this.config);
+        if (allKeys) {
+          try {
+            initializeViewDefaults(
+              this.config,
+              allKeys,
+              this.plugin,
+              this.file,
+              "grid",
+            );
+          } catch (e) {
+            console.warn(
+              "[dynamic-views] Failed to initialize view defaults:",
+              e,
+            );
+          }
         }
       }
 
@@ -305,6 +369,44 @@ export class DynamicViewsCardView extends BasesView {
         this.plugin.persistenceManager.getGlobalSettings(),
         this.plugin.persistenceManager.getDefaultViewSettings(),
       );
+
+      // Apply custom CSS classes from settings (mimics cssclasses frontmatter)
+      const customClasses = settings.cssclasses
+        .split(",")
+        .map((cls) => cls.trim())
+        .filter(Boolean);
+
+      // Only update if classes changed (prevents unnecessary DOM mutations)
+      const classesChanged =
+        !this._previousCustomClasses ||
+        this._previousCustomClasses.length !== customClasses.length ||
+        !this._previousCustomClasses.every(
+          (cls, i) => cls === customClasses[i],
+        );
+
+      if (classesChanged) {
+        console.log(
+          "[grid-view] onDataUpdated - Applying CSS classes, old:",
+          this._previousCustomClasses,
+          "new:",
+          customClasses,
+        );
+        // Clear previous custom classes
+        if (this._previousCustomClasses) {
+          this._previousCustomClasses.forEach((cls: string) => {
+            this.scrollEl.removeClass(cls);
+          });
+        }
+
+        // Apply new custom classes
+        customClasses.forEach((cls) => {
+          this.scrollEl.addClass(cls);
+        });
+
+        // Store for next update
+        this._previousCustomClasses = customClasses;
+        console.log("[grid-view] onDataUpdated - CSS classes applied");
+      }
 
       // Check if data or settings changed - skip re-render if not (prevents tab switch flash)
       // Use null byte delimiter (cannot appear in file paths) to avoid hash collisions
@@ -358,11 +460,27 @@ export class DynamicViewsCardView extends BasesView {
         renderHash === this.renderState.lastRenderHash &&
         this.feedContainerRef.current?.children.length
       ) {
-        // Restore column CSS (may be lost on tab switch)
-        this.containerEl.style.setProperty(
-          "--grid-columns",
-          String(this.lastColumnCount),
+        console.log(
+          "[grid-view] onDataUpdated - SKIPPED: render hash unchanged, version:",
+          currentVersion,
         );
+        // Restore column CSS (may be lost on tab switch)
+        // Only set if actually changed to avoid triggering observers
+        const currentGridColumns =
+          this.containerEl.style.getPropertyValue("--grid-columns");
+        const targetGridColumns = String(this.lastColumnCount);
+        if (currentGridColumns !== targetGridColumns) {
+          console.log(
+            "[grid-view] onDataUpdated - SKIP: Restoring grid columns from",
+            currentGridColumns,
+            "to",
+            targetGridColumns,
+          );
+          this.containerEl.style.setProperty(
+            "--grid-columns",
+            targetGridColumns,
+          );
+        }
         this.scrollPreservation?.restoreAfterRender();
         return;
       }
@@ -463,6 +581,12 @@ export class DynamicViewsCardView extends BasesView {
         this.renderState.version !== currentVersion ||
         this.renderState.abortController?.signal.aborted
       ) {
+        console.log(
+          "[grid-view] onDataUpdated - ABORTED (stale render), version:",
+          currentVersion,
+          "current:",
+          this.renderState.version,
+        );
         return;
       }
 
@@ -470,8 +594,24 @@ export class DynamicViewsCardView extends BasesView {
       const currentHeight = this.containerEl.scrollHeight;
       this.containerEl.style.minHeight = `${currentHeight}px`;
 
+      // DEBUG: Log before clearing container
+      console.log(
+        "[grid-view] onDataUpdated - About to clear containerEl, version:",
+        currentVersion,
+        "children:",
+        this.containerEl.children.length,
+      );
+
       // Clear and re-render
       this.containerEl.empty();
+
+      // DEBUG: Log after clearing
+      console.log(
+        "[grid-view] onDataUpdated - After empty(), version:",
+        currentVersion,
+        "children:",
+        this.containerEl.children.length,
+      );
 
       // Reset batch append state for full re-render
       this.previousDisplayedCount = 0;
@@ -515,7 +655,13 @@ export class DynamicViewsCardView extends BasesView {
         const groupEntries = processedGroup.entries.slice(0, entriesToDisplay);
 
         // Render group header to feed container (sibling to card group, matching vanilla)
-        renderGroupHeader(feedEl, processedGroup.group, this.config, this.app);
+        renderGroupHeader(
+          feedEl,
+          processedGroup.group,
+          this.config,
+          this.app,
+          processedGroup.entries.length,
+        );
 
         // Create group container for cards
         const groupEl = feedEl.createDiv(
@@ -650,6 +796,14 @@ export class DynamicViewsCardView extends BasesView {
       // Remove height preservation now that scroll is restored
       this.containerEl.style.minHeight = "";
       // Note: Don't reset isLoading here - scroll listener may have started a batch
+
+      // DEBUG: Log render completion
+      console.log(
+        "[grid-view] onDataUpdated - RENDER COMPLETE, version:",
+        currentVersion,
+        "containerEl children:",
+        this.containerEl.children.length,
+      );
     })();
   }
 
@@ -843,6 +997,7 @@ export class DynamicViewsCardView extends BasesView {
           processedGroup.group,
           this.config,
           this.app,
+          processedGroup.entries.length,
         );
 
         // New group - create container for cards
@@ -1023,6 +1178,16 @@ export class DynamicViewsCardView extends BasesView {
   }
 
   onunload(): void {
+    // DEBUG: Log before cleanup
+    console.log(
+      "[grid-view] onunload - START, scrollEl children count:",
+      this.scrollEl.children.length,
+    );
+    console.log(
+      "[grid-view] onunload - containerEl isConnected:",
+      this.containerEl?.isConnected,
+    );
+
     this.scrollPreservation?.cleanup();
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
@@ -1041,6 +1206,16 @@ export class DynamicViewsCardView extends BasesView {
     this.renderState.abortController?.abort();
     this.focusCleanup?.();
     this.cardRenderer.cleanup(true); // Force viewer cleanup on view destruction
+
+    // DEBUG: Log after cleanup (before potential DOM removal)
+    console.log(
+      "[grid-view] onunload - END, scrollEl children count:",
+      this.scrollEl.children.length,
+    );
+    console.log(
+      "[grid-view] onunload - containerEl still isConnected:",
+      this.containerEl?.isConnected,
+    );
   }
 
   focus(): void {
