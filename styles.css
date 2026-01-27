@@ -5487,7 +5487,7 @@ body:not(.dynamic-views-backdrop-no-adaptive-text)
 
 /* Dual stacked images for slideshow */
 .dynamic-views .slideshow-img {
-  position: absolute !important;
+  position: absolute !important; /* !important required - without it, images stack vertically causing blank slides */
   top: 0;
   left: 0;
   width: 100%;
@@ -5497,7 +5497,7 @@ body:not(.dynamic-views-backdrop-no-adaptive-text)
 
 /* Higher specificity to override .card.image-format-cover .card-cover img z-index */
 .dynamic-views .card.image-format-cover .card-cover .slideshow-img-current {
-  z-index: 2 !important;
+  z-index: 2 !important; /* !important required - ensures current image displays above next image */
 }
 
 .dynamic-views .card.image-format-cover .card-cover .slideshow-img-next {
