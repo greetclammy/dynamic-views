@@ -353,6 +353,56 @@ export function shouldUseBackdropLuminance(): boolean {
 }
 
 /**
+ * Check if poster overlay tint is disabled
+ */
+function isPosterTintDisabled(): boolean {
+  return hasBodyClass("dynamic-views-poster-theme-disable");
+}
+
+/**
+ * Check if poster adaptive text is enabled (default: ON)
+ */
+function isPosterAdaptiveTextEnabled(): boolean {
+  return !hasBodyClass("dynamic-views-poster-no-adaptive-text");
+}
+
+/**
+ * Check if poster overlay is effectively transparent (opacity = 0)
+ */
+function isPosterOverlayTransparent(): boolean {
+  const isDarkTint = hasBodyClass("dynamic-views-poster-theme-dark");
+  const isLightTint = hasBodyClass("dynamic-views-poster-theme-light");
+
+  if (isDarkTint) {
+    return (
+      getCSSVariableAsNumber("--dynamic-views-poster-overlay-dark", 70) === 0
+    );
+  }
+  if (isLightTint) {
+    return (
+      getCSSVariableAsNumber("--dynamic-views-poster-overlay-light", 70) === 0
+    );
+  }
+
+  const isDarkTheme = hasBodyClass("theme-dark");
+  const varName = isDarkTheme
+    ? "--dynamic-views-poster-overlay-dark"
+    : "--dynamic-views-poster-overlay-light";
+  return getCSSVariableAsNumber(varName, 70) === 0;
+}
+
+/**
+ * Check if poster images should use luminance-based adaptive text
+ * True when adaptive text is enabled AND (tint disabled OR overlay transparent)
+ */
+export function shouldUsePosterLuminance(): boolean {
+  return (
+    isPosterAdaptiveTextEnabled() &&
+    (isPosterTintDisabled() || isPosterOverlayTransparent())
+  );
+}
+
+/**
  * Get maximum number of images for slideshow
  * Returns slider value (default 10, min 2, max 24)
  */
@@ -429,8 +479,8 @@ export function setupStyleSettingsObserver(
 
   // Dynamic classes that should NOT trigger re-renders (added/removed by plugin at runtime)
   const ignoredDynamicClasses = [
-    "dynamic-views-backdrop-theme-match", // Added by image viewer backdrop system
-    "dynamic-views-backdrop-height-content", // Added by image viewer backdrop system
+    "dynamic-views-backdrop-theme-match", // Style Settings default
+    "dynamic-views-poster-theme-match", // Style Settings default
   ];
 
   // Observer for body class changes (Style Settings class-toggle settings)

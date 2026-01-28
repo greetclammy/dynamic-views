@@ -10,6 +10,7 @@ import {
   isCoverBackgroundAmbient,
   getCardAmbientOpacity,
   shouldUseBackdropLuminance,
+  shouldUsePosterLuminance,
 } from "../utils/style-settings";
 import { isExternalUrl } from "../utils/image";
 import { cacheExternalImage, getCachedBlobUrl } from "./slideshow";
@@ -181,9 +182,14 @@ export function applyCachedImageMetadata(
   // Don't apply ambient styles here - let handleImageLoad apply them in double rAF
   // so the transition animates. Aspect ratio can be applied immediately.
 
-  // Apply cached backdrop theme for luminance-based adaptive text
-  if (isBackdropImage && cached.theme && shouldUseBackdropLuminance()) {
-    cardEl.setAttribute("data-adaptive-text", cached.theme);
+  // Apply cached backdrop/poster theme for luminance-based adaptive text
+  if (isBackdropImage && cached.theme) {
+    const useLuminance = cardEl.classList.contains("image-format-poster")
+      ? shouldUsePosterLuminance()
+      : shouldUseBackdropLuminance();
+    if (useLuminance) {
+      cardEl.setAttribute("data-adaptive-text", cached.theme);
+    }
   }
 
   if (cached.aspectRatio !== undefined) {
@@ -241,9 +247,12 @@ export function handleImageLoad(
     !isBackdropImage &&
     (isCardBackgroundAmbient() || (isCover && isCoverBackgroundAmbient()));
 
-  // Backdrop needs luminance when tint disabled or overlay transparent
+  // Backdrop/poster needs luminance when tint disabled or overlay transparent
   const needsBackdropLuminance =
-    isBackdropImage && shouldUseBackdropLuminance();
+    isBackdropImage &&
+    (cardEl.classList.contains("image-format-poster")
+      ? shouldUsePosterLuminance()
+      : shouldUseBackdropLuminance());
 
   if (needsAmbient || needsBackdropLuminance) {
     // Skip non-cached external images - blob URLs (cached via requestUrl) work
@@ -433,11 +442,12 @@ export function handleJsxImageRef(
   const cardEl = imgEl.closest(".card");
   if (!cardEl || !(cardEl instanceof HTMLElement)) return;
 
-  // Check for backdrop image (in .card-backdrop container)
-  const backdropEl = imgEl.closest(".card-backdrop");
+  // Check for backdrop/poster image
+  const backdropEl =
+    imgEl.closest(".card-backdrop") || imgEl.closest(".card-poster");
   const isBackdropImage = !!backdropEl;
 
-  // Get container - backdrop or image embed
+  // Get container - backdrop/poster or image embed
   const imageEmbedEl =
     backdropEl ?? imgEl.closest(".dynamic-views-image-embed");
   if (!imageEmbedEl || !(imageEmbedEl instanceof HTMLElement)) return;
@@ -512,11 +522,12 @@ export function handleJsxImageLoad(
   )
     return;
 
-  // Check for backdrop image (in .card-backdrop container)
-  const backdropEl = imgEl.closest(".card-backdrop");
+  // Check for backdrop/poster image
+  const backdropEl =
+    imgEl.closest(".card-backdrop") || imgEl.closest(".card-poster");
   const isBackdropImage = !!backdropEl;
 
-  // Get container - backdrop or image embed
+  // Get container - backdrop/poster or image embed
   const imageEmbedEl =
     backdropEl ?? imgEl.closest(".dynamic-views-image-embed");
   if (!imageEmbedEl || !(imageEmbedEl instanceof HTMLElement)) return;

@@ -62,25 +62,6 @@ settings:
         description: Do not adjust text colors for readability
         type: class-toggle
     -
-        id: dynamic-views-backdrop-hover-reveal
-        title: Reveal content on hover
-        description: Hide card content and overlay until hovering over card
-        type: class-toggle
-    -
-        id: dynamic-views-backdrop-height
-        title: Card height set by
-        description: What determines card height
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-backdrop-height-content
-        options:
-            -
-                label: Card content
-                value: dynamic-views-backdrop-height-content
-            -
-                label: Image ratio setting
-                value: dynamic-views-backdrop-height-ratio
-    -
         id: layout-heading
         title: Card layout
         type: heading
@@ -607,6 +588,64 @@ settings:
         max: 1
         step: 0.01
         format: ''
+    -
+        id: poster-heading
+        title: Poster
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: dynamic-views-poster-overlay-tint
+        title: Overlay tint
+        description: Color of the poster overlay
+        type: class-select
+        allowEmpty: false
+        default: dynamic-views-poster-theme-match
+        options:
+            -
+                label: Light
+                value: dynamic-views-poster-theme-light
+            -
+                label: Dark
+                value: dynamic-views-poster-theme-dark
+            -
+                label: Match theme
+                value: dynamic-views-poster-theme-match
+            -
+                label: Disable
+                value: dynamic-views-poster-theme-disable
+    -
+        id: dynamic-views-poster-overlay-light
+        title: Light overlay strength
+        description: Opacity of the light overlay
+        type: variable-number-slider
+        default: 70
+        min: 0
+        max: 100
+        step: 1
+    -
+        id: dynamic-views-poster-overlay-dark
+        title: Dark overlay strength
+        description: Opacity of the dark overlay
+        type: variable-number-slider
+        default: 40
+        min: 0
+        max: 100
+        step: 1
+    -
+        id: dynamic-views-poster-overlay-blur
+        title: Overlay blur
+        type: variable-number-slider
+        default: 0
+        min: 0
+        max: 20
+        step: 1
+        format: px
+    -
+        id: dynamic-views-poster-no-adaptive-text
+        title: Disable adaptive text colors
+        description: Do not adjust text colors for readability
+        type: class-toggle
     -
         id: properties-heading
         title: Properties
@@ -3193,10 +3232,12 @@ body.dynamic-views-adaptive-text
 }
 
 /* Text color adjustments for ambient card backgrounds (dramatic only) */
-/* Excludes backdrop cards - they have separate adaptive text control */
+/* Excludes backdrop/poster cards - they have separate adaptive text control */
 body.dynamic-views-adaptive-text
   .dynamic-views
-  .card[data-adaptive-text="light"]:not(.image-format-backdrop) {
+  .card[data-adaptive-text="light"]:not(.image-format-backdrop):not(
+    .image-format-poster
+  ) {
   --text-normal: var(--dynamic-views-adaptive-text-light-normal);
   --text-muted: var(--dynamic-views-adaptive-text-light-muted);
   --text-faint: var(--dynamic-views-adaptive-text-light-faint);
@@ -3204,7 +3245,9 @@ body.dynamic-views-adaptive-text
 
 body.dynamic-views-adaptive-text
   .dynamic-views
-  .card[data-adaptive-text="dark"]:not(.image-format-backdrop) {
+  .card[data-adaptive-text="dark"]:not(.image-format-backdrop):not(
+    .image-format-poster
+  ) {
   --text-normal: var(--dynamic-views-adaptive-text-dark-normal);
   --text-muted: var(--dynamic-views-adaptive-text-dark-muted);
   --text-faint: var(--dynamic-views-adaptive-text-dark-faint);
@@ -5216,117 +5259,6 @@ body.dynamic-views-backdrop-theme-disable
   z-index: 1;
 }
 
-/* Hover reveal: hide content by default (only if card has image) */
-body.dynamic-views-backdrop-hover-reveal
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop)
-  .card-title-group,
-body.dynamic-views-backdrop-hover-reveal
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop)
-  .card-content,
-body.dynamic-views-backdrop-hover-reveal
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop)
-  .card-properties-top,
-body.dynamic-views-backdrop-hover-reveal
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop)
-  .card-properties-bottom {
-  opacity: 0;
-  transition: opacity var(--anim-duration-moderate, 300ms);
-}
-
-/* Hover reveal: show content on hover */
-body.dynamic-views-backdrop-hover-reveal
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop):hover
-  .card-title-group,
-body.dynamic-views-backdrop-hover-reveal
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop):hover
-  .card-content,
-body.dynamic-views-backdrop-hover-reveal
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop):hover
-  .card-properties-top,
-body.dynamic-views-backdrop-hover-reveal
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop):hover
-  .card-properties-bottom {
-  opacity: 1;
-}
-
-/* Hover reveal: hide overlay by default (each theme variant) */
-body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-match.theme-dark
-  .dynamic-views
-  .card.image-format-backdrop
-  .card-backdrop::after,
-body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-match.theme-light
-  .dynamic-views
-  .card.image-format-backdrop
-  .card-backdrop::after,
-body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-light
-  .dynamic-views
-  .card.image-format-backdrop
-  .card-backdrop::after,
-body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-dark
-  .dynamic-views
-  .card.image-format-backdrop
-  .card-backdrop::after {
-  background: transparent;
-  backdrop-filter: blur(0px);
-  transition: background var(--anim-duration-moderate, 300ms);
-}
-
-/* Hover reveal: show overlay on hover (restore configured strength) */
-body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-match.theme-dark
-  .dynamic-views
-  .card.image-format-backdrop:hover
-  .card-backdrop::after {
-  background: rgb(
-    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 40) * 1%)
-  );
-  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
-}
-
-body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-match.theme-light
-  .dynamic-views
-  .card.image-format-backdrop:hover
-  .card-backdrop::after {
-  background: rgb(
-    255 255 255 / calc(var(--dynamic-views-backdrop-overlay-light, 70) * 1%)
-  );
-  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
-}
-
-body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-light
-  .dynamic-views
-  .card.image-format-backdrop:hover
-  .card-backdrop::after {
-  background: rgb(
-    255 255 255 / calc(var(--dynamic-views-backdrop-overlay-light, 70) * 1%)
-  );
-  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
-}
-
-body.dynamic-views-backdrop-hover-reveal.dynamic-views-backdrop-theme-dark
-  .dynamic-views
-  .card.image-format-backdrop:hover
-  .card-backdrop::after {
-  background: rgb(
-    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 40) * 1%)
-  );
-  backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
-}
-
-/* Backdrop sizing: image ratio mode (only cards with image) */
-body.dynamic-views-backdrop-height-ratio
-  .dynamic-views
-  .card.image-format-backdrop:has(.card-backdrop) {
-  aspect-ratio: var(--dynamic-views-image-aspect-ratio, 1);
-}
-
 /* Backdrop text color overrides (light overlay → dark text) */
 /* Excludes cards with data-adaptive-text (luminance-based when overlay transparent) */
 body:not(
@@ -5374,6 +5306,255 @@ body:not(.dynamic-views-backdrop-no-adaptive-text)
 body:not(.dynamic-views-backdrop-no-adaptive-text)
   .dynamic-views
   .card.image-format-backdrop[data-adaptive-text="dark"]:has(.card-backdrop) {
+  --text-normal: var(--dynamic-views-adaptive-text-dark-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-dark-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-dark-faint);
+}
+
+/* ==================== POSTER FORMAT ==================== */
+
+/* Poster format - image fills entire card, content hidden until hover */
+.dynamic-views .card.image-format-poster {
+  position: relative;
+  overflow: hidden;
+  --backdrop-inset: 1px;
+}
+
+.dynamic-views .card.image-format-poster .card-poster {
+  position: absolute;
+  inset: calc(var(--backdrop-inset) - var(--dynamic-views-card-padding, 8px));
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* No border = no inset */
+body.dynamic-views-hide-card-border .dynamic-views .card.image-format-poster {
+  --backdrop-inset: 0px;
+}
+
+.dynamic-views .card.image-format-poster .card-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transition: opacity var(--anim-duration-fast, 140ms) ease;
+}
+
+.dynamic-views .card.image-format-poster.cover-ready .card-poster img {
+  opacity: 1;
+}
+
+.dynamic-views .card.image-format-poster.card-cover-contain .card-poster img {
+  object-fit: contain;
+}
+
+/* Poster overlay for text readability */
+.dynamic-views .card.image-format-poster .card-poster::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  backdrop-filter: blur(var(--dynamic-views-poster-overlay-blur, 0px));
+  transition:
+    background var(--anim-duration-moderate, 300ms),
+    backdrop-filter var(--anim-duration-moderate, 300ms);
+}
+
+/* Poster overlay theme: Match theme (default) */
+body.dynamic-views-poster-theme-match.theme-dark
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after {
+  background: rgb(
+    0 0 0 / calc(var(--dynamic-views-poster-overlay-dark, 40) * 1%)
+  );
+}
+
+body.dynamic-views-poster-theme-match.theme-light
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after {
+  background: rgb(
+    255 255 255 / calc(var(--dynamic-views-poster-overlay-light, 70) * 1%)
+  );
+}
+
+/* Poster overlay theme: Light (forced) */
+body.dynamic-views-poster-theme-light
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after {
+  background: rgb(
+    255 255 255 / calc(var(--dynamic-views-poster-overlay-light, 70) * 1%)
+  );
+}
+
+/* Poster overlay theme: Dark (forced) */
+body.dynamic-views-poster-theme-dark
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after {
+  background: rgb(
+    0 0 0 / calc(var(--dynamic-views-poster-overlay-dark, 40) * 1%)
+  );
+}
+
+/* Poster overlay theme: Disable */
+body.dynamic-views-poster-theme-disable
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after {
+  display: none;
+}
+
+/* Poster content stacks above image */
+.dynamic-views .card.image-format-poster .card-content,
+.dynamic-views .card.image-format-poster .card-title-group {
+  position: relative;
+  z-index: 1;
+}
+
+/* Poster: content hidden until hover (baked in, only if card has image) */
+.dynamic-views .card.image-format-poster:has(.card-poster) .card-title-group,
+.dynamic-views .card.image-format-poster:has(.card-poster) .card-content,
+.dynamic-views .card.image-format-poster:has(.card-poster) .card-properties-top,
+.dynamic-views
+  .card.image-format-poster:has(.card-poster)
+  .card-properties-bottom {
+  opacity: 0;
+  transition: opacity var(--anim-duration-moderate, 300ms);
+}
+
+/* Poster: show content on hover */
+.dynamic-views
+  .card.image-format-poster:has(.card-poster):hover
+  .card-title-group,
+.dynamic-views .card.image-format-poster:has(.card-poster):hover .card-content,
+.dynamic-views
+  .card.image-format-poster:has(.card-poster):hover
+  .card-properties-top,
+.dynamic-views
+  .card.image-format-poster:has(.card-poster):hover
+  .card-properties-bottom {
+  opacity: 1;
+}
+
+/* Poster: hide overlay by default, show on hover (all theme variants) */
+body.dynamic-views-poster-theme-match.theme-dark
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after,
+body.dynamic-views-poster-theme-match.theme-light
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after,
+body.dynamic-views-poster-theme-light
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after,
+body.dynamic-views-poster-theme-dark
+  .dynamic-views
+  .card.image-format-poster
+  .card-poster::after {
+  background: transparent;
+  backdrop-filter: blur(0px);
+}
+
+/* Poster: show overlay on hover (restore configured strength) */
+body.dynamic-views-poster-theme-match.theme-dark
+  .dynamic-views
+  .card.image-format-poster:hover
+  .card-poster::after {
+  background: rgb(
+    0 0 0 / calc(var(--dynamic-views-poster-overlay-dark, 40) * 1%)
+  );
+  backdrop-filter: blur(var(--dynamic-views-poster-overlay-blur, 0px));
+}
+
+body.dynamic-views-poster-theme-match.theme-light
+  .dynamic-views
+  .card.image-format-poster:hover
+  .card-poster::after {
+  background: rgb(
+    255 255 255 / calc(var(--dynamic-views-poster-overlay-light, 70) * 1%)
+  );
+  backdrop-filter: blur(var(--dynamic-views-poster-overlay-blur, 0px));
+}
+
+body.dynamic-views-poster-theme-light
+  .dynamic-views
+  .card.image-format-poster:hover
+  .card-poster::after {
+  background: rgb(
+    255 255 255 / calc(var(--dynamic-views-poster-overlay-light, 70) * 1%)
+  );
+  backdrop-filter: blur(var(--dynamic-views-poster-overlay-blur, 0px));
+}
+
+body.dynamic-views-poster-theme-dark
+  .dynamic-views
+  .card.image-format-poster:hover
+  .card-poster::after {
+  background: rgb(
+    0 0 0 / calc(var(--dynamic-views-poster-overlay-dark, 40) * 1%)
+  );
+  backdrop-filter: blur(var(--dynamic-views-poster-overlay-blur, 0px));
+}
+
+/* Poster: card height determined by image ratio */
+.dynamic-views .card.image-format-poster:has(.card-poster) {
+  aspect-ratio: 1 / var(--dynamic-views-image-aspect-ratio, 1);
+}
+
+/* Grid: all poster cards share ratio-based height (override height:100% to prevent width expansion) */
+.dynamic-views .dynamic-views-grid .card.image-format-poster {
+  height: auto;
+  aspect-ratio: 1 / var(--dynamic-views-image-aspect-ratio, 1);
+}
+
+/* Poster text color overrides (light overlay → dark text) */
+body:not(
+    .dynamic-views-poster-no-adaptive-text
+  ).dynamic-views-poster-theme-light
+  .dynamic-views
+  .card.image-format-poster:not([data-adaptive-text]):has(.card-poster),
+body:not(
+    .dynamic-views-poster-no-adaptive-text
+  ).dynamic-views-poster-theme-match.theme-light
+  .dynamic-views
+  .card.image-format-poster:not([data-adaptive-text]):has(.card-poster) {
+  --text-normal: var(--dynamic-views-adaptive-text-dark-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-dark-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-dark-faint);
+}
+
+/* Poster text color overrides (dark overlay → light text) */
+body:not(.dynamic-views-poster-no-adaptive-text).dynamic-views-poster-theme-dark
+  .dynamic-views
+  .card.image-format-poster:not([data-adaptive-text]):has(.card-poster),
+body:not(
+    .dynamic-views-poster-no-adaptive-text
+  ).dynamic-views-poster-theme-match.theme-dark
+  .dynamic-views
+  .card.image-format-poster:not([data-adaptive-text]):has(.card-poster) {
+  --text-normal: var(--dynamic-views-adaptive-text-light-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-light-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-light-faint);
+}
+
+/* Poster text color overrides (luminance-based) */
+body:not(.dynamic-views-poster-no-adaptive-text)
+  .dynamic-views
+  .card.image-format-poster[data-adaptive-text="light"]:has(.card-poster) {
+  --text-normal: var(--dynamic-views-adaptive-text-light-normal);
+  --text-muted: var(--dynamic-views-adaptive-text-light-muted);
+  --text-faint: var(--dynamic-views-adaptive-text-light-faint);
+}
+
+body:not(.dynamic-views-poster-no-adaptive-text)
+  .dynamic-views
+  .card.image-format-poster[data-adaptive-text="dark"]:has(.card-poster) {
   --text-normal: var(--dynamic-views-adaptive-text-dark-normal);
   --text-muted: var(--dynamic-views-adaptive-text-dark-muted);
   --text-faint: var(--dynamic-views-adaptive-text-dark-faint);

@@ -39,6 +39,7 @@ export interface Settings {
   propertyLabels: "hide" | "inline" | "above";
   imageFormat:
     | "none"
+    | "poster"
     | "backdrop"
     | "thumbnail-left"
     | "thumbnail-right"
@@ -113,6 +114,7 @@ export interface DefaultViewSettings {
   fallbackToEmbeds: "always" | "if-unavailable" | "never";
   imageFormat:
     | "none"
+    | "poster"
     | "backdrop"
     | "thumbnail-left"
     | "thumbnail-right"

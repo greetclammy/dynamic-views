@@ -95,6 +95,7 @@ export function getBasesViewOptions(): any[] {
           options: {
             thumbnail: "Thumbnail",
             cover: "Cover",
+            poster: "Poster",
             backdrop: "Backdrop",
           },
           default: "thumbnail",
@@ -487,6 +488,7 @@ export function readBasesSettings(
     const position = config.get("imagePosition");
 
     if (format === "none") return "none";
+    if (format === "poster") return "poster";
     if (format === "backdrop") return "backdrop";
 
     // Combine format + position (e.g., "cover" + "top" → "cover-top")
@@ -704,6 +706,7 @@ export function extractBasesSnapshot(
     const position = config.get("imagePosition");
 
     if (format === "none") return "none";
+    if (format === "poster") return "poster";
     if (format === "backdrop") return "backdrop";
 
     // Combine format + position (e.g., "cover" + "top" → "cover-top")

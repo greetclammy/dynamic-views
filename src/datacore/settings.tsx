@@ -455,6 +455,7 @@ export function Settings({
             <select
               value={(() => {
                 if (settings.imageFormat === "none") return "none";
+                if (settings.imageFormat === "poster") return "poster";
                 if (settings.imageFormat === "backdrop") return "backdrop";
                 const imageFormatParts = settings.imageFormat.split("-");
                 return imageFormatParts[0] as "thumbnail" | "cover";
@@ -462,13 +463,18 @@ export function Settings({
               onChange={(e: unknown) => {
                 const evt = e as Event & { target: HTMLSelectElement };
                 const newFormat = evt.target.value;
-                if (newFormat === "none" || newFormat === "backdrop") {
+                if (
+                  newFormat === "none" ||
+                  newFormat === "poster" ||
+                  newFormat === "backdrop"
+                ) {
                   onSettingsChange({
                     imageFormat: newFormat as typeof settings.imageFormat,
                   });
                 } else {
                   const currentPosition =
                     settings.imageFormat === "none" ||
+                    settings.imageFormat === "poster" ||
                     settings.imageFormat === "backdrop"
                       ? "right"
                       : settings.imageFormat.split("-")[1] || "right";
@@ -482,10 +488,12 @@ export function Settings({
             >
               <option value="thumbnail">Thumbnail</option>
               <option value="cover">Cover</option>
+              <option value="poster">Poster</option>
               <option value="backdrop">Backdrop</option>
             </select>
           </div>
           {settings.imageFormat !== "none" &&
+            settings.imageFormat !== "poster" &&
             settings.imageFormat !== "backdrop" && (
               <div className="setting-item setting-item-dropdown">
                 <div className="setting-item-info">
@@ -521,6 +529,7 @@ export function Settings({
               </div>
             )}
           {settings.imageFormat !== "none" &&
+            settings.imageFormat !== "poster" &&
             settings.imageFormat !== "backdrop" && (
               <>
                 <div className="setting-item setting-item-dropdown">

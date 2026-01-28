@@ -526,10 +526,12 @@ export class SharedCardRenderer {
 
     // Parse imageFormat to extract format and position
     const imageFormat = settings.imageFormat;
-    let format: "none" | "thumbnail" | "cover" | "backdrop" = "none";
+    let format: "none" | "thumbnail" | "cover" | "poster" | "backdrop" = "none";
     let position: "left" | "right" | "top" | "bottom" = "right";
 
-    if (imageFormat === "backdrop") {
+    if (imageFormat === "poster") {
+      format = "poster";
+    } else if (imageFormat === "backdrop") {
       format = "backdrop";
     } else if (imageFormat.startsWith("thumbnail-")) {
       format = "thumbnail";
@@ -553,6 +555,8 @@ export class SharedCardRenderer {
         cardEl.classList.add("image-format-cover");
       } else if (format === "thumbnail") {
         cardEl.classList.add("image-format-thumbnail");
+      } else if (format === "poster") {
+        cardEl.classList.add("image-format-poster");
       } else if (format === "backdrop") {
         cardEl.classList.add("image-format-backdrop");
       }
@@ -562,6 +566,8 @@ export class SharedCardRenderer {
         cardEl.classList.add(`card-thumbnail-${settings.imageFit}`);
       } else if (format === "cover") {
         cardEl.classList.add(`card-cover-${position}`);
+        cardEl.classList.add(`card-cover-${settings.imageFit}`);
+      } else if (format === "poster") {
         cardEl.classList.add(`card-cover-${settings.imageFit}`);
       } else if (format === "backdrop") {
         cardEl.classList.add(`card-cover-${settings.imageFit}`);
@@ -1134,6 +1140,22 @@ export class SharedCardRenderer {
           this.propertyObservers.push(resizeObserver);
         });
       }
+    }
+
+    // POSTER: absolute-positioned image fills entire card, content hidden until hover
+    if (format === "poster" && hasImage) {
+      const bgWrapper = cardEl.createDiv("card-poster");
+      const img = bgWrapper.createEl("img", {
+        attr: { src: imageUrls[0], alt: "" },
+      });
+      setupBackdropImageLoader(
+        img,
+        bgWrapper,
+        cardEl,
+        imageUrls,
+        this.updateLayoutRef.current,
+        signal,
+      );
     }
 
     // BACKDROP: absolute-positioned image fills entire card
