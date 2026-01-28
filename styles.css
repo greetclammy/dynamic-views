@@ -2799,7 +2799,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   gap: var(--dynamic-views-card-spacing-mobile, 6px);
 }
 
-/* Grid mode: remove margins (gap handles spacing) and set flexbox layout */
+/* Grid view: remove margins (gap handles spacing) and set flexbox layout */
 .dynamic-views-grid .card {
   margin: 0;
   display: flex;
@@ -2835,19 +2835,79 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   order: 50;
 }
 
-/* Grid mode: push bottom properties to bottom of card when it has siblings above */
+/* Grid view: push bottom properties to bottom of card when it has siblings above */
+/* Exclude cover-bottom which has its own rules */
 .dynamic-views
   .dynamic-views-grid
-  .card
+  .card:not(.card-cover-bottom)
   .card-properties-bottom:not(:first-child) {
   margin-top: auto;
   padding-top: var(--size-4-2);
 }
 
-/* Grid mode: only-child pushes to bottom but needs no padding (no sibling above) */
-.dynamic-views .dynamic-views-grid .card .card-properties-bottom:only-child {
+/* Grid view: only-child pushes to bottom but needs no padding (no sibling above) */
+.dynamic-views
+  .dynamic-views-grid
+  .card:not(.card-cover-bottom)
+  .card-properties-bottom:only-child {
   margin-top: auto;
   padding-top: 0;
+}
+
+/* Grid view: cover-top — fixed cover height, gap absorbs remaining space */
+/* Content stays natural height with text top-aligned */
+.dynamic-views .dynamic-views-grid .card.card-cover-top .card-content {
+  flex-grow: 0;
+}
+
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-top.image-format-cover
+  .card-cover-wrapper {
+  flex-grow: 0;
+}
+
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-top.image-format-cover
+  .card-cover {
+  height: 0;
+  min-height: 0;
+  padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
+}
+
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-top.image-format-cover
+  .card-cover-placeholder {
+  height: 0;
+  min-height: 0;
+  padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
+}
+
+/* Grid view cover-top with properties-bottom: push properties down (gap absorbs remaining space) */
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-top.image-format-cover:has(.card-properties-bottom)
+  .card-properties-bottom {
+  margin-top: auto;
+  padding-top: var(--size-4-2);
+}
+
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-top.image-format-cover
+  .card-cover {
+  height: 100%;
+  min-height: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
+}
+
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-top.image-format-cover
+  .card-cover-placeholder {
+  height: 100%;
+  min-height: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
 }
 
 /* Collapse empty cards (no visible content) - requires :has() (Electron 22+) */
@@ -3041,6 +3101,12 @@ body.dynamic-views-hide-group-property-labels
   margin: var(--dynamic-views-card-spacing-mobile, 6px) 0;
 }
 
+/* Grid uses row-gap for spacing; zero out card margins to prevent grid row inflation */
+.dynamic-views .dynamic-views-grid .dynamic-views-group > .card {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 /* Clickable card cursor */
 .dynamic-views .card.clickable-card {
   cursor: pointer;
@@ -3175,11 +3241,12 @@ body:not(.dynamic-views-show-thumbnail-placeholder)
   margin-top: 0;
 }
 
-/* Remove owl-pattern margin from card-content after cover-top when no header (cover margin already provides spacing) */
+/* Remove owl-pattern margin from card-content after cover-top when no header and no properties-top
+   (cover margin already provides spacing; but if properties-top exists, card-content needs its own margin) */
 .dynamic-views
   .card.card-cover-top:not(:has(.card-title)):not(:has(.card-header)):not(
     :has(.card-subtitle)
-  )
+  ):not(:has(.card-properties-top))
   .card-content {
   margin-top: 0;
 }
@@ -3253,18 +3320,18 @@ body.dynamic-views-adaptive-text
   --text-faint: var(--dynamic-views-adaptive-text-dark-faint);
 }
 
-/* Grid mode: card-content fills available space, aligns children to top */
+/* Grid view: card-content fills available space, aligns children to top */
 .dynamic-views .dynamic-views-grid .card-content {
   flex-grow: 1;
   align-items: flex-start;
 }
 
-/* Grid mode: title-group should not grow - let card-content take extra space */
+/* Grid view: title-group should not grow - let card-content take extra space */
 .dynamic-views .dynamic-views-grid .card-title-group {
   flex-grow: 0;
 }
 
-/* Grid mode: inside card-header, title-group SHOULD grow horizontally to fill space */
+/* Grid view: inside card-header, title-group SHOULD grow horizontally to fill space */
 .dynamic-views .dynamic-views-grid .card-header .card-title-group {
   flex-grow: 1;
 }
@@ -4266,10 +4333,17 @@ body.dynamic-views-show-cover-placeholder-none
 }
 
 /* Remove spacing from card-content when it's first visible element (no visible header, no properties-top) */
+/* Exclude grid cover-top which uses flex-grow on cover-wrapper (content stays at natural height) */
 .dynamic-views
-  .card.image-format-cover:not(:has(.card-title)):not(:has(.card-header)):not(
-    :has(.card-subtitle)
-  ):not(:has(.card-properties-top))
+  .card.image-format-cover:not(.card-cover-top):not(:has(.card-title)):not(
+    :has(.card-header)
+  ):not(:has(.card-subtitle)):not(:has(.card-properties-top))
+  .card-content,
+.dynamic-views
+  .dynamic-views-masonry
+  .card.image-format-cover.card-cover-top:not(:has(.card-title)):not(
+    :has(.card-header)
+  ):not(:has(.card-subtitle)):not(:has(.card-properties-top))
   .card-content {
   margin-top: 0 !important;
 }
@@ -4369,12 +4443,36 @@ body.dynamic-views-show-cover-placeholder-none
   );
 }
 
-/* Cover-bottom: wrapper at end with negative margins to bleed to edges */
+/* Cover-bottom: push properties down only when content exists above */
+/* Use :has() to check for visible elements that would appear above properties (order < 50) */
+.dynamic-views
+  .card.card-cover-bottom.image-format-cover:has(
+    .card-title-group,
+    .card-header,
+    .card-content,
+    .card-properties-top
+  )
+  .card-properties-bottom {
+  margin-top: auto;
+}
+
+/* Cover-bottom placeholder: expands to fill remaining space like actual cover */
+.dynamic-views
+  .card.card-cover-bottom.image-format-cover
+  .card-cover-wrapper.card-cover-wrapper-placeholder {
+  margin-top: var(--dynamic-views-card-padding, 8px);
+  flex-grow: 1;
+  min-height: 0;
+}
+
+/* Cover-bottom: wrapper at end, expands to fill remaining space */
 .dynamic-views
   .card.card-cover-bottom.image-format-cover
   .card-cover-wrapper:not(.card-cover-wrapper-placeholder) {
   order: 999; /* Last */
-  margin-top: var(--dynamic-views-card-padding, 8px) !important;
+  margin-top: var(--dynamic-views-card-padding, 8px);
+  flex-grow: 1;
+  min-height: 0;
   margin-right: calc(
     var(--cover-inset-computed) - var(--dynamic-views-card-padding, 8px)
   );
@@ -4446,13 +4544,79 @@ body.dynamic-views-show-cover-placeholder-none
 /* ==================== COVER ELEMENT STYLING ==================== */
 
 /* Cover-top/bottom: aspect ratio using padding-top hack */
-.dynamic-views .card.card-cover-top.image-format-cover .card-cover,
-.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover {
+/* Cover-top: fixed aspect ratio using padding-top trick */
+.dynamic-views .card.card-cover-top.image-format-cover .card-cover {
   width: 100%;
   height: 0;
   padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
   position: relative;
   overflow: hidden;
+}
+
+/* Cover-bottom: expands to fill remaining space */
+.dynamic-views .card.card-cover-bottom.image-format-cover .card-cover {
+  width: 100%;
+  height: 100%;
+  min-height: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Cover-bottom placeholder: expands to match cover dimensions */
+.dynamic-views
+  .card.card-cover-bottom.image-format-cover
+  .card-cover-placeholder {
+  height: 100%;
+  min-height: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
+}
+
+/* Grid view: cover-bottom — fixed cover height */
+.dynamic-views .dynamic-views-grid .card.card-cover-bottom .card-content {
+  flex-grow: 0;
+}
+
+/* Override negative bottom margin that inflates grid auto row height */
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-bottom.image-format-cover
+  .card-cover-wrapper {
+  flex-grow: 0;
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+/* Grid cover-bottom: spacer between content and properties-bottom/cover.
+   Absorbs remaining space; min-height ensures minimum gap. */
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-bottom.image-format-cover::before {
+  content: "";
+  order: 49;
+  flex-grow: 1;
+  min-height: var(--size-4-2);
+}
+
+/* Compensate: card bottom padding = inset (instead of card-padding) */
+.dynamic-views .dynamic-views-grid .card.card-cover-bottom.image-format-cover {
+  padding-bottom: var(--cover-inset-computed);
+}
+
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-bottom.image-format-cover
+  .card-cover {
+  height: 0;
+  min-height: 0;
+  padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
+}
+
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-bottom.image-format-cover
+  .card-cover-placeholder {
+  height: 0;
+  min-height: 0;
+  padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
 }
 
 /* All covers: border radius */
@@ -7593,16 +7757,21 @@ body.dynamic-views-no-fade-truncated-text
 }
 
 /* Masonry: push bottom properties to bottom of card when it has siblings above */
+/* Exclude cover-bottom cards where cover itself is at bottom (order: 999) */
 .dynamic-views
   .dynamic-views-masonry
-  .card
+  .card:not(.card-cover-bottom)
   .card-properties-bottom:not(:first-child) {
   margin-top: auto;
   padding-top: var(--size-4-2);
 }
 
 /* Masonry: only-child pushes to bottom but needs no padding (no sibling above) */
-.dynamic-views .dynamic-views-masonry .card .card-properties-bottom:only-child {
+/* Exclude cover-bottom cards where cover itself is at bottom (order: 999) */
+.dynamic-views
+  .dynamic-views-masonry
+  .card:not(.card-cover-bottom)
+  .card-properties-bottom:only-child {
   margin-top: auto;
   padding-top: 0;
 }

@@ -152,14 +152,10 @@ export function getBasesViewOptions(): any[] {
           default: DEFAULT_VIEW_SETTINGS.propertyDisplay2,
         },
         {
-          type: "dropdown",
-          displayName: "Position",
-          key: "propertySet1Position",
-          options: {
-            top: "Top",
-            bottom: "Bottom",
-          },
-          default: DEFAULT_VIEW_SETTINGS.propertySet1Position,
+          type: "toggle",
+          displayName: "Position on top",
+          key: "propertySet1PositionOnTop",
+          default: DEFAULT_VIEW_SETTINGS.propertySet1PositionOnTop,
         },
         {
           type: "toggle",
@@ -188,14 +184,10 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "dropdown",
-          displayName: "Position",
-          key: "propertySet2Position",
-          options: {
-            top: "Top",
-            bottom: "Bottom",
-          },
-          default: DEFAULT_VIEW_SETTINGS.propertySet2Position,
+          type: "toggle",
+          displayName: "Position on top",
+          key: "propertySet2PositionOnTop",
+          default: DEFAULT_VIEW_SETTINGS.propertySet2PositionOnTop,
         },
         {
           type: "toggle",
@@ -224,14 +216,10 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "dropdown",
-          displayName: "Position",
-          key: "propertySet3Position",
-          options: {
-            top: "Top",
-            bottom: "Bottom",
-          },
-          default: DEFAULT_VIEW_SETTINGS.propertySet3Position,
+          type: "toggle",
+          displayName: "Position on top",
+          key: "propertySet3PositionOnTop",
+          default: DEFAULT_VIEW_SETTINGS.propertySet3PositionOnTop,
         },
         {
           type: "toggle",
@@ -260,14 +248,10 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "dropdown",
-          displayName: "Position",
-          key: "propertySet4Position",
-          options: {
-            top: "Top",
-            bottom: "Bottom",
-          },
-          default: DEFAULT_VIEW_SETTINGS.propertySet4Position,
+          type: "toggle",
+          displayName: "Position on top",
+          key: "propertySet4PositionOnTop",
+          default: DEFAULT_VIEW_SETTINGS.propertySet4PositionOnTop,
         },
         {
           type: "toggle",
@@ -296,14 +280,10 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "dropdown",
-          displayName: "Position",
-          key: "propertySet5Position",
-          options: {
-            top: "Top",
-            bottom: "Bottom",
-          },
-          default: DEFAULT_VIEW_SETTINGS.propertySet5Position,
+          type: "toggle",
+          displayName: "Position on top",
+          key: "propertySet5PositionOnTop",
+          default: DEFAULT_VIEW_SETTINGS.propertySet5PositionOnTop,
         },
         {
           type: "toggle",
@@ -332,14 +312,10 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "dropdown",
-          displayName: "Position",
-          key: "propertySet6Position",
-          options: {
-            top: "Top",
-            bottom: "Bottom",
-          },
-          default: DEFAULT_VIEW_SETTINGS.propertySet6Position,
+          type: "toggle",
+          displayName: "Position on top",
+          key: "propertySet6PositionOnTop",
+          default: DEFAULT_VIEW_SETTINGS.propertySet6PositionOnTop,
         },
         {
           type: "toggle",
@@ -368,14 +344,10 @@ export function getBasesViewOptions(): any[] {
           default: "",
         },
         {
-          type: "dropdown",
-          displayName: "Position",
-          key: "propertySet7Position",
-          options: {
-            top: "Top",
-            bottom: "Bottom",
-          },
-          default: DEFAULT_VIEW_SETTINGS.propertySet7Position,
+          type: "toggle",
+          displayName: "Position on top",
+          key: "propertySet7PositionOnTop",
+          default: DEFAULT_VIEW_SETTINGS.propertySet7PositionOnTop,
         },
         {
           type: "toggle",
@@ -423,9 +395,6 @@ export function getBasesViewOptions(): any[] {
       ],
     },
   ];
-  console.log(
-    "[getBasesViewOptions] Returning schema with __isTemplate toggle",
-  );
   return schema;
 }
 
@@ -471,15 +440,6 @@ export function readBasesSettings(
     return typeof value === "number" && Number.isFinite(value)
       ? value
       : fallback;
-  };
-
-  // Helper: get position property with fallback
-  const getPosition = (
-    key: string,
-    fallback: "top" | "bottom",
-  ): "top" | "bottom" => {
-    const value = config.get(key);
-    return value === "top" || value === "bottom" ? value : fallback;
   };
 
   // Helper: get imageFormat from separate format and position dropdowns
@@ -583,34 +543,34 @@ export function readBasesSettings(
       defaults.propertySet7SideBySide,
     ),
 
-    // Property set positions (1-7)
-    propertySet1Position: getPosition(
-      "propertySet1Position",
-      defaults.propertySet1Position,
+    // Property set position-on-top booleans (1-7)
+    propertySet1PositionOnTop: getBool(
+      "propertySet1PositionOnTop",
+      defaults.propertySet1PositionOnTop,
     ),
-    propertySet2Position: getPosition(
-      "propertySet2Position",
-      defaults.propertySet2Position,
+    propertySet2PositionOnTop: getBool(
+      "propertySet2PositionOnTop",
+      defaults.propertySet2PositionOnTop,
     ),
-    propertySet3Position: getPosition(
-      "propertySet3Position",
-      defaults.propertySet3Position,
+    propertySet3PositionOnTop: getBool(
+      "propertySet3PositionOnTop",
+      defaults.propertySet3PositionOnTop,
     ),
-    propertySet4Position: getPosition(
-      "propertySet4Position",
-      defaults.propertySet4Position,
+    propertySet4PositionOnTop: getBool(
+      "propertySet4PositionOnTop",
+      defaults.propertySet4PositionOnTop,
     ),
-    propertySet5Position: getPosition(
-      "propertySet5Position",
-      defaults.propertySet5Position,
+    propertySet5PositionOnTop: getBool(
+      "propertySet5PositionOnTop",
+      defaults.propertySet5PositionOnTop,
     ),
-    propertySet6Position: getPosition(
-      "propertySet6Position",
-      defaults.propertySet6Position,
+    propertySet6PositionOnTop: getBool(
+      "propertySet6PositionOnTop",
+      defaults.propertySet6PositionOnTop,
     ),
-    propertySet7Position: getPosition(
-      "propertySet7Position",
-      defaults.propertySet7Position,
+    propertySet7PositionOnTop: getBool(
+      "propertySet7PositionOnTop",
+      defaults.propertySet7PositionOnTop,
     ),
 
     // Enum: propertyLabels
@@ -689,15 +649,6 @@ export function extractBasesSnapshot(
     return typeof value === "number" && Number.isFinite(value)
       ? value
       : fallback;
-  };
-
-  // Helper: get position property with fallback
-  const getPosition = (
-    key: string,
-    fallback: "top" | "bottom",
-  ): "top" | "bottom" => {
-    const value = config.get(key);
-    return value === "top" || value === "bottom" ? value : fallback;
   };
 
   // Helper: get imageFormat from separate format and position dropdowns
@@ -796,34 +747,34 @@ export function extractBasesSnapshot(
       defaults.propertySet7SideBySide,
     ),
 
-    // Property set positions (1-7)
-    propertySet1Position: getPosition(
-      "propertySet1Position",
-      defaults.propertySet1Position,
+    // Property set position-on-top booleans (1-7)
+    propertySet1PositionOnTop: getBool(
+      "propertySet1PositionOnTop",
+      defaults.propertySet1PositionOnTop,
     ),
-    propertySet2Position: getPosition(
-      "propertySet2Position",
-      defaults.propertySet2Position,
+    propertySet2PositionOnTop: getBool(
+      "propertySet2PositionOnTop",
+      defaults.propertySet2PositionOnTop,
     ),
-    propertySet3Position: getPosition(
-      "propertySet3Position",
-      defaults.propertySet3Position,
+    propertySet3PositionOnTop: getBool(
+      "propertySet3PositionOnTop",
+      defaults.propertySet3PositionOnTop,
     ),
-    propertySet4Position: getPosition(
-      "propertySet4Position",
-      defaults.propertySet4Position,
+    propertySet4PositionOnTop: getBool(
+      "propertySet4PositionOnTop",
+      defaults.propertySet4PositionOnTop,
     ),
-    propertySet5Position: getPosition(
-      "propertySet5Position",
-      defaults.propertySet5Position,
+    propertySet5PositionOnTop: getBool(
+      "propertySet5PositionOnTop",
+      defaults.propertySet5PositionOnTop,
     ),
-    propertySet6Position: getPosition(
-      "propertySet6Position",
-      defaults.propertySet6Position,
+    propertySet6PositionOnTop: getBool(
+      "propertySet6PositionOnTop",
+      defaults.propertySet6PositionOnTop,
     ),
-    propertySet7Position: getPosition(
-      "propertySet7Position",
-      defaults.propertySet7Position,
+    propertySet7PositionOnTop: getBool(
+      "propertySet7PositionOnTop",
+      defaults.propertySet7PositionOnTop,
     ),
 
     // Enum: propertyLabels

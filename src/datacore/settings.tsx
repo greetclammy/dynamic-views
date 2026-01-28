@@ -26,7 +26,7 @@ interface PropertySetConfig {
   firstLabel: string;
   secondLabel: string;
   sideBySide: keyof SettingsType;
-  position: keyof SettingsType;
+  positionOnTop: keyof SettingsType;
 }
 
 const PROPERTY_SETS: PropertySetConfig[] = [
@@ -38,7 +38,7 @@ const PROPERTY_SETS: PropertySetConfig[] = [
     firstLabel: "Property 1",
     secondLabel: "Property 2",
     sideBySide: "propertySet1SideBySide",
-    position: "propertySet1Position",
+    positionOnTop: "propertySet1PositionOnTop",
   },
   {
     key: "propertySet2",
@@ -48,7 +48,7 @@ const PROPERTY_SETS: PropertySetConfig[] = [
     firstLabel: "Property 3",
     secondLabel: "Property 4",
     sideBySide: "propertySet2SideBySide",
-    position: "propertySet2Position",
+    positionOnTop: "propertySet2PositionOnTop",
   },
   {
     key: "propertySet3",
@@ -58,7 +58,7 @@ const PROPERTY_SETS: PropertySetConfig[] = [
     firstLabel: "Property 5",
     secondLabel: "Property 6",
     sideBySide: "propertySet3SideBySide",
-    position: "propertySet3Position",
+    positionOnTop: "propertySet3PositionOnTop",
   },
   {
     key: "propertySet4",
@@ -68,7 +68,7 @@ const PROPERTY_SETS: PropertySetConfig[] = [
     firstLabel: "Property 7",
     secondLabel: "Property 8",
     sideBySide: "propertySet4SideBySide",
-    position: "propertySet4Position",
+    positionOnTop: "propertySet4PositionOnTop",
   },
   {
     key: "propertySet5",
@@ -78,7 +78,7 @@ const PROPERTY_SETS: PropertySetConfig[] = [
     firstLabel: "Property 9",
     secondLabel: "Property 10",
     sideBySide: "propertySet5SideBySide",
-    position: "propertySet5Position",
+    positionOnTop: "propertySet5PositionOnTop",
   },
   {
     key: "propertySet6",
@@ -88,7 +88,7 @@ const PROPERTY_SETS: PropertySetConfig[] = [
     firstLabel: "Property 11",
     secondLabel: "Property 12",
     sideBySide: "propertySet6SideBySide",
-    position: "propertySet6Position",
+    positionOnTop: "propertySet6PositionOnTop",
   },
   {
     key: "propertySet7",
@@ -98,7 +98,7 @@ const PROPERTY_SETS: PropertySetConfig[] = [
     firstLabel: "Property 13",
     secondLabel: "Property 14",
     sideBySide: "propertySet7SideBySide",
-    position: "propertySet7Position",
+    positionOnTop: "propertySet7PositionOnTop",
   },
 ];
 
@@ -187,13 +187,13 @@ export function Settings({
         propertySet5SideBySide: settings.propertySet5SideBySide,
         propertySet6SideBySide: settings.propertySet6SideBySide,
         propertySet7SideBySide: settings.propertySet7SideBySide,
-        propertySet1Position: settings.propertySet1Position,
-        propertySet2Position: settings.propertySet2Position,
-        propertySet3Position: settings.propertySet3Position,
-        propertySet4Position: settings.propertySet4Position,
-        propertySet5Position: settings.propertySet5Position,
-        propertySet6Position: settings.propertySet6Position,
-        propertySet7Position: settings.propertySet7Position,
+        propertySet1PositionOnTop: settings.propertySet1PositionOnTop,
+        propertySet2PositionOnTop: settings.propertySet2PositionOnTop,
+        propertySet3PositionOnTop: settings.propertySet3PositionOnTop,
+        propertySet4PositionOnTop: settings.propertySet4PositionOnTop,
+        propertySet5PositionOnTop: settings.propertySet5PositionOnTop,
+        propertySet6PositionOnTop: settings.propertySet6PositionOnTop,
+        propertySet7PositionOnTop: settings.propertySet7PositionOnTop,
         propertyLabels: settings.propertyLabels,
         fallbackToContent: settings.fallbackToContent,
         fallbackToEmbeds: settings.fallbackToEmbeds,
@@ -324,24 +324,7 @@ export function Settings({
           group.secondProp,
           "Enter property name",
         )}
-        <div className="setting-item setting-item-dropdown">
-          <div className="setting-item-info">
-            <label>Position</label>
-          </div>
-          <select
-            value={settings[group.position] as string}
-            onChange={(e: unknown) => {
-              const evt = e as Event & { target: HTMLSelectElement };
-              onSettingsChange({
-                [group.position]: evt.target.value as "top" | "bottom",
-              });
-            }}
-            className="dropdown"
-          >
-            <option value="top">Top</option>
-            <option value="bottom">Bottom</option>
-          </select>
-        </div>
+        {renderToggle("Position on top", group.positionOnTop)}
         {renderToggle("Show side-by-side", group.sideBySide)}
       </div>
     </div>
