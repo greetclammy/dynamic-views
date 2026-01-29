@@ -5244,10 +5244,7 @@ body.dynamic-views-hide-card-border
   opacity: 1;
 }
 
-.dynamic-views
-  .card:is(.image-format-backdrop, .image-format-poster).card-cover-contain
-  :is(.card-backdrop, .card-poster)
-  img {
+.dynamic-views .card.image-format-poster.card-cover-contain .card-poster img {
   object-fit: contain;
 }
 
@@ -5388,10 +5385,10 @@ body:not(.dynamic-views-backdrop-no-adaptive-text)
 body:is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-dark
   .dynamic-views
   .card.image-format-poster
@@ -5404,10 +5401,10 @@ body:is(
 body:is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-light
   .dynamic-views
   .card.image-format-poster
@@ -5511,10 +5508,10 @@ body:not(.dynamic-views-poster-content-default)
 body:is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-dark:not(.dynamic-views-poster-content-default)
   .dynamic-views
   .card.image-format-poster
@@ -5522,10 +5519,10 @@ body:is(
 body:is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-light:not(.dynamic-views-poster-content-default)
   .dynamic-views
   .card.image-format-poster
@@ -5545,10 +5542,10 @@ body.dynamic-views-poster-theme-dark:not(.dynamic-views-poster-content-default)
 body:is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-dark:not(.dynamic-views-poster-content-default)
   .dynamic-views
   .card.image-format-poster.poster-revealed
@@ -5561,10 +5558,10 @@ body:is(
 body:is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-light:not(.dynamic-views-poster-content-default)
   .dynamic-views
   .card.image-format-poster.poster-revealed
@@ -5616,10 +5613,10 @@ body.dynamic-views-poster-content-default
 body.dynamic-views-poster-content-default:is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-dark
   .dynamic-views
   .card.image-format-poster.poster-revealed
@@ -5627,10 +5624,10 @@ body.dynamic-views-poster-content-default:is(
 body.dynamic-views-poster-content-default:is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-light
   .dynamic-views
   .card.image-format-poster.poster-revealed
@@ -5663,15 +5660,13 @@ body:not(
   ).dynamic-views-poster-theme-light
   .dynamic-views
   .card.image-format-poster:not([data-adaptive-text]):has(.card-poster),
-body:not(
-    .dynamic-views-poster-no-adaptive-text
-  ):is(
+body:not(.dynamic-views-poster-no-adaptive-text):is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-light
   .dynamic-views
   .card.image-format-poster:not([data-adaptive-text]):has(.card-poster) {
@@ -5684,15 +5679,13 @@ body:not(
 body:not(.dynamic-views-poster-no-adaptive-text).dynamic-views-poster-theme-dark
   .dynamic-views
   .card.image-format-poster:not([data-adaptive-text]):has(.card-poster),
-body:not(
-    .dynamic-views-poster-no-adaptive-text
-  ):is(
+body:not(.dynamic-views-poster-no-adaptive-text):is(
     .dynamic-views-poster-theme-match,
     :not(
-        .dynamic-views-poster-theme-light,
-        .dynamic-views-poster-theme-dark,
-        .dynamic-views-poster-theme-disable
-      )
+      .dynamic-views-poster-theme-light,
+      .dynamic-views-poster-theme-dark,
+      .dynamic-views-poster-theme-disable
+    )
   ).theme-dark
   .dynamic-views
   .card.image-format-poster:not([data-adaptive-text]):has(.card-poster) {

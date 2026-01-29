@@ -324,8 +324,11 @@ export function Settings({
           group.secondProp,
           "Enter property name",
         )}
-        {renderToggle("Show side-by-side", group.sideBySide)}
-        {renderToggle("Show above text preview", group.above)}
+        {(settings[group.firstProp] || settings[group.secondProp]) &&
+          renderToggle("Show above text preview", group.above)}
+        {settings[group.firstProp] &&
+          settings[group.secondProp] &&
+          renderToggle("Show side-by-side", group.sideBySide)}
       </div>
     </div>
   );
@@ -431,140 +434,150 @@ export function Settings({
               <option value="never">Never</option>
             </select>
           </div>
-          <div className="setting-item setting-item-dropdown">
-            <div className="setting-item-info">
-              <label>Format</label>
-            </div>
-            <select
-              value={(() => {
-                if (settings.imageFormat === "none") return "none";
-                if (settings.imageFormat === "poster") return "poster";
-                if (settings.imageFormat === "backdrop") return "backdrop";
-                const imageFormatParts = settings.imageFormat.split("-");
-                return imageFormatParts[0] as "thumbnail" | "cover";
-              })()}
-              onChange={(e: unknown) => {
-                const evt = e as Event & { target: HTMLSelectElement };
-                const newFormat = evt.target.value;
-                if (
-                  newFormat === "none" ||
-                  newFormat === "poster" ||
-                  newFormat === "backdrop"
-                ) {
-                  onSettingsChange({
-                    imageFormat: newFormat as typeof settings.imageFormat,
-                  });
-                } else {
-                  const currentPosition =
-                    settings.imageFormat === "none" ||
-                    settings.imageFormat === "poster" ||
-                    settings.imageFormat === "backdrop"
-                      ? "right"
-                      : settings.imageFormat.split("-")[1] || "right";
-                  onSettingsChange({
-                    imageFormat:
-                      `${newFormat}-${currentPosition}` as typeof settings.imageFormat,
-                  });
-                }
-              }}
-              className="dropdown"
-            >
-              <option value="thumbnail">Thumbnail</option>
-              <option value="cover">Cover</option>
-              <option value="poster">Poster</option>
-              <option value="backdrop">Backdrop</option>
-            </select>
-          </div>
-          {settings.imageFormat !== "none" &&
-            settings.imageFormat !== "poster" &&
-            settings.imageFormat !== "backdrop" && (
+          {!(
+            !settings.imageProperty && settings.fallbackToEmbeds === "never"
+          ) && (
+            <>
               <div className="setting-item setting-item-dropdown">
                 <div className="setting-item-info">
-                  <label>Position</label>
+                  <label>Format</label>
                 </div>
                 <select
                   value={(() => {
-                    const position = settings.imageFormat.split("-")[1] as
-                      | "left"
-                      | "right"
-                      | "top"
-                      | "bottom"
-                      | undefined;
-                    return position || "right";
+                    if (settings.imageFormat === "none") return "none";
+                    if (settings.imageFormat === "poster") return "poster";
+                    if (settings.imageFormat === "backdrop") return "backdrop";
+                    const imageFormatParts = settings.imageFormat.split("-");
+                    return imageFormatParts[0] as "thumbnail" | "cover";
                   })()}
                   onChange={(e: unknown) => {
                     const evt = e as Event & { target: HTMLSelectElement };
-                    const currentFormat = settings.imageFormat.split("-")[0] as
-                      | "thumbnail"
-                      | "cover";
-                    onSettingsChange({
-                      imageFormat:
-                        `${currentFormat}-${evt.target.value}` as typeof settings.imageFormat,
-                    });
+                    const newFormat = evt.target.value;
+                    if (
+                      newFormat === "none" ||
+                      newFormat === "poster" ||
+                      newFormat === "backdrop"
+                    ) {
+                      onSettingsChange({
+                        imageFormat: newFormat as typeof settings.imageFormat,
+                      });
+                    } else {
+                      const currentPosition =
+                        settings.imageFormat === "none" ||
+                        settings.imageFormat === "poster" ||
+                        settings.imageFormat === "backdrop"
+                          ? "right"
+                          : settings.imageFormat.split("-")[1] || "right";
+                      onSettingsChange({
+                        imageFormat:
+                          `${newFormat}-${currentPosition}` as typeof settings.imageFormat,
+                      });
+                    }
                   }}
                   className="dropdown"
                 >
-                  <option value="left">Left</option>
-                  <option value="right">Right</option>
-                  <option value="top">Top</option>
-                  <option value="bottom">Bottom</option>
+                  <option value="thumbnail">Thumbnail</option>
+                  <option value="cover">Cover</option>
+                  <option value="poster">Poster</option>
+                  <option value="backdrop">Backdrop</option>
                 </select>
               </div>
-            )}
-          {settings.imageFormat !== "none" &&
-            settings.imageFormat !== "poster" &&
-            settings.imageFormat !== "backdrop" && (
-              <>
-                <div className="setting-item setting-item-dropdown">
-                  <div className="setting-item-info">
-                    <label>Fit</label>
-                  </div>
-                  <select
-                    value={settings.imageFit}
-                    onChange={(e: unknown) => {
-                      const evt = e as Event & { target: HTMLSelectElement };
-                      onSettingsChange({
-                        imageFit: evt.target.value as "crop" | "contain",
-                      });
-                    }}
-                    className="dropdown"
-                  >
-                    <option value="crop">Crop</option>
-                    <option value="contain">Contain</option>
-                  </select>
-                </div>
-                <div className="setting-item">
-                  <div className="setting-item-info">
-                    <label>Ratio</label>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <input
-                      type="range"
-                      min="0.25"
-                      max="2.5"
-                      step="0.05"
-                      value={settings.imageAspectRatio}
+              {settings.imageFormat !== "none" &&
+                settings.imageFormat !== "poster" &&
+                settings.imageFormat !== "backdrop" && (
+                  <div className="setting-item setting-item-dropdown">
+                    <div className="setting-item-info">
+                      <label>Position</label>
+                    </div>
+                    <select
+                      value={(() => {
+                        const position = settings.imageFormat.split("-")[1] as
+                          | "left"
+                          | "right"
+                          | "top"
+                          | "bottom"
+                          | undefined;
+                        return position || "right";
+                      })()}
                       onChange={(e: unknown) => {
-                        const evt = e as Event & { target: HTMLInputElement };
+                        const evt = e as Event & { target: HTMLSelectElement };
+                        const currentFormat = settings.imageFormat.split(
+                          "-",
+                        )[0] as "thumbnail" | "cover";
                         onSettingsChange({
-                          imageAspectRatio: parseFloat(evt.target.value),
+                          imageFormat:
+                            `${currentFormat}-${evt.target.value}` as typeof settings.imageFormat,
                         });
                       }}
-                      style={{ flex: 1 }}
-                    />
-                    <span style={{ minWidth: "40px" }}>
-                      {settings.imageAspectRatio.toFixed(2)}
-                    </span>
+                      className="dropdown"
+                    >
+                      <option value="left">Left</option>
+                      <option value="right">Right</option>
+                      <option value="top">Top</option>
+                      <option value="bottom">Bottom</option>
+                    </select>
                   </div>
-                </div>
-              </>
-            )}
+                )}
+              {settings.imageFormat !== "none" &&
+                settings.imageFormat !== "backdrop" && (
+                  <div className="setting-item setting-item-dropdown">
+                    <div className="setting-item-info">
+                      <label>Fit</label>
+                    </div>
+                    <select
+                      value={settings.imageFit}
+                      onChange={(e: unknown) => {
+                        const evt = e as Event & {
+                          target: HTMLSelectElement;
+                        };
+                        onSettingsChange({
+                          imageFit: evt.target.value as "crop" | "contain",
+                        });
+                      }}
+                      className="dropdown"
+                    >
+                      <option value="crop">Crop</option>
+                      <option value="contain">Contain</option>
+                    </select>
+                  </div>
+                )}
+              {settings.imageFormat !== "none" &&
+                settings.imageFormat !== "backdrop" && (
+                  <div className="setting-item">
+                    <div className="setting-item-info">
+                      <label>Ratio</label>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <input
+                        type="range"
+                        min="0.25"
+                        max="2.5"
+                        step="0.05"
+                        value={settings.imageAspectRatio}
+                        onChange={(e: unknown) => {
+                          const evt = e as Event & {
+                            target: HTMLInputElement;
+                          };
+                          onSettingsChange({
+                            imageAspectRatio: parseFloat(evt.target.value),
+                          });
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{ minWidth: "40px" }}>
+                        {settings.imageAspectRatio.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+            </>
+          )}
         </div>
       </div>
 

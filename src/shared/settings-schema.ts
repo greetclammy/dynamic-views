@@ -99,6 +99,9 @@ export function getBasesViewOptions(): any[] {
             backdrop: "Backdrop",
           },
           default: "thumbnail",
+          shouldHide: (config: BasesConfig) =>
+            !config.get("imageProperty") &&
+            config.get("fallbackToEmbeds") === "never",
         },
         {
           type: "dropdown",
@@ -111,6 +114,11 @@ export function getBasesViewOptions(): any[] {
             bottom: "Bottom",
           },
           default: "right",
+          shouldHide: (config: BasesConfig) =>
+            config.get("imageFormat") === "poster" ||
+            config.get("imageFormat") === "backdrop" ||
+            (!config.get("imageProperty") &&
+              config.get("fallbackToEmbeds") === "never"),
         },
         {
           type: "dropdown",
@@ -121,6 +129,10 @@ export function getBasesViewOptions(): any[] {
             contain: "Contain",
           },
           default: "crop",
+          shouldHide: (config: BasesConfig) =>
+            config.get("imageFormat") === "backdrop" ||
+            (!config.get("imageProperty") &&
+              config.get("fallbackToEmbeds") === "never"),
         },
         {
           type: "slider",
@@ -130,6 +142,10 @@ export function getBasesViewOptions(): any[] {
           max: 2.5,
           step: 0.05,
           default: DEFAULT_VIEW_SETTINGS.imageAspectRatio,
+          shouldHide: (config: BasesConfig) =>
+            config.get("imageFormat") === "backdrop" ||
+            (!config.get("imageProperty") &&
+              config.get("fallbackToEmbeds") === "never"),
         },
       ],
     },
@@ -153,15 +169,19 @@ export function getBasesViewOptions(): any[] {
         },
         {
           type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet1SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet1SideBySide,
-        },
-        {
-          type: "toggle",
           displayName: "Show above text preview",
           key: "propertySet1Above",
           default: DEFAULT_VIEW_SETTINGS.propertySet1Above,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay1") && !config.get("propertyDisplay2"),
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet1SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet1SideBySide,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay1") || !config.get("propertyDisplay2"),
         },
       ],
     },
@@ -185,15 +205,19 @@ export function getBasesViewOptions(): any[] {
         },
         {
           type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet2SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet2SideBySide,
-        },
-        {
-          type: "toggle",
           displayName: "Show above text preview",
           key: "propertySet2Above",
           default: DEFAULT_VIEW_SETTINGS.propertySet2Above,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay3") && !config.get("propertyDisplay4"),
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet2SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet2SideBySide,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay3") || !config.get("propertyDisplay4"),
         },
       ],
     },
@@ -217,15 +241,19 @@ export function getBasesViewOptions(): any[] {
         },
         {
           type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet3SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet3SideBySide,
-        },
-        {
-          type: "toggle",
           displayName: "Show above text preview",
           key: "propertySet3Above",
           default: DEFAULT_VIEW_SETTINGS.propertySet3Above,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay5") && !config.get("propertyDisplay6"),
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet3SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet3SideBySide,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay5") || !config.get("propertyDisplay6"),
         },
       ],
     },
@@ -249,15 +277,19 @@ export function getBasesViewOptions(): any[] {
         },
         {
           type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet4SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet4SideBySide,
-        },
-        {
-          type: "toggle",
           displayName: "Show above text preview",
           key: "propertySet4Above",
           default: DEFAULT_VIEW_SETTINGS.propertySet4Above,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay7") && !config.get("propertyDisplay8"),
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet4SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet4SideBySide,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay7") || !config.get("propertyDisplay8"),
         },
       ],
     },
@@ -281,15 +313,19 @@ export function getBasesViewOptions(): any[] {
         },
         {
           type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet5SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet5SideBySide,
-        },
-        {
-          type: "toggle",
           displayName: "Show above text preview",
           key: "propertySet5Above",
           default: DEFAULT_VIEW_SETTINGS.propertySet5Above,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay9") && !config.get("propertyDisplay10"),
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet5SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet5SideBySide,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay9") || !config.get("propertyDisplay10"),
         },
       ],
     },
@@ -313,15 +349,21 @@ export function getBasesViewOptions(): any[] {
         },
         {
           type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet6SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet6SideBySide,
-        },
-        {
-          type: "toggle",
           displayName: "Show above text preview",
           key: "propertySet6Above",
           default: DEFAULT_VIEW_SETTINGS.propertySet6Above,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay11") &&
+            !config.get("propertyDisplay12"),
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet6SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet6SideBySide,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay11") ||
+            !config.get("propertyDisplay12"),
         },
       ],
     },
@@ -345,15 +387,21 @@ export function getBasesViewOptions(): any[] {
         },
         {
           type: "toggle",
-          displayName: "Show side-by-side",
-          key: "propertySet7SideBySide",
-          default: DEFAULT_VIEW_SETTINGS.propertySet7SideBySide,
-        },
-        {
-          type: "toggle",
           displayName: "Show above text preview",
           key: "propertySet7Above",
           default: DEFAULT_VIEW_SETTINGS.propertySet7Above,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay13") &&
+            !config.get("propertyDisplay14"),
+        },
+        {
+          type: "toggle",
+          displayName: "Show side-by-side",
+          key: "propertySet7SideBySide",
+          default: DEFAULT_VIEW_SETTINGS.propertySet7SideBySide,
+          shouldHide: (config: BasesConfig) =>
+            !config.get("propertyDisplay13") ||
+            !config.get("propertyDisplay14"),
         },
       ],
     },
