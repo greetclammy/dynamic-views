@@ -4479,7 +4479,10 @@ body.dynamic-views-show-cover-placeholder-none
   left: var(--cover-inset-computed);
   bottom: var(--cover-inset-computed);
   right: auto !important;
-  width: var(--dynamic-views-side-cover-width, 200px);
+  width: calc(
+    var(--dynamic-views-side-cover-width, 200px) -
+      var(--dynamic-views-cover-inset, 0px)
+  );
 }
 
 /* Cover-right: wrapper positioned at edges */
@@ -4489,7 +4492,10 @@ body.dynamic-views-show-cover-placeholder-none
   right: var(--cover-inset-computed);
   bottom: var(--cover-inset-computed);
   left: auto !important;
-  width: var(--dynamic-views-side-cover-width, 200px);
+  width: calc(
+    var(--dynamic-views-side-cover-width, 200px) -
+      var(--dynamic-views-cover-inset, 0px)
+  );
 }
 
 /* ==================== COVER ELEMENT STYLING ==================== */
