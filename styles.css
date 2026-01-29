@@ -4543,15 +4543,38 @@ body.dynamic-views-show-cover-placeholder-none
   margin-bottom: 0;
 }
 
+/* Grid cover-bottom: push properties-bottom to bottom of card */
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-bottom.image-format-cover
+  .card-properties-bottom:not(:first-child) {
+  margin-top: auto;
+  padding-top: var(--size-4-2);
+}
+
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-bottom.image-format-cover
+  .card-properties-bottom:only-child {
+  margin-top: auto;
+  padding-top: 0;
+}
+
 /* Grid cover-bottom: spacer between properties-bottom/content and cover.
-   Absorbs remaining space; min-height ensures minimum gap. */
+   min-height ensures minimum gap to cover. */
 .dynamic-views
   .dynamic-views-grid
   .card.card-cover-bottom.image-format-cover::before {
   content: "";
   order: 51;
-  flex-grow: 1;
   min-height: var(--size-4-2);
+}
+
+/* When no properties-bottom, spacer absorbs free space to push cover down */
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-bottom.image-format-cover:not(:has(.card-properties-bottom))::before {
+  flex-grow: 1;
 }
 
 /* Compensate: card bottom padding = inset (instead of card-padding) */
