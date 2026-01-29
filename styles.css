@@ -4264,7 +4264,7 @@ body.dynamic-views-masonry-fixed-cover-height.dynamic-views-show-cover-placehold
   margin-top: 0;
 }
 
-/* Title-subtitle gap override for cover cards (higher specificity than owl selectors above) */
+/* Title-subtitle: explicitly zero gap (owl selector would add spacing; title and subtitle should sit flush) */
 .dynamic-views
   .card.image-format-cover:has(
     .card-cover-wrapper:not(.card-cover-wrapper-placeholder)
@@ -4289,7 +4289,7 @@ body.dynamic-views-show-cover-placeholder-none
   .card.image-format-cover:has(.card-cover-wrapper-placeholder)
   .card-title
   + .card-subtitle {
-  margin-top: var(--size-2-1);
+  margin-top: 0;
 }
 
 /* ==================== COVER WRAPPER POSITIONING ==================== */
