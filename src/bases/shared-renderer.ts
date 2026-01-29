@@ -976,13 +976,12 @@ export class SharedCardRenderer {
     const hasTitle = !!displayTitle;
     const hasSubtitle = settings.subtitleProperty && card.subtitle;
 
-    // Title and Subtitle - wrapped in card-header when URL button present
-    if (card.hasValidUrl && card.urlValue) {
+    // Title, Subtitle, and URL button — always wrapped in card-header
+    if (hasTitle || hasSubtitle || (card.hasValidUrl && card.urlValue)) {
       const headerEl = cardEl.createDiv("card-header");
 
-      // Only create card-title-group if there's content
       if (hasTitle || hasSubtitle) {
-        const groupEl = headerEl.createDiv("card-title-group");
+        const groupEl = headerEl.createDiv("card-title-block");
 
         if (hasTitle) {
           const titleEl = groupEl.createDiv("card-title");
@@ -995,33 +994,22 @@ export class SharedCardRenderer {
         }
       }
 
-      const iconEl = headerEl.createDiv(
-        "card-title-url-icon text-icon-button svg-icon",
-      );
-      iconEl.setAttribute("aria-label", card.urlValue);
-      setIcon(iconEl, getUrlIcon());
+      if (card.hasValidUrl && card.urlValue) {
+        const iconEl = headerEl.createDiv(
+          "card-title-url-icon text-icon-button svg-icon",
+        );
+        iconEl.setAttribute("aria-label", card.urlValue);
+        setIcon(iconEl, getUrlIcon());
 
-      iconEl.addEventListener(
-        "click",
-        (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          window.open(card.urlValue!, "_blank", "noopener,noreferrer");
-        },
-        { signal },
-      );
-    } else if (hasTitle || hasSubtitle) {
-      // No URL button - wrap title and subtitle in card-title-group (only if content exists)
-      const groupEl = cardEl.createDiv("card-title-group");
-
-      if (hasTitle) {
-        const titleEl = groupEl.createDiv("card-title");
-        renderTitleContent(titleEl);
-      }
-
-      if (hasSubtitle) {
-        const subtitleEl = groupEl.createDiv("card-subtitle");
-        renderSubtitleContent(subtitleEl, settings.subtitleProperty);
+        iconEl.addEventListener(
+          "click",
+          (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(card.urlValue!, "_blank", "noopener,noreferrer");
+          },
+          { signal },
+        );
       }
     }
 

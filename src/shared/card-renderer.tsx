@@ -2002,49 +2002,44 @@ function Card({
         cursor: settings.openFileAction === "card" ? "pointer" : "default",
       }}
     >
-      {/* Title and Subtitle - wrapped in card-header when URL button present */}
-      {card.hasValidUrl && card.urlValue ? (
+      {/* Title, Subtitle, and URL button — always wrapped in card-header */}
+      {(hasTitle || hasSubtitle || (card.hasValidUrl && card.urlValue)) && (
         <div className="card-header">
           {(hasTitle || hasSubtitle) && (
-            <div className="card-title-group">
+            <div className="card-title-block">
               {hasTitle && renderTitle()}
               {renderSubtitle()}
             </div>
           )}
-          <span
-            className="card-title-url-icon text-icon-button"
-            aria-label={card.urlValue}
-            onClick={(e: MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open(card.urlValue!, "_blank", "noopener,noreferrer");
-            }}
-          >
-            <svg
-              className="svg-icon"
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {card.hasValidUrl && card.urlValue && (
+            <span
+              className="card-title-url-icon text-icon-button"
+              aria-label={card.urlValue}
+              onClick={(e: MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(card.urlValue!, "_blank", "noopener,noreferrer");
+              }}
             >
-              <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
-              <path d="m21 3-9 9"></path>
-              <path d="M15 3h6v6"></path>
-            </svg>
-          </span>
+              <svg
+                className="svg-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
+                <path d="m21 3-9 9"></path>
+                <path d="M15 3h6v6"></path>
+              </svg>
+            </span>
+          )}
         </div>
-      ) : (
-        (hasTitle || hasSubtitle) && (
-          <div className="card-title-group">
-            {hasTitle && renderTitle()}
-            {renderSubtitle()}
-          </div>
-        )
       )}
 
       {/* Covers: wrapped in card-cover-wrapper for flexbox positioning */}

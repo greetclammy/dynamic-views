@@ -2812,16 +2812,15 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 /* Card element ordering for flexbox layout
    Order hierarchy: -100 (title/header) → -50 (properties-top) → 0 (content) → 50 (properties-bottom) */
 .dynamic-views .card .card-title,
-.dynamic-views .card .card-header,
-.dynamic-views .card > .card-title-group {
+.dynamic-views .card .card-header {
   order: -100;
 }
 
-/* Explicit order for title-group children (DOM order is title then subtitle) */
-.dynamic-views .card-title-group .card-title {
+/* Explicit order for title-block children (DOM order is title then subtitle) */
+.dynamic-views .card-title-block .card-title {
   order: 0;
 }
-.dynamic-views .card-title-group .card-subtitle {
+.dynamic-views .card-title-block .card-subtitle {
   order: 1;
 }
 
@@ -2836,10 +2835,10 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 }
 
 /* Grid view: push bottom properties to bottom of card when it has siblings above */
-/* Exclude cover-bottom which has its own rules */
+/* Exclude cover-bottom and cover-top cover-format which have their own rules */
 .dynamic-views
   .dynamic-views-grid
-  .card:not(.card-cover-bottom)
+  .card:not(.card-cover-bottom):not(.card-cover-top.image-format-cover)
   .card-properties-bottom:not(:first-child) {
   margin-top: auto;
   padding-top: var(--size-4-2);
@@ -2848,7 +2847,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 /* Grid view: only-child pushes to bottom but needs no padding (no sibling above) */
 .dynamic-views
   .dynamic-views-grid
-  .card:not(.card-cover-bottom)
+  .card:not(.card-cover-bottom):not(.card-cover-top.image-format-cover)
   .card-properties-bottom:only-child {
   margin-top: auto;
   padding-top: 0;
@@ -2885,12 +2884,19 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
   padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
 }
 
-/* Grid view cover-top with properties-bottom: push properties down (gap absorbs remaining space) */
+/* Grid view cover-top with properties-bottom: push properties down */
 .dynamic-views
   .dynamic-views-grid
   .card.card-cover-top.image-format-cover:has(.card-properties-bottom)
   .card-properties-bottom {
   margin-top: auto;
+}
+
+/* Add padding-top only when content/header exists above (otherwise cover margin-bottom suffices) */
+.dynamic-views
+  .dynamic-views-grid
+  .card.card-cover-top.image-format-cover:has(.card-header, .card-content, .card-properties-top)
+  .card-properties-bottom {
   padding-top: var(--size-4-2);
 }
 
@@ -2914,9 +2920,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 :is(.dynamic-views-grid, .dynamic-views-masonry)
   .card:not(
     :has(
-      .card-title,
       .card-header,
-      .card-subtitle,
       .card-cover img,
       .card-thumbnail img,
       .card-text-preview,
@@ -2933,9 +2937,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 .dynamic-views-grid
   .card:not(
     :has(
-      .card-title,
       .card-header,
-      .card-subtitle,
       .card-cover img,
       .card-thumbnail img,
       .card-text-preview,
@@ -3216,25 +3218,22 @@ body:not(.dynamic-views-show-thumbnail-placeholder)
 }
 
 /* Fix spacing when title hidden: properties-top visually precedes card-content due to flexbox order,
-   but the owl selector above applies margin based on DOM order, not visual order */
+   but the owl selector above applies margin based on DOM order, not visual order.
+   :not(:has(.card-header)) = no title, no subtitle, no URL (header always wraps these) */
 .dynamic-views
-  .card:not(:has(.card-title)):not(:has(.card-header)):has(.card-properties-top)
+  .card:not(:has(.card-header)):has(.card-properties-top)
   .card-content {
   margin-top: var(--size-4-2);
 }
 
-/* Remove owl-pattern margin from properties-top when it's visually first (title hidden) */
-.dynamic-views
-  .card:not(:has(.card-title)):not(:has(.card-header)):not(:has(.card-subtitle))
-  .card-properties-top {
+/* Remove owl-pattern margin from properties-top when it's visually first (no header) */
+.dynamic-views .card:not(:has(.card-header)) .card-properties-top {
   margin-top: 0;
 }
 
 /* Remove owl-pattern margin from card-content when it's visually first (no header, no cover/properties before it) */
 .dynamic-views
-  .card:not(:has(.card-title)):not(:has(.card-header)):not(
-    :has(.card-subtitle)
-  ):not(:has(.card-properties-top)):not(
+  .card:not(:has(.card-header)):not(:has(.card-properties-top)):not(
     :has(.card-cover-wrapper:not(.card-cover-wrapper-placeholder))
   )
   .card-content {
@@ -3244,9 +3243,7 @@ body:not(.dynamic-views-show-thumbnail-placeholder)
 /* Remove owl-pattern margin from card-content after cover-top when no header and no properties-top
    (cover margin already provides spacing; but if properties-top exists, card-content needs its own margin) */
 .dynamic-views
-  .card.card-cover-top:not(:has(.card-title)):not(:has(.card-header)):not(
-    :has(.card-subtitle)
-  ):not(:has(.card-properties-top))
+  .card.card-cover-top:not(:has(.card-header)):not(:has(.card-properties-top))
   .card-content {
   margin-top: 0;
 }
@@ -3326,13 +3323,8 @@ body.dynamic-views-adaptive-text
   align-items: flex-start;
 }
 
-/* Grid view: title-group should not grow - let card-content take extra space */
-.dynamic-views .dynamic-views-grid .card-title-group {
-  flex-grow: 0;
-}
-
-/* Grid view: inside card-header, title-group SHOULD grow horizontally to fill space */
-.dynamic-views .dynamic-views-grid .card-header .card-title-group {
+/* Grid view: title-group grows horizontally inside card-header to fill space beside URL icon */
+.dynamic-views .dynamic-views-grid .card-header .card-title-block {
   flex-grow: 1;
 }
 
@@ -3374,7 +3366,7 @@ body.dynamic-views-adaptive-text
   gap: var(--size-4-2);
 }
 
-.dynamic-views .card-title-group {
+.dynamic-views .card-title-block {
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
@@ -3651,29 +3643,21 @@ body.dynamic-views-subtitle-overflow-scroll
 }
 
 /* Subtitle divider line (shown when class-toggle is ON) */
-/* Divider on card-header when subtitle exists (URL button present) */
+/* Divider on card-header when subtitle exists */
 body.dynamic-views-subtitle-divider
   .dynamic-views
   .card-header:has(.card-subtitle) {
   padding-bottom: var(--size-4-2);
   border-bottom: 1px solid var(--hr-color);
 }
-/* No URL button: divider on card-title-group */
-body.dynamic-views-subtitle-divider
-  .dynamic-views
-  .card
-  > .card-title-group:has(.card-subtitle) {
-  padding-bottom: var(--size-4-2);
-  border-bottom: 1px solid var(--hr-color);
-}
 
 /* Subtitle above title - flip visual order with CSS order */
-body.dynamic-views-subtitle-above .dynamic-views .card-title-group .card-title {
+body.dynamic-views-subtitle-above .dynamic-views .card-title-block .card-title {
   order: 2;
 }
 body.dynamic-views-subtitle-above
   .dynamic-views
-  .card-title-group
+  .card-title-block
   .card-subtitle {
   order: 1;
 }
@@ -4332,27 +4316,25 @@ body.dynamic-views-show-cover-placeholder-none
   margin-top: var(--size-4-2);
 }
 
-/* Remove spacing from card-content when it's first visible element (no visible header, no properties-top) */
+/* Remove spacing from card-content when it's first visible element (no header, no properties-top) */
 /* Exclude grid cover-top which uses flex-grow on cover-wrapper (content stays at natural height) */
 .dynamic-views
-  .card.image-format-cover:not(.card-cover-top):not(:has(.card-title)):not(
-    :has(.card-header)
-  ):not(:has(.card-subtitle)):not(:has(.card-properties-top))
+  .card.image-format-cover:not(.card-cover-top):not(:has(.card-header)):not(
+    :has(.card-properties-top)
+  )
   .card-content,
 .dynamic-views
   .dynamic-views-masonry
-  .card.image-format-cover.card-cover-top:not(:has(.card-title)):not(
-    :has(.card-header)
-  ):not(:has(.card-subtitle)):not(:has(.card-properties-top))
+  .card.image-format-cover.card-cover-top:not(:has(.card-header)):not(
+    :has(.card-properties-top)
+  )
   .card-content {
   margin-top: 0 !important;
 }
 
-/* Remove spacing from properties-top when it's first visible element (no visible header) */
+/* Remove spacing from properties-top when it's first visible element (no header) */
 .dynamic-views
-  .card.image-format-cover:not(:has(.card-title)):not(:has(.card-header)):not(
-    :has(.card-subtitle)
-  )
+  .card.image-format-cover:not(:has(.card-header))
   .card-properties-top {
   margin-top: 0 !important;
 }
@@ -4364,20 +4346,10 @@ body.dynamic-views-show-cover-placeholder-none
   )
   .card-title
   + .card-subtitle,
-.dynamic-views
-  .card.image-format-cover:has(
-    .card-cover-wrapper:not(.card-cover-wrapper-placeholder)
-  )
-  .card-header
-  + .card-subtitle,
 /* Also apply to placeholder cards */
 .dynamic-views
   .card.image-format-cover:has(.card-cover-wrapper-placeholder)
   .card-title
-  + .card-subtitle,
-.dynamic-views
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  .card-header
   + .card-subtitle,
 /* Masonry hidden placeholders (higher specificity to beat owl selector) */
 body.dynamic-views-show-cover-placeholder-grid
@@ -4386,23 +4358,11 @@ body.dynamic-views-show-cover-placeholder-grid
   .card.image-format-cover:has(.card-cover-wrapper-placeholder)
   .card-title
   + .card-subtitle,
-body.dynamic-views-show-cover-placeholder-grid
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  .card-header
-  + .card-subtitle,
 body.dynamic-views-show-cover-placeholder-none
   .dynamic-views
   .dynamic-views-masonry
   .card.image-format-cover:has(.card-cover-wrapper-placeholder)
   .card-title
-  + .card-subtitle,
-body.dynamic-views-show-cover-placeholder-none
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.image-format-cover:has(.card-cover-wrapper-placeholder)
-  .card-header
   + .card-subtitle {
   margin-top: var(--size-2-1);
 }
@@ -4447,7 +4407,6 @@ body.dynamic-views-show-cover-placeholder-none
 /* Use :has() to check for visible elements that would appear above properties (order < 50) */
 .dynamic-views
   .card.card-cover-bottom.image-format-cover:has(
-    .card-title-group,
     .card-header,
     .card-content,
     .card-properties-top
@@ -4489,34 +4448,26 @@ body.dynamic-views-show-cover-placeholder-none
 
 /* Cover-only cards: zero padding, reset wrapper margins */
 .dynamic-views
-  .card.card-cover-top.image-format-cover:not(:has(.card-title)):not(
-    :has(.card-header)
-  ):not(:has(.card-subtitle)):not(:has(.card-content)):not(
-    :has(.card-properties-top)
-  ):not(:has(.card-properties-bottom)),
+  .card.card-cover-top.image-format-cover:not(:has(.card-header)):not(
+    :has(.card-content)
+  ):not(:has(.card-properties-top)):not(:has(.card-properties-bottom)),
 .dynamic-views
-  .card.card-cover-bottom.image-format-cover:not(:has(.card-title)):not(
-    :has(.card-header)
-  ):not(:has(.card-subtitle)):not(:has(.card-content)):not(
-    :has(.card-properties-top)
-  ):not(:has(.card-properties-bottom)) {
+  .card.card-cover-bottom.image-format-cover:not(:has(.card-header)):not(
+    :has(.card-content)
+  ):not(:has(.card-properties-top)):not(:has(.card-properties-bottom)) {
   padding: 0;
 }
 
 /* Reset negative margins since padding is 0 */
 .dynamic-views
-  .card.card-cover-top.image-format-cover:not(:has(.card-title)):not(
-    :has(.card-header)
-  ):not(:has(.card-subtitle)):not(:has(.card-content)):not(
-    :has(.card-properties-top)
-  ):not(:has(.card-properties-bottom))
+  .card.card-cover-top.image-format-cover:not(:has(.card-header)):not(
+    :has(.card-content)
+  ):not(:has(.card-properties-top)):not(:has(.card-properties-bottom))
   .card-cover-wrapper,
 .dynamic-views
-  .card.card-cover-bottom.image-format-cover:not(:has(.card-title)):not(
-    :has(.card-header)
-  ):not(:has(.card-subtitle)):not(:has(.card-content)):not(
-    :has(.card-properties-top)
-  ):not(:has(.card-properties-bottom))
+  .card.card-cover-bottom.image-format-cover:not(:has(.card-header)):not(
+    :has(.card-content)
+  ):not(:has(.card-properties-top)):not(:has(.card-properties-bottom))
   .card-cover-wrapper {
   margin: 0;
 }
@@ -4575,23 +4526,24 @@ body.dynamic-views-show-cover-placeholder-none
   flex-grow: 0;
 }
 
-/* Override negative bottom margin that inflates grid auto row height */
+/* Grid cover-bottom wrapper: fixed size, no margins (spacer handles top gap) */
 .dynamic-views
   .dynamic-views-grid
   .card.card-cover-bottom.image-format-cover
   .card-cover-wrapper {
   flex-grow: 0;
   flex-shrink: 0;
+  margin-top: 0;
   margin-bottom: 0;
 }
 
-/* Grid cover-bottom: spacer between content and properties-bottom/cover.
+/* Grid cover-bottom: spacer between properties-bottom/content and cover.
    Absorbs remaining space; min-height ensures minimum gap. */
 .dynamic-views
   .dynamic-views-grid
   .card.card-cover-bottom.image-format-cover::before {
   content: "";
-  order: 49;
+  order: 51;
   flex-grow: 1;
   min-height: var(--size-4-2);
 }
@@ -5019,10 +4971,6 @@ body.dynamic-views-show-cover-placeholder-none
 .dynamic-views
   .dynamic-views-grid
   .card.card-cover-left.image-format-cover:has(.card-cover)
-  > .card-title-group,
-.dynamic-views
-  .dynamic-views-grid
-  .card.card-cover-left.image-format-cover:has(.card-cover)
   > .card-header,
 .dynamic-views
   .dynamic-views-grid
@@ -5032,11 +4980,6 @@ body.dynamic-views-show-cover-placeholder-none
   .dynamic-views-grid
   .card.card-cover-left.image-format-cover:has(.card-cover)
   > .card-properties,
-body.dynamic-views-show-cover-placeholder-grid
-  .dynamic-views
-  .dynamic-views-grid
-  .card.card-cover-left.image-format-cover:has(.card-cover-placeholder)
-  > .card-title-group,
 body.dynamic-views-show-cover-placeholder-grid
   .dynamic-views
   .dynamic-views-grid
@@ -5052,11 +4995,6 @@ body.dynamic-views-show-cover-placeholder-grid
   .dynamic-views-grid
   .card.card-cover-left.image-format-cover:has(.card-cover-placeholder)
   > .card-properties,
-body.dynamic-views-show-cover-placeholder-both
-  .dynamic-views
-  .dynamic-views-grid
-  .card.card-cover-left.image-format-cover:has(.card-cover-placeholder)
-  > .card-title-group,
 body.dynamic-views-show-cover-placeholder-both
   .dynamic-views
   .dynamic-views-grid
@@ -5095,10 +5033,6 @@ body.dynamic-views-show-cover-placeholder-both
 .dynamic-views
   .dynamic-views-grid
   .card.card-cover-right.image-format-cover:has(.card-cover)
-  > .card-title-group,
-.dynamic-views
-  .dynamic-views-grid
-  .card.card-cover-right.image-format-cover:has(.card-cover)
   > .card-header,
 .dynamic-views
   .dynamic-views-grid
@@ -5108,11 +5042,6 @@ body.dynamic-views-show-cover-placeholder-both
   .dynamic-views-grid
   .card.card-cover-right.image-format-cover:has(.card-cover)
   > .card-properties,
-body.dynamic-views-show-cover-placeholder-grid
-  .dynamic-views
-  .dynamic-views-grid
-  .card.card-cover-right.image-format-cover:has(.card-cover-placeholder)
-  > .card-title-group,
 body.dynamic-views-show-cover-placeholder-grid
   .dynamic-views
   .dynamic-views-grid
@@ -5128,11 +5057,6 @@ body.dynamic-views-show-cover-placeholder-grid
   .dynamic-views-grid
   .card.card-cover-right.image-format-cover:has(.card-cover-placeholder)
   > .card-properties,
-body.dynamic-views-show-cover-placeholder-both
-  .dynamic-views
-  .dynamic-views-grid
-  .card.card-cover-right.image-format-cover:has(.card-cover-placeholder)
-  > .card-title-group,
 body.dynamic-views-show-cover-placeholder-both
   .dynamic-views
   .dynamic-views-grid
@@ -5172,10 +5096,6 @@ body.dynamic-views-show-cover-placeholder-both
 .dynamic-views
   .dynamic-views-masonry
   .card.card-cover-left.image-format-cover:has(.card-cover)
-  > .card-title-group,
-.dynamic-views
-  .dynamic-views-masonry
-  .card.card-cover-left.image-format-cover:has(.card-cover)
   > .card-header,
 .dynamic-views
   .dynamic-views-masonry
@@ -5185,11 +5105,6 @@ body.dynamic-views-show-cover-placeholder-both
   .dynamic-views-masonry
   .card.card-cover-left.image-format-cover:has(.card-cover)
   > .card-properties,
-body.dynamic-views-show-cover-placeholder-masonry
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.card-cover-left.image-format-cover:has(.card-cover-placeholder)
-  > .card-title-group,
 body.dynamic-views-show-cover-placeholder-masonry
   .dynamic-views
   .dynamic-views-masonry
@@ -5205,11 +5120,6 @@ body.dynamic-views-show-cover-placeholder-masonry
   .dynamic-views-masonry
   .card.card-cover-left.image-format-cover:has(.card-cover-placeholder)
   > .card-properties,
-body.dynamic-views-show-cover-placeholder-both
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.card-cover-left.image-format-cover:has(.card-cover-placeholder)
-  > .card-title-group,
 body.dynamic-views-show-cover-placeholder-both
   .dynamic-views
   .dynamic-views-masonry
@@ -5248,10 +5158,6 @@ body.dynamic-views-show-cover-placeholder-both
 .dynamic-views
   .dynamic-views-masonry
   .card.card-cover-right.image-format-cover:has(.card-cover)
-  > .card-title-group,
-.dynamic-views
-  .dynamic-views-masonry
-  .card.card-cover-right.image-format-cover:has(.card-cover)
   > .card-header,
 .dynamic-views
   .dynamic-views-masonry
@@ -5261,11 +5167,6 @@ body.dynamic-views-show-cover-placeholder-both
   .dynamic-views-masonry
   .card.card-cover-right.image-format-cover:has(.card-cover)
   > .card-properties,
-body.dynamic-views-show-cover-placeholder-masonry
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.card-cover-right.image-format-cover:has(.card-cover-placeholder)
-  > .card-title-group,
 body.dynamic-views-show-cover-placeholder-masonry
   .dynamic-views
   .dynamic-views-masonry
@@ -5281,11 +5182,6 @@ body.dynamic-views-show-cover-placeholder-masonry
   .dynamic-views-masonry
   .card.card-cover-right.image-format-cover:has(.card-cover-placeholder)
   > .card-properties,
-body.dynamic-views-show-cover-placeholder-both
-  .dynamic-views
-  .dynamic-views-masonry
-  .card.card-cover-right.image-format-cover:has(.card-cover-placeholder)
-  > .card-title-group,
 body.dynamic-views-show-cover-placeholder-both
   .dynamic-views
   .dynamic-views-masonry
@@ -5418,7 +5314,7 @@ body.dynamic-views-backdrop-theme-disable
 
 /* Card content stacks above background image */
 .dynamic-views .card.image-format-backdrop .card-content,
-.dynamic-views .card.image-format-backdrop .card-title-group {
+.dynamic-views .card.image-format-backdrop .card-header {
   position: relative;
   z-index: 1;
 }
@@ -5574,13 +5470,13 @@ body.dynamic-views-poster-theme-disable
 
 /* Poster content stacks above image */
 .dynamic-views .card.image-format-poster .card-content,
-.dynamic-views .card.image-format-poster .card-title-group {
+.dynamic-views .card.image-format-poster .card-header {
   position: relative;
   z-index: 1;
 }
 
 /* Poster: content hidden until hover (baked in, only if card has image) */
-.dynamic-views .card.image-format-poster:has(.card-poster) .card-title-group,
+.dynamic-views .card.image-format-poster:has(.card-poster) .card-header,
 .dynamic-views .card.image-format-poster:has(.card-poster) .card-content,
 .dynamic-views .card.image-format-poster:has(.card-poster) .card-properties-top,
 .dynamic-views
@@ -5592,9 +5488,7 @@ body.dynamic-views-poster-theme-disable
 
 /* Poster: show content on hover (desktop) */
 @media (hover: hover) {
-  .dynamic-views
-    .card.image-format-poster:has(.card-poster):hover
-    .card-title-group,
+  .dynamic-views .card.image-format-poster:has(.card-poster):hover .card-header,
   .dynamic-views
     .card.image-format-poster:has(.card-poster):hover
     .card-content,
@@ -5611,7 +5505,7 @@ body.dynamic-views-poster-theme-disable
 /* Poster: show content on tap (mobile) */
 .dynamic-views
   .card.image-format-poster.poster-revealed:has(.card-poster)
-  .card-title-group,
+  .card-header,
 .dynamic-views
   .card.image-format-poster.poster-revealed:has(.card-poster)
   .card-content,
