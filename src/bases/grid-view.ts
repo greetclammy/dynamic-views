@@ -130,6 +130,9 @@ export class DynamicViewsGridView extends BasesView {
   set shuffledOrder(value: string[]) {
     this.sortState.order = value;
   }
+  get viewScrollEl(): HTMLElement {
+    return this.scrollEl;
+  }
 
   // Grid-specific state
   private updateLayoutRef: { current: (() => void) | null } = { current: null };

@@ -143,6 +143,9 @@ export class DynamicViewsMasonryView extends BasesView {
   set shuffledOrder(value: string[]) {
     this.sortState.order = value;
   }
+  get viewScrollEl(): HTMLElement {
+    return this.scrollEl;
+  }
 
   // Masonry-specific state
   private updateLayoutRef: { current: ((source?: string) => void) | null } = {

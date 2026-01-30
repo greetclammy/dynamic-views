@@ -1817,6 +1817,7 @@ body {
 }
 
 .dynamic-views {
+  --anim-duration-fast: 5s; /* TEMP: slow fade for testing */
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -4739,6 +4740,12 @@ body.dynamic-views-cover-circular
   opacity: 1;
 }
 
+/* Skip cover fade-in during shuffle (rearrange, not fresh load) */
+.skip-cover-fade .card.image-format-cover .card-cover img {
+  opacity: 1 !important;
+  transition: none !important;
+}
+
 /* Hover zoom for cover images (only when enabled via Style Settings, desktop only) */
 @media (hover: hover) {
   /* Base transition for single-image covers */
@@ -5405,8 +5412,15 @@ body.dynamic-views-hide-card-border .dynamic-views .card.image-format-poster {
   backdrop-filter: blur(var(--dynamic-views-backdrop-overlay-blur, 0px));
 }
 
-/* Overlay theme: Match theme (default) */
-body.dynamic-views-backdrop-theme-match.theme-dark
+/* Overlay theme: Match theme (default — also applies when no theme class set) */
+body:is(
+    .dynamic-views-backdrop-theme-match,
+    :not(
+      .dynamic-views-backdrop-theme-light,
+      .dynamic-views-backdrop-theme-dark,
+      .dynamic-views-backdrop-theme-disable
+    )
+  ).theme-dark
   .dynamic-views
   .card.image-format-backdrop
   .card-backdrop::after {
@@ -5415,7 +5429,14 @@ body.dynamic-views-backdrop-theme-match.theme-dark
   );
 }
 
-body.dynamic-views-backdrop-theme-match.theme-light
+body:is(
+    .dynamic-views-backdrop-theme-match,
+    :not(
+      .dynamic-views-backdrop-theme-light,
+      .dynamic-views-backdrop-theme-dark,
+      .dynamic-views-backdrop-theme-disable
+    )
+  ).theme-light
   .dynamic-views
   .card.image-format-backdrop
   .card-backdrop::after {
@@ -5459,9 +5480,14 @@ body:not(
   ).dynamic-views-backdrop-theme-light
   .dynamic-views
   .card.image-format-backdrop:not([data-adaptive-text]):has(.card-backdrop),
-body:not(
-    .dynamic-views-backdrop-no-adaptive-text
-  ).dynamic-views-backdrop-theme-match.theme-light
+body:not(.dynamic-views-backdrop-no-adaptive-text):is(
+    .dynamic-views-backdrop-theme-match,
+    :not(
+      .dynamic-views-backdrop-theme-light,
+      .dynamic-views-backdrop-theme-dark,
+      .dynamic-views-backdrop-theme-disable
+    )
+  ).theme-light
   .dynamic-views
   .card.image-format-backdrop:not([data-adaptive-text]):has(.card-backdrop) {
   --text-normal: var(--dynamic-views-adaptive-text-dark-normal);
@@ -5476,9 +5502,14 @@ body:not(
   ).dynamic-views-backdrop-theme-dark
   .dynamic-views
   .card.image-format-backdrop:not([data-adaptive-text]):has(.card-backdrop),
-body:not(
-    .dynamic-views-backdrop-no-adaptive-text
-  ).dynamic-views-backdrop-theme-match.theme-dark
+body:not(.dynamic-views-backdrop-no-adaptive-text):is(
+    .dynamic-views-backdrop-theme-match,
+    :not(
+      .dynamic-views-backdrop-theme-light,
+      .dynamic-views-backdrop-theme-dark,
+      .dynamic-views-backdrop-theme-disable
+    )
+  ).theme-dark
   .dynamic-views
   .card.image-format-backdrop:not([data-adaptive-text]):has(.card-backdrop) {
   --text-normal: var(--dynamic-views-adaptive-text-light-normal);
