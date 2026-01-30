@@ -35,6 +35,9 @@ import {
 import { clearInFlightLoads } from "./src/shared/content-loader";
 import { invalidateCacheForFile } from "./src/shared/image-loader";
 
+// 'Bases' = Proper noun
+const SHUFFLE_COMMAND_NAME = "Shuffle Bases view";
+
 export default class DynamicViews extends Plugin {
   persistenceManager: PersistenceManager;
 
@@ -142,7 +145,7 @@ export default class DynamicViews extends Plugin {
       },
     );
 
-    this.addRibbonIcon("shuffle", "Shuffle bases view", () => {
+    this.addRibbonIcon("shuffle", SHUFFLE_COMMAND_NAME, () => {
       // Close any zoomed images
       document
         .querySelectorAll(".dynamic-views-image-embed.is-zoomed")
@@ -171,7 +174,7 @@ export default class DynamicViews extends Plugin {
 
     this.addCommand({
       id: "shuffle-bases-view",
-      name: "Shuffle bases view",
+      name: SHUFFLE_COMMAND_NAME,
       callback: () => {
         // Close any zoomed images
         document
