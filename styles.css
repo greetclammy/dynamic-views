@@ -1024,6 +1024,24 @@ settings:
         type: variable-text
         default: ''
     -
+        id: dynamic-views-subtitle-bold
+        title: Bold
+        description: Make subtitle text bold
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-subtitle-italic
+        title: Italic
+        description: Make subtitle text italic
+        type: class-toggle
+        default: false
+    -
+        id: dynamic-views-subtitle-small-caps
+        title: Small caps
+        description: Display subtitle text in small caps
+        type: class-toggle
+        default: false
+    -
         id: dynamic-views-subtitle-color
         title: Text color
         description: Theme color preset for subtitles
@@ -3607,6 +3625,26 @@ body.dynamic-views-file-type-none .dynamic-views .card-title-icon {
   color: inherit;
 }
 
+/* Subtitle property-content: use line-height instead of fixed min-height */
+.dynamic-views .card-subtitle .property-content {
+  min-height: 0;
+}
+
+/* Subtitle bold */
+body.dynamic-views-subtitle-bold .dynamic-views .card-subtitle {
+  font-weight: calc(var(--font-weight) + var(--bold-modifier));
+}
+
+/* Subtitle italic */
+body.dynamic-views-subtitle-italic .dynamic-views .card-subtitle {
+  font-style: italic;
+}
+
+/* Subtitle small caps */
+body.dynamic-views-subtitle-small-caps .dynamic-views .card-subtitle {
+  font-variant: small-caps;
+}
+
 /* Subtitle alignment */
 body.dynamic-views-subtitle-align-center .dynamic-views .card-subtitle {
   text-align: center;
@@ -3649,8 +3687,16 @@ body:not(.dynamic-views-subtitle-overflow-scroll)
   display: block;
   width: 100%;
   height: auto;
-  white-space: normal;
   word-break: break-word;
+}
+
+/* Subtitle wrap: override white-space: pre from text-wrapper span rule (needs higher specificity) */
+body:not(.dynamic-views-subtitle-overflow-scroll)
+  .dynamic-views
+  .card-subtitle
+  .text-wrapper
+  > span:not(.internal-link):not(.external-link):not(.tag) {
+  white-space: normal;
 }
 
 /* Disable fade gradient in wrap mode */

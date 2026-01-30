@@ -13,8 +13,11 @@ let cachedHiddenFormats: Set<string> | null = null;
  * Returns null for empty/invalid extensions (e.g., ".", "file.")
  */
 function extractExtension(path: string): string | null {
-  const ext = path.split(".").pop()?.toLowerCase();
-  return ext && ext !== "" ? ext : null;
+  const fileName = path.split("/").pop() || "";
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex < 0) return null;
+  const ext = fileName.slice(dotIndex + 1).toLowerCase();
+  return ext || null;
 }
 
 /**
