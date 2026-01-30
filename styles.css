@@ -558,6 +558,12 @@ settings:
         type: variable-text
         default: 'square-arrow-out-up-right'
     -
+        id: dynamic-views-header-divider
+        title: Divider line
+        description: Show a horizontal rule below the card header
+        type: class-toggle
+        default: false
+    -
         id: image-viewer-heading
         title: Image viewer
         type: heading
@@ -1140,12 +1146,6 @@ settings:
             -
                 label: Scroll
                 value: dynamic-views-subtitle-overflow-scroll
-    -
-        id: dynamic-views-subtitle-divider
-        title: Divider line
-        description: Show a horizontal rule below subtitle
-        type: class-toggle
-        default: false
     -
         id: tags-heading
         title: Tags
@@ -3619,9 +3619,12 @@ body.dynamic-views-file-type-none .dynamic-views .card-title-icon {
   line-height: var(--line-height-tight);
 }
 
-/* Subtitle property content inherits color from subtitle */
+/* Subtitle property content inherits color from subtitle (exclude links) */
 .dynamic-views .card-subtitle .property-content,
-.dynamic-views .card-subtitle .property-content * {
+.dynamic-views
+  .card-subtitle
+  .property-content
+  *:not(.internal-link, .external-link, a) {
   color: inherit;
 }
 
@@ -3743,11 +3746,12 @@ body.dynamic-views-subtitle-overflow-scroll
   white-space: nowrap;
 }
 
-/* Subtitle divider line (shown when class-toggle is ON) */
-/* Divider on card-header when subtitle exists */
-body.dynamic-views-subtitle-divider
+/* Header divider line (shown when class-toggle is ON) */
+/* Only show divider when card has content below header (excludes cover-bottom-only cards) */
+body.dynamic-views-header-divider
   .dynamic-views
-  .card-header:has(.card-subtitle) {
+  .card:has(.card-content, .card-properties-top, .card-properties-bottom)
+  > .card-header {
   padding-bottom: var(--size-4-2);
   border-bottom: 1px solid var(--hr-color);
 }
@@ -7085,24 +7089,36 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     color: color-mix(in hsl, var(--dynamic-views-title-color-value), white 15%);
   }
 
-  /* Subtitle hover colors (when clickable) */
+  /* Subtitle hover colors (when clickable) — exclude real links which keep default hover */
   body.dynamic-views-subtitle-color-faint
     .dynamic-views
     .card-subtitle
-    :is(a, .folder-segment, .filename-segment):hover {
+    :is(
+      a:not(.internal-link, .external-link),
+      .folder-segment,
+      .filename-segment
+    ):hover {
     color: var(--text-muted);
   }
   body.dynamic-views-subtitle-color-muted
     .dynamic-views
     .card-subtitle
-    :is(a, .folder-segment, .filename-segment):hover {
+    :is(
+      a:not(.internal-link, .external-link),
+      .folder-segment,
+      .filename-segment
+    ):hover {
     color: var(--text-normal);
   }
   /* Normal - no hover color change */
   body.dynamic-views-subtitle-color-accent
     .dynamic-views
     .card-subtitle
-    :is(a, .folder-segment, .filename-segment):hover {
+    :is(
+      a:not(.internal-link, .external-link),
+      .folder-segment,
+      .filename-segment
+    ):hover {
     color: var(--text-accent-hover);
   }
   /* Subtitle color variants: 15% white mix using --dynamic-views-subtitle-color-value */
@@ -7119,7 +7135,11 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
     )
     .dynamic-views
     .card-subtitle
-    :is(a, .folder-segment, .filename-segment):hover {
+    :is(
+      a:not(.internal-link, .external-link),
+      .folder-segment,
+      .filename-segment
+    ):hover {
     color: color-mix(
       in hsl,
       var(--dynamic-views-subtitle-color-value),

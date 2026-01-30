@@ -4,6 +4,7 @@
  */
 
 import { TFile, type App, type BasesEntry } from "obsidian";
+import { getFileExtInfo } from "../utils/file-extension";
 import type { CardData } from "./card-renderer";
 import type { Settings } from "../types";
 import type { DatacoreAPI, DatacoreFile } from "../datacore/types";
@@ -660,7 +661,7 @@ export function transformDatacoreResults(
     .filter((p) => p.$path)
     .map((p) => {
       // For image files, use file itself as card image
-      const ext = p.$path.split(".").pop()?.toLowerCase() || "";
+      const ext = getFileExtInfo(p.$path, true)?.ext.slice(1) || "";
       if (VALID_IMAGE_EXTENSIONS.includes(ext) && !images[p.$path]) {
         const file = app.vault.getAbstractFileByPath(p.$path);
         if (file instanceof TFile) {

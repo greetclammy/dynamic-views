@@ -10,12 +10,12 @@ let cachedHiddenFormats: Set<string> | null = null;
 
 /**
  * Extract lowercase extension from path
- * Returns null for empty/invalid extensions (e.g., ".", "file.")
+ * Returns null for extensionless files or empty extensions
  */
 function extractExtension(path: string): string | null {
   const fileName = path.split("/").pop() || "";
   const dotIndex = fileName.lastIndexOf(".");
-  if (dotIndex < 0) return null;
+  if (dotIndex <= 0) return null;
   const ext = fileName.slice(dotIndex + 1).toLowerCase();
   return ext || null;
 }

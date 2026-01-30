@@ -84,6 +84,8 @@ export class DynamicViewsGridView extends BasesView {
   private containerEl: HTMLElement;
   private plugin: DynamicViews;
   private _controller: QueryController & { currentFile: TFile | null };
+  private _resolvedFile: TFile | null | undefined = undefined;
+  private _collapsedGroupsLoaded = false;
   private scrollPreservation: ScrollPreservation | null = null;
   private cardRenderer: SharedCardRenderer;
   private _previousCustomClasses: string[] = [];
@@ -146,9 +148,21 @@ export class DynamicViewsGridView extends BasesView {
   private hasBatchAppended: boolean = false;
   private collapsedGroups: Set<string> = new Set();
 
-  /** Get the current file from the query controller (BasesView.file is null on custom views) */
+  /** Get the current file by resolving from the leaf's view state (cached).
+   *  controller.currentFile is a shared global that can return the wrong file. */
   private get currentFile(): TFile | null {
-    return this._controller.currentFile;
+    if (this._resolvedFile !== undefined) return this._resolvedFile;
+    this._resolvedFile = null;
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view?.containerEl?.contains(this.scrollEl)) {
+        const path = (leaf.view.getState() as { file?: string })?.file;
+        if (path) {
+          const abstract = this.app.vault.getAbstractFileByPath(path);
+          this._resolvedFile = abstract instanceof TFile ? abstract : null;
+        }
+      }
+    });
+    return this._resolvedFile;
   }
 
   /** Get the collapse key for a group (sentinel for undefined keys) */
@@ -169,15 +183,22 @@ export class DynamicViewsGridView extends BasesView {
       this.collapsedGroups.add(collapseKey);
       headerEl.addClass("collapsed");
     }
+
+    // Persist collapse state (async — in-memory state is authoritative)
     void this.plugin.persistenceManager.setUIState(this.currentFile, {
       collapsedGroups: Array.from(this.collapsedGroups),
     });
 
-    // Expanding a group that was never rendered needs a full re-render
-    const groupEl = headerEl.nextElementSibling;
-    if (wasCollapsed && groupEl && groupEl.children.length === 0) {
+    const groupEl = headerEl.nextElementSibling as HTMLElement | null;
+    if (wasCollapsed) {
+      // Expanding: re-render to populate cards (group was emptied on collapse)
       this.onDataUpdated();
     } else {
+      // Collapsing: destroy cards to free memory (images, DOM nodes).
+      // Invalidate render hash so the next unfold triggers a full re-render
+      // (otherwise the hash matches the previous unfold's hash → early return).
+      if (groupEl) groupEl.empty();
+      this.renderState.lastRenderHash = "";
       // Trigger scroll check — collapsing reduces height, may need to load more
       this.scrollEl.dispatchEvent(new Event("scroll"));
     }
@@ -367,9 +388,17 @@ export class DynamicViewsGridView extends BasesView {
   }
 
   onDataUpdated(): void {
-    // Load collapsed groups from persisted UI state (file available here, not in constructor)
-    const uiState = this.plugin.persistenceManager.getUIState(this.currentFile);
-    this.collapsedGroups = new Set(uiState.collapsedGroups ?? []);
+    // Load collapsed groups from persisted UI state only on first render.
+    // After that, the in-memory Set is authoritative (toggleGroupCollapse persists changes).
+    // Reloading on every onDataUpdated is unsafe: style-settings triggers onDataUpdated
+    // with stale persistence or wrong-file lookups, wiping the in-memory state.
+    if (!this._collapsedGroupsLoaded) {
+      const uiState = this.plugin.persistenceManager.getUIState(
+        this.currentFile,
+      );
+      this.collapsedGroups = new Set(uiState.collapsedGroups ?? []);
+      this._collapsedGroupsLoaded = true;
+    }
 
     // Handle template toggle changes (Obsidian calls onDataUpdated for config changes)
     this.handleTemplateToggle();
@@ -480,6 +509,7 @@ export class DynamicViewsGridView extends BasesView {
       const settingsHash = JSON.stringify(settings);
       const styleSettingsHash = getStyleSettingsHash();
       // Include mtime and sortMethod in hash so content/sort changes trigger updates
+      const collapsedHash = Array.from(this.collapsedGroups).sort().join("\0");
       const renderHash =
         allEntries
           .map((e: BasesEntry) => `${e.file.path}:${e.file.stat.mtime}`)
@@ -491,7 +521,9 @@ export class DynamicViewsGridView extends BasesView {
         "\0\0" +
         sortMethod +
         "\0\0" +
-        styleSettingsHash;
+        styleSettingsHash +
+        "\0\0" +
+        collapsedHash;
 
       // Detect files with changed content (mtime changed but paths unchanged)
       const changedPaths = new Set<string>();
@@ -638,12 +670,6 @@ export class DynamicViewsGridView extends BasesView {
         this.renderState.version !== currentVersion ||
         this.renderState.abortController?.signal.aborted
       ) {
-        console.log(
-          "[grid-view] onDataUpdated - ABORTED (stale render), version:",
-          currentVersion,
-          "current:",
-          this.renderState.version,
-        );
         return;
       }
 
@@ -651,24 +677,8 @@ export class DynamicViewsGridView extends BasesView {
       const currentHeight = this.containerEl.scrollHeight;
       this.containerEl.style.minHeight = `${currentHeight}px`;
 
-      // DEBUG: Log before clearing container
-      console.log(
-        "[grid-view] onDataUpdated - About to clear containerEl, version:",
-        currentVersion,
-        "children:",
-        this.containerEl.children.length,
-      );
-
       // Clear and re-render
       this.containerEl.empty();
-
-      // DEBUG: Log after clearing
-      console.log(
-        "[grid-view] onDataUpdated - After empty(), version:",
-        currentVersion,
-        "children:",
-        this.containerEl.children.length,
-      );
 
       // Reset batch append state for full re-render
       this.previousDisplayedCount = 0;
