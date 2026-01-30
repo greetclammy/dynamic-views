@@ -2963,15 +2963,18 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 
 /* Override vanilla Bases absolute positioning - we use static flow layout */
 .dynamic-views .bases-cards-group,
-.dynamic-views.is-grouped .bases-cards-container > .bases-group-heading {
+.dynamic-views.is-grouped .bases-cards-container .bases-group-heading {
   position: static;
 }
 
-/* Sticky group headers (default: on) */
+/* Sticky group headers (default: on) — collapsed headers should not stick.
+   Headers are inside .dynamic-views-group-section wrappers so sticky
+   scopes to each group's content height, not the entire feed. */
 body:not(.dynamic-views-disable-sticky-group-header)
   .dynamic-views.is-grouped
   .bases-cards-container
-  > .bases-group-heading {
+  .dynamic-views-group-section
+  > .bases-group-heading:not(.collapsed) {
   position: sticky;
   top: -12px;
   z-index: 10;
@@ -3011,7 +3014,7 @@ body:not(.dynamic-views-disable-sticky-group-header)
 /* Rotate + accent color when collapsed */
 .dynamic-views .bases-group-heading.collapsed .bases-group-collapse-btn svg {
   transform: rotate(-90deg);
-  color: hsl(258, 88%, 66%);
+  color: var(--color-accent);
 }
 
 /* Hide card container when heading is collapsed (adjacent sibling) */
@@ -3019,14 +3022,21 @@ body:not(.dynamic-views-disable-sticky-group-header)
   display: none !important;
 }
 
+/* Group section wrappers span full grid width and use subgrid */
+.dynamic-views-grid > .dynamic-views-group-section {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
 /* Group headings span full grid width, remove grid gap below */
-.dynamic-views-grid > .bases-group-heading {
+.dynamic-views-group-section > .bases-group-heading {
   grid-column: 1 / -1;
   margin-bottom: calc(-1 * var(--size-4-2));
 }
 
-/* Masonry group headings span full width */
-.dynamic-views-masonry > .bases-group-heading {
+/* Masonry group section wrappers span full width */
+.dynamic-views-masonry > .dynamic-views-group-section {
   width: 100%;
 }
 
@@ -3070,13 +3080,13 @@ body.dynamic-views-hide-group-property-labels
 /* Masonry groups are their own positioning context for cards.
    box-sizing: content-box ensures height calculation excludes padding,
    which is critical for masonry layout measuring card positions */
-.dynamic-views-masonry > .bases-cards-group {
+.dynamic-views-masonry .bases-cards-group {
   position: relative;
   box-sizing: content-box;
 }
 
 /* Group containers in grid - use subgrid to maintain grid layout */
-.dynamic-views-grid > .dynamic-views-group {
+.dynamic-views-group-section > .dynamic-views-group {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
@@ -3090,6 +3100,7 @@ body.dynamic-views-hide-group-property-labels
 /* Card spacing setting - Bases files only */
 .workspace-leaf-content[data-type="bases"]
   .dynamic-views-grid
+  .dynamic-views-group-section
   > .dynamic-views-group {
   gap: var(--dynamic-views-card-spacing-desktop, 8px);
 }
@@ -3097,21 +3108,26 @@ body.dynamic-views-hide-group-property-labels
 .is-mobile
   .workspace-leaf-content[data-type="bases"]
   .dynamic-views-grid
+  .dynamic-views-group-section
   > .dynamic-views-group {
   gap: var(--dynamic-views-card-spacing-mobile, 6px);
 }
 
 /* Group containers in masonry - simple block layout */
-.dynamic-views-masonry > .dynamic-views-group {
+.dynamic-views-masonry .dynamic-views-group-section > .dynamic-views-group {
   padding: 0 0 var(--size-4-4) 0;
   border-color: var(--background-modifier-border);
   border-width: 0 0 1px 0;
   border-style: solid;
 }
 
-/* Last group has no border */
-.dynamic-views-grid > .dynamic-views-group:last-child,
-.dynamic-views-masonry > .dynamic-views-group:last-child {
+/* Last group section has no border */
+.dynamic-views-grid
+  > .dynamic-views-group-section:last-child
+  > .dynamic-views-group,
+.dynamic-views-masonry
+  > .dynamic-views-group-section:last-child
+  > .dynamic-views-group {
   border-bottom: none;
   padding-bottom: 0;
 }

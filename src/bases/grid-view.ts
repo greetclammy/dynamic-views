@@ -198,13 +198,15 @@ export class DynamicViewsGridView extends BasesView {
       // (otherwise the hash matches the previous unfold's hash → early return).
       if (groupEl) groupEl.empty();
       this.renderState.lastRenderHash = "";
-      // Scroll the collapsed header to the top of the viewport so the user
-      // sees which group they just folded (prevents disorientation from sticky headers)
-      const headerTop = headerEl.getBoundingClientRect().top;
-      const scrollTop = this.scrollEl.getBoundingClientRect().top;
-      this.scrollEl.scrollTop += headerTop - scrollTop;
-      // Trigger scroll check — collapsing reduces height, may need to load more
+      // Trigger scroll check — collapsing reduces height, may need to load more.
+      // This may append cards (shifting layout), so scroll-to-header runs AFTER
+      // the batch settles to prevent drift.
       this.scrollEl.dispatchEvent(new Event("scroll"));
+      requestAnimationFrame(() => {
+        const headerTop = headerEl.getBoundingClientRect().top;
+        const scrollTop = this.scrollEl.getBoundingClientRect().top;
+        this.scrollEl.scrollTop += headerTop - scrollTop;
+      });
     }
   }
 
@@ -750,9 +752,12 @@ export class DynamicViewsGridView extends BasesView {
         // but always render collapsed group headers (they cost 0 cards)
         if (displayedSoFar >= this.displayedCount && !isCollapsed) break;
 
+        // Wrap header + group in a section so sticky scopes to the group's content
+        const sectionEl = feedEl.createDiv("dynamic-views-group-section");
+
         // Render group header (always visible, with chevron)
         const headerEl = renderGroupHeader(
-          feedEl,
+          sectionEl,
           processedGroup.group,
           this.config,
           this.app,
@@ -764,7 +769,7 @@ export class DynamicViewsGridView extends BasesView {
         );
 
         // Create group container for cards (empty if collapsed, for DOM sibling structure)
-        const groupEl = feedEl.createDiv(
+        const groupEl = sectionEl.createDiv(
           "dynamic-views-group bases-cards-group",
         );
         setGroupKeyDataset(groupEl, groupKey);
@@ -1118,10 +1123,15 @@ export class DynamicViewsGridView extends BasesView {
         // Same group as last - append to existing container
         groupEl = this.lastGroup.container;
       } else {
-        // Render group header to feed container (sibling to card group, matching vanilla)
+        // Wrap header + group in a section so sticky scopes to the group's content
+        const sectionEl = this.feedContainerRef.current.createDiv(
+          "dynamic-views-group-section",
+        );
+
+        // Render group header
         const collapseKey = this.getCollapseKey(currentGroupKey);
         const headerEl = renderGroupHeader(
-          this.feedContainerRef.current,
+          sectionEl,
           processedGroup.group,
           this.config,
           this.app,
@@ -1133,9 +1143,7 @@ export class DynamicViewsGridView extends BasesView {
         );
 
         // New group - create container for cards
-        groupEl = this.feedContainerRef.current.createDiv(
-          "dynamic-views-group bases-cards-group",
-        );
+        groupEl = sectionEl.createDiv("dynamic-views-group bases-cards-group");
         setGroupKeyDataset(groupEl, currentGroupKey);
 
         // Update last group tracking

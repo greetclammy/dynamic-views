@@ -114,6 +114,10 @@ export class PersistenceManager {
         );
       } else if (typeof v === "string") {
         (sanitized as Record<string, string>)[key] = sanitizeString(v);
+      } else if (Array.isArray(v)) {
+        (sanitized as Record<string, unknown>)[key] = v.map((item) =>
+          typeof item === "string" ? sanitizeString(item) : item,
+        );
       } else {
         (sanitized as Record<string, unknown>)[key] = v;
       }
