@@ -1555,6 +1555,9 @@ body {
   /* Plain background for covers/thumbnails without images */
   --dynamic-views-image-background-plain: #eeeeee;
 }
+.theme-dark {
+  --dynamic-views-image-background-plain: #1a1a1a;
+}
 
 /* Appearance section description styling */
 .dynamic-views-appearance-group .setting-item-description {
@@ -4837,10 +4840,11 @@ body.dynamic-views-show-cover-border
 
 /* ==================== COVER PLACEHOLDERS ==================== */
 
-/* Placeholder base styles: hidden by default, with border radius */
+/* Placeholder base styles: hidden by default, with border radius and background */
 .dynamic-views .card.image-format-cover .card-cover-placeholder {
   display: none;
   border-radius: var(--dynamic-views-cover-border-radius, 0);
+  background-color: var(--dynamic-views-image-background-plain);
 }
 
 /* Placeholder background: follows cover background setting */
@@ -4854,17 +4858,6 @@ body.dynamic-views-cover-bg-ambient
   .card.image-format-cover
   .card-cover-placeholder {
   background-color: var(--dynamic-views-image-background-plain);
-}
-/* Plain & Ambient: dark mode variant */
-body.dynamic-views-cover-bg-plain.theme-dark
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover-placeholder,
-body.dynamic-views-cover-bg-ambient.theme-dark
-  .dynamic-views
-  .card.image-format-cover
-  .card-cover-placeholder {
-  background-color: #1a1a1a;
 }
 /* Custom */
 body.dynamic-views-cover-bg-custom
