@@ -213,8 +213,10 @@ export class DynamicViewsMasonryView extends BasesView {
 
     const groupEl = headerEl.nextElementSibling as HTMLElement | null;
     if (wasCollapsed) {
-      // Expanding: re-render to populate cards (group was emptied on collapse)
-      this.onDataUpdated();
+      // Expanding: surgically populate only this group (avoids full re-render flash)
+      if (groupEl && this.data) {
+        void this.expandGroup(collapseKey, groupEl);
+      }
     } else {
       // Collapsing: destroy cards, then scroll header to viewport top — all
       // synchronous so no paint occurs between removing sticky and adjusting
@@ -231,6 +233,101 @@ export class DynamicViewsMasonryView extends BasesView {
       // Trigger scroll check — collapsing reduces height, may need to load more
       this.scrollEl.dispatchEvent(new Event("scroll"));
     }
+  }
+
+  /** Populate a single group's cards without re-rendering the entire view */
+  private async expandGroup(
+    collapseKey: string,
+    groupEl: HTMLElement,
+  ): Promise<void> {
+    if (!this.data) return;
+
+    // Find the matching group in data
+    const group = this.data.groupedData.find((g) => {
+      const gk = g.hasKey() ? serializeGroupKey(g.key) : undefined;
+      return this.getCollapseKey(gk) === collapseKey;
+    });
+    if (!group) return;
+
+    const settings = readBasesSettings(
+      this.config,
+      this.plugin.persistenceManager.getGlobalSettings(),
+      this.plugin.persistenceManager.getDefaultViewSettings(),
+    );
+    const sortMethod = getSortMethod(this.config);
+
+    // processGroups for shuffle-stable ordering
+    const processed = processGroups(
+      [group],
+      this.sortState.isShuffled,
+      this.sortState.order,
+    );
+    const entries = processed[0]?.entries ?? [];
+    if (entries.length === 0) return;
+
+    // Load content (cache-hit no-op for already-loaded entries)
+    await loadContentForEntries(
+      entries,
+      settings,
+      this.app,
+      this.contentCache.textPreviews,
+      this.contentCache.images,
+      this.contentCache.hasImageAvailable,
+    );
+
+    const cards = transformBasesEntries(
+      this.app,
+      entries,
+      settings,
+      sortMethod,
+      false,
+      this.contentCache.textPreviews,
+      this.contentCache.images,
+      this.contentCache.hasImageAvailable,
+    );
+
+    // Count cards in preceding groups for correct card index
+    const precedingCards = groupEl.parentElement
+      ? Array.from(
+          groupEl.parentElement.querySelectorAll<HTMLElement>(
+            ".bases-cards-group",
+          ),
+        )
+          .filter((el) => el !== groupEl)
+          .reduce(
+            (sum, el) =>
+              sum +
+              (el.compareDocumentPosition(groupEl) &
+              Node.DOCUMENT_POSITION_FOLLOWING
+                ? el.querySelectorAll(".card").length
+                : 0),
+            0,
+          )
+      : 0;
+
+    for (let i = 0; i < cards.length; i++) {
+      this.renderCard(
+        groupEl,
+        cards[i],
+        entries[i],
+        precedingCards + i,
+        settings,
+      );
+    }
+
+    // Masonry layout calculation + post-render hooks
+    if (this.updateLayoutRef.current) {
+      this.updateLayoutRef.current("expand-group");
+    }
+    const newCards = Array.from(groupEl.querySelectorAll<HTMLElement>(".card"));
+    if (syncResponsiveClasses(newCards)) {
+      this.updateLayoutRef.current?.("compact-mode-sync");
+    }
+    initializeScrollGradients(groupEl);
+    initializeTitleTruncation(groupEl);
+
+    // Invalidate render hash so next onDataUpdated() doesn't skip
+    this.renderState.lastRenderHash = "";
   }
 
   /** Whether this view has grouped data */
