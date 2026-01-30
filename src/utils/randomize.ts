@@ -167,25 +167,15 @@ export function toggleShuffleActiveView(app: App): void {
     basesView.type === "dynamic-views-masonry";
 
   if (isDynamicView) {
-    // Dynamic views have the isShuffled property for persistent shuffle
+    // Always reshuffle — original sort restores on view reopen
     const dynamicView = basesView as DynamicBasesView;
-    const currentState = dynamicView.isShuffled ?? false;
-
-    dynamicView.isShuffled = !currentState;
-
-    // If enabling shuffle, create shuffled order
-    if (dynamicView.isShuffled) {
-      const entries = basesView.data?.data;
-      if (entries && entries.length > 0) {
-        const paths = entries.map((e) => e.file.path);
-        dynamicView.shuffledOrder = shuffleArray([...paths]);
-      }
-    } else {
-      // Clear shuffled order when disabling
-      dynamicView.shuffledOrder = [];
+    const entries = basesView.data?.data;
+    if (entries && entries.length > 0) {
+      const paths = entries.map((e) => e.file.path);
+      dynamicView.isShuffled = true;
+      dynamicView.shuffledOrder = shuffleArray([...paths]);
     }
 
-    // Trigger re-render
     if (dynamicView.onDataUpdated) {
       dynamicView.onDataUpdated();
     }
