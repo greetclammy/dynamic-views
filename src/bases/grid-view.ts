@@ -1026,6 +1026,12 @@ export class DynamicViewsGridView extends BasesView {
 
       // Remove height preservation now that scroll is restored
       this.containerEl.style.minHeight = "";
+
+      // Clear skip-cover-fade after initial render (cached images already processed synchronously)
+      this.scrollEl
+        .closest(".workspace-leaf-content")
+        ?.classList.remove("skip-cover-fade");
+
       // Note: Don't reset isLoading here - scroll listener may have started a batch
 
       // DEBUG: Log render completion

@@ -179,6 +179,7 @@ export function toggleShuffleActiveView(app: App): void {
     // Skip cover image fade-in during shuffle (not a fresh load).
     // The view's scrollEl lives in the correct document (main or popout).
     // Target workspace-leaf-content which survives re-render (inner DOM is destroyed).
+    // The view removes this class at render completion (see grid-view/masonry-view).
     const leafContent = dynamicView.viewScrollEl?.closest(
       ".workspace-leaf-content",
     );
@@ -187,10 +188,6 @@ export function toggleShuffleActiveView(app: App): void {
     if (dynamicView.onDataUpdated) {
       dynamicView.onDataUpdated();
     }
-
-    setTimeout(() => {
-      leafContent?.classList.remove("skip-cover-fade");
-    }, 500);
   } else {
     // For other Bases views, shuffle the data array once
     const entries = basesView.data?.data;

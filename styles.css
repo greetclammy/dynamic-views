@@ -1817,7 +1817,6 @@ body {
 }
 
 .dynamic-views {
-  --anim-duration-fast: 5s; /* TEMP: slow fade for testing */
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;

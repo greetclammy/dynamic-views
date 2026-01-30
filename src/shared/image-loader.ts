@@ -293,32 +293,51 @@ export function handleImageLoad(
     cardEl.removeAttribute("data-adaptive-text");
   }
 
-  // Double rAF ensures browser paints initial state before triggering transitions
-  // Single rAF can be batched with initial render; double guarantees a paint cycle
-  requestAnimationFrame(() => {
-    // Guard against card unmounted during first rAF
-    if (!cardEl.isConnected) return;
+  // Shuffle re-render: skip transition by adding cover-ready immediately.
+  // Browser batches opacity:0 + cover-ready opacity:1 into one paint → no visible fade.
+  if (cardEl.closest(".skip-cover-fade")) {
+    cardEl.classList.add("cover-ready");
+    if (onLayoutUpdate) {
+      onLayoutUpdate();
+    }
+    if (rgb && colorTheme && imageEmbedContainer.isConnected) {
+      applyAmbientStyles(
+        rgb,
+        colorTheme,
+        luminance,
+        imageEmbedContainer,
+        cardEl,
+        isCover,
+      );
+    }
+  } else {
+    // Double rAF ensures browser paints initial state before triggering transitions
+    // Single rAF can be batched with initial render; double guarantees a paint cycle
     requestAnimationFrame(() => {
-      // Guard against card unmounted during second rAF
+      // Guard against card unmounted during first rAF
       if (!cardEl.isConnected) return;
-      cardEl.classList.add("cover-ready");
-      if (onLayoutUpdate) {
-        onLayoutUpdate();
-      }
-      // Apply ambient color in same frame - both transitions start together
-      // cardEl.isConnected checked at rAF entry; imageEmbedContainer used for closest() query
-      if (rgb && colorTheme && imageEmbedContainer.isConnected) {
-        applyAmbientStyles(
-          rgb,
-          colorTheme,
-          luminance,
-          imageEmbedContainer,
-          cardEl,
-          isCover,
-        );
-      }
+      requestAnimationFrame(() => {
+        // Guard against card unmounted during second rAF
+        if (!cardEl.isConnected) return;
+        cardEl.classList.add("cover-ready");
+        if (onLayoutUpdate) {
+          onLayoutUpdate();
+        }
+        // Apply ambient color in same frame - both transitions start together
+        // cardEl.isConnected checked at rAF entry; imageEmbedContainer used for closest() query
+        if (rgb && colorTheme && imageEmbedContainer.isConnected) {
+          applyAmbientStyles(
+            rgb,
+            colorTheme,
+            luminance,
+            imageEmbedContainer,
+            cardEl,
+            isCover,
+          );
+        }
+      });
     });
-  });
+  }
 
   if (
     !rgb &&
@@ -367,8 +386,10 @@ export function setupImageLoadHandler(
     imgEl.naturalHeight > 0 &&
     !cardEl.classList.contains("cover-ready")
   ) {
-    // Force reflow - reading offsetHeight computes current styles
-    void cardEl.offsetHeight;
+    // Force reflow only when fade is needed (skip during shuffle re-render)
+    if (!cardEl.closest(".skip-cover-fade")) {
+      void cardEl.offsetHeight;
+    }
     handleImageLoad(
       imgEl,
       imageEmbedContainer,
@@ -473,7 +494,10 @@ export function handleJsxImageRef(
     imgEl.naturalHeight > 0 &&
     !cardEl.classList.contains("cover-ready")
   ) {
-    void cardEl.offsetHeight;
+    // Force reflow only when fade is needed (skip during shuffle re-render)
+    if (!cardEl.closest(".skip-cover-fade")) {
+      void cardEl.offsetHeight;
+    }
     handleImageLoad(
       imgEl,
       imageEmbedEl,

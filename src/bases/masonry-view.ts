@@ -1115,6 +1115,11 @@ export class DynamicViewsMasonryView extends BasesView {
 
       // Remove height preservation now that scroll is restored
       this.containerEl.style.minHeight = "";
+
+      // Clear skip-cover-fade after initial render (cached images already processed synchronously)
+      this.scrollEl
+        .closest(".workspace-leaf-content")
+        ?.classList.remove("skip-cover-fade");
     })();
   }
 
