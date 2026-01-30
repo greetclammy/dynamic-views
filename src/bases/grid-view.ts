@@ -711,13 +711,15 @@ export class DynamicViewsGridView extends BasesView {
       // Render groups with headers
       let displayedSoFar = 0;
       for (const processedGroup of processedGroups) {
-        if (displayedSoFar >= this.displayedCount) break;
-
         const groupKey = processedGroup.group.hasKey()
           ? serializeGroupKey(processedGroup.group.key)
           : undefined;
         const collapseKey = this.getCollapseKey(groupKey);
         const isCollapsed = this.collapsedGroups.has(collapseKey);
+
+        // Budget check: stop rendering cards once limit reached,
+        // but always render collapsed group headers (they cost 0 cards)
+        if (displayedSoFar >= this.displayedCount && !isCollapsed) break;
 
         // Render group header (always visible, with chevron)
         const headerEl = renderGroupHeader(

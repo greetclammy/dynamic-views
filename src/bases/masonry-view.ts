@@ -840,8 +840,6 @@ export class DynamicViewsMasonryView extends BasesView {
       // Render groups with headers (or ungrouped cards directly)
       let displayedSoFar = 0;
       for (const processedGroup of processedGroups) {
-        if (displayedSoFar >= this.displayedCount) break;
-
         // Determine card container: group div (grouped) or masonry container (ungrouped)
         let cardContainer: HTMLElement;
         let groupKey: string | undefined;
@@ -852,6 +850,10 @@ export class DynamicViewsMasonryView extends BasesView {
             : undefined;
           const collapseKey = this.getCollapseKey(groupKey);
           const isCollapsed = this.collapsedGroups.has(collapseKey);
+
+          // Budget check: stop rendering cards once limit reached,
+          // but always render collapsed group headers (they cost 0 cards)
+          if (displayedSoFar >= this.displayedCount && !isCollapsed) break;
 
           // Render group header (always visible, with chevron)
           const headerEl = renderGroupHeader(
@@ -875,7 +877,9 @@ export class DynamicViewsMasonryView extends BasesView {
           // Skip card rendering for collapsed groups
           if (isCollapsed) continue;
         } else {
-          // Ungrouped: render directly to masonry container
+          // Ungrouped: no collapse, budget check applies normally
+          if (displayedSoFar >= this.displayedCount) break;
+          // Render directly to masonry container
           cardContainer = this.masonryContainer;
           groupKey = undefined;
         }
