@@ -40,6 +40,7 @@ import {
   hasGroupBy,
   serializeGroupKey,
   setGroupKeyDataset,
+  UNDEFINED_GROUP_KEY_SENTINEL,
   initializeViewDefaults,
   tryGetAllConfig,
   clearOldTemplateToggles,
@@ -82,6 +83,7 @@ export class DynamicViewsGridView extends BasesView {
   private leafId: string;
   private containerEl: HTMLElement;
   private plugin: DynamicViews;
+  private _controller: QueryController & { currentFile: TFile | null };
   private scrollPreservation: ScrollPreservation | null = null;
   private cardRenderer: SharedCardRenderer;
   private _previousCustomClasses: string[] = [];
@@ -142,6 +144,44 @@ export class DynamicViewsGridView extends BasesView {
   private resizeRafId: number | null = null;
   private lastObservedWidth: number = 0;
   private hasBatchAppended: boolean = false;
+  private collapsedGroups: Set<string> = new Set();
+
+  /** Get the current file from the query controller (BasesView.file is null on custom views) */
+  private get currentFile(): TFile | null {
+    return this._controller.currentFile;
+  }
+
+  /** Get the collapse key for a group (sentinel for undefined keys) */
+  private getCollapseKey(groupKey: string | undefined): string {
+    return groupKey ?? UNDEFINED_GROUP_KEY_SENTINEL;
+  }
+
+  /** Toggle collapse state for a group and persist */
+  private toggleGroupCollapse(
+    collapseKey: string,
+    headerEl: HTMLElement,
+  ): void {
+    const wasCollapsed = this.collapsedGroups.has(collapseKey);
+    if (wasCollapsed) {
+      this.collapsedGroups.delete(collapseKey);
+      headerEl.removeClass("collapsed");
+    } else {
+      this.collapsedGroups.add(collapseKey);
+      headerEl.addClass("collapsed");
+    }
+    void this.plugin.persistenceManager.setUIState(this.currentFile, {
+      collapsedGroups: Array.from(this.collapsedGroups),
+    });
+
+    // Expanding a group that was never rendered needs a full re-render
+    const groupEl = headerEl.nextElementSibling;
+    if (wasCollapsed && groupEl && groupEl.children.length === 0) {
+      this.onDataUpdated();
+    } else {
+      // Trigger scroll check — collapsing reduces height, may need to load more
+      this.scrollEl.dispatchEvent(new Event("scroll"));
+    }
+  }
 
   /** Calculate initial card count based on container dimensions */
   private calculateInitialCount(settings: Settings): number {
@@ -245,6 +285,9 @@ export class DynamicViewsGridView extends BasesView {
 
   constructor(controller: QueryController, scrollEl: HTMLElement) {
     super(controller);
+    this._controller = controller as QueryController & {
+      currentFile: TFile | null;
+    };
 
     // Note: this.config is undefined in constructor (assigned later by QueryController.update())
     // Template defaults are applied via schema defaults in getBasesViewOptions()
@@ -324,6 +367,10 @@ export class DynamicViewsGridView extends BasesView {
   }
 
   onDataUpdated(): void {
+    // Load collapsed groups from persisted UI state (file available here, not in constructor)
+    const uiState = this.plugin.persistenceManager.getUIState(this.currentFile);
+    this.collapsedGroups = new Set(uiState.collapsedGroups ?? []);
+
     // Handle template toggle changes (Obsidian calls onDataUpdated for config changes)
     this.handleTemplateToggle();
 
@@ -340,7 +387,7 @@ export class DynamicViewsGridView extends BasesView {
             this.config,
             allKeys,
             this.plugin,
-            this.file,
+            this.currentFile,
             "grid",
           );
           console.log(
@@ -558,12 +605,16 @@ export class DynamicViewsGridView extends BasesView {
         this.sortState.order,
       );
 
-      // Collect visible entries across all groups (up to displayedCount)
+      // Collect visible entries across all groups (up to displayedCount), skipping collapsed
       const visibleEntries: BasesEntry[] = [];
       let remainingCount = this.displayedCount;
 
       for (const processedGroup of processedGroups) {
         if (remainingCount <= 0) break;
+        const groupKey = processedGroup.group.hasKey()
+          ? serializeGroupKey(processedGroup.group.key)
+          : undefined;
+        if (this.collapsedGroups.has(this.getCollapseKey(groupKey))) continue;
         const entriesToTake = Math.min(
           processedGroup.entries.length,
           remainingCount,
@@ -652,6 +703,34 @@ export class DynamicViewsGridView extends BasesView {
       for (const processedGroup of processedGroups) {
         if (displayedSoFar >= this.displayedCount) break;
 
+        const groupKey = processedGroup.group.hasKey()
+          ? serializeGroupKey(processedGroup.group.key)
+          : undefined;
+        const collapseKey = this.getCollapseKey(groupKey);
+        const isCollapsed = this.collapsedGroups.has(collapseKey);
+
+        // Render group header (always visible, with chevron)
+        const headerEl = renderGroupHeader(
+          feedEl,
+          processedGroup.group,
+          this.config,
+          this.app,
+          processedGroup.entries.length,
+          isCollapsed,
+          () => {
+            if (headerEl) this.toggleGroupCollapse(collapseKey, headerEl);
+          },
+        );
+
+        // Create group container for cards (empty if collapsed, for DOM sibling structure)
+        const groupEl = feedEl.createDiv(
+          "dynamic-views-group bases-cards-group",
+        );
+        setGroupKeyDataset(groupEl, groupKey);
+
+        // Skip card rendering for collapsed groups
+        if (isCollapsed) continue;
+
         const entriesToDisplay = Math.min(
           processedGroup.entries.length,
           this.displayedCount - displayedSoFar,
@@ -659,26 +738,6 @@ export class DynamicViewsGridView extends BasesView {
         if (entriesToDisplay === 0) continue;
 
         const groupEntries = processedGroup.entries.slice(0, entriesToDisplay);
-
-        // Render group header to feed container (sibling to card group, matching vanilla)
-        renderGroupHeader(
-          feedEl,
-          processedGroup.group,
-          this.config,
-          this.app,
-          processedGroup.entries.length,
-        );
-
-        // Create group container for cards
-        const groupEl = feedEl.createDiv(
-          "dynamic-views-group bases-cards-group",
-        );
-
-        // Store group key for consistency with masonry-view
-        const groupKey = processedGroup.group.hasKey()
-          ? serializeGroupKey(processedGroup.group.key)
-          : undefined;
-        setGroupKeyDataset(groupEl, groupKey);
 
         // Render cards in this group
         const cards = transformBasesEntries(
@@ -716,11 +775,22 @@ export class DynamicViewsGridView extends BasesView {
       initializeScrollGradients(feedEl);
       initializeTitleTruncation(feedEl);
 
+      // Compute effective total (exclude collapsed groups)
+      let effectiveTotal = 0;
+      for (const pg of processedGroups) {
+        const gk = pg.group.hasKey()
+          ? serializeGroupKey(pg.group.key)
+          : undefined;
+        if (!this.collapsedGroups.has(this.getCollapseKey(gk))) {
+          effectiveTotal += pg.entries.length;
+        }
+      }
+
       // Setup infinite scroll
-      this.setupInfiniteScroll(allEntries.length, settings);
+      this.setupInfiniteScroll(effectiveTotal, settings);
 
       // Show end indicator if all items fit in initial render (skip if 0 results)
-      if (displayedSoFar >= allEntries.length && allEntries.length > 0) {
+      if (displayedSoFar >= effectiveTotal && effectiveTotal > 0) {
         this.showEndIndicator();
       }
 
@@ -909,11 +979,16 @@ export class DynamicViewsGridView extends BasesView {
     const prevCount = this.previousDisplayedCount;
     const currCount = this.displayedCount;
 
-    // Collect ONLY NEW entries (from prevCount to currCount)
+    // Collect ONLY NEW entries (from prevCount to currCount), skipping collapsed groups
     const newEntries: BasesEntry[] = [];
     let currentCount = 0;
 
     for (const processedGroup of processedGroups) {
+      const groupKey = processedGroup.group.hasKey()
+        ? serializeGroupKey(processedGroup.group.key)
+        : undefined;
+      if (this.collapsedGroups.has(this.getCollapseKey(groupKey))) continue;
+
       const groupStart = currentCount;
       const groupEnd = currentCount + processedGroup.entries.length;
 
@@ -966,6 +1041,14 @@ export class DynamicViewsGridView extends BasesView {
     for (const processedGroup of processedGroups) {
       if (displayedSoFar >= currCount) break;
 
+      const currentGroupKey = processedGroup.group.hasKey()
+        ? serializeGroupKey(processedGroup.group.key)
+        : undefined;
+
+      // Skip collapsed groups entirely
+      if (this.collapsedGroups.has(this.getCollapseKey(currentGroupKey)))
+        continue;
+
       const groupEntriesToDisplay = Math.min(
         processedGroup.entries.length,
         currCount - displayedSoFar,
@@ -986,9 +1069,6 @@ export class DynamicViewsGridView extends BasesView {
 
       // Get or create group container
       let groupEl: HTMLElement;
-      const currentGroupKey = processedGroup.group.hasKey()
-        ? serializeGroupKey(processedGroup.group.key)
-        : undefined;
 
       if (
         currentGroupKey === this.lastGroup.key &&
@@ -998,12 +1078,17 @@ export class DynamicViewsGridView extends BasesView {
         groupEl = this.lastGroup.container;
       } else {
         // Render group header to feed container (sibling to card group, matching vanilla)
-        renderGroupHeader(
+        const collapseKey = this.getCollapseKey(currentGroupKey);
+        const headerEl = renderGroupHeader(
           this.feedContainerRef.current,
           processedGroup.group,
           this.config,
           this.app,
           processedGroup.entries.length,
+          false, // not collapsed (we skipped collapsed groups above)
+          () => {
+            if (headerEl) this.toggleGroupCollapse(collapseKey, headerEl);
+          },
         );
 
         // New group - create container for cards

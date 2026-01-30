@@ -500,7 +500,7 @@ settings:
                 value: dynamic-views-timestamp-icon-hide
     -
         id: groups-heading
-        title: Groups
+        title: Grouping
         type: heading
         level: 2
         collapsed: true
@@ -514,6 +514,12 @@ settings:
         title: Hide property labels
         description: Hide property labels in group headings
         type: class-toggle
+    -
+        id: dynamic-views-disable-sticky-group-header
+        title: Disable sticky group header
+        description: Do not freeze group headers when scrolling
+        type: class-toggle
+        default: false
     -
         id: header-heading
         title: Header
@@ -2938,6 +2944,58 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 .dynamic-views .bases-cards-group,
 .dynamic-views.is-grouped .bases-cards-container > .bases-group-heading {
   position: static;
+}
+
+/* Sticky group headers (default: on) */
+body:not(.dynamic-views-disable-sticky-group-header)
+  .dynamic-views.is-grouped
+  .bases-cards-container
+  > .bases-group-heading {
+  position: sticky;
+  top: -12px;
+  z-index: 10;
+  overflow: visible;
+  background: var(--background-primary);
+}
+
+/* Group headings - flex layout for collapse chevron + content */
+.dynamic-views .bases-group-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+}
+
+/* Clickable region: chevron + property + value */
+.dynamic-views .bases-group-collapse-region {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  cursor: pointer;
+}
+
+/* Group collapse chevron */
+.dynamic-views .bases-group-collapse-btn {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.dynamic-views .bases-group-collapse-btn svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--anim-duration-fast, 140ms) ease;
+}
+
+/* Rotate + accent color when collapsed */
+.dynamic-views .bases-group-heading.collapsed .bases-group-collapse-btn svg {
+  transform: rotate(-90deg);
+  color: hsl(258, 88%, 66%);
+}
+
+/* Hide card container when heading is collapsed (adjacent sibling) */
+.dynamic-views .bases-group-heading.collapsed + .dynamic-views-group {
+  display: none !important;
 }
 
 /* Group headings span full grid width, remove grid gap below */

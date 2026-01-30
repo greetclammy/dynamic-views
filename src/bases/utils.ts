@@ -3,7 +3,15 @@
  * Eliminates code duplication between view implementations
  */
 
-import { BasesEntry, TFile, TFolder, Menu, App, BasesView } from "obsidian";
+import {
+  BasesEntry,
+  TFile,
+  TFolder,
+  Menu,
+  App,
+  BasesView,
+  setIcon,
+} from "obsidian";
 import { resolveTimestampProperty } from "../shared/data-transform";
 import {
   getFirstBasesPropertyValue,
@@ -701,17 +709,32 @@ export function renderGroupHeader(
   config: BasesConfigWithSort,
   app: App,
   entryCount: number,
-): void {
+  collapsed: boolean,
+  onToggleCollapse: () => void,
+): HTMLElement | null {
   // Don't render header when not grouping
-  if (!config.groupBy?.property) return;
+  if (!config.groupBy?.property) return null;
 
   const headerEl = containerEl.createDiv("bases-group-heading");
+  if (collapsed) headerEl.addClass("collapsed");
 
-  const propertyEl = headerEl.createDiv("bases-group-property");
+  // Clickable region: chevron + property label + group value (not count)
+  const collapseRegion = headerEl.createDiv("bases-group-collapse-region");
+  collapseRegion.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("a")) return; // Don't intercept tag/folder links
+    onToggleCollapse();
+  });
+
+  // Collapse chevron (left of all heading content)
+  const chevronBtn = collapseRegion.createDiv("bases-group-collapse-btn");
+  setIcon(chevronBtn, "chevron-down");
+
+  const propertyEl = collapseRegion.createDiv("bases-group-property");
   const propertyName = config.getDisplayName(config.groupBy.property);
   propertyEl.setText(propertyName);
 
-  const valueEl = headerEl.createDiv("bases-group-value");
+  const valueEl = collapseRegion.createDiv("bases-group-value");
 
   // Show "None" for empty/missing keys (covers hasKey()=false and empty arrays)
   if (!serializeGroupKey(group.key)) {
@@ -723,7 +746,7 @@ export function renderGroupHeader(
     const countText =
       entryCount === 1 ? "1 result" : `${formattedCount} results`;
     countEl.setText(countText);
-    return;
+    return headerEl;
   }
 
   renderGroupValue(valueEl, group.key, app, config.groupBy.property);
@@ -735,6 +758,7 @@ export function renderGroupHeader(
     .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const countText = entryCount === 1 ? "1 result" : `${formattedCount} results`;
   countEl.setText(countText);
+  return headerEl;
 }
 
 /**

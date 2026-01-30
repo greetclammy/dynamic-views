@@ -62,6 +62,7 @@ export interface UIState {
   searchQuery: string;
   resultLimit: string;
   widthMode: string;
+  collapsedGroups: string[];
 }
 
 export interface DefaultViewSettings {

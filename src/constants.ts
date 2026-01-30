@@ -111,6 +111,7 @@ export const DEFAULT_UI_STATE = {
   searchQuery: "",
   resultLimit: "",
   widthMode: "normal",
+  collapsedGroups: [] as string[],
 };
 
 export const DEFAULT_TEMPLATE_VIEWS = {
