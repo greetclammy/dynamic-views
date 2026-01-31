@@ -52,7 +52,7 @@ export const DEFAULT_VIEW_SETTINGS: DefaultViewSettings = {
   cardSize: 400,
   textPreviewLines: 5,
   thumbnailSize: "standard",
-  pairedPropertyLayout: "align-to-edges",
+  pairedPropertyLayout: "snap-to-edges",
   minimumColumns: 1,
   ambientBackground: "disable",
 };
@@ -120,7 +120,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showCardLinkCovers: true,
   textPreviewLines: 5,
   thumbnailSize: "standard",
-  pairedPropertyLayout: "align-to-edges",
+  pairedPropertyLayout: "snap-to-edges",
   minimumColumns: 1,
   ambientBackground: "disable",
 };

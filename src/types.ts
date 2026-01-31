@@ -61,7 +61,7 @@ export interface Settings {
   showCardLinkCovers: boolean;
   textPreviewLines: number;
   thumbnailSize: "compact" | "standard" | "expanded";
-  pairedPropertyLayout: "align-left" | "align-to-edges" | "equal-width";
+  pairedPropertyLayout: "align-left" | "snap-to-edges" | "equal-width";
   minimumColumns: number;
   ambientBackground: "subtle" | "dramatic" | "disable";
 }
@@ -127,7 +127,7 @@ export interface DefaultViewSettings {
   cardSize: number;
   textPreviewLines: number;
   thumbnailSize: "compact" | "standard" | "expanded";
-  pairedPropertyLayout: "align-left" | "align-to-edges" | "equal-width";
+  pairedPropertyLayout: "align-left" | "snap-to-edges" | "equal-width";
   minimumColumns: number;
   ambientBackground: "subtle" | "dramatic" | "disable";
 }

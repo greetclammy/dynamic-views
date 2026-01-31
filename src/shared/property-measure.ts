@@ -316,15 +316,16 @@ export function measureSideBySideSet(
       // Guard against zero/negative available width
       if (availableWidth <= 0) return;
 
-      const percent1 = (width1 / availableWidth) * 100;
-      const percent2 = (width2 / availableWidth) * 100;
-
-      if (percent1 <= 50) {
-        // Field1 fits: field1 exact, field2 fills remainder
+      if (width1 + width2 <= availableWidth) {
+        // Both fit at natural width: field1 exact, remainder to field2
         field1Width = `${width1}px`;
         field2Width = `${availableWidth - width1}px`;
-      } else if (percent2 <= 50) {
-        // Field2 fits: field2 exact, field1 fills remainder
+      } else if (width1 <= availableWidth / 2) {
+        // Field1 fits in half: field1 exact, field2 fills remainder
+        field1Width = `${width1}px`;
+        field2Width = `${availableWidth - width1}px`;
+      } else if (width2 <= availableWidth / 2) {
+        // Field2 fits in half: field2 exact, field1 fills remainder
         field1Width = `${availableWidth - width2}px`;
         field2Width = `${width2}px`;
       } else {

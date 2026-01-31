@@ -1456,10 +1456,18 @@ body {
   /* Adaptive text colors: "light" = light text, "dark" = dark text */
   --dynamic-views-adaptive-text-light-normal: #fafafa;
   --dynamic-views-adaptive-text-light-muted: #f5f5f5;
-  --dynamic-views-adaptive-text-light-faint: #d0d0d0;
+  --dynamic-views-adaptive-text-light-faint: color-mix(
+    in srgb,
+    var(--dynamic-views-adaptive-text-light-muted) 60%,
+    transparent
+  );
   --dynamic-views-adaptive-text-dark-normal: #222222;
   --dynamic-views-adaptive-text-dark-muted: #333333;
-  --dynamic-views-adaptive-text-dark-faint: #666666;
+  --dynamic-views-adaptive-text-dark-faint: color-mix(
+    in srgb,
+    var(--dynamic-views-adaptive-text-dark-muted) 60%,
+    transparent
+  );
   /* Plain background for covers/thumbnails without images */
   --dynamic-views-image-background-plain: #eeeeee;
 }
@@ -6504,10 +6512,17 @@ body.dynamic-views-full-row-align-right
   min-width: 0 !important;
 }
 
-/* Default state: fields split space equally with 50% max */
+/* Default unmeasured state: natural content width to avoid snap when measurement applies */
 .dynamic-views .property-set.property-set-paired .property-field {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   max-width: 50%;
+}
+
+/* Equal-width mode: 50-50 split (measurement is skipped, so this is the final state) */
+.dynamic-views.dynamic-views-property-width-equal
+  .property-set.property-set-paired
+  .property-field {
+  flex: 1 1 0;
 }
 
 /* Measured state: use calculated widths from CSS variables, remove 50% cap */

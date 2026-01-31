@@ -199,7 +199,7 @@ export function applyViewContainerStyles(
         "dynamic-views-property-width-flexible",
       );
       break;
-    case "align-to-edges":
+    case "snap-to-edges":
       container.classList.add(
         "dynamic-views-paired-property-align-right",
         "dynamic-views-property-width-flexible",
