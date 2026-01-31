@@ -173,7 +173,7 @@ const PAIRED_PROPERTY_CLASSES = [
   "dynamic-views-paired-property-align-left",
   "dynamic-views-paired-property-align-right",
   "dynamic-views-property-width-flexible",
-  "dynamic-views-property-width-50-50",
+  "dynamic-views-property-width-equal",
 ] as const;
 
 const AMBIENT_CLASSES = [
@@ -208,7 +208,7 @@ export function applyViewContainerStyles(
     case "equal-width":
       container.classList.add(
         "dynamic-views-paired-property-align-left",
-        "dynamic-views-property-width-50-50",
+        "dynamic-views-property-width-equal",
       );
       break;
   }

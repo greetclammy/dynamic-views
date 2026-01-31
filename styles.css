@@ -212,22 +212,10 @@ settings:
         description: Hide gradient fade effect on titles, subtitles and properties when they can be scrolled horizontally
         type: class-toggle
     -
-        id: dynamic-views-ambient-background
-        title: Ambient background
-        description: Use image ambient color as card background (local images only)
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-ambient-bg-off
-        options:
-            -
-                label: Subtle
-                value: dynamic-views-ambient-bg-subtle
-            -
-                label: Dramatic
-                value: dynamic-views-adaptive-text
-            -
-                label: Disable
-                value: dynamic-views-ambient-bg-off
+        id: dynamic-views-ambient-no-adaptive-text
+        title: Disable ambient adaptive text colors
+        description: Do not adjust text colors for readability on dramatic ambient cards
+        type: class-toggle
     -
         id: covers-heading
         title: Covers
@@ -3294,7 +3282,9 @@ body.dynamic-views-card-background-hover-custom .dynamic-views .card:hover {
 
 /* Text color adjustments for ambient card backgrounds (dramatic only) */
 /* Excludes backdrop/poster cards - they have separate adaptive text control */
-.dynamic-views.dynamic-views-adaptive-text
+/* Disabled via Style Settings toggle: dynamic-views-ambient-no-adaptive-text */
+body:not(.dynamic-views-ambient-no-adaptive-text)
+  .dynamic-views.dynamic-views-adaptive-text
   .card[data-adaptive-text="light"]:not(.image-format-backdrop):not(
     .image-format-poster
   ) {
@@ -3303,7 +3293,8 @@ body.dynamic-views-card-background-hover-custom .dynamic-views .card:hover {
   --text-faint: var(--dynamic-views-adaptive-text-light-faint);
 }
 
-.dynamic-views.dynamic-views-adaptive-text
+body:not(.dynamic-views-ambient-no-adaptive-text)
+  .dynamic-views.dynamic-views-adaptive-text
   .card[data-adaptive-text="dark"]:not(.image-format-backdrop):not(
     .image-format-poster
   ) {

@@ -232,6 +232,19 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           default: d.pairProperties,
         },
         {
+          type: "dropdown",
+          displayName: "Paired property layout",
+          key: "pairedPropertyLayout",
+          options: {
+            "align-left": "Align left",
+            "align-to-edges": "Align to edges",
+            "equal-width": "Equal width",
+          },
+          default: d.pairedPropertyLayout,
+          shouldHide: (config: BasesConfig) =>
+            (config.get("pairProperties") ?? d.pairProperties) === false,
+        },
+        {
           type: "text",
           displayName: "Invert pairing for property",
           key: "invertPairingForProperty",
@@ -256,19 +269,6 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           shouldHide: (config: BasesConfig) =>
             !(config.get("textPreviewProperty") ?? d.textPreviewProperty) &&
             (config.get("fallbackToContent") ?? d.fallbackToContent) === false,
-        },
-        {
-          type: "dropdown",
-          displayName: "Paired property layout",
-          key: "pairedPropertyLayout",
-          options: {
-            "align-left": "Align left",
-            "align-to-edges": "Align to edges",
-            "equal-width": "Equal width",
-          },
-          default: d.pairedPropertyLayout,
-          shouldHide: (config: BasesConfig) =>
-            (config.get("pairProperties") ?? d.pairProperties) === false,
         },
         {
           type: "text",
