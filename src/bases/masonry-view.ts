@@ -256,6 +256,7 @@ export class DynamicViewsMasonryView extends BasesView {
       this.config,
       this.plugin.persistenceManager.getGlobalSettings(),
       this.plugin.persistenceManager.getDefaultViewSettings(),
+      "masonry",
     );
     const sortMethod = getSortMethod(this.config);
 
@@ -729,6 +730,7 @@ export class DynamicViewsMasonryView extends BasesView {
         this.config,
         this.plugin.persistenceManager.getGlobalSettings(),
         this.plugin.persistenceManager.getDefaultViewSettings(),
+        "masonry",
       );
 
       // Apply per-view CSS classes and variables to container

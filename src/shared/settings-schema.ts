@@ -334,6 +334,7 @@ export function readBasesSettings(
   config: BasesConfig,
   globalSettings: Settings,
   defaultViewSettings: DefaultViewSettings,
+  viewType?: "grid" | "masonry",
 ): Settings {
   // Null guard
   const defaults = defaultViewSettings || DEFAULT_VIEW_SETTINGS;
@@ -464,7 +465,10 @@ export function readBasesSettings(
         ? value
         : defaults.pairedPropertyLayout;
     })(),
-    minimumColumns: getNumber("minimumColumns", defaults.minimumColumns),
+    minimumColumns: getNumber(
+      "minimumColumns",
+      viewType === "masonry" ? 2 : defaults.minimumColumns,
+    ),
     ambientBackground: (() => {
       const value = config.get("ambientBackground");
       return value === "subtle" || value === "dramatic" || value === "disable"

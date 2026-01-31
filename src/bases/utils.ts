@@ -224,6 +224,9 @@ export function initializeViewDefaults(
   }
   if (defaults?.minimumColumns !== undefined) {
     safeConfigSet(config, "minimumColumns", defaults.minimumColumns);
+  } else if (viewType === "masonry") {
+    // Masonry defaults to 2 columns when no template/global override
+    safeConfigSet(config, "minimumColumns", 2);
   }
   if (defaults?.ambientBackground !== undefined) {
     safeConfigSet(config, "ambientBackground", defaults.ambientBackground);
