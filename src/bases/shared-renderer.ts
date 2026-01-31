@@ -163,6 +163,81 @@ function truncateTitleWithCanvas(
   textEl.textContent = fullText.slice(0, low).trimEnd() + ellipsis;
 }
 
+const THUMBNAIL_SIZE_MAP: Record<string, string> = {
+  compact: "64px",
+  standard: "80px",
+  expanded: "94.5px",
+};
+
+const PAIRED_PROPERTY_CLASSES = [
+  "dynamic-views-paired-property-align-left",
+  "dynamic-views-paired-property-align-right",
+  "dynamic-views-property-width-flexible",
+  "dynamic-views-property-width-50-50",
+] as const;
+
+const AMBIENT_CLASSES = [
+  "dynamic-views-ambient-bg-subtle",
+  "dynamic-views-adaptive-text",
+  "dynamic-views-ambient-bg-off",
+] as const;
+
+/**
+ * Apply per-view CSS classes and variables from settings to the view container
+ * Replaces body-level Style Settings classes with view-scoped equivalents
+ */
+export function applyViewContainerStyles(
+  container: HTMLElement,
+  settings: Settings,
+): void {
+  // Paired property layout
+  container.classList.remove(...PAIRED_PROPERTY_CLASSES);
+  switch (settings.pairedPropertyLayout) {
+    case "align-left":
+      container.classList.add(
+        "dynamic-views-paired-property-align-left",
+        "dynamic-views-property-width-flexible",
+      );
+      break;
+    case "align-to-edges":
+      container.classList.add(
+        "dynamic-views-paired-property-align-right",
+        "dynamic-views-property-width-flexible",
+      );
+      break;
+    case "equal-width":
+      container.classList.add(
+        "dynamic-views-paired-property-align-left",
+        "dynamic-views-property-width-50-50",
+      );
+      break;
+  }
+
+  // Ambient background
+  container.classList.remove(...AMBIENT_CLASSES);
+  switch (settings.ambientBackground) {
+    case "subtle":
+      container.classList.add("dynamic-views-ambient-bg-subtle");
+      break;
+    case "dramatic":
+      container.classList.add("dynamic-views-adaptive-text");
+      break;
+    case "disable":
+      container.classList.add("dynamic-views-ambient-bg-off");
+      break;
+  }
+
+  // CSS variables
+  container.style.setProperty(
+    "--dynamic-views-thumbnail-size",
+    THUMBNAIL_SIZE_MAP[settings.thumbnailSize] ?? "80px",
+  );
+  container.style.setProperty(
+    "--dynamic-views-text-preview-lines",
+    String(settings.textPreviewLines),
+  );
+}
+
 /**
  * Batch-initialize title truncation for all cards in container.
  * Uses read-then-write pattern to avoid layout thrashing:

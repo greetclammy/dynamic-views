@@ -59,6 +59,11 @@ export interface Settings {
   revealInNotebookNavigator: "disable" | "files-folders" | "tags" | "all";
   showYoutubeThumbnails: boolean;
   showCardLinkCovers: boolean;
+  textPreviewLines: number;
+  thumbnailSize: "compact" | "standard" | "expanded";
+  pairedPropertyLayout: "align-left" | "align-to-edges" | "equal-width";
+  minimumColumns: number;
+  ambientBackground: "subtle" | "dramatic" | "disable";
 }
 
 export interface UIState {
@@ -120,6 +125,11 @@ export interface DefaultViewSettings {
   queryHeight: number;
   listMarker: string;
   cardSize: number;
+  textPreviewLines: number;
+  thumbnailSize: "compact" | "standard" | "expanded";
+  pairedPropertyLayout: "align-left" | "align-to-edges" | "equal-width";
+  minimumColumns: number;
+  ambientBackground: "subtle" | "dramatic" | "disable";
 }
 
 /**

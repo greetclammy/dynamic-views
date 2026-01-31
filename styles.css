@@ -68,32 +68,6 @@ settings:
         level: 2
         collapsed: true
     -
-        id: dynamic-views-min-masonry-columns
-        title: Minimum masonry columns
-        description: Minimum number of columns in masonry view
-        type: variable-select
-        default: '2'
-        options:
-            -
-                label: One
-                value: '1'
-            -
-                label: Two
-                value: '2'
-    -
-        id: dynamic-views-min-grid-columns
-        title: Minimum grid columns
-        description: Minimum number of columns in grid view
-        type: variable-select
-        default: '1'
-        options:
-            -
-                label: One
-                value: '1'
-            -
-                label: Two
-                value: '2'
-    -
         id: dynamic-views-card-spacing-desktop
         title: Card spacing (desktop)
         description: Spacing between cards on desktop
@@ -843,34 +817,6 @@ settings:
                 label: Right
                 value: dynamic-views-full-row-align-right
     -
-        id: dynamic-views-paired-property-alignment
-        title: Paired property alignment
-        description: How to align right-side properties when properties are shown side-by-side
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-paired-property-align-right
-        options:
-            -
-                label: Left
-                value: dynamic-views-paired-property-align-left
-            -
-                label: Right
-                value: dynamic-views-paired-property-align-right
-    -
-        id: dynamic-views-property-width-allocation
-        title: Property width allocation
-        description: How much space each side-by-side property should take
-        type: class-select
-        allowEmpty: false
-        default: dynamic-views-property-width-flexible
-        options:
-            -
-                label: Flexible
-                value: dynamic-views-property-width-flexible
-            -
-                label: 50-50
-                value: dynamic-views-property-width-50-50
-    -
         id: dynamic-views-compact-breakpoint
         title: Compact breakpoint
         description: Card width in pixels at which side-by-side properties stack vertically. Set to 0 to disable.
@@ -1307,37 +1253,11 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: dynamic-views-text-preview-lines
-        title: Number of text preview lines
-        description: Maximum number of lines for text previews
-        type: variable-number-slider
-        default: 5
-        min: 1
-        max: 10
-        step: 1
-        format: ''
-    -
         id: thumbnails-heading
         title: Thumbnails
         type: heading
         level: 2
         collapsed: true
-    -
-        id: dynamic-views-thumbnail-size
-        title: Thumbnail size
-        description: Size of card thumbnails in pixels
-        type: variable-select
-        default: 80px
-        options:
-            -
-                label: Compact
-                value: 64px
-            -
-                label: Standard
-                value: 80px
-            -
-                label: Expanded
-                value: 94.5px
     -
         id: dynamic-views-thumbnail-border-radius
         title: Thumbnail border radius
@@ -3208,14 +3128,12 @@ body.dynamic-views-hide-card-border .dynamic-views .card {
 }
 
 /* Hide border on cards WITH ambient color (dramatic mode only) */
-body.dynamic-views-adaptive-text
-  .dynamic-views
-  .card[data-adaptive-text]::after {
+.dynamic-views.dynamic-views-adaptive-text .card[data-adaptive-text]::after {
   box-shadow: none;
 }
 
 /* Dramatic ambient cards have border hidden: no inset adjustment */
-body.dynamic-views-adaptive-text .dynamic-views .card[data-adaptive-text] {
+.dynamic-views.dynamic-views-adaptive-text .card[data-adaptive-text] {
   --cover-inset-computed: var(--dynamic-views-cover-inset, 0px);
 }
 
@@ -3230,7 +3148,7 @@ body .dynamic-views .card:focus-visible::after {
   z-index: 10;
 }
 
-body.dynamic-views-adaptive-text .dynamic-views .card:focus-visible::after {
+.dynamic-views.dynamic-views-adaptive-text .card:focus-visible::after {
   box-shadow:
     inset 0 0 0 2px var(--background-modifier-border-focus),
     inset 0 0 0 4px #d4d4d4;
@@ -3362,17 +3280,13 @@ body.dynamic-views-card-background-hover-custom .dynamic-views .card:hover {
 }
 
 /* Ambient card background: Uses fallback matching base bg until --ambient-color is set */
-body.dynamic-views-ambient-bg-subtle
-  .dynamic-views
+.dynamic-views.dynamic-views-ambient-bg-subtle
   .card.image-format-cover:has(.card-cover),
-body.dynamic-views-ambient-bg-subtle
-  .dynamic-views
+.dynamic-views.dynamic-views-ambient-bg-subtle
   .card.image-format-thumbnail:has(.card-thumbnail),
-body.dynamic-views-adaptive-text
-  .dynamic-views
+.dynamic-views.dynamic-views-adaptive-text
   .card.image-format-cover:has(.card-cover),
-body.dynamic-views-adaptive-text
-  .dynamic-views
+.dynamic-views.dynamic-views-adaptive-text
   .card.image-format-thumbnail:has(.card-thumbnail) {
   /* Fallback matches base card bg; transitions when --ambient-color is set */
   background-color: var(--ambient-color, var(--background-primary-alt));
@@ -3380,8 +3294,7 @@ body.dynamic-views-adaptive-text
 
 /* Text color adjustments for ambient card backgrounds (dramatic only) */
 /* Excludes backdrop/poster cards - they have separate adaptive text control */
-body.dynamic-views-adaptive-text
-  .dynamic-views
+.dynamic-views.dynamic-views-adaptive-text
   .card[data-adaptive-text="light"]:not(.image-format-backdrop):not(
     .image-format-poster
   ) {
@@ -3390,8 +3303,7 @@ body.dynamic-views-adaptive-text
   --text-faint: var(--dynamic-views-adaptive-text-light-faint);
 }
 
-body.dynamic-views-adaptive-text
-  .dynamic-views
+.dynamic-views.dynamic-views-adaptive-text
   .card[data-adaptive-text="dark"]:not(.image-format-backdrop):not(
     .image-format-poster
   ) {
@@ -7526,8 +7438,7 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 }
 
 /* Left alignment for right-side properties */
-body.dynamic-views-paired-property-align-left
-  .dynamic-views
+.dynamic-views.dynamic-views-paired-property-align-left
   .property-set-paired
   :is(
     .property-field-2,
@@ -7542,8 +7453,7 @@ body.dynamic-views-paired-property-align-left
   justify-content: flex-start;
 }
 
-body.dynamic-views-paired-property-align-left
-  .dynamic-views
+.dynamic-views.dynamic-views-paired-property-align-left
   .property-set-paired
   :is(
     .property-field-2,
@@ -7559,8 +7469,7 @@ body.dynamic-views-paired-property-align-left
   order: 0;
 }
 
-body.dynamic-views-paired-property-align-left
-  .dynamic-views
+.dynamic-views.dynamic-views-paired-property-align-left
   .property-set-paired
   :is(
     .property-field-2,
@@ -7576,8 +7485,7 @@ body.dynamic-views-paired-property-align-left
 }
 
 /* Reset inline property label order to place label before content */
-body.dynamic-views-paired-property-align-left
-  .dynamic-views
+.dynamic-views.dynamic-views-paired-property-align-left
   .property-set-paired
   :is(
     .property-field-2,

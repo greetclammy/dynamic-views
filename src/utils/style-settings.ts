@@ -81,6 +81,7 @@ export function hasBodyClass(className: string): boolean {
 
 /**
  * Get minimum masonry columns from CSS variable
+ * @deprecated Used by Datacore only — Bases reads from per-view settings
  */
 export function getMinMasonryColumns(): number {
   return getCSSVariableAsNumber("--dynamic-views-min-masonry-columns", 2);
@@ -88,6 +89,7 @@ export function getMinMasonryColumns(): number {
 
 /**
  * Get minimum grid columns from CSS variable
+ * @deprecated Used by Datacore only — Bases reads from per-view settings
  */
 export function getMinGridColumns(): number {
   return getCSSVariableAsNumber("--dynamic-views-min-grid-columns", 1);
@@ -446,8 +448,6 @@ export function getStyleSettingsHash(): string {
     isThumbnailScrubbingDisabled(),
     getSlideshowMaxImages(),
     // Layout
-    getMinMasonryColumns(),
-    getMinGridColumns(),
     getCompactBreakpoint(),
     getZoomSensitivityDesktop(),
     // Other
@@ -455,7 +455,6 @@ export function getStyleSettingsHash(): string {
     // Body classes for overflow and layout modes
     hasBodyClass("dynamic-views-title-overflow-scroll"),
     hasBodyClass("dynamic-views-subtitle-overflow-scroll"),
-    hasBodyClass("dynamic-views-property-width-50-50"),
     hasBodyClass("dynamic-views-hidden-file-extensions"),
   ].join("|");
 }

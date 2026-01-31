@@ -12,7 +12,6 @@ import {
   extractBasesTemplate,
 } from "../shared/settings-schema";
 import {
-  getMinMasonryColumns,
   getCardSpacing,
   clearStyleSettingsCache,
 } from "../utils/style-settings";
@@ -27,6 +26,7 @@ import {
   SharedCardRenderer,
   initializeTitleTruncation,
   syncResponsiveClasses,
+  applyViewContainerStyles,
 } from "./shared-renderer";
 import {
   getCachedAspectRatio,
@@ -366,7 +366,7 @@ export class DynamicViewsMasonryView extends BasesView {
   /** Calculate batch size based on current column count */
   private getBatchSize(settings: Settings): number {
     if (!this.masonryContainer) return MAX_BATCH_SIZE;
-    const minColumns = getMinMasonryColumns();
+    const minColumns = settings.minimumColumns;
     // Use getBoundingClientRect for actual rendered width (clientWidth rounds fractional pixels)
     const containerWidth = Math.floor(
       this.masonryContainer.getBoundingClientRect().width,
@@ -387,7 +387,7 @@ export class DynamicViewsMasonryView extends BasesView {
     const containerWidth = Math.floor(
       this.containerEl.getBoundingClientRect().width,
     );
-    const minColumns = getMinMasonryColumns();
+    const minColumns = settings.minimumColumns;
     const gap = getCardSpacing(this.containerEl);
     const cardSize = settings.cardSize;
 
@@ -730,6 +730,9 @@ export class DynamicViewsMasonryView extends BasesView {
         this.plugin.persistenceManager.getGlobalSettings(),
         this.plugin.persistenceManager.getDefaultViewSettings(),
       );
+
+      // Apply per-view CSS classes and variables to container
+      applyViewContainerStyles(this.containerEl, settings);
 
       // Apply custom CSS classes from settings (mimics cssclasses frontmatter)
       const customClasses = settings.cssclasses
@@ -1137,7 +1140,7 @@ export class DynamicViewsMasonryView extends BasesView {
   private setupMasonryLayout(settings: Settings): void {
     if (!this.masonryContainer) return;
 
-    const minColumns = getMinMasonryColumns();
+    const minColumns = settings.minimumColumns;
 
     // Synchronous layout update - single pass, no chunking
     // Profiling showed chunked async caused layout thrashing (224 InvalidateLayout events)

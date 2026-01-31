@@ -93,9 +93,18 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
         },
         {
           type: "toggle",
-          displayName: "Show note content if property missing or empty",
+          displayName: "Show note content if property missing/empty",
           key: "fallbackToContent",
           default: d.fallbackToContent,
+        },
+        {
+          type: "slider",
+          displayName: "Lines",
+          key: "textPreviewLines",
+          min: 1,
+          max: 10,
+          step: 1,
+          default: d.textPreviewLines,
         },
       ],
     },
@@ -183,6 +192,19 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
               (config.get("fallbackToEmbeds") ?? d.fallbackToEmbeds) ===
                 "never"),
         },
+        {
+          type: "dropdown",
+          displayName: "Size",
+          key: "thumbnailSize",
+          options: {
+            compact: "Compact (64px)",
+            standard: "Standard (80px)",
+            expanded: "Expanded (94.5px)",
+          },
+          default: d.thumbnailSize,
+          shouldHide: (config: BasesConfig) =>
+            (config.get("imageFormat") ?? d.imageFormat) !== "thumbnail",
+        },
       ],
     },
     {
@@ -218,6 +240,9 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           displayName: "Show properties above text preview",
           key: "showPropertiesAbove",
           default: d.showPropertiesAbove,
+          shouldHide: (config: BasesConfig) =>
+            !(config.get("textPreviewProperty") ?? d.textPreviewProperty) &&
+            (config.get("fallbackToContent") ?? d.fallbackToContent) === false,
         },
         {
           type: "text",
@@ -225,6 +250,20 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           key: "invertPositionForProperty",
           placeholder: "Comma-separated if multiple",
           default: d.invertPositionForProperty,
+          shouldHide: (config: BasesConfig) =>
+            !(config.get("textPreviewProperty") ?? d.textPreviewProperty) &&
+            (config.get("fallbackToContent") ?? d.fallbackToContent) === false,
+        },
+        {
+          type: "dropdown",
+          displayName: "Paired property layout",
+          key: "pairedPropertyLayout",
+          options: {
+            "align-left": "Align left",
+            "align-to-edges": "Align to edges",
+            "equal-width": "Equal width",
+          },
+          default: d.pairedPropertyLayout,
         },
         {
           type: "text",
@@ -239,6 +278,27 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
       type: "group",
       displayName: "Other",
       items: [
+        {
+          type: "dropdown",
+          displayName: "Minimum columns",
+          key: "minimumColumns",
+          options: {
+            1: "One",
+            2: "Two",
+          },
+          default: viewType === "masonry" ? 2 : (d.minimumColumns ?? 1),
+        },
+        {
+          type: "dropdown",
+          displayName: "Ambient background",
+          key: "ambientBackground",
+          options: {
+            subtle: "Subtle",
+            dramatic: "Dramatic",
+            disable: "Disable",
+          },
+          default: d.ambientBackground,
+        },
         {
           type: "text",
           displayName: "cssclasses",
@@ -386,6 +446,30 @@ export function readBasesSettings(
       return value === "bullet" || value === "number"
         ? value
         : defaults.listMarker;
+    })(),
+
+    // Per-view settings (migrated from Style Settings)
+    textPreviewLines: getNumber("textPreviewLines", defaults.textPreviewLines),
+    thumbnailSize: (() => {
+      const value = config.get("thumbnailSize");
+      return value === "compact" || value === "standard" || value === "expanded"
+        ? value
+        : defaults.thumbnailSize;
+    })(),
+    pairedPropertyLayout: (() => {
+      const value = config.get("pairedPropertyLayout");
+      return value === "align-left" ||
+        value === "align-to-edges" ||
+        value === "equal-width"
+        ? value
+        : defaults.pairedPropertyLayout;
+    })(),
+    minimumColumns: getNumber("minimumColumns", defaults.minimumColumns),
+    ambientBackground: (() => {
+      const value = config.get("ambientBackground");
+      return value === "subtle" || value === "dramatic" || value === "disable"
+        ? value
+        : defaults.ambientBackground;
     })(),
 
     // Datacore-only: pass through from global settings (kept until Datacore refactor)
@@ -552,6 +636,30 @@ export function extractBasesTemplate(
       return value === "bullet" || value === "number"
         ? value
         : defaults.listMarker;
+    })(),
+
+    // Per-view settings (migrated from Style Settings)
+    textPreviewLines: getNumber("textPreviewLines", defaults.textPreviewLines),
+    thumbnailSize: (() => {
+      const value = config.get("thumbnailSize");
+      return value === "compact" || value === "standard" || value === "expanded"
+        ? value
+        : defaults.thumbnailSize;
+    })(),
+    pairedPropertyLayout: (() => {
+      const value = config.get("pairedPropertyLayout");
+      return value === "align-left" ||
+        value === "align-to-edges" ||
+        value === "equal-width"
+        ? value
+        : defaults.pairedPropertyLayout;
+    })(),
+    minimumColumns: getNumber("minimumColumns", defaults.minimumColumns),
+    ambientBackground: (() => {
+      const value = config.get("ambientBackground");
+      return value === "subtle" || value === "dramatic" || value === "disable"
+        ? value
+        : defaults.ambientBackground;
     })(),
 
     // queryHeight set to 0 (not configurable in Bases)

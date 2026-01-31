@@ -207,6 +207,27 @@ export function initializeViewDefaults(
       defaults.invertPositionForProperty,
     );
   }
+
+  // Per-view settings (migrated from Style Settings)
+  if (defaults?.textPreviewLines !== undefined) {
+    safeConfigSet(config, "textPreviewLines", defaults.textPreviewLines);
+  }
+  if (defaults?.thumbnailSize !== undefined) {
+    safeConfigSet(config, "thumbnailSize", defaults.thumbnailSize);
+  }
+  if (defaults?.pairedPropertyLayout !== undefined) {
+    safeConfigSet(
+      config,
+      "pairedPropertyLayout",
+      defaults.pairedPropertyLayout,
+    );
+  }
+  if (defaults?.minimumColumns !== undefined) {
+    safeConfigSet(config, "minimumColumns", defaults.minimumColumns);
+  }
+  if (defaults?.ambientBackground !== undefined) {
+    safeConfigSet(config, "ambientBackground", defaults.ambientBackground);
+  }
 }
 
 /** CSS selector for embedded view detection - centralized for maintainability */

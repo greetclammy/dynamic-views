@@ -50,6 +50,11 @@ export const DEFAULT_VIEW_SETTINGS: DefaultViewSettings = {
   queryHeight: 0,
   listMarker: "bullet",
   cardSize: 400,
+  textPreviewLines: 5,
+  thumbnailSize: "standard",
+  pairedPropertyLayout: "align-to-edges",
+  minimumColumns: 1,
+  ambientBackground: "disable",
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -113,6 +118,11 @@ export const DEFAULT_SETTINGS: Settings = {
   revealInNotebookNavigator: "disable",
   showYoutubeThumbnails: true,
   showCardLinkCovers: true,
+  textPreviewLines: 5,
+  thumbnailSize: "standard",
+  pairedPropertyLayout: "align-to-edges",
+  minimumColumns: 1,
+  ambientBackground: "disable",
 };
 
 export const DEFAULT_UI_STATE = {

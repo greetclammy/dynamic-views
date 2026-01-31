@@ -13,7 +13,6 @@ import {
   extractBasesTemplate,
 } from "../shared/settings-schema";
 import {
-  getMinGridColumns,
   getCardSpacing,
   clearStyleSettingsCache,
 } from "../utils/style-settings";
@@ -22,6 +21,7 @@ import {
   SharedCardRenderer,
   initializeTitleTruncation,
   syncResponsiveClasses,
+  applyViewContainerStyles,
 } from "./shared-renderer";
 import {
   PANE_MULTIPLIER,
@@ -140,6 +140,7 @@ export class DynamicViewsGridView extends BasesView {
   private isLoading: boolean = false;
   private resizeObserver: ResizeObserver | null = null;
   private currentCardSize: number = 400;
+  private currentMinColumns: number = 1;
   private feedContainerRef: { current: HTMLElement | null } = { current: null };
   private swipeAbortController: AbortController | null = null;
   private previousDisplayedCount: number = 0;
@@ -342,7 +343,7 @@ export class DynamicViewsGridView extends BasesView {
     const containerWidth = Math.floor(
       this.containerEl.getBoundingClientRect().width,
     );
-    const minColumns = getMinGridColumns();
+    const minColumns = settings.minimumColumns;
     const gap = getCardSpacing(this.containerEl);
     const cardSize = settings.cardSize;
 
@@ -366,7 +367,7 @@ export class DynamicViewsGridView extends BasesView {
       this.containerEl.getBoundingClientRect().width,
     );
     const cardSize = this.currentCardSize;
-    const minColumns = getMinGridColumns();
+    const minColumns = this.currentMinColumns;
     const gap = getCardSpacing(this.containerEl);
     return Math.max(
       minColumns,
@@ -597,6 +598,9 @@ export class DynamicViewsGridView extends BasesView {
         this.plugin.persistenceManager.getDefaultViewSettings(),
       );
 
+      // Apply per-view CSS classes and variables to container
+      applyViewContainerStyles(this.containerEl, settings);
+
       // Apply custom CSS classes from settings (mimics cssclasses frontmatter)
       const customClasses = settings.cssclasses
         .split(",")
@@ -741,8 +745,9 @@ export class DynamicViewsGridView extends BasesView {
         this.displayedCount = initialCount;
       }
 
-      // Update card size before calculating columns
+      // Update card size and min columns before calculating columns
       this.currentCardSize = settings.cardSize;
+      this.currentMinColumns = settings.minimumColumns;
       const cols = this.calculateColumnCount();
 
       // Set CSS variables for grid layout
@@ -1395,7 +1400,7 @@ export class DynamicViewsGridView extends BasesView {
         }
         const columns = settings
           ? Math.max(
-              getMinGridColumns(),
+              settings.minimumColumns,
               Math.floor(
                 (containerWidth + getCardSpacing(this.containerEl)) /
                   (settings.cardSize + getCardSpacing(this.containerEl)),
