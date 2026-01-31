@@ -770,6 +770,7 @@ export class DynamicViewsMasonryView extends BasesView {
       const sortMethod = getSortMethod(this.config);
       const settingsHash = JSON.stringify(settings);
       const styleSettingsHash = getStyleSettingsHash();
+      const visibleProperties = this.config.getOrder();
       // Include mtime and sortMethod in hash so content/sort changes trigger updates
       const collapsedHash = Array.from(this.collapsedGroups).sort().join("\0");
       const renderHash =
@@ -789,7 +790,9 @@ export class DynamicViewsMasonryView extends BasesView {
         "\0\0" +
         String(this.sortState.isShuffled) +
         "\0\0" +
-        this.sortState.order.join("\0");
+        this.sortState.order.join("\0") +
+        "\0\0" +
+        visibleProperties.join("\0");
 
       // Detect files with changed content (mtime changed but paths unchanged)
       const changedPaths = new Set<string>();
@@ -1046,7 +1049,7 @@ export class DynamicViewsMasonryView extends BasesView {
           settings,
           sortMethod,
           false,
-          this.config.getOrder(),
+          visibleProperties,
           this.contentCache.textPreviews,
           this.contentCache.images,
           this.contentCache.hasImageAvailable,
