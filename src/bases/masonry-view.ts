@@ -700,17 +700,6 @@ export class DynamicViewsMasonryView extends BasesView {
     }
 
     void (async () => {
-      // DEBUG: Log when onDataUpdated is called
-      console.log("[masonry-view] onDataUpdated - CALLED");
-      console.log(
-        "[masonry-view] onDataUpdated - scrollEl children count:",
-        this.scrollEl.children.length,
-      );
-      console.log(
-        "[masonry-view] onDataUpdated - containerEl isConnected:",
-        this.containerEl?.isConnected,
-      );
-
       // Guard: return early if data not yet initialized
       if (!this.data) {
         return;
@@ -725,9 +714,6 @@ export class DynamicViewsMasonryView extends BasesView {
       // Allow first call and subsequent calls after 100ms cooldown
       const now = Date.now();
       if (now - this.lastOnDataUpdatedTime < 100) {
-        console.log(
-          "[masonry-view] onDataUpdated - BLOCKED: throttled, too soon after last call",
-        );
         return;
       }
       this.lastOnDataUpdatedTime = now;
@@ -814,9 +800,10 @@ export class DynamicViewsMasonryView extends BasesView {
         ? this.config.groupBy?.property
         : undefined;
       const sortMethod = getSortMethod(this.config);
-      const settingsHash = JSON.stringify(settings);
-      const styleSettingsHash = getStyleSettingsHash();
       const visibleProperties = this.config.getOrder();
+      const settingsHash =
+        JSON.stringify(settings) + "\0" + visibleProperties.join("\0");
+      const styleSettingsHash = getStyleSettingsHash();
       // Include mtime and sortMethod in hash so content/sort changes trigger updates
       const collapsedHash = Array.from(this.collapsedGroups).sort().join("\0");
       const renderHash =
@@ -982,20 +969,8 @@ export class DynamicViewsMasonryView extends BasesView {
       const currentHeight = this.containerEl.scrollHeight;
       this.containerEl.style.minHeight = `${currentHeight}px`;
 
-      // DEBUG: Log before clearing container
-      console.log(
-        "[masonry-view] onDataUpdated - About to clear containerEl, children:",
-        this.containerEl.children.length,
-      );
-
       // Clear and re-render
       this.containerEl.empty();
-
-      // DEBUG: Log after clearing
-      console.log(
-        "[masonry-view] onDataUpdated - After empty(), children:",
-        this.containerEl.children.length,
-      );
 
       // Reset batch append state for full re-render
       this.previousDisplayedCount = 0;

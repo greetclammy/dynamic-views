@@ -673,9 +673,10 @@ export class DynamicViewsGridView extends BasesView {
         ? this.config.groupBy?.property
         : undefined;
       const sortMethod = getSortMethod(this.config);
-      const settingsHash = JSON.stringify(settings);
-      const styleSettingsHash = getStyleSettingsHash();
       const visibleProperties = this.config.getOrder();
+      const settingsHash =
+        JSON.stringify(settings) + "\0" + visibleProperties.join("\0");
+      const styleSettingsHash = getStyleSettingsHash();
       // Include mtime and sortMethod in hash so content/sort changes trigger updates
       const collapsedHash = Array.from(this.collapsedGroups).sort().join("\0");
       const renderHash =
