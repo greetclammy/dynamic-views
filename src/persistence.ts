@@ -38,7 +38,17 @@ export class PersistenceManager {
   }
 
   async save(): Promise<void> {
-    await this.plugin.saveData(this.data);
+    // Only persist non-empty top-level keys
+    const sparse: Record<string, unknown> = {};
+    if (Object.keys(this.data.pluginSettings).length > 0)
+      sparse.pluginSettings = this.data.pluginSettings;
+    if (Object.keys(this.data.templates).length > 0)
+      sparse.templates = this.data.templates;
+    if (Object.keys(this.data.queryStates).length > 0)
+      sparse.queryStates = this.data.queryStates;
+    if (Object.keys(this.data.viewSettings).length > 0)
+      sparse.viewSettings = this.data.viewSettings;
+    await this.plugin.saveData(sparse);
   }
 
   /**
