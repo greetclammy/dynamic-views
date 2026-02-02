@@ -6516,8 +6516,8 @@ body.dynamic-views-full-row-align-right
   max-width: 50%;
 }
 
-/* Equal-width mode: 50-50 split (measurement is skipped, so this is the final state) */
-.dynamic-views.dynamic-views-property-width-equal
+/* Column mode: 50-50 split (measurement is skipped, so this is the final state) */
+.dynamic-views.dynamic-views-paired-property-column
   .property-set.property-set-paired
   .property-field {
   flex: 1 1 0;
@@ -7442,7 +7442,10 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 }
 
 /* Left alignment for right-side properties */
-.dynamic-views.dynamic-views-paired-property-align-left
+.dynamic-views:is(
+    .dynamic-views-paired-property-left,
+    .dynamic-views-paired-property-column
+  )
   .property-set-paired
   :is(
     .property-field-2,
@@ -7457,7 +7460,10 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
   justify-content: flex-start;
 }
 
-.dynamic-views.dynamic-views-paired-property-align-left
+.dynamic-views:is(
+    .dynamic-views-paired-property-left,
+    .dynamic-views-paired-property-column
+  )
   .property-set-paired
   :is(
     .property-field-2,
@@ -7473,7 +7479,10 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
   order: 0;
 }
 
-.dynamic-views.dynamic-views-paired-property-align-left
+.dynamic-views:is(
+    .dynamic-views-paired-property-left,
+    .dynamic-views-paired-property-column
+  )
   .property-set-paired
   :is(
     .property-field-2,
@@ -7489,7 +7498,10 @@ body.dynamic-views-title-color-custom .dynamic-views .card-title {
 }
 
 /* Reset inline property label order to place label before content */
-.dynamic-views.dynamic-views-paired-property-align-left
+.dynamic-views:is(
+    .dynamic-views-paired-property-left,
+    .dynamic-views-paired-property-column
+  )
   .property-set-paired
   :is(
     .property-field-2,

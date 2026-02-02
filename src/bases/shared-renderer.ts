@@ -170,10 +170,9 @@ const THUMBNAIL_SIZE_MAP: Record<string, string> = {
 };
 
 const PAIRED_PROPERTY_CLASSES = [
-  "dynamic-views-paired-property-align-left",
-  "dynamic-views-paired-property-align-right",
-  "dynamic-views-property-width-flexible",
-  "dynamic-views-property-width-equal",
+  "dynamic-views-paired-property-left",
+  "dynamic-views-paired-property-right",
+  "dynamic-views-paired-property-column",
 ] as const;
 
 const AMBIENT_CLASSES = [
@@ -194,22 +193,13 @@ export function applyViewContainerStyles(
   container.classList.remove(...PAIRED_PROPERTY_CLASSES);
   switch (settings.pairedPropertyLayout) {
     case "left":
-      container.classList.add(
-        "dynamic-views-paired-property-align-left",
-        "dynamic-views-property-width-flexible",
-      );
+      container.classList.add("dynamic-views-paired-property-left");
       break;
     case "right":
-      container.classList.add(
-        "dynamic-views-paired-property-align-right",
-        "dynamic-views-property-width-flexible",
-      );
+      container.classList.add("dynamic-views-paired-property-right");
       break;
     case "column":
-      container.classList.add(
-        "dynamic-views-paired-property-align-left",
-        "dynamic-views-property-width-equal",
-      );
+      container.classList.add("dynamic-views-paired-property-column");
       break;
   }
 

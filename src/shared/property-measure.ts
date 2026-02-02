@@ -151,9 +151,9 @@ function queueCardSets(
   // Skip compact mode cards before queuing
   if (cardEl.classList.contains("compact-mode")) return;
 
-  // Skip if 50-50 mode — default CSS already handles equal widths
+  // Skip if column mode — default CSS already handles equal widths
   const viewContainer = cardEl.closest(".dynamic-views");
-  if (viewContainer?.classList.contains("dynamic-views-property-width-equal"))
+  if (viewContainer?.classList.contains("dynamic-views-paired-property-column"))
     return;
 
   // Check width and cache with tolerance
@@ -372,7 +372,9 @@ const MEASUREMENT_CHUNK_SIZE = 5;
  */
 export function remeasurePropertyFields(container: HTMLElement): void {
   const viewContainer = container.closest(".dynamic-views") ?? container;
-  if (viewContainer.classList.contains("dynamic-views-property-width-equal")) {
+  if (
+    viewContainer.classList.contains("dynamic-views-paired-property-column")
+  ) {
     return;
   }
 
@@ -419,9 +421,11 @@ export function remeasurePropertyFields(container: HTMLElement): void {
  * Returns observers for cleanup.
  */
 export function measurePropertyFields(cardEl: HTMLElement): ResizeObserver[] {
-  // Skip measurement if 50-50 mode - default CSS is already 50-50
+  // Skip measurement if column mode — default CSS is already 50-50
   const viewContainer = cardEl.closest(".dynamic-views");
-  if (viewContainer?.classList.contains("dynamic-views-property-width-equal")) {
+  if (
+    viewContainer?.classList.contains("dynamic-views-paired-property-column")
+  ) {
     return [];
   }
 
