@@ -1,15 +1,15 @@
 import { Plugin, TFile } from "obsidian";
-import {
+import type {
   PluginData,
-  Settings,
+  PluginSettings,
+  ViewDefaults,
+  DatacoreDefaults,
   UIState,
-  DefaultViewSettings,
   SettingsTemplate,
 } from "./types";
 import {
-  DEFAULT_SETTINGS,
+  PLUGIN_SETTINGS,
   DEFAULT_UI_STATE,
-  DEFAULT_VIEW_SETTINGS,
   DEFAULT_TEMPLATE_VIEWS,
 } from "./constants";
 import { sanitizeObject, sanitizeString } from "./utils/sanitize";
@@ -21,11 +21,10 @@ export class PersistenceManager {
   constructor(plugin: Plugin) {
     this.plugin = plugin;
     this.data = {
-      globalSettings: { ...DEFAULT_SETTINGS },
-      defaultViewSettings: { ...DEFAULT_VIEW_SETTINGS },
+      pluginSettings: {},
+      templates: { ...DEFAULT_TEMPLATE_VIEWS },
       queryStates: {},
       viewSettings: {},
-      defaultTemplateViews: { ...DEFAULT_TEMPLATE_VIEWS },
     };
   }
 
@@ -33,22 +32,11 @@ export class PersistenceManager {
     const loadedData =
       (await this.plugin.loadData()) as Partial<PluginData> | null;
     if (loadedData) {
-      const defaultTemplateViews = loadedData.defaultTemplateViews || {
-        ...DEFAULT_TEMPLATE_VIEWS,
-      };
-
       this.data = {
-        globalSettings: {
-          ...DEFAULT_SETTINGS,
-          ...(loadedData.globalSettings || {}),
-        },
-        defaultViewSettings: {
-          ...DEFAULT_VIEW_SETTINGS,
-          ...(loadedData.defaultViewSettings || {}),
-        },
+        pluginSettings: loadedData.pluginSettings || {},
+        templates: loadedData.templates || { ...DEFAULT_TEMPLATE_VIEWS },
         queryStates: loadedData.queryStates || {},
         viewSettings: loadedData.viewSettings || {},
-        defaultTemplateViews,
       };
     }
   }
@@ -66,28 +54,25 @@ export class PersistenceManager {
     return file.stat.ctime.toString();
   }
 
-  getGlobalSettings(): Settings {
-    return { ...this.data.globalSettings };
+  /** Returns fully resolved plugin settings (sparse overrides merged with defaults) */
+  getPluginSettings(): PluginSettings {
+    return { ...PLUGIN_SETTINGS, ...this.data.pluginSettings };
   }
 
-  async setGlobalSettings(settings: Partial<Settings>): Promise<void> {
+  /** Stores only non-default plugin settings (sparse) */
+  async setPluginSettings(settings: Partial<PluginSettings>): Promise<void> {
     const sanitized = sanitizeObject(settings);
-    this.data.globalSettings = { ...this.data.globalSettings, ...sanitized };
-    await this.save();
-  }
+    const merged = { ...this.data.pluginSettings, ...sanitized };
 
-  getDefaultViewSettings(): DefaultViewSettings {
-    return { ...this.data.defaultViewSettings };
-  }
+    // Diff against defaults — only persist non-default values
+    const sparse: Partial<PluginSettings> = {};
+    for (const key of Object.keys(merged) as (keyof PluginSettings)[]) {
+      if (merged[key] !== PLUGIN_SETTINGS[key]) {
+        (sparse as Record<string, unknown>)[key] = merged[key];
+      }
+    }
 
-  async setDefaultViewSettings(
-    settings: Partial<DefaultViewSettings>,
-  ): Promise<void> {
-    const sanitized = sanitizeObject(settings);
-    this.data.defaultViewSettings = {
-      ...this.data.defaultViewSettings,
-      ...sanitized,
-    };
+    this.data.pluginSettings = sparse;
     await this.save();
   }
 
@@ -98,7 +83,10 @@ export class PersistenceManager {
     return state ? { ...state } : { ...DEFAULT_UI_STATE };
   }
 
-  async setUIState(file: TFile | null, state: Partial<UIState>): Promise<void> {
+  async setUIState(
+    file: TFile | null,
+    state: Partial<UIState>,
+  ): Promise<void> {
     const key = this.getFileKey(file);
     if (!key) return;
 
@@ -134,7 +122,9 @@ export class PersistenceManager {
     await this.save();
   }
 
-  getViewSettings(file: TFile | null): Partial<DefaultViewSettings> {
+  getViewSettings(
+    file: TFile | null,
+  ): Partial<ViewDefaults & DatacoreDefaults> {
     const key = this.getFileKey(file);
     if (!key) return {};
     const settings = this.data.viewSettings[key];
@@ -143,14 +133,12 @@ export class PersistenceManager {
 
   async setViewSettings(
     file: TFile | null,
-    settings: Partial<DefaultViewSettings>,
+    settings: Partial<ViewDefaults & DatacoreDefaults>,
   ): Promise<void> {
     const key = this.getFileKey(file);
     if (!key) return;
 
     const current = this.data.viewSettings[key] || {};
-
-    // Sanitize settings
     const sanitized = sanitizeObject(settings);
 
     this.data.viewSettings[key] = { ...current, ...sanitized };
@@ -167,7 +155,7 @@ export class PersistenceManager {
   getSettingsTemplate(
     viewType: "grid" | "masonry" | "datacore",
   ): SettingsTemplate | null {
-    const template = this.data.defaultTemplateViews[viewType];
+    const template = this.data.templates[viewType];
     if (!template) return null;
     return template;
   }
@@ -180,7 +168,7 @@ export class PersistenceManager {
       `[PersistenceManager] setSettingsTemplate(${viewType}):`,
       template ? `saving (timestamp: ${template.setAt})` : "clearing",
     );
-    this.data.defaultTemplateViews[viewType] = template;
+    this.data.templates[viewType] = template;
     await this.save();
   }
 }

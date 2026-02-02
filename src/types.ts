@@ -1,66 +1,11 @@
-export interface Settings {
-  // Card size
-  cardSize: number;
-  // Header
-  titleProperty: string;
-  subtitleProperty: string;
-  // Text preview
-  textPreviewProperty: string;
-  fallbackToContent: boolean;
-  textPreviewLines: number;
-  // Image
-  imageProperty: string;
-  fallbackToEmbeds: "always" | "if-unavailable" | "never";
-  imageFormat: "thumbnail" | "cover" | "poster" | "backdrop";
-  thumbnailSize: "compact" | "standard" | "expanded";
-  imagePosition: "left" | "right" | "top" | "bottom";
-  imageFit: "crop" | "contain";
-  imageAspectRatio: number;
-  // Properties
-  propertyLabels: "hide" | "inline" | "above";
-  pairProperties: boolean;
-  pairedPropertyLayout: "align-left" | "snap-to-edges" | "equal-width";
-  invertPairingForProperty: string;
-  showPropertiesAbove: boolean;
-  invertPositionForProperty: string;
-  urlProperty: string;
-  // Other
-  minimumColumns: number;
-  ambientBackground: "subtle" | "dramatic" | "disable";
-  cssclasses: string;
-  // Non-UI
-  listMarker: string;
-  queryHeight: number;
-  // Datacore-only: property display fields (kept until Datacore refactor)
-  propertyDisplay1: string;
-  propertyDisplay2: string;
-  propertyDisplay3: string;
-  propertyDisplay4: string;
-  propertyDisplay5: string;
-  propertyDisplay6: string;
-  propertyDisplay7: string;
-  propertyDisplay8: string;
-  propertyDisplay9: string;
-  propertyDisplay10: string;
-  propertyDisplay11: string;
-  propertyDisplay12: string;
-  propertyDisplay13: string;
-  propertyDisplay14: string;
-  propertySet1SideBySide: boolean;
-  propertySet2SideBySide: boolean;
-  propertySet3SideBySide: boolean;
-  propertySet4SideBySide: boolean;
-  propertySet5SideBySide: boolean;
-  propertySet6SideBySide: boolean;
-  propertySet7SideBySide: boolean;
-  propertySet1Above: boolean;
-  propertySet2Above: boolean;
-  propertySet3Above: boolean;
-  propertySet4Above: boolean;
-  propertySet5Above: boolean;
-  propertySet6Above: boolean;
-  propertySet7Above: boolean;
-  // Settings-only (not in DefaultViewSettings)
+// ============================================================================
+// Settings Architecture: PluginSettings + ViewDefaults + DatacoreDefaults
+// Rendering receives ResolvedSettings (the fully merged type).
+// Storage types are used only at persistence and resolution boundaries.
+// ============================================================================
+
+/** Plugin-level settings (settings tab only, not per-view) */
+export interface PluginSettings {
   omitFirstLine: "always" | "ifMatchesTitle" | "never";
   randomizeAction: string;
   openFileAction: "card" | "title";
@@ -74,16 +19,8 @@ export interface Settings {
   showCardLinkCovers: boolean;
 }
 
-export interface UIState {
-  sortMethod: string;
-  viewMode: string;
-  searchQuery: string;
-  resultLimit: string;
-  widthMode: string;
-  collapsedGroups: string[];
-}
-
-export interface DefaultViewSettings {
+/** Per-view visual defaults (shared across Bases and Datacore) */
+export interface ViewDefaults {
   // Card size
   cardSize: number;
   // Header
@@ -113,10 +50,12 @@ export interface DefaultViewSettings {
   minimumColumns: number;
   ambientBackground: "subtle" | "dramatic" | "disable";
   cssclasses: string;
-  // Non-UI
+}
+
+/** Datacore-only defaults (listMarker, queryHeight, propertyDisplay/propertySet fields) */
+export interface DatacoreDefaults {
   listMarker: string;
   queryHeight: number;
-  // Datacore-only: property display fields (kept until Datacore refactor)
   propertyDisplay1: string;
   propertyDisplay2: string;
   propertyDisplay3: string;
@@ -147,25 +86,42 @@ export interface DefaultViewSettings {
   propertySet7Above: boolean;
 }
 
+/** Fully resolved settings — the merge of PluginSettings + ViewDefaults + DatacoreDefaults */
+export type ResolvedSettings = PluginSettings & ViewDefaults & DatacoreDefaults;
+
+/** @deprecated Use ResolvedSettings — temporary alias for migration */
+export type Settings = ResolvedSettings;
+
+/** @deprecated Use ViewDefaults & DatacoreDefaults — temporary alias for migration */
+export type DefaultViewSettings = ViewDefaults & DatacoreDefaults;
+
+export interface UIState {
+  sortMethod: string;
+  viewMode: string;
+  searchQuery: string;
+  resultLimit: string;
+  widthMode: string;
+  collapsedGroups: string[];
+}
+
 /**
  * Settings template with timestamp for validation
  * Timestamp identifies which view is the current template
  */
 export interface SettingsTemplate {
-  settings: Partial<DefaultViewSettings>;
+  settings: Partial<ViewDefaults & DatacoreDefaults>;
   setAt: number; // Unix timestamp (milliseconds) when template was enabled
 }
 
 export interface PluginData {
-  globalSettings: Settings;
-  defaultViewSettings: DefaultViewSettings;
-  queryStates: Record<string, UIState>;
-  viewSettings: Record<string, Partial<DefaultViewSettings>>;
-  defaultTemplateViews: {
+  pluginSettings: Partial<PluginSettings>;
+  templates: {
     grid: SettingsTemplate | null;
     masonry: SettingsTemplate | null;
     datacore: SettingsTemplate | null;
   };
+  queryStates: Record<string, UIState>;
+  viewSettings: Record<string, Partial<ViewDefaults & DatacoreDefaults>>;
 }
 
 export type ViewMode = "card" | "masonry" | "list";
