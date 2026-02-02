@@ -23,8 +23,8 @@ export const VIEW_DEFAULTS: ViewDefaults = {
   // Card size
   cardSize: 400,
   // Header
-  titleProperty: "file.name",
-  subtitleProperty: "file.folder",
+  titleProperty: "file name",
+  subtitleProperty: "folder",
   // Text preview
   textPreviewProperty: "",
   fallbackToContent: true,

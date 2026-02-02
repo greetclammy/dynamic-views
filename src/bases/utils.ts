@@ -293,7 +293,12 @@ export async function cleanupBaseFile(
     for (const view of views) {
       if (typeof view !== "object" || view === null) continue;
       const viewObj = view as Record<string, unknown>;
-      if (!String(viewObj.type ?? "").startsWith("dynamic-views-")) continue;
+      const viewType = viewObj.type;
+      if (
+        typeof viewType !== "string" ||
+        !viewType.startsWith("dynamic-views-")
+      )
+        continue;
 
       for (const key of Object.keys(viewObj)) {
         // Remove unrecognized keys
@@ -308,7 +313,7 @@ export async function cleanupBaseFile(
         if (
           validValues &&
           typeof viewObj[key] === "string" &&
-          !validValues.includes(viewObj[key] as string)
+          !validValues.includes(viewObj[key] as never)
         ) {
           viewObj[key] = VIEW_DEFAULTS[key as keyof ViewDefaults];
           changeCount++;

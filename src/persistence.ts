@@ -61,7 +61,7 @@ function cleanupTemplateSettings(
     if (
       validValues &&
       typeof settings[key] === "string" &&
-      !validValues.includes(settings[key] as string)
+      !validValues.includes(settings[key] as never)
     ) {
       settings[key] = VIEW_DEFAULTS[key as keyof ViewDefaults];
       changed = true;
