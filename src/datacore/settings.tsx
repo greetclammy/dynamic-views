@@ -160,7 +160,7 @@ export function Settings({
     );
     if (enabled) {
       // Extract current settings
-      const templateSettings: Partial<DefaultViewSettings> = {
+      const templateSettings: Partial<ViewDefaults & DatacoreDefaults> = {
         titleProperty: settings.titleProperty,
         textPreviewProperty: settings.textPreviewProperty,
         imageProperty: settings.imageProperty,

@@ -41,7 +41,7 @@ export interface ViewDefaults {
   // Properties
   propertyLabels: "hide" | "inline" | "above";
   pairProperties: boolean;
-  pairedPropertyLayout: "align-left" | "snap-to-edges" | "equal-width";
+  pairedPropertyLayout: "left" | "column" | "right";
   invertPairingForProperty: string;
   showPropertiesAbove: boolean;
   invertPositionForProperty: string;

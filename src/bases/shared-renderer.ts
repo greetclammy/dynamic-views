@@ -193,19 +193,19 @@ export function applyViewContainerStyles(
   // Paired property layout
   container.classList.remove(...PAIRED_PROPERTY_CLASSES);
   switch (settings.pairedPropertyLayout) {
-    case "align-left":
+    case "left":
       container.classList.add(
         "dynamic-views-paired-property-align-left",
         "dynamic-views-property-width-flexible",
       );
       break;
-    case "snap-to-edges":
+    case "right":
       container.classList.add(
         "dynamic-views-paired-property-align-right",
         "dynamic-views-property-width-flexible",
       );
       break;
-    case "equal-width":
+    case "column":
       container.classList.add(
         "dynamic-views-paired-property-align-left",
         "dynamic-views-property-width-equal",

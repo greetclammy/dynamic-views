@@ -40,7 +40,7 @@ export const VIEW_DEFAULTS: ViewDefaults = {
   // Properties
   propertyLabels: "hide",
   pairProperties: true,
-  pairedPropertyLayout: "snap-to-edges",
+  pairedPropertyLayout: "right",
   invertPairingForProperty: "",
   showPropertiesAbove: false,
   invertPositionForProperty: "",

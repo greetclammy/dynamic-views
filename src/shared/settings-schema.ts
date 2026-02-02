@@ -233,12 +233,12 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
         },
         {
           type: "dropdown",
-          displayName: "Paired property layout",
+          displayName: "Right property position",
           key: "pairedPropertyLayout",
           options: {
-            "align-left": "Align left",
-            "snap-to-edges": "Snap to edges",
-            "equal-width": "Equal width",
+            left: "Left",
+            column: "Column",
+            right: "Right",
           },
           default: d.pairedPropertyLayout,
           shouldHide: (config: BasesConfig) =>
@@ -427,9 +427,7 @@ export function readBasesSettings(
     pairProperties: getBool("pairProperties", defaults.pairProperties),
     pairedPropertyLayout: (() => {
       const value = config.get("pairedPropertyLayout");
-      return value === "align-left" ||
-        value === "snap-to-edges" ||
-        value === "equal-width"
+      return value === "left" || value === "column" || value === "right"
         ? value
         : defaults.pairedPropertyLayout;
     })(),
@@ -562,9 +560,7 @@ export function extractBasesTemplate(
     pairProperties: getBool("pairProperties", defaults.pairProperties),
     pairedPropertyLayout: (() => {
       const value = config.get("pairedPropertyLayout");
-      return value === "align-left" ||
-        value === "snap-to-edges" ||
-        value === "equal-width"
+      return value === "left" || value === "column" || value === "right"
         ? value
         : defaults.pairedPropertyLayout;
     })(),
