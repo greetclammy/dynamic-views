@@ -26,6 +26,7 @@ const VALID_VIEW_VALUES: Partial<
   imageFit: ["crop", "contain"],
   propertyLabels: ["hide", "inline", "above"],
   pairedPropertyLayout: ["left", "column", "right"],
+  minimumColumns: ["one", "two"],
   ambientBackground: ["subtle", "dramatic", "disable"],
 };
 
@@ -56,14 +57,10 @@ function cleanupTemplateSettings(
       continue;
     }
 
-    // Reset stale enum values to defaults
+    // Reset stale enum values to first valid value
     const validValues = VALID_VIEW_VALUES[key as keyof ViewDefaults];
-    if (
-      validValues &&
-      typeof settings[key] === "string" &&
-      !validValues.includes(settings[key] as never)
-    ) {
-      settings[key] = VIEW_DEFAULTS[key as keyof ViewDefaults];
+    if (validValues && !validValues.includes(String(settings[key]) as never)) {
+      settings[key] = validValues[0];
       changed = true;
     }
   }

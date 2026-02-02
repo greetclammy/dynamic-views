@@ -235,11 +235,6 @@ export function initializeViewDefaults(
   }
 }
 
-/** Config-level defaults where YAML representation differs from resolved type */
-const CONFIG_DEFAULTS: Record<string, string> = {
-  minimumColumns: "one",
-};
-
 /** Valid enum values for ViewDefaults fields — used by cleanup to detect stale values */
 const VALID_VIEW_VALUES: Partial<
   Record<keyof ViewDefaults, readonly string[]>
@@ -323,9 +318,7 @@ export async function cleanupBaseFile(
           validValues &&
           !validValues.includes(String(viewObj[key]) as never)
         ) {
-          viewObj[key] =
-            CONFIG_DEFAULTS[key] ??
-            VIEW_DEFAULTS[key as keyof ViewDefaults];
+          viewObj[key] = validValues[0];
           changeCount++;
         }
       }
