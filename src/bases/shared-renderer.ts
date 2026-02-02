@@ -51,11 +51,7 @@ import {
   handleImageViewerClick,
   cleanupAllViewers,
 } from "../shared/image-viewer";
-import {
-  getFileExtInfo,
-  getFileTypeIcon,
-  stripExtFromTitle,
-} from "../utils/file-extension";
+import { getFileExtInfo, getFileTypeIcon } from "../utils/file-extension";
 import type DynamicViews from "../../main";
 import type { ResolvedSettings } from "../types";
 import {
@@ -888,6 +884,7 @@ export class SharedCardRenderer {
       }
 
       // Add file format indicator before title text (for Badge mode float:left)
+      const isFullname = (settings.titleProperty || "") === "file.fullname";
       const extInfo = getFileExtInfo(card.path, isFullname);
       const extNoDot = extInfo?.ext.slice(1) || "";
       if (extInfo) {
@@ -1023,10 +1020,7 @@ export class SharedCardRenderer {
     };
 
     // Check if title or subtitle will be rendered
-    const isFullname = (settings.titleProperty || "") === "file.fullname";
-    const displayTitle = isFullname
-      ? stripExtFromTitle(card.title, card.path, true)
-      : card.title;
+    const displayTitle = card.title;
     const hasTitle = !!displayTitle;
     const hasSubtitle = settings.subtitleProperty && card.subtitle;
 

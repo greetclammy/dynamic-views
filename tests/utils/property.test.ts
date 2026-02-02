@@ -741,9 +741,7 @@ describe("property", () => {
   });
 
   describe("buildDisplayToSyntaxMap", () => {
-    function mockConfig(
-      displayNames: Record<string, string>,
-    ): BasesViewConfig {
+    function mockConfig(displayNames: Record<string, string>): BasesViewConfig {
       return {
         getDisplayName: (id: string) => displayNames[id] ?? "",
       } as unknown as BasesViewConfig;
@@ -798,9 +796,7 @@ describe("property", () => {
   });
 
   describe("buildSyntaxToDisplayMap", () => {
-    function mockConfig(
-      displayNames: Record<string, string>,
-    ): BasesViewConfig {
+    function mockConfig(displayNames: Record<string, string>): BasesViewConfig {
       return {
         getDisplayName: (id: string) => displayNames[id] ?? "",
       } as unknown as BasesViewConfig;
@@ -879,12 +875,7 @@ describe("property", () => {
         titleProperty: "filename123, created time",
       };
 
-      normalizeSettingsPropertyNames(
-        mockApp,
-        settings as any,
-        reverseMap,
-        {},
-      );
+      normalizeSettingsPropertyNames(mockApp, settings as any, reverseMap, {});
 
       expect(settings.titleProperty).toBe("file.name,file.ctime");
     });
