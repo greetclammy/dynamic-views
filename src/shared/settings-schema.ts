@@ -288,10 +288,10 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           displayName: "Minimum columns",
           key: "minimumColumns",
           options: {
-            "1": "One",
-            "2": "Two",
+            one: "One",
+            two: "Two",
           },
-          default: viewType === "masonry" ? "2" : String(d.minimumColumns ?? 1),
+          default: viewType === "masonry" ? "two" : (d.minimumColumns ?? "one"),
         },
         {
           type: "dropdown",
@@ -446,11 +446,10 @@ export function readBasesSettings(
     urlProperty: getString("urlProperty", defaults.urlProperty),
     minimumColumns: (() => {
       const value = config.get("minimumColumns");
-      const parsed = typeof value === "string" ? parseInt(value, 10) : value;
+      if (value === "one") return 1;
+      if (value === "two") return 2;
       const fallback = viewType === "masonry" ? 2 : defaults.minimumColumns;
-      return typeof parsed === "number" && Number.isFinite(parsed)
-        ? parsed
-        : fallback;
+      return fallback;
     })(),
     ambientBackground: (() => {
       const value = config.get("ambientBackground");
@@ -579,10 +578,9 @@ export function extractBasesTemplate(
     urlProperty: getString("urlProperty", defaults.urlProperty),
     minimumColumns: (() => {
       const value = config.get("minimumColumns");
-      const parsed = typeof value === "string" ? parseInt(value, 10) : value;
-      return typeof parsed === "number" && Number.isFinite(parsed)
-        ? parsed
-        : defaults.minimumColumns;
+      if (value === "one") return 1;
+      if (value === "two") return 2;
+      return defaults.minimumColumns;
     })(),
     ambientBackground: (() => {
       const value = config.get("ambientBackground");

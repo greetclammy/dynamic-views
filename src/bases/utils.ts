@@ -222,10 +222,13 @@ export function initializeViewDefaults(
     );
   }
   if (defaults?.minimumColumns !== undefined) {
-    safeConfigSet(config, "minimumColumns", defaults.minimumColumns);
+    safeConfigSet(
+      config,
+      "minimumColumns",
+      defaults.minimumColumns === 2 ? "two" : "one",
+    );
   } else if (viewType === "masonry") {
-    // Masonry defaults to 2 columns when no template/global override
-    safeConfigSet(config, "minimumColumns", 2);
+    safeConfigSet(config, "minimumColumns", "two");
   }
   if (defaults?.ambientBackground !== undefined) {
     safeConfigSet(config, "ambientBackground", defaults.ambientBackground);
