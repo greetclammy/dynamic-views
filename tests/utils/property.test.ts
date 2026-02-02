@@ -769,7 +769,7 @@ describe("property", () => {
       expect(map["smile more"]).toBe("formula.Untitled");
     });
 
-    it("should not map bare formula names", () => {
+    it("should only map display names, not bare formula keys", () => {
       const config = mockConfig({
         "formula.Untitled": "smile more",
       });
@@ -777,7 +777,7 @@ describe("property", () => {
 
       const map = buildDisplayToSyntaxMap(config, allProperties);
 
-      // Only the display name maps, not the raw formula name
+      // Display name maps; bare key doesn't (syntax format resolves via pass-through)
       expect(map["smile more"]).toBe("formula.Untitled");
       expect(map["Untitled"]).toBeUndefined();
     });
