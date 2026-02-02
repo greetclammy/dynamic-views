@@ -18,7 +18,6 @@ import { resolveTimestampProperty } from "../shared/data-transform";
 import {
   getFirstBasesPropertyValue,
   getAllBasesImagePropertyValues,
-  normalizePropertyName,
 } from "../utils/property";
 import {
   loadTextPreviewsForEntries,
@@ -830,10 +829,9 @@ export async function loadContentForEntries(
             .split(",")
             .map((p) => p.trim());
           for (const prop of textPreviewProps) {
-            const normalizedProp = normalizePropertyName(app, prop);
             // Try timestamp property first
             const timestamp = resolveTimestampProperty(
-              normalizedProp,
+              prop,
               entry.file.stat.ctime,
               entry.file.stat.mtime,
             );
@@ -845,7 +843,7 @@ export async function loadContentForEntries(
             const textPreviewValue = getFirstBasesPropertyValue(
               app,
               entry,
-              normalizedProp,
+              prop,
             ) as { data?: unknown } | null;
             const data = textPreviewValue?.data;
             if (
@@ -866,12 +864,9 @@ export async function loadContentForEntries(
             .split(",")
             .map((p) => p.trim());
           for (const prop of titleProps) {
-            const normalizedProp = normalizePropertyName(app, prop);
-            const titleValue = getFirstBasesPropertyValue(
-              app,
-              entry,
-              normalizedProp,
-            ) as { data?: unknown } | null;
+            const titleValue = getFirstBasesPropertyValue(app, entry, prop) as {
+              data?: unknown;
+            } | null;
             if (
               titleValue?.data != null &&
               titleValue.data !== "" &&
@@ -911,17 +906,10 @@ export async function loadContentForEntries(
         const file = app.vault.getAbstractFileByPath(entry.file.path);
         if (!(file instanceof TFile)) return null;
 
-        // Normalize property names to support both display names and syntax names
-        const normalizedImageProperty = settings.imageProperty
-          ? settings.imageProperty
-              .split(",")
-              .map((p) => normalizePropertyName(app, p.trim()))
-              .join(",")
-          : "";
         const imagePropertyValues = getAllBasesImagePropertyValues(
           app,
           entry,
-          normalizedImageProperty,
+          settings.imageProperty,
         );
         return {
           path: entry.file.path,

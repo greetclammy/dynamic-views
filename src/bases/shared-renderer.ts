@@ -45,11 +45,7 @@ import {
   getUrlIcon,
   getCompactBreakpoint,
 } from "../utils/style-settings";
-import {
-  getPropertyLabel,
-  normalizePropertyName,
-  stripNotePrefix,
-} from "../utils/property";
+import { getPropertyLabel, stripNotePrefix } from "../utils/property";
 import { findLinksInText, type ParsedLink } from "../utils/link-parser";
 import {
   handleImageViewerClick,
@@ -1027,11 +1023,7 @@ export class SharedCardRenderer {
     };
 
     // Check if title or subtitle will be rendered
-    const normalized = normalizePropertyName(
-      this.app,
-      settings.titleProperty || "",
-    );
-    const isFullname = normalized === "file.fullname";
+    const isFullname = (settings.titleProperty || "") === "file.fullname";
     const displayTitle = isFullname
       ? stripExtFromTitle(card.title, card.path, true)
       : card.title;

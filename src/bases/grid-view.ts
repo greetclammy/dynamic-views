@@ -55,6 +55,10 @@ import {
   ScrollPreservation,
   getLeafProps,
 } from "../shared/scroll-preservation";
+import {
+  buildDisplayToSyntaxMap,
+  normalizeSettingsPropertyNames,
+} from "../utils/property";
 import type DynamicViews from "../../main";
 import type {
   ResolvedSettings,
@@ -236,6 +240,11 @@ export class DynamicViewsGridView extends BasesView {
       this.config,
       this.plugin.persistenceManager.getPluginSettings(),
     );
+
+    // Normalize property names once — downstream code uses pre-normalized values
+    const reverseMap = buildDisplayToSyntaxMap(this.config, this.allProperties);
+    normalizeSettingsPropertyNames(this.app, settings, reverseMap);
+
     const sortMethod = getSortMethod(this.config);
 
     // processGroups for shuffle-stable ordering
@@ -597,6 +606,13 @@ export class DynamicViewsGridView extends BasesView {
         this.config,
         this.plugin.persistenceManager.getPluginSettings(),
       );
+
+      // Normalize property names once — downstream code uses pre-normalized values
+      const reverseMap = buildDisplayToSyntaxMap(
+        this.config,
+        this.allProperties,
+      );
+      normalizeSettingsPropertyNames(this.app, settings, reverseMap);
 
       // Apply per-view CSS classes and variables to container
       applyViewContainerStyles(this.containerEl, settings);
@@ -1141,6 +1157,10 @@ export class DynamicViewsGridView extends BasesView {
       this.config,
       this.plugin.persistenceManager.getPluginSettings(),
     );
+
+    // Normalize property names once — downstream code uses pre-normalized values
+    const reverseMap = buildDisplayToSyntaxMap(this.config, this.allProperties);
+    normalizeSettingsPropertyNames(this.app, settings, reverseMap);
 
     const sortMethod = getSortMethod(this.config);
 

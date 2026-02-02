@@ -3,7 +3,12 @@
  */
 
 import { TFile } from "obsidian";
-import type { App, BasesEntry } from "obsidian";
+import type {
+  App,
+  BasesEntry,
+  BasesViewConfig,
+  BasesPropertyId,
+} from "obsidian";
 import type { DatacoreFile, DatacoreDate } from "../datacore/types";
 
 /**
@@ -45,25 +50,8 @@ export function isCheckboxProperty(app: App, propertyName: string): boolean {
 }
 
 /**
- * Type declarations for undocumented Bases API
- */
-interface BasesPropertyConfig {
-  propertyId: string;
-  getDisplayName(): string;
-}
-
-interface BasesQuery {
-  properties: Record<string, BasesPropertyConfig>;
-  formulas: Record<string, unknown>;
-}
-
-interface BasesView {
-  query: BasesQuery;
-}
-
-/**
  * Hardcoded fallback map: display name → syntax name
- * Used when Bases API is unavailable
+ * Used when Bases API is unavailable (Datacore path)
  */
 const DEFAULT_DISPLAY_TO_SYNTAX: Record<string, string> = {
   "file name": "file.name",
@@ -82,47 +70,29 @@ const DEFAULT_DISPLAY_TO_SYNTAX: Record<string, string> = {
 };
 
 /**
- * Build reverse lookup map from Bases view's query.properties
- * Returns displayName → syntaxName mapping
+ * Build reverse lookup map from documented Bases API
+ * Uses BasesViewConfig.getDisplayName() (since 1.10.0) and BasesView.allProperties (since 1.10.0)
+ * Returns displayName → syntaxName mapping, including custom user-set display names
  */
-function buildDisplayToSyntaxMap(app: App): Record<string, string> | null {
-  try {
-    const leaves = app.workspace.getLeavesOfType("bases");
-    if (!leaves || leaves.length === 0) return null;
-
-    const view = leaves[0].view as unknown as BasesView;
-    if (!view?.query?.properties) return null;
-
-    const map: Record<string, string> = {};
-    for (const [syntaxName, config] of Object.entries(view.query.properties)) {
-      if (config && typeof config.getDisplayName === "function") {
-        const displayName = config.getDisplayName();
-        if (displayName) {
-          map[displayName] = syntaxName;
-        }
+export function buildDisplayToSyntaxMap(
+  config: BasesViewConfig,
+  allProperties: BasesPropertyId[],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const propertyId of allProperties) {
+    const displayName = config.getDisplayName(propertyId);
+    if (displayName) {
+      map[displayName] = propertyId;
+    }
+    // Map bare formula names so "my formula" resolves to "formula.my formula"
+    if (propertyId.startsWith("formula.")) {
+      const bareName = propertyId.slice(8);
+      if (bareName && !(bareName in map)) {
+        map[bareName] = propertyId;
       }
     }
-    return map;
-  } catch {
-    return null;
   }
-}
-
-/**
- * Get formula names from Bases view's query.formulas
- */
-function getFormulaNames(app: App): Set<string> {
-  try {
-    const leaves = app.workspace.getLeavesOfType("bases");
-    if (!leaves || leaves.length === 0) return new Set();
-
-    const view = leaves[0].view as unknown as BasesView;
-    if (!view?.query?.formulas) return new Set();
-
-    return new Set(Object.keys(view.query.formulas));
-  } catch {
-    return new Set();
-  }
+  return map;
 }
 
 /**
@@ -131,9 +101,14 @@ function getFormulaNames(app: App): Set<string> {
  *
  * @param app - Obsidian app instance
  * @param propertyName - User-entered property name
+ * @param reverseMap - Optional displayName → syntaxName map from buildDisplayToSyntaxMap (Bases path)
  * @returns Normalized syntax name for Bases getValue()
  */
-export function normalizePropertyName(app: App, propertyName: string): string {
+export function normalizePropertyName(
+  app: App,
+  propertyName: string,
+  reverseMap?: Record<string, string>,
+): string {
   if (!propertyName || !propertyName.trim()) return propertyName;
 
   const trimmed = propertyName.trim();
@@ -147,29 +122,64 @@ export function normalizePropertyName(app: App, propertyName: string): string {
     return trimmed;
   }
 
-  // 2. Try dynamic API first
-  const dynamicMap = buildDisplayToSyntaxMap(app);
-  if (dynamicMap) {
-    // API available - only use dynamic lookup
-    if (trimmed in dynamicMap) {
-      return dynamicMap[trimmed];
+  // 2. Look up in reverse map (Bases path with documented API)
+  if (reverseMap) {
+    if (trimmed in reverseMap) {
+      return reverseMap[trimmed];
     }
-    // Don't fall back to hardcoded defaults when API is available
+    // Don't fall back to hardcoded defaults when reverse map is available
   } else {
-    // 3. API unavailable - use hardcoded fallback
+    // 3. Hardcoded fallback (Datacore path)
     if (trimmed in DEFAULT_DISPLAY_TO_SYNTAX) {
       return DEFAULT_DISPLAY_TO_SYNTAX[trimmed];
     }
   }
 
-  // 4. Check if it's a formula name (without prefix)
-  const formulaNames = getFormulaNames(app);
-  if (formulaNames.has(trimmed)) {
-    return `formula.${trimmed}`;
-  }
-
-  // 5. Otherwise return as-is (note property bare name)
+  // 4. Otherwise return as-is (note property bare name)
+  // Formula bare names are already in the reverse map from buildDisplayToSyntaxMap
   return trimmed;
+}
+
+/**
+ * Normalize a comma-separated property string in-place
+ * Each property name is trimmed and normalized via normalizePropertyName
+ */
+function normalizePropertyString(
+  app: App,
+  value: string,
+  reverseMap: Record<string, string>,
+): string {
+  if (!value) return value;
+  return value
+    .split(",")
+    .map((p) => normalizePropertyName(app, p.trim(), reverseMap))
+    .join(",");
+}
+
+/** Settings fields that contain property names needing normalization */
+const PROPERTY_SETTINGS_KEYS = [
+  "titleProperty",
+  "subtitleProperty",
+  "textPreviewProperty",
+  "imageProperty",
+  "urlProperty",
+] as const;
+
+/**
+ * Normalize all property name fields in settings using the reverse display-name map
+ * Call once at the top of the render cycle; downstream code uses the pre-normalized values
+ */
+export function normalizeSettingsPropertyNames(
+  app: App,
+  settings: { [K in (typeof PROPERTY_SETTINGS_KEYS)[number]]?: string },
+  reverseMap: Record<string, string>,
+): void {
+  for (const key of PROPERTY_SETTINGS_KEYS) {
+    const value = settings[key];
+    if (value) {
+      settings[key] = normalizePropertyString(app, value, reverseMap);
+    }
+  }
 }
 
 /**

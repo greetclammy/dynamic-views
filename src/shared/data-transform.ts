@@ -11,7 +11,6 @@ import type { DatacoreAPI, DatacoreFile } from "../datacore/types";
 import {
   getFirstDatacorePropertyValue,
   getFirstBasesPropertyValue,
-  normalizePropertyName,
   isValidUri,
   isCheckboxProperty,
   stripNotePrefix,
@@ -420,20 +419,14 @@ export function basesEntryToCardData(
   if (settings.titleProperty) {
     const titleProps = settings.titleProperty.split(",").map((p) => p.trim());
     for (const prop of titleProps) {
-      // Normalize property name for Bases API
-      const normalizedProp = normalizePropertyName(app, prop);
       // Try timestamp property first
-      const specialValue = resolveTimestampProperty(
-        normalizedProp,
-        ctime,
-        mtime,
-      );
+      const specialValue = resolveTimestampProperty(prop, ctime, mtime);
       if (specialValue) {
         title = specialValue;
         break;
       }
       // Try regular property via Bases API
-      const titleValue = getFirstBasesPropertyValue(app, entry, normalizedProp);
+      const titleValue = getFirstBasesPropertyValue(app, entry, prop);
       const titleData = (titleValue as { data?: unknown } | null)?.data;
       if (Array.isArray(titleData) && titleData.length > 0) {
         title = titleData.map(String).join(getListSeparator());
@@ -524,7 +517,7 @@ export function basesEntryToCardData(
   const subtitlePropsList =
     settings.subtitleProperty
       ?.split(",")
-      .map((p) => normalizePropertyName(app, p.trim()))
+      .map((p) => p.trim())
       .filter((p) => p) || [];
 
   let props = [...visibleProperties, ...subtitlePropsList];
@@ -577,16 +570,11 @@ export function basesEntryToCardData(
   }
 
   // Resolve URL property
-  // Normalize property names to support both display names and syntax names
   if (settings.urlProperty) {
-    const normalizedUrlProperty = settings.urlProperty
-      .split(",")
-      .map((p) => normalizePropertyName(app, p.trim()))
-      .join(",");
     const urlValue = getFirstBasesPropertyValue(
       app,
       entry,
-      normalizedUrlProperty,
+      settings.urlProperty,
     );
 
     if (urlValue && typeof urlValue === "object" && "data" in urlValue) {
