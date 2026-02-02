@@ -84,12 +84,23 @@ export function buildDisplayToSyntaxMap(
     if (displayName) {
       map[displayName] = propertyId;
     }
-    // Map bare formula names so "my formula" resolves to "formula.my formula"
-    if (propertyId.startsWith("formula.")) {
-      const bareName = propertyId.slice(8);
-      if (bareName && !(bareName in map)) {
-        map[bareName] = propertyId;
-      }
+  }
+  return map;
+}
+
+/**
+ * Build forward lookup map: syntaxName → displayName
+ * Used by getPropertyLabel to show user-facing display names on cards
+ */
+export function buildSyntaxToDisplayMap(
+  config: BasesViewConfig,
+  allProperties: BasesPropertyId[],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const propertyId of allProperties) {
+    const displayName = config.getDisplayName(propertyId);
+    if (displayName) {
+      map[propertyId] = displayName;
     }
   }
   return map;
@@ -136,7 +147,6 @@ export function normalizePropertyName(
   }
 
   // 4. Otherwise return as-is (note property bare name)
-  // Formula bare names are already in the reverse map from buildDisplayToSyntaxMap
   return trimmed;
 }
 
@@ -167,12 +177,16 @@ const PROPERTY_SETTINGS_KEYS = [
 
 /**
  * Normalize all property name fields in settings using the reverse display-name map
+ * Also attaches the forward display name map for property label rendering
  * Call once at the top of the render cycle; downstream code uses the pre-normalized values
  */
 export function normalizeSettingsPropertyNames(
   app: App,
-  settings: { [K in (typeof PROPERTY_SETTINGS_KEYS)[number]]?: string },
+  settings: {
+    [K in (typeof PROPERTY_SETTINGS_KEYS)[number]]?: string;
+  } & { _displayNameMap?: Record<string, string> },
   reverseMap: Record<string, string>,
+  displayNameMap: Record<string, string>,
 ): void {
   for (const key of PROPERTY_SETTINGS_KEYS) {
     const value = settings[key];
@@ -180,6 +194,7 @@ export function normalizeSettingsPropertyNames(
       settings[key] = normalizePropertyString(app, value, reverseMap);
     }
   }
+  settings._displayNameMap = displayNameMap;
 }
 
 /**
@@ -516,10 +531,19 @@ const PROPERTY_LABEL_MAP: Record<string, string> = {
 
 /**
  * Convert property name to readable label
- * Returns exact property names for special properties, or original name for custom properties
+ * When displayNameMap is provided (Bases path), uses custom display names from .base YAML
+ * Falls back to PROPERTY_LABEL_MAP for built-in properties, then prefix stripping
  */
-export function getPropertyLabel(propertyName: string): string {
+export function getPropertyLabel(
+  propertyName: string,
+  displayNameMap?: Record<string, string>,
+): string {
   if (!propertyName || propertyName === "") return "";
+
+  // Custom display name from .base YAML takes priority
+  if (displayNameMap && propertyName in displayNameMap) {
+    return displayNameMap[propertyName];
+  }
 
   // Check if we have a mapped label
   const mappedLabel = PROPERTY_LABEL_MAP[propertyName.toLowerCase()];

@@ -1934,13 +1934,17 @@ export class SharedCardRenderer {
     // Render label if property labels are enabled
     if (settings.propertyLabels === "above") {
       const labelEl = container.createDiv("property-label");
-      labelEl.textContent = getPropertyLabel(propertyName);
+      labelEl.textContent = getPropertyLabel(
+        propertyName,
+        settings._displayNameMap,
+      );
     }
 
     // Add inline label if enabled (as sibling, before property-content)
     if (settings.propertyLabels === "inline") {
       const labelSpan = container.createSpan("property-label-inline");
-      labelSpan.textContent = getPropertyLabel(propertyName) + " ";
+      labelSpan.textContent =
+        getPropertyLabel(propertyName, settings._displayNameMap) + " ";
     }
 
     // Wrapper for scrolling content (gradients applied here)

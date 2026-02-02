@@ -87,7 +87,12 @@ export interface DatacoreDefaults {
 }
 
 /** Fully resolved settings — the merge of PluginSettings + ViewDefaults + DatacoreDefaults */
-export type ResolvedSettings = PluginSettings & ViewDefaults & DatacoreDefaults;
+export type ResolvedSettings = PluginSettings &
+  ViewDefaults &
+  DatacoreDefaults & {
+    /** syntaxName → displayName map from Bases config (set at normalization point, not persisted) */
+    _displayNameMap?: Record<string, string>;
+  };
 
 export interface UIState {
   sortMethod: string;
