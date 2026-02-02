@@ -235,6 +235,11 @@ export function initializeViewDefaults(
   }
 }
 
+/** Config-level defaults where YAML representation differs from resolved type */
+const CONFIG_DEFAULTS: Record<string, string> = {
+  minimumColumns: "one",
+};
+
 /** Valid enum values for ViewDefaults fields — used by cleanup to detect stale values */
 const VALID_VIEW_VALUES: Partial<
   Record<keyof ViewDefaults, readonly string[]>
@@ -246,6 +251,7 @@ const VALID_VIEW_VALUES: Partial<
   imageFit: ["crop", "contain"],
   propertyLabels: ["hide", "inline", "above"],
   pairedPropertyLayout: ["left", "column", "right"],
+  minimumColumns: ["one", "two"],
   ambientBackground: ["subtle", "dramatic", "disable"],
 };
 
@@ -311,14 +317,15 @@ export async function cleanupBaseFile(
           continue;
         }
 
-        // Reset stale enum values to defaults
+        // Reset stale enum values to config-level defaults
         const validValues = VALID_VIEW_VALUES[key as keyof ViewDefaults];
         if (
           validValues &&
-          typeof viewObj[key] === "string" &&
-          !validValues.includes(viewObj[key] as never)
+          !validValues.includes(String(viewObj[key]) as never)
         ) {
-          viewObj[key] = VIEW_DEFAULTS[key as keyof ViewDefaults];
+          viewObj[key] =
+            CONFIG_DEFAULTS[key] ??
+            VIEW_DEFAULTS[key as keyof ViewDefaults];
           changeCount++;
         }
       }
