@@ -3,15 +3,16 @@ import type {
   PluginData,
   PluginSettings,
   ViewDefaults,
-  DatacoreDefaults,
-  UIState,
+  BasesUIState,
+  DatacoreState,
   SettingsTemplate,
 } from "./types";
 import {
   PLUGIN_SETTINGS,
   VIEW_DEFAULTS,
   DATACORE_DEFAULTS,
-  DEFAULT_UI_STATE,
+  DEFAULT_BASES_STATE,
+  DEFAULT_DATACORE_STATE,
 } from "./constants";
 import { sanitizeObject, sanitizeString } from "./utils/sanitize";
 
@@ -98,20 +99,21 @@ export class PersistenceManager {
     this.data = {
       pluginSettings: {},
       templates: {},
-      queryStates: {},
-      viewSettings: {},
+      basesStates: {},
+      datacoreStates: {},
     };
   }
 
   async load(): Promise<void> {
     const loadedData =
       (await this.plugin.loadData()) as Partial<PluginData> | null;
+
     if (loadedData) {
       this.data = {
         pluginSettings: loadedData.pluginSettings || {},
         templates: loadedData.templates || {},
-        queryStates: loadedData.queryStates || {},
-        viewSettings: loadedData.viewSettings || {},
+        basesStates: loadedData.basesStates || {},
+        datacoreStates: loadedData.datacoreStates || {},
       };
     }
 
@@ -145,10 +147,10 @@ export class PersistenceManager {
       sparse.pluginSettings = this.data.pluginSettings;
     if (Object.keys(this.data.templates).length > 0)
       sparse.templates = this.data.templates;
-    if (Object.keys(this.data.queryStates).length > 0)
-      sparse.queryStates = this.data.queryStates;
-    if (Object.keys(this.data.viewSettings).length > 0)
-      sparse.viewSettings = this.data.viewSettings;
+    if (Object.keys(this.data.basesStates).length > 0)
+      sparse.basesStates = this.data.basesStates;
+    if (Object.keys(this.data.datacoreStates).length > 0)
+      sparse.datacoreStates = this.data.datacoreStates;
     await this.plugin.saveData(sparse);
   }
 
@@ -183,76 +185,88 @@ export class PersistenceManager {
     await this.save();
   }
 
-  getUIState(file: TFile | null): UIState {
+  // ============================================================================
+  // Bases State (collapsedGroups only, keyed by file ctime)
+  // ============================================================================
+
+  getBasesState(file: TFile | null): BasesUIState {
     const key = this.getFileKey(file);
-    if (!key) return { ...DEFAULT_UI_STATE };
-    const state = this.data.queryStates[key];
-    return state ? { ...state } : { ...DEFAULT_UI_STATE };
+    if (!key) return { ...DEFAULT_BASES_STATE };
+    const state = this.data.basesStates[key];
+    return state ? { ...state } : { ...DEFAULT_BASES_STATE };
   }
 
-  async setUIState(file: TFile | null, state: Partial<UIState>): Promise<void> {
-    const key = this.getFileKey(file);
-    if (!key) return;
-
-    const current = this.data.queryStates[key] || { ...DEFAULT_UI_STATE };
-
-    // Sanitize and truncate searchQuery
-    const sanitized: Partial<UIState> = {};
-    for (const [k, v] of Object.entries(state)) {
-      const key = k as keyof UIState;
-      if (k === "searchQuery" && typeof v === "string") {
-        (sanitized as Record<string, string>)[key] = sanitizeString(
-          v.slice(0, 500),
-        );
-      } else if (typeof v === "string") {
-        (sanitized as Record<string, string>)[key] = sanitizeString(v);
-      } else if (Array.isArray(v)) {
-        (sanitized as Record<string, unknown>)[key] = v.map((item) =>
-          typeof item === "string" ? sanitizeString(item) : item,
-        );
-      } else {
-        (sanitized as Record<string, unknown>)[key] = v;
-      }
-    }
-
-    this.data.queryStates[key] = { ...current, ...sanitized };
-    await this.save();
-  }
-
-  async clearUIState(file: TFile | null): Promise<void> {
-    const key = this.getFileKey(file);
-    if (!key) return;
-    delete this.data.queryStates[key];
-    await this.save();
-  }
-
-  getViewSettings(
+  async setBasesState(
     file: TFile | null,
-  ): Partial<ViewDefaults & DatacoreDefaults> {
-    const key = this.getFileKey(file);
-    if (!key) return {};
-    const settings = this.data.viewSettings[key];
-    return settings ? { ...settings } : {};
-  }
-
-  async setViewSettings(
-    file: TFile | null,
-    settings: Partial<ViewDefaults & DatacoreDefaults>,
+    state: Partial<BasesUIState>,
   ): Promise<void> {
     const key = this.getFileKey(file);
     if (!key) return;
 
-    const current = this.data.viewSettings[key] || {};
-    const sanitized = sanitizeObject(settings);
+    const current = this.data.basesStates[key] || { ...DEFAULT_BASES_STATE };
 
-    this.data.viewSettings[key] = { ...current, ...sanitized };
+    // Sanitize collapsedGroups array
+    const sanitized: Partial<BasesUIState> = {};
+    if (state.collapsedGroups) {
+      sanitized.collapsedGroups = state.collapsedGroups.map((item) =>
+        typeof item === "string" ? sanitizeString(item) : item,
+      );
+    }
+
+    this.data.basesStates[key] = { ...current, ...sanitized };
     await this.save();
   }
 
-  async clearViewSettings(file: TFile | null): Promise<void> {
-    const key = this.getFileKey(file);
-    if (!key) return;
-    delete this.data.viewSettings[key];
+  // ============================================================================
+  // Datacore State (UI + settings, keyed by queryId only)
+  // ============================================================================
+
+  /**
+   * Get Datacore state for a query.
+   * @param queryId - Unique ID for the query (required for persistence)
+   * @returns DatacoreState — defaults if no queryId provided
+   */
+  getDatacoreState(queryId?: string): DatacoreState {
+    if (!queryId) return { ...DEFAULT_DATACORE_STATE };
+    const state = this.data.datacoreStates[queryId];
+    return state ? { ...state } : { ...DEFAULT_DATACORE_STATE };
+  }
+
+  /**
+   * Set Datacore state for a query.
+   * @param queryId - Unique ID for the query (required for persistence)
+   * @param state - Partial state to merge
+   */
+  async setDatacoreState(
+    queryId: string | undefined,
+    state: Partial<DatacoreState>,
+  ): Promise<void> {
+    if (!queryId) return; // No persistence without queryId
+
+    const current = this.data.datacoreStates[queryId] || {
+      ...DEFAULT_DATACORE_STATE,
+    };
+
+    // Sanitize string fields
+    const sanitized: Partial<DatacoreState> = {};
+    for (const [k, v] of Object.entries(state)) {
+      const stateKey = k as keyof DatacoreState;
+      if (k === "searchQuery" && typeof v === "string") {
+        (sanitized as Record<string, string>)[stateKey] = sanitizeString(
+          v.slice(0, 500),
+        );
+      } else if (typeof v === "string") {
+        (sanitized as Record<string, string>)[stateKey] = sanitizeString(v);
+      } else if (k === "settings" && typeof v === "object" && v !== null) {
+        (sanitized as Record<string, unknown>)[stateKey] = sanitizeObject(
+          v as Record<string, unknown>,
+        );
+      } else {
+        (sanitized as Record<string, unknown>)[stateKey] = v;
+      }
+    }
+
+    this.data.datacoreStates[queryId] = { ...current, ...sanitized };
     await this.save();
   }
 

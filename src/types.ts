@@ -94,13 +94,21 @@ export type ResolvedSettings = PluginSettings &
     _displayNameMap?: Record<string, string>;
   };
 
-export interface UIState {
+/** Bases-only UI state (persisted per .base file by ctime) */
+export interface BasesUIState {
+  collapsedGroups: string[];
+}
+
+/** Datacore-only state: UI + view settings (persisted per query by ctime:queryId) */
+export interface DatacoreState {
+  // UI state
   sortMethod: string;
   viewMode: string;
   searchQuery: string;
   resultLimit: string;
   widthMode: string;
-  collapsedGroups: string[];
+  // View settings (previously in viewSettings)
+  settings?: Partial<ViewDefaults & DatacoreDefaults>;
 }
 
 /**
@@ -115,8 +123,8 @@ export interface SettingsTemplate {
 export interface PluginData {
   pluginSettings: Partial<PluginSettings>;
   templates: Partial<Record<"grid" | "masonry" | "datacore", SettingsTemplate>>;
-  queryStates: Record<string, UIState>;
-  viewSettings: Record<string, Partial<ViewDefaults & DatacoreDefaults>>;
+  basesStates: Record<string, BasesUIState>; // Bases only: { collapsedGroups }
+  datacoreStates: Record<string, DatacoreState>; // Datacore only: UI + settings
 }
 
 export type ViewMode = "card" | "masonry" | "list";

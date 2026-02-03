@@ -3,7 +3,7 @@ import type { PaneType } from "obsidian";
 import type DynamicViews from "../../main";
 import {
   ResolvedSettings,
-  UIState,
+  DatacoreState,
   ViewMode,
   WidthMode,
   ViewDefaults,
@@ -87,6 +87,7 @@ interface ViewProps {
   app: App;
   dc: DatacoreAPI;
   USER_QUERY?: string;
+  QUERY_ID?: string;
 }
 
 export function View({
@@ -94,6 +95,7 @@ export function View({
   app,
   dc,
   USER_QUERY = "",
+  QUERY_ID,
 }: ViewProps): JSX.Element {
   // Get file containing this query (memoized to prevent re-fetching on every render)
   // This is used to exclude the query note itself from results
@@ -109,46 +111,46 @@ export function View({
 
   // Helper: get persisted settings
   const getPersistedSettings = dc.useCallback((): ResolvedSettings => {
-    if (!currentFile || !persistenceManager)
-      return resolveSettings(
-        persistenceManager?.getPluginSettings() ?? ({} as never),
-      );
+    if (!persistenceManager) return resolveSettings({} as Partial<never>);
 
     const pluginSettings = persistenceManager.getPluginSettings();
     const template = persistenceManager.getSettingsTemplate("datacore");
-    const viewOverrides = persistenceManager.getViewSettings(currentFile);
+    const datacoreState = persistenceManager.getDatacoreState(QUERY_ID);
 
     return resolveSettings(pluginSettings, VIEW_DEFAULTS, DATACORE_DEFAULTS, {
       ...template?.settings,
-      ...viewOverrides,
+      ...datacoreState.settings,
     });
-  }, [currentFile, persistenceManager]);
+  }, [persistenceManager, QUERY_ID]);
 
   // Helper: get persisted UI state value
-  const getFilePersistedValue = dc.useCallback(
-    <K extends keyof UIState>(key: K, defaultValue: UIState[K]): UIState[K] => {
-      if (!currentFile || !persistenceManager) return defaultValue;
-      const state = persistenceManager.getUIState(currentFile);
+  const getPersistedValue = dc.useCallback(
+    <K extends keyof DatacoreState>(
+      key: K,
+      defaultValue: DatacoreState[K],
+    ): DatacoreState[K] => {
+      if (!persistenceManager) return defaultValue;
+      const state = persistenceManager.getDatacoreState(QUERY_ID);
       return state[key] ?? defaultValue;
     },
-    [currentFile, persistenceManager],
+    [persistenceManager, QUERY_ID],
   );
 
   // Initialize state
   const [sortMethod, setSortMethod] = dc.useState(
-    getFilePersistedValue("sortMethod", "mtime-desc"),
+    getPersistedValue("sortMethod", "mtime-desc"),
   );
   const [searchQuery, setSearchQuery] = dc.useState(
-    getFilePersistedValue("searchQuery", ""),
+    getPersistedValue("searchQuery", ""),
   );
   const [viewMode, setViewMode] = dc.useState(
-    getFilePersistedValue("viewMode", "card") as ViewMode,
+    getPersistedValue("viewMode", "card") as ViewMode,
   );
   const [widthMode, setWidthMode] = dc.useState(
-    getFilePersistedValue("widthMode", "normal") as WidthMode,
+    getPersistedValue("widthMode", "normal") as WidthMode,
   );
   const [resultLimit, setResultLimit] = dc.useState(
-    getFilePersistedValue("resultLimit", ""),
+    getPersistedValue("resultLimit", ""),
   );
 
   // Query state - extract query from between DQL markers if present
@@ -223,10 +225,10 @@ export function View({
 
   // Re-read state from persistence on layout change (Live Preview <-> Reading View sync)
   dc.useEffect(() => {
-    if (!currentFile || !persistenceManager) return;
+    if (!QUERY_ID || !persistenceManager) return;
 
     const handleLayoutChange = () => {
-      const state = persistenceManager.getUIState(currentFile);
+      const state = persistenceManager.getDatacoreState(QUERY_ID);
       // Always set from persistence - React will bail out if values are the same
       if (state.sortMethod !== undefined) setSortMethod(state.sortMethod);
       if (state.viewMode !== undefined) setViewMode(state.viewMode as ViewMode);
@@ -240,35 +242,35 @@ export function View({
     return () => {
       app.workspace.off("layout-change", handleLayoutChange);
     };
-  }, [currentFile, persistenceManager, app.workspace]);
+  }, [QUERY_ID, persistenceManager, app.workspace]);
 
   // Persist UI state changes (only if different from persisted value to avoid overwriting on mount)
   dc.useEffect(() => {
-    if (currentFile && persistenceManager) {
-      const persisted = persistenceManager.getUIState(currentFile);
+    if (QUERY_ID && persistenceManager) {
+      const persisted = persistenceManager.getDatacoreState(QUERY_ID);
       if (persisted.sortMethod !== sortMethod) {
-        void persistenceManager.setUIState(currentFile, { sortMethod });
+        void persistenceManager.setDatacoreState(QUERY_ID, { sortMethod });
       }
     }
-  }, [sortMethod, currentFile, persistenceManager]);
+  }, [sortMethod, QUERY_ID, persistenceManager]);
 
   dc.useEffect(() => {
-    if (currentFile && persistenceManager) {
-      const persisted = persistenceManager.getUIState(currentFile);
+    if (QUERY_ID && persistenceManager) {
+      const persisted = persistenceManager.getDatacoreState(QUERY_ID);
       if (persisted.viewMode !== viewMode) {
-        void persistenceManager.setUIState(currentFile, { viewMode });
+        void persistenceManager.setDatacoreState(QUERY_ID, { viewMode });
       }
     }
-  }, [viewMode, currentFile, persistenceManager]);
+  }, [viewMode, QUERY_ID, persistenceManager]);
 
   dc.useEffect(() => {
-    if (currentFile && persistenceManager) {
-      const persisted = persistenceManager.getUIState(currentFile);
+    if (QUERY_ID && persistenceManager) {
+      const persisted = persistenceManager.getDatacoreState(QUERY_ID);
       if (persisted.widthMode !== widthMode) {
-        void persistenceManager.setUIState(currentFile, { widthMode });
+        void persistenceManager.setDatacoreState(QUERY_ID, { widthMode });
       }
     }
-  }, [widthMode, currentFile, persistenceManager]);
+  }, [widthMode, QUERY_ID, persistenceManager]);
 
   // Apply width mode class to section on mount and when widthMode changes
   dc.useEffect(() => {
@@ -436,22 +438,22 @@ export function View({
   }, [widthMode]);
 
   dc.useEffect(() => {
-    if (currentFile && persistenceManager) {
-      const persisted = persistenceManager.getUIState(currentFile);
+    if (QUERY_ID && persistenceManager) {
+      const persisted = persistenceManager.getDatacoreState(QUERY_ID);
       if (persisted.searchQuery !== searchQuery) {
-        void persistenceManager.setUIState(currentFile, { searchQuery });
+        void persistenceManager.setDatacoreState(QUERY_ID, { searchQuery });
       }
     }
-  }, [searchQuery, currentFile, persistenceManager]);
+  }, [searchQuery, QUERY_ID, persistenceManager]);
 
   dc.useEffect(() => {
-    if (currentFile && persistenceManager) {
-      const persisted = persistenceManager.getUIState(currentFile);
+    if (QUERY_ID && persistenceManager) {
+      const persisted = persistenceManager.getDatacoreState(QUERY_ID);
       if (persisted.resultLimit !== resultLimit) {
-        void persistenceManager.setUIState(currentFile, { resultLimit });
+        void persistenceManager.setDatacoreState(QUERY_ID, { resultLimit });
       }
     }
-  }, [resultLimit, currentFile, persistenceManager]);
+  }, [resultLimit, QUERY_ID, persistenceManager]);
 
   // Persist settings changes (debounced)
   // Only saves fields that differ from resolved defaults (ViewDefaults + DatacoreDefaults)
@@ -460,7 +462,7 @@ export function View({
       clearTimeout(settingsTimeoutRef.current);
     }
     settingsTimeoutRef.current = setTimeout(() => {
-      if (currentFile && persistenceManager) {
+      if (QUERY_ID && persistenceManager) {
         const defaults = { ...VIEW_DEFAULTS, ...DATACORE_DEFAULTS };
         const overrides: Partial<ViewDefaults & DatacoreDefaults> = {};
         for (const key of Object.keys(defaults) as (keyof typeof defaults)[]) {
@@ -468,7 +470,9 @@ export function View({
             (overrides as Record<string, unknown>)[key] = settings[key];
           }
         }
-        void persistenceManager.setViewSettings(currentFile, overrides);
+        void persistenceManager.setDatacoreState(QUERY_ID, {
+          settings: overrides,
+        });
       }
     }, 300);
     return () => {
@@ -476,7 +480,7 @@ export function View({
         clearTimeout(settingsTimeoutRef.current);
       }
     };
-  }, [settings, currentFile, persistenceManager]);
+  }, [settings, QUERY_ID, persistenceManager]);
 
   // Setup swipe interception on mobile if enabled (Datacore is always embedded)
   // Note: preventSidebarSwipe intentionally omitted from deps - global settings require restart

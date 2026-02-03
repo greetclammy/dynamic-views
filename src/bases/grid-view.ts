@@ -193,7 +193,7 @@ export class DynamicViewsGridView extends BasesView {
     }
 
     // Persist collapse state (async — in-memory state is authoritative)
-    void this.plugin.persistenceManager.setUIState(this.currentFile, {
+    void this.plugin.persistenceManager.setBasesState(this.currentFile, {
       collapsedGroups: Array.from(this.collapsedGroups),
     });
 
@@ -343,7 +343,7 @@ export class DynamicViewsGridView extends BasesView {
       const groupKey = g.hasKey() ? serializeGroupKey(g.key) : undefined;
       this.collapsedGroups.add(this.getCollapseKey(groupKey));
     }
-    void this.plugin.persistenceManager.setUIState(this.currentFile, {
+    void this.plugin.persistenceManager.setBasesState(this.currentFile, {
       collapsedGroups: Array.from(this.collapsedGroups),
     });
     this.renderState.lastRenderHash = "";
@@ -353,7 +353,7 @@ export class DynamicViewsGridView extends BasesView {
   /** Unfold all groups — called by command palette */
   public unfoldAllGroups(): void {
     this.collapsedGroups.clear();
-    void this.plugin.persistenceManager.setUIState(this.currentFile, {
+    void this.plugin.persistenceManager.setBasesState(this.currentFile, {
       collapsedGroups: [],
     });
     this.onDataUpdated();
@@ -544,10 +544,10 @@ export class DynamicViewsGridView extends BasesView {
     // Reloading on every onDataUpdated is unsafe: style-settings triggers onDataUpdated
     // with stale persistence or wrong-file lookups, wiping the in-memory state.
     if (!this._collapsedGroupsLoaded) {
-      const uiState = this.plugin.persistenceManager.getUIState(
+      const basesState = this.plugin.persistenceManager.getBasesState(
         this.currentFile,
       );
-      this.collapsedGroups = new Set(uiState.collapsedGroups ?? []);
+      this.collapsedGroups = new Set(basesState.collapsedGroups ?? []);
       this._collapsedGroupsLoaded = true;
     }
 

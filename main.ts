@@ -39,7 +39,7 @@ export default class DynamicViews extends Plugin {
   persistenceManager: PersistenceManager;
 
   // Helper function for datacorejsx blocks
-  createView(dc: DatacoreAPI, userQuery?: string) {
+  createView(dc: DatacoreAPI, userQuery?: string, queryId?: string) {
     // Initialize jsxRuntime with Datacore's Preact BEFORE returning component
     // This allows all compiled JSX in our components to use Datacore's h function
     setDatacorePreact(dc.preact);
@@ -52,8 +52,14 @@ export default class DynamicViews extends Plugin {
         app: this.app,
         dc,
         USER_QUERY: userQuery || "@page",
+        QUERY_ID: queryId,
       });
     };
+  }
+
+  /** Generate a 6-char alphanumeric query ID */
+  private generateQueryId(): string {
+    return Math.random().toString(36).substring(2, 8);
   }
 
   async onload() {
@@ -267,15 +273,16 @@ export default class DynamicViews extends Plugin {
   }
 
   getQueryTemplate(): string {
+    const queryId = this.generateQueryId();
     return `\`\`\`datacorejsx
-const USER_QUERY = \`
+const ID = '${queryId}';
+const QUERY = \`
 // –––– DQL QUERY START ––––
 
 // ––––– DQL QUERY END –––––
 \`;
 
-const dv = app.plugins.plugins['dynamic-views'];
-return dv.createView(dc, USER_QUERY);
+return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, ID);
 \`\`\`\n`;
   }
 

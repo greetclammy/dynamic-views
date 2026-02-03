@@ -102,13 +102,19 @@ export function resolveSettings(
   };
 }
 
-export const DEFAULT_UI_STATE = {
+/** Default Bases UI state (collapsedGroups only) */
+export const DEFAULT_BASES_STATE = {
+  collapsedGroups: [] as string[],
+};
+
+/** Default Datacore state (UI + settings) */
+export const DEFAULT_DATACORE_STATE = {
   sortMethod: "mtime-desc",
   viewMode: "card",
   searchQuery: "",
   resultLimit: "",
   widthMode: "normal",
-  collapsedGroups: [] as string[],
+  settings: undefined,
 };
 
 export const STORAGE_KEY_PREFIX = "dynamic-views";
