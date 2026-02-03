@@ -343,9 +343,9 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, ID);
   async createExplorerFile() {
     try {
       const activeFile = this.app.workspace.getActiveFile();
-      const folderPath =
-        activeFile?.parent?.path ??
-        this.app.fileManager.getNewFileParent("").path;
+      const folderPath = this.app.fileManager.getNewFileParent(
+        activeFile?.path ?? "",
+      ).path;
       const filePath = getAvailablePath(this.app, folderPath, "Untitled");
       const template = this.getQueryTemplate();
 
@@ -368,7 +368,10 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, ID);
     paneType: PaneType | boolean,
   ) {
     try {
-      const folderPath = this.app.fileManager.getNewFileParent("").path;
+      const activeFile = this.app.workspace.getActiveFile();
+      const folderPath = this.app.fileManager.getNewFileParent(
+        activeFile?.path ?? "",
+      ).path;
       const filePath = getAvailableBasePath(this.app, folderPath, "Untitled");
       const content = `views:\n  - type: ${viewType}\n    name: ${viewName}\n`;
 
