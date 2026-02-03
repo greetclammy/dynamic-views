@@ -460,16 +460,16 @@ export class DynamicViewsMasonryView extends BasesView {
    * Called from onDataUpdated() since Obsidian calls that for config changes
    */
   private handleTemplateToggle(): void {
-    const isTemplate = this.config.get("__isTemplate") === true;
+    const isTemplate = this.config.get("isTemplate") === true;
 
-    // Only process if __isTemplate actually changed
+    // Only process if isTemplate actually changed
     if (this.previousIsTemplate === isTemplate) {
       return;
     }
     this.previousIsTemplate = isTemplate;
 
     if (isTemplate) {
-      const existingTimestamp = this.config.get("__templateSetAt") as
+      const existingTimestamp = this.config.get("templateSetAt") as
         | number
         | undefined;
 
@@ -481,7 +481,7 @@ export class DynamicViewsMasonryView extends BasesView {
           this.plugin,
         );
         if (isStale) {
-          this.config.set("__isTemplate", false);
+          this.config.set("isTemplate", false);
           this.previousIsTemplate = false;
           return;
         }
@@ -489,7 +489,7 @@ export class DynamicViewsMasonryView extends BasesView {
       } else {
         // User just enabled toggle — set timestamp + clear other views
         const timestamp = Date.now();
-        this.config.set("__templateSetAt", timestamp);
+        this.config.set("templateSetAt", timestamp);
         clearOldTemplateToggles(this.app, MASONRY_VIEW_TYPE, this);
 
         // Save settings template
@@ -504,9 +504,9 @@ export class DynamicViewsMasonryView extends BasesView {
       }
     } else {
       // Toggle turned OFF — clear template if this view was the template
-      const hadTimestamp = this.config.get("__templateSetAt") !== undefined;
+      const hadTimestamp = this.config.get("templateSetAt") !== undefined;
       if (hadTimestamp) {
-        this.config.set("__templateSetAt", undefined);
+        this.config.set("templateSetAt", undefined);
         void this.plugin.persistenceManager.setSettingsTemplate(
           "masonry",
           null,

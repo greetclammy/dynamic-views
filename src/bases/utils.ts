@@ -69,8 +69,8 @@ const ALLOWED_VIEW_KEYS = new Set<string>([
   // Dynamic Views settings (ViewDefaults)
   ...(Object.keys(VIEW_DEFAULTS) as (keyof ViewDefaults)[]),
   // Internal markers
-  "__isTemplate",
-  "__templateSetAt",
+  "isTemplate",
+  "templateSetAt",
 ]);
 
 /**
@@ -795,14 +795,14 @@ export function isCurrentTemplateView(
   }
 
   // Get this view's timestamp
-  const viewTimestamp = config.get("__templateSetAt");
+  const viewTimestamp = config.get("templateSetAt");
 
   // Compare timestamps - only the view that most recently became template should match
   return viewTimestamp === savedTemplate.setAt;
 }
 
 /**
- * Disable __isTemplate toggle in all other views of the same type
+ * Disable isTemplate toggle in all other views of the same type
  * Implements mutual exclusion - only one view of each type can be template
  * @param app - Obsidian App instance
  * @param viewType - Type identifier ("dynamic-views-grid" or "dynamic-views-masonry")
@@ -837,15 +837,15 @@ export function clearOldTemplateToggles(
     }
 
     // Check if this view has template enabled
-    const isTemplate = actualView.config.get("__isTemplate") === true;
+    const isTemplate = actualView.config.get("isTemplate") === true;
     if (isTemplate) {
       console.log(
         `[clearOldTemplateToggles] Disabling template in view`,
         actualView,
       );
       // Clear timestamp first so the cascading onDataUpdated() won't try to clear the global template
-      actualView.config.set("__templateSetAt", undefined);
-      actualView.config.set("__isTemplate", false);
+      actualView.config.set("templateSetAt", undefined);
+      actualView.config.set("isTemplate", false);
     }
   });
 }

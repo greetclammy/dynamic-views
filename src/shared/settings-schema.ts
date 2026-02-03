@@ -314,7 +314,7 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
         {
           type: "toggle",
           displayName: "Use these settings for new views",
-          key: "__isTemplate",
+          key: "isTemplate",
           default: false,
         },
       ],

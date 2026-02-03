@@ -402,16 +402,16 @@ export class DynamicViewsGridView extends BasesView {
    * Called from onDataUpdated() since Obsidian calls that for config changes
    */
   private handleTemplateToggle(): void {
-    const isTemplate = this.config.get("__isTemplate") === true;
+    const isTemplate = this.config.get("isTemplate") === true;
 
-    // Only process if __isTemplate actually changed
+    // Only process if isTemplate actually changed
     if (this.previousIsTemplate === isTemplate) {
       return;
     }
     this.previousIsTemplate = isTemplate;
 
     if (isTemplate) {
-      const existingTimestamp = this.config.get("__templateSetAt") as
+      const existingTimestamp = this.config.get("templateSetAt") as
         | number
         | undefined;
 
@@ -426,7 +426,7 @@ export class DynamicViewsGridView extends BasesView {
           console.log(
             `[grid-view] Stale template toggle (view: ${existingTimestamp}), disabling`,
           );
-          this.config.set("__isTemplate", false);
+          this.config.set("isTemplate", false);
           this.previousIsTemplate = false;
           return;
         }
@@ -434,7 +434,7 @@ export class DynamicViewsGridView extends BasesView {
       } else {
         // User just enabled toggle — set timestamp + clear other views
         const timestamp = Date.now();
-        this.config.set("__templateSetAt", timestamp);
+        this.config.set("templateSetAt", timestamp);
         console.log(`[grid-view] New template timestamp: ${timestamp}`);
         clearOldTemplateToggles(this.app, GRID_VIEW_TYPE, this);
 
@@ -451,10 +451,10 @@ export class DynamicViewsGridView extends BasesView {
       }
     } else {
       // Toggle turned OFF — clear template if this view was the template
-      const hadTimestamp = this.config.get("__templateSetAt") !== undefined;
+      const hadTimestamp = this.config.get("templateSetAt") !== undefined;
       if (hadTimestamp) {
         console.log("[grid-view] Clearing settings template");
-        this.config.set("__templateSetAt", undefined);
+        this.config.set("templateSetAt", undefined);
         void this.plugin.persistenceManager.setSettingsTemplate("grid", null);
       }
     }
