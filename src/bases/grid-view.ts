@@ -229,6 +229,7 @@ export class DynamicViewsGridView extends BasesView {
     groupEl: HTMLElement,
   ): Promise<void> {
     if (!this.data) return;
+    const currentVersion = this.renderState.version;
 
     // Find the matching group in data
     const group = this.data.groupedData.find((g) => {
@@ -275,6 +276,9 @@ export class DynamicViewsGridView extends BasesView {
       this.contentCache.images,
       this.contentCache.hasImageAvailable,
     );
+
+    // Bail if a new render started during content loading
+    if (this.renderState.version !== currentVersion) return;
 
     const cards = transformBasesEntries(
       this.app,
