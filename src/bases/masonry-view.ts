@@ -177,6 +177,7 @@ export class DynamicViewsMasonryView extends BasesView {
   private propertyMeasuredTimeout: number | null = null;
   private lastOnDataUpdatedTime: number = 0;
   private collapsedGroups: Set<string> = new Set();
+  private viewId: string | null = null;
 
   /** Get the current file by resolving from the leaf's view state (cached).
    *  controller.currentFile is a shared global that can return the wrong file. */
@@ -193,6 +194,38 @@ export class DynamicViewsMasonryView extends BasesView {
       }
     });
     return this._resolvedFile;
+  }
+
+  /**
+   * Ensure viewId is set for persistence. Reads from .base YAML or generates new.
+   * Handles duplicate detection via view name and ctime checks.
+   */
+  private ensureViewId(): void {
+    if (this.viewId) return;
+
+    const file = this.currentFile;
+    const viewName = this.config?.name;
+    if (!file || !viewName) return;
+
+    // Read existing fields via Bases config API
+    const idField = this.config.get("id") as string | undefined;
+    const storedCtime = this.config.get("ctime") as number | undefined;
+    const fileCtime = file.stat.ctime;
+
+    if (idField) {
+      const [hash, storedName] = idField.split(":");
+      if (storedName === viewName && storedCtime === fileCtime) {
+        // All match — use existing hash
+        this.viewId = hash;
+        return;
+      }
+      // Mismatch — view or file duplicate, fall through to regenerate
+    }
+
+    // Generate new id and write via Bases config API
+    this.viewId = this.plugin.generateViewId();
+    this.config.set("id", `${this.viewId}:${viewName}`);
+    this.config.set("ctime", fileCtime);
   }
 
   /** Get the collapse key for a group (sentinel for undefined keys) */
@@ -215,9 +248,12 @@ export class DynamicViewsMasonryView extends BasesView {
     }
 
     // Persist collapse state (async — in-memory state is authoritative)
-    void this.plugin.persistenceManager.setBasesState(this.currentFile, {
-      collapsedGroups: Array.from(this.collapsedGroups),
-    });
+    void this.plugin.persistenceManager.setBasesState(
+      this.viewId ?? undefined,
+      {
+        collapsedGroups: Array.from(this.collapsedGroups),
+      },
+    );
 
     const groupEl = headerEl.nextElementSibling as HTMLElement | null;
     if (wasCollapsed) {
@@ -370,9 +406,12 @@ export class DynamicViewsMasonryView extends BasesView {
       const groupKey = g.hasKey() ? serializeGroupKey(g.key) : undefined;
       this.collapsedGroups.add(this.getCollapseKey(groupKey));
     }
-    void this.plugin.persistenceManager.setBasesState(this.currentFile, {
-      collapsedGroups: Array.from(this.collapsedGroups),
-    });
+    void this.plugin.persistenceManager.setBasesState(
+      this.viewId ?? undefined,
+      {
+        collapsedGroups: Array.from(this.collapsedGroups),
+      },
+    );
     this.renderState.lastRenderHash = "";
     this.onDataUpdated();
   }
@@ -380,9 +419,12 @@ export class DynamicViewsMasonryView extends BasesView {
   /** Unfold all groups — called by command palette */
   public unfoldAllGroups(): void {
     this.collapsedGroups.clear();
-    void this.plugin.persistenceManager.setBasesState(this.currentFile, {
-      collapsedGroups: [],
-    });
+    void this.plugin.persistenceManager.setBasesState(
+      this.viewId ?? undefined,
+      {
+        collapsedGroups: [],
+      },
+    );
     this.onDataUpdated();
   }
 
@@ -636,13 +678,16 @@ export class DynamicViewsMasonryView extends BasesView {
   }
 
   onDataUpdated(): void {
+    // Ensure viewId is set before any persistence operations
+    this.ensureViewId();
+
     // Load collapsed groups from persisted UI state only on first render.
     // After that, the in-memory Set is authoritative (toggleGroupCollapse persists changes).
     // Reloading on every onDataUpdated is unsafe: style-settings triggers onDataUpdated
     // with stale persistence or wrong-file lookups, wiping the in-memory state.
     if (!this._collapsedGroupsLoaded) {
       const basesState = this.plugin.persistenceManager.getBasesState(
-        this.currentFile,
+        this.viewId ?? undefined,
       );
       this.collapsedGroups = new Set(basesState.collapsedGroups ?? []);
       this._collapsedGroupsLoaded = true;

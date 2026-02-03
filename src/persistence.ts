@@ -1,4 +1,4 @@
-import { Plugin, TFile } from "obsidian";
+import { Plugin } from "obsidian";
 import type {
   PluginData,
   PluginSettings,
@@ -154,15 +154,6 @@ export class PersistenceManager {
     await this.plugin.saveData(sparse);
   }
 
-  /**
-   * Extract storage key (ctime) from TFile
-   * @private
-   */
-  private getFileKey(file: TFile | null): string | null {
-    if (!file?.stat?.ctime) return null;
-    return file.stat.ctime.toString();
-  }
-
   /** Returns fully resolved plugin settings (sparse overrides merged with defaults) */
   getPluginSettings(): PluginSettings {
     return { ...PLUGIN_SETTINGS, ...this.data.pluginSettings };
@@ -186,24 +177,22 @@ export class PersistenceManager {
   }
 
   // ============================================================================
-  // Bases State (collapsedGroups only, keyed by file ctime)
+  // Bases State (collapsedGroups only, keyed by view ID)
   // ============================================================================
 
-  getBasesState(file: TFile | null): BasesUIState {
-    const key = this.getFileKey(file);
-    if (!key) return { ...DEFAULT_BASES_STATE };
-    const state = this.data.basesStates[key];
+  getBasesState(viewId?: string): BasesUIState {
+    if (!viewId) return { ...DEFAULT_BASES_STATE };
+    const state = this.data.basesStates[viewId];
     return state ? { ...state } : { ...DEFAULT_BASES_STATE };
   }
 
   async setBasesState(
-    file: TFile | null,
+    viewId: string | undefined,
     state: Partial<BasesUIState>,
   ): Promise<void> {
-    const key = this.getFileKey(file);
-    if (!key) return;
+    if (!viewId) return;
 
-    const current = this.data.basesStates[key] || { ...DEFAULT_BASES_STATE };
+    const current = this.data.basesStates[viewId] || { ...DEFAULT_BASES_STATE };
 
     // Sanitize collapsedGroups array
     const sanitized: Partial<BasesUIState> = {};
@@ -213,7 +202,7 @@ export class PersistenceManager {
       );
     }
 
-    this.data.basesStates[key] = { ...current, ...sanitized };
+    this.data.basesStates[viewId] = { ...current, ...sanitized };
     await this.save();
   }
 

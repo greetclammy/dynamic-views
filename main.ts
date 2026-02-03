@@ -62,6 +62,11 @@ export default class DynamicViews extends Plugin {
     return Math.random().toString(36).substring(2, 8);
   }
 
+  /** Generate a 6-char alphanumeric view ID (public for Bases views) */
+  generateViewId(): string {
+    return Math.random().toString(36).substring(2, 8);
+  }
+
   async onload() {
     // Initialize blob cache (reset cleanup flag from previous session)
     initExternalBlobCache();
