@@ -49,7 +49,7 @@ const VALID_VIEW_VALUES: Partial<
   imagePosition: ["left", "right", "top", "bottom"],
   imageFit: ["crop", "contain"],
   propertyLabels: ["hide", "inline", "above"],
-  pairedPropertyLayout: ["left", "column", "right"],
+  rightPropertyPosition: ["left", "column", "right"],
   minimumColumns: ["one", "two"],
   ambientBackground: ["subtle", "dramatic", "disable"],
 };

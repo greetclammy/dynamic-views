@@ -2341,9 +2341,9 @@ function Card({
         const { propertyLabels } = settings;
 
         // Parse override lists for O(1) lookup
-        const unpairSet = parsePropertyList(settings.invertPairingForProperty);
+        const unpairSet = parsePropertyList(settings.invertPropertyPairing);
         const invertPositionSet = parsePropertyList(
-          settings.invertPositionForProperty,
+          settings.invertPropertyPosition,
         );
 
         // Group properties into sets based on pairing settings

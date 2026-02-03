@@ -41,10 +41,10 @@ export interface ViewDefaults {
   // Properties
   propertyLabels: "hide" | "inline" | "above";
   pairProperties: boolean;
-  pairedPropertyLayout: "left" | "column" | "right";
-  invertPairingForProperty: string;
+  rightPropertyPosition: "left" | "column" | "right";
+  invertPropertyPairing: string;
   showPropertiesAbove: boolean;
-  invertPositionForProperty: string;
+  invertPropertyPosition: string;
   urlProperty: string;
   // Other
   minimumColumns: 1 | 2;

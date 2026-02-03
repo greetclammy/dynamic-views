@@ -234,22 +234,22 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
         {
           type: "dropdown",
           displayName: "Right property position",
-          key: "pairedPropertyLayout",
+          key: "rightPropertyPosition",
           options: {
             left: "Left",
             column: "Column",
             right: "Right",
           },
-          default: d.pairedPropertyLayout,
+          default: d.rightPropertyPosition,
           shouldHide: (config: BasesConfig) =>
             (config.get("pairProperties") ?? d.pairProperties) === false,
         },
         {
           type: "text",
           displayName: "Invert pairing for property",
-          key: "invertPairingForProperty",
+          key: "invertPropertyPairing",
           placeholder: "Comma-separated if multiple",
-          default: d.invertPairingForProperty,
+          default: d.invertPropertyPairing,
         },
         {
           type: "toggle",
@@ -263,9 +263,9 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
         {
           type: "text",
           displayName: "Invert position for property",
-          key: "invertPositionForProperty",
+          key: "invertPropertyPosition",
           placeholder: "Comma-separated if multiple",
-          default: d.invertPositionForProperty,
+          default: d.invertPropertyPosition,
           shouldHide: (config: BasesConfig) =>
             !(config.get("textPreviewProperty") ?? d.textPreviewProperty) &&
             (config.get("fallbackToContent") ?? d.fallbackToContent) === false,
@@ -295,7 +295,7 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
         },
         {
           type: "dropdown",
-          displayName: "Ambient background",
+          displayName: "Ambient card background",
           key: "ambientBackground",
           options: {
             subtle: "Subtle",
@@ -303,6 +303,9 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
             disable: "Disable",
           },
           default: d.ambientBackground,
+          shouldHide: (config: BasesConfig) =>
+            (config.get("imageFormat") ?? d.imageFormat) === "poster" ||
+            (config.get("imageFormat") ?? d.imageFormat) === "backdrop",
         },
         {
           type: "text",
@@ -425,23 +428,23 @@ export function readBasesSettings(
         : defaults.propertyLabels;
     })(),
     pairProperties: getBool("pairProperties", defaults.pairProperties),
-    pairedPropertyLayout: (() => {
-      const value = config.get("pairedPropertyLayout");
+    rightPropertyPosition: (() => {
+      const value = config.get("rightPropertyPosition");
       return value === "left" || value === "column" || value === "right"
         ? value
-        : defaults.pairedPropertyLayout;
+        : defaults.rightPropertyPosition;
     })(),
-    invertPairingForProperty: getString(
-      "invertPairingForProperty",
-      defaults.invertPairingForProperty,
+    invertPropertyPairing: getString(
+      "invertPropertyPairing",
+      defaults.invertPropertyPairing,
     ),
     showPropertiesAbove: getBool(
       "showPropertiesAbove",
       defaults.showPropertiesAbove,
     ),
-    invertPositionForProperty: getString(
-      "invertPositionForProperty",
-      defaults.invertPositionForProperty,
+    invertPropertyPosition: getString(
+      "invertPropertyPosition",
+      defaults.invertPropertyPosition,
     ),
     urlProperty: getString("urlProperty", defaults.urlProperty),
     minimumColumns: (() => {
@@ -559,23 +562,23 @@ export function extractBasesTemplate(
         : defaults.propertyLabels;
     })(),
     pairProperties: getBool("pairProperties", defaults.pairProperties),
-    pairedPropertyLayout: (() => {
-      const value = config.get("pairedPropertyLayout");
+    rightPropertyPosition: (() => {
+      const value = config.get("rightPropertyPosition");
       return value === "left" || value === "column" || value === "right"
         ? value
-        : defaults.pairedPropertyLayout;
+        : defaults.rightPropertyPosition;
     })(),
-    invertPairingForProperty: getString(
-      "invertPairingForProperty",
-      defaults.invertPairingForProperty,
+    invertPropertyPairing: getString(
+      "invertPropertyPairing",
+      defaults.invertPropertyPairing,
     ),
     showPropertiesAbove: getBool(
       "showPropertiesAbove",
       defaults.showPropertiesAbove,
     ),
-    invertPositionForProperty: getString(
-      "invertPositionForProperty",
-      defaults.invertPositionForProperty,
+    invertPropertyPosition: getString(
+      "invertPropertyPosition",
+      defaults.invertPropertyPosition,
     ),
     urlProperty: getString("urlProperty", defaults.urlProperty),
     minimumColumns: (() => {

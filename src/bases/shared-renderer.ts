@@ -183,7 +183,7 @@ export function applyViewContainerStyles(
 ): void {
   // Paired property layout
   container.classList.remove(...PAIRED_PROPERTY_CLASSES);
-  switch (settings.pairedPropertyLayout) {
+  switch (settings.rightPropertyPosition) {
     case "left":
       container.classList.add("dynamic-views-paired-property-left");
       break;
@@ -1683,9 +1683,9 @@ export class SharedCardRenderer {
     if (!props || props.length === 0) return;
 
     // Parse override lists for O(1) lookup
-    const unpairSet = parsePropertyList(settings.invertPairingForProperty);
+    const unpairSet = parsePropertyList(settings.invertPropertyPairing);
     const invertPositionSet = parsePropertyList(
-      settings.invertPositionForProperty,
+      settings.invertPropertyPosition,
     );
 
     // Group properties into sets using pairing algorithm

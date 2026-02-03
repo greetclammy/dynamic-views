@@ -40,10 +40,10 @@ export const VIEW_DEFAULTS: ViewDefaults = {
   // Properties
   propertyLabels: "inline",
   pairProperties: false,
-  pairedPropertyLayout: "right",
-  invertPairingForProperty: "",
+  rightPropertyPosition: "right",
+  invertPropertyPairing: "",
   showPropertiesAbove: false,
-  invertPositionForProperty: "",
+  invertPropertyPosition: "",
   urlProperty: "url",
   // Other
   minimumColumns: 1 as const,
