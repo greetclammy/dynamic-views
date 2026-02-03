@@ -335,9 +335,7 @@ const QUERY = \`
 
 // ––––– DQL QUERY END –––––
 \`;
-
-const ID = '${queryId}';
-return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, ID);
+return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, '${queryId}');
 \`\`\`\n`;
   }
 
