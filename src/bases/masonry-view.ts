@@ -204,22 +204,11 @@ export class DynamicViewsMasonryView extends BasesView {
   private ensureViewId(): void {
     const file = this.currentFile;
     const viewName = this.config?.name;
-    console.debug(`ensureViewId file:`, file?.path, `viewName:`, viewName);
     if (!file || !viewName) return;
 
-    // Read existing fields via Bases config API
     const idField = this.config.get("id") as string | undefined;
     const storedCtime = this.config.get("ctime") as number | undefined;
     const fileCtime = file.stat.ctime;
-
-    console.debug(
-      `ensureViewId idField:`,
-      idField,
-      `storedCtime:`,
-      storedCtime,
-      `fileCtime:`,
-      fileCtime,
-    );
 
     let oldHash: string | undefined;
     let isRename = false;
@@ -227,38 +216,19 @@ export class DynamicViewsMasonryView extends BasesView {
     if (idField) {
       const [hash, storedName] = idField.split(":");
       oldHash = hash;
-      console.debug(
-        `ensureViewId parsed: hash=`,
-        hash,
-        `storedName=`,
-        storedName,
-      );
       const nameMismatch = storedName !== viewName;
       const ctimeMismatch = storedCtime !== fileCtime;
-      console.debug(
-        `ensureViewId match: name=`,
-        !nameMismatch,
-        `ctime=`,
-        !ctimeMismatch,
-      );
+
       if (!nameMismatch && !ctimeMismatch) {
-        // All match — use existing hash
-        console.debug(`ensureViewId using existing hash:`, hash);
         this.viewId = hash;
         return;
       }
       // Rename = name changed but ctime same (not file duplicate)
       isRename = nameMismatch && !ctimeMismatch;
-      console.debug(
-        `ensureViewId mismatch, regenerating (isRename:`,
-        isRename,
-        `)`,
-      );
     }
 
     // Generate new id and write via Bases config API
     this.viewId = this.plugin.generateViewId();
-    console.debug(`ensureViewId generated new:`, this.viewId);
     this.config.set("id", `${this.viewId}:${viewName}`);
     this.config.set("ctime", fileCtime);
 
@@ -270,7 +240,6 @@ export class DynamicViewsMasonryView extends BasesView {
       );
     }
 
-    // Schedule key reorder after Bases persists
     scheduleViewKeyReorder(this.app, file, viewName);
   }
 
