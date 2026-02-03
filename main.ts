@@ -354,13 +354,7 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, ID);
       const file = this.app.vault.getFileByPath(filePath);
       if (file) {
         const leaf = this.app.workspace.getLeaf("tab");
-        await leaf.openFile(file);
-        const view = leaf.view;
-        if (view instanceof MarkdownView) {
-          const viewState = view.getState();
-          viewState.mode = "preview";
-          await view.setState(viewState, { history: false });
-        }
+        await leaf.openFile(file, { eState: { rename: "all" } });
       }
     } catch (error) {
       new Notice(`Failed to create file. Check console for details.`);
