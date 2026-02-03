@@ -192,17 +192,17 @@ export class PersistenceManager {
   ): Promise<void> {
     if (!viewId) return;
 
-    const current = this.data.basesStates[viewId] || { ...DEFAULT_BASES_STATE };
-
     // Sanitize collapsedGroups array
-    const sanitized: Partial<BasesUIState> = {};
-    if (state.collapsedGroups) {
-      sanitized.collapsedGroups = state.collapsedGroups.map((item) =>
-        typeof item === "string" ? sanitizeString(item) : item,
-      );
-    }
+    const collapsedGroups = (state.collapsedGroups ?? [])
+      .map((item) => (typeof item === "string" ? sanitizeString(item) : item))
+      .filter((s): s is string => s !== null);
 
-    this.data.basesStates[viewId] = { ...current, ...sanitized };
+    // Sparse: delete entry if empty, otherwise store
+    if (collapsedGroups.length === 0) {
+      delete this.data.basesStates[viewId];
+    } else {
+      this.data.basesStates[viewId] = { collapsedGroups };
+    }
     await this.save();
   }
 
@@ -231,7 +231,10 @@ export class PersistenceManager {
   getDatacoreState(queryId?: string): DatacoreState {
     if (!queryId) return { ...DEFAULT_DATACORE_STATE };
     const state = this.data.datacoreStates[queryId];
-    return state ? { ...state } : { ...DEFAULT_DATACORE_STATE };
+    // Sparse: merge stored fields with defaults
+    return state
+      ? { ...DEFAULT_DATACORE_STATE, ...state }
+      : { ...DEFAULT_DATACORE_STATE };
   }
 
   /**
@@ -245,9 +248,7 @@ export class PersistenceManager {
   ): Promise<void> {
     if (!queryId) return; // No persistence without queryId
 
-    const current = this.data.datacoreStates[queryId] || {
-      ...DEFAULT_DATACORE_STATE,
-    };
+    const current = this.data.datacoreStates[queryId] || {};
 
     // Sanitize string fields
     const sanitized: Partial<DatacoreState> = {};
@@ -268,7 +269,22 @@ export class PersistenceManager {
       }
     }
 
-    this.data.datacoreStates[queryId] = { ...current, ...sanitized };
+    const merged = { ...current, ...sanitized };
+
+    // Sparse: only keep fields that differ from defaults
+    const sparse: Partial<DatacoreState> = {};
+    for (const [k, v] of Object.entries(merged)) {
+      if (v !== DEFAULT_DATACORE_STATE[k as keyof DatacoreState]) {
+        (sparse as Record<string, unknown>)[k] = v;
+      }
+    }
+
+    // Delete entry if all defaults, otherwise store sparse
+    if (Object.keys(sparse).length === 0) {
+      delete this.data.datacoreStates[queryId];
+    } else {
+      this.data.datacoreStates[queryId] = sparse as DatacoreState;
+    }
     await this.save();
   }
 
