@@ -346,7 +346,7 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, ID);
       const folderPath =
         activeFile?.parent?.path ??
         this.app.fileManager.getNewFileParent("").path;
-      const filePath = getAvailablePath(this.app, folderPath, "Dynamic view");
+      const filePath = getAvailablePath(this.app, folderPath, "Untitled");
       const template = this.getQueryTemplate();
 
       await this.app.vault.create(filePath, template);
