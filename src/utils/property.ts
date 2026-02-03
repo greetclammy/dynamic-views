@@ -173,6 +173,8 @@ const PROPERTY_SETTINGS_KEYS = [
   "textPreviewProperty",
   "imageProperty",
   "urlProperty",
+  "invertPropertyPairing",
+  "invertPropertyPosition",
 ] as const;
 
 /**

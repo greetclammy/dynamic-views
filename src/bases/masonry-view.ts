@@ -680,8 +680,24 @@ export class DynamicViewsMasonryView extends BasesView {
     // CSS fast-path: apply CSS-only settings immediately (bypasses throttle)
     this.applyCssOnlySettings();
 
+    // Delay reading config - Obsidian may fire onDataUpdated before updating config.getOrder()
+    // Using queueMicrotask gives Obsidian time to finish updating config state.
+    queueMicrotask(() => this.processDataUpdate());
+  }
+
+  /** Internal handler after config has settled */
+  private processDataUpdate(): void {
     // Set callback for trailing calls (hybrid throttle)
+    // Must call onDataUpdated (not processDataUpdate) to include CSS fast-path
     this.trailingUpdate.callback = () => this.onDataUpdated();
+
+    // Throttle: Obsidian fires duplicate onDataUpdated calls with stale config.
+    // Hybrid throttle: leading-edge for immediate response, trailing to catch coalesced updates.
+    if (
+      !shouldProcessDataUpdate(this.lastDataUpdateTime, this.trailingUpdate)
+    ) {
+      return;
+    }
 
     void (async () => {
       // Ensure all views in file have valid ids, get this view's id
@@ -712,14 +728,6 @@ export class DynamicViewsMasonryView extends BasesView {
 
       // Guard: skip if batch loading in progress
       if (this.isLoading) {
-        return;
-      }
-
-      // Guard: throttle rapid-fire calls (prevents infinite loop and stale config).
-      // Hybrid throttle: leading-edge for immediate response, trailing to catch coalesced updates.
-      if (
-        !shouldProcessDataUpdate(this.lastDataUpdateTime, this.trailingUpdate)
-      ) {
         return;
       }
 
