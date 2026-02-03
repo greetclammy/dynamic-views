@@ -5,6 +5,7 @@ import {
   MarkdownView,
   QueryController,
   TFile,
+  PaneType,
 } from "obsidian";
 import { PersistenceManager } from "./src/persistence";
 import { View } from "./src/datacore/view";
@@ -166,16 +167,24 @@ export default class DynamicViews extends Plugin {
     this.addRibbonIcon(
       "lucide-grid-2x-2",
       "Create new base with Grid view",
-      async () => {
-        await this.createBaseFile("dynamic-views-grid", "Grid");
+      async (evt: MouseEvent) => {
+        await this.createBaseFile(
+          "dynamic-views-grid",
+          "Grid",
+          getPaneType(evt, false),
+        );
       },
     );
 
     this.addRibbonIcon(
       "panels-right-bottom",
       "Create new base with Masonry view",
-      async () => {
-        await this.createBaseFile("dynamic-views-masonry", "Masonry");
+      async (evt: MouseEvent) => {
+        await this.createBaseFile(
+          "dynamic-views-masonry",
+          "Masonry",
+          getPaneType(evt, false),
+        );
       },
     );
 
@@ -236,7 +245,7 @@ export default class DynamicViews extends Plugin {
       id: "create-base-grid-view",
       name: "Create new base with Grid view",
       callback: async () => {
-        await this.createBaseFile("dynamic-views-grid", "Grid");
+        await this.createBaseFile("dynamic-views-grid", "Grid", false);
       },
     });
 
@@ -244,7 +253,7 @@ export default class DynamicViews extends Plugin {
       id: "create-base-masonry-view",
       name: "Create new base with Masonry view",
       callback: async () => {
-        await this.createBaseFile("dynamic-views-masonry", "Masonry");
+        await this.createBaseFile("dynamic-views-masonry", "Masonry", false);
       },
     });
 
@@ -351,7 +360,11 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, ID);
     }
   }
 
-  async createBaseFile(viewType: string, viewName: string) {
+  async createBaseFile(
+    viewType: string,
+    viewName: string,
+    paneType: PaneType | boolean,
+  ) {
     try {
       const folderPath = this.app.fileManager.getNewFileParent("").path;
       const filePath = getAvailableBasePath(this.app, folderPath, "Untitled");
@@ -361,7 +374,7 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, ID);
 
       const file = this.app.vault.getFileByPath(filePath);
       if (file) {
-        const leaf = this.app.workspace.getLeaf("tab");
+        const leaf = this.app.workspace.getLeaf(paneType);
         await leaf.openFile(file, { eState: { rename: "all" } });
       }
     } catch (error) {
