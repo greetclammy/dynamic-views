@@ -108,7 +108,7 @@ export default class DynamicViews extends Plugin {
     this.addCommand({
       id: "create-dynamic-view",
       name: "Create note with Datacore query",
-      icon: "lucide-database",
+      icon: "lucide-file-plus-corner",
       callback: async () => {
         await this.createExplorerFile();
       },
@@ -117,7 +117,7 @@ export default class DynamicViews extends Plugin {
     this.addCommand({
       id: "insert-dynamic-view-at-cursor",
       name: "Insert Datacore query",
-      icon: "lucide-database",
+      icon: "lucide-list-plus",
       editorCheckCallback: (
         checking: boolean,
         editor: Editor,
