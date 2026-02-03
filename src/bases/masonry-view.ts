@@ -1845,20 +1845,20 @@ export class DynamicViewsMasonryView extends BasesView {
           .filter((img): img is HTMLImageElement => img !== null);
 
         // Apply cached aspect ratios and collect images that need to load
+        // Note: Do NOT add cover-ready here - it would prevent setupImageLoadHandler
+        // from extracting/applying ambient color when the load event fires
         const uncachedImages = newCardImages.filter((img) => {
           const cachedRatio = getCachedAspectRatio(img.src);
           if (cachedRatio !== undefined) {
-            // Apply cached aspect ratio - height will be correct
+            // Apply cached aspect ratio - height will be correct for layout
             const card = img.closest<HTMLElement>(".card");
             if (card) {
               card.style.setProperty(
                 "--actual-aspect-ratio",
                 cachedRatio.toString(),
               );
-              // Mark as ready to prevent image-loader from triggering redundant layout update
-              card.classList.add("cover-ready");
             }
-            return false; // Don't need to wait
+            return false; // Don't need to wait for layout (ratio is known)
           }
           return true; // Need to wait for load
         });
