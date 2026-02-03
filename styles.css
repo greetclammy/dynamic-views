@@ -2881,6 +2881,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 .dynamic-views .bases-cards-group,
 .dynamic-views.is-grouped .bases-cards-container .bases-group-heading {
   position: static;
+  gap: inherit;
 }
 
 /* Sticky group headers (default: on) — collapsed headers should not stick.
