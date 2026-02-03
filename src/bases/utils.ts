@@ -910,3 +910,26 @@ export function clearOldTemplateToggles(
     }
   });
 }
+
+/**
+ * Throttle window for onDataUpdated calls (ms).
+ * Obsidian fires duplicate calls with stale config ~150-200ms after the correct call.
+ * Leading-edge throttle accepts first call and ignores subsequent calls within window.
+ */
+export const DATA_UPDATE_THROTTLE_MS = 250;
+
+/**
+ * Check if an onDataUpdated call should be throttled.
+ * Returns true if the call should proceed, false if it should be skipped.
+ * Updates lastTime in-place when proceeding.
+ */
+export function shouldProcessDataUpdate(lastTimeRef: {
+  value: number;
+}): boolean {
+  const now = Date.now();
+  if (now - lastTimeRef.value < DATA_UPDATE_THROTTLE_MS) {
+    return false;
+  }
+  lastTimeRef.value = now;
+  return true;
+}

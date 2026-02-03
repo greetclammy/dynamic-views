@@ -44,6 +44,7 @@ import {
   cleanupBaseFile,
   clearOldTemplateToggles,
   isCurrentTemplateView,
+  shouldProcessDataUpdate,
 } from "./utils";
 import {
   initializeContainerFocus,
@@ -155,6 +156,7 @@ export class DynamicViewsGridView extends BasesView {
   private hasBatchAppended: boolean = false;
   private collapsedGroups: Set<string> = new Set();
   private viewId: string | null = null;
+  private lastDataUpdateTime = { value: 0 };
 
   /** Get the current file by resolving from the leaf's view state (cached).
    *  controller.currentFile is a shared global that can return the wrong file. */
@@ -545,6 +547,19 @@ export class DynamicViewsGridView extends BasesView {
     // Handle template toggle changes (Obsidian calls onDataUpdated for config changes)
     this.handleTemplateToggle();
 
+    // Delay reading config - Obsidian may fire onDataUpdated before updating config.getOrder()
+    // Using queueMicrotask gives Obsidian time to finish updating config state.
+    queueMicrotask(() => this.processDataUpdate());
+  }
+
+  /** Internal handler after config has settled */
+  private processDataUpdate(): void {
+    // Throttle: Obsidian fires duplicate onDataUpdated calls with stale config.
+    // Leading-edge throttle accepts first call and ignores subsequent calls within window.
+    if (!shouldProcessDataUpdate(this.lastDataUpdateTime)) {
+      return;
+    }
+
     void (async () => {
       // Ensure all views in file have valid ids, get this view's id
       const viewIds = await cleanupBaseFile(
@@ -719,6 +734,22 @@ export class DynamicViewsGridView extends BasesView {
         renderHash === this.renderState.lastRenderHash &&
         this.feedContainerRef.current?.children.length
       ) {
+        // Obsidian may fire onDataUpdated before config.getOrder() is updated.
+        // Schedule delayed re-checks at increasing intervals to catch late config updates.
+        const propsSnapshot = visibleProperties.join("\0");
+        const recheckDelays = [100, 250, 500];
+        for (const delay of recheckDelays) {
+          setTimeout(() => {
+            const currentProps = this.config?.getOrder?.() ?? [];
+            const currentPropsStr = currentProps.join("\0");
+            if (currentPropsStr !== propsSnapshot) {
+              // Reset throttle to allow this re-render
+              this.lastDataUpdateTime.value = 0;
+              this.processDataUpdate();
+            }
+          }, delay);
+        }
+
         // Restore column CSS (may be lost on tab switch)
         // Only set if actually changed to avoid triggering observers
         const currentGridColumns =

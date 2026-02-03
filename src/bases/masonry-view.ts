@@ -55,6 +55,7 @@ import {
   cleanupBaseFile,
   clearOldTemplateToggles,
   isCurrentTemplateView,
+  shouldProcessDataUpdate,
 } from "./utils";
 import {
   initializeContainerFocus,
@@ -174,7 +175,7 @@ export class DynamicViewsMasonryView extends BasesView {
   private totalEntries: number = 0;
   private displayedSoFar: number = 0;
   private propertyMeasuredTimeout: number | null = null;
-  private lastOnDataUpdatedTime: number = 0;
+  private lastDataUpdateTime = { value: 0 };
   private collapsedGroups: Set<string> = new Set();
   private viewId: string | null = null;
 
@@ -680,13 +681,12 @@ export class DynamicViewsMasonryView extends BasesView {
         return;
       }
 
-      // Guard: throttle rapid-fire calls (prevents infinite loop)
-      // Allow first call and subsequent calls after 100ms cooldown
-      const now = Date.now();
-      if (now - this.lastOnDataUpdatedTime < 100) {
+      // Guard: throttle rapid-fire calls (prevents infinite loop and stale config).
+      // Obsidian fires duplicate onDataUpdated calls with stale config ~150-200ms
+      // after the correct call. Leading-edge throttle accepts first call only.
+      if (!shouldProcessDataUpdate(this.lastDataUpdateTime)) {
         return;
       }
-      this.lastOnDataUpdatedTime = now;
 
       // Increment render version to cancel any in-flight stale renders
       this.renderState.version++;
