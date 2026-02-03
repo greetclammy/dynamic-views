@@ -470,9 +470,10 @@ export function View({
             (overrides as Record<string, unknown>)[key] = settings[key];
           }
         }
-        void persistenceManager.setDatacoreState(QUERY_ID, {
-          settings: overrides,
-        });
+        void persistenceManager.setDatacoreState(
+          QUERY_ID,
+          Object.keys(overrides).length > 0 ? { settings: overrides } : {},
+        );
       }
     }, 300);
     return () => {
