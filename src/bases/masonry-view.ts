@@ -864,7 +864,7 @@ export class DynamicViewsMasonryView extends BasesView {
       // Set CSS variable for image aspect ratio
       this.containerEl.style.setProperty(
         "--dynamic-views-image-aspect-ratio",
-        String(settings.imageAspectRatio),
+        String(settings.imageRatio),
       );
 
       // Transform to CardData (only visible entries)

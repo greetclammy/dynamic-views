@@ -780,7 +780,7 @@ export function View({
       imageFormat: settings.imageFormat,
       imagePosition: settings.imagePosition,
       imageFit: settings.imageFit,
-      imageAspectRatio: settings.imageAspectRatio,
+      imageRatio: settings.imageRatio,
     });
 
     const prevSettings = JSON.stringify(prevSettingsRef.current);
@@ -810,7 +810,7 @@ export function View({
         imageFormat: settings.imageFormat,
         imagePosition: settings.imagePosition,
         imageFit: settings.imageFit,
-        imageAspectRatio: settings.imageAspectRatio,
+        imageRatio: settings.imageRatio,
       } as ResolvedSettings;
     }
   }, [settings]);
@@ -1348,7 +1348,7 @@ export function View({
       // Set CSS variable for image aspect ratio
       container.style.setProperty(
         "--dynamic-views-image-aspect-ratio",
-        String(settings.imageAspectRatio),
+        String(settings.imageRatio),
       );
     };
 

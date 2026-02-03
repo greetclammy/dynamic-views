@@ -200,7 +200,7 @@ export function Settings({
         imageFormat: settings.imageFormat,
         imagePosition: settings.imagePosition,
         imageFit: settings.imageFit,
-        imageAspectRatio: settings.imageAspectRatio,
+        imageRatio: settings.imageRatio,
         queryHeight: settings.queryHeight,
         listMarker: settings.listMarker,
         cardSize: settings.cardSize,
@@ -522,19 +522,19 @@ export function Settings({
                       min="0.25"
                       max="2.5"
                       step="0.05"
-                      value={settings.imageAspectRatio}
+                      value={settings.imageRatio}
                       onChange={(e: unknown) => {
                         const evt = e as Event & {
                           target: HTMLInputElement;
                         };
                         onSettingsChange({
-                          imageAspectRatio: parseFloat(evt.target.value),
+                          imageRatio: parseFloat(evt.target.value),
                         });
                       }}
                       style={{ flex: 1 }}
                     />
                     <span style={{ minWidth: "40px" }}>
-                      {settings.imageAspectRatio.toFixed(2)}
+                      {settings.imageRatio.toFixed(2)}
                     </span>
                   </div>
                 </div>

@@ -197,11 +197,11 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
         {
           type: "slider",
           displayName: "Ratio",
-          key: "imageAspectRatio",
+          key: "imageRatio",
           min: 0.25,
           max: 2.5,
           step: 0.05,
-          default: d.imageAspectRatio,
+          default: d.imageRatio,
           shouldHide: (config: BasesConfig) =>
             (config.get("imageFormat") ?? d.imageFormat) === "backdrop" ||
             (!(config.get("imageProperty") || d.imageProperty) &&
@@ -417,7 +417,7 @@ export function readBasesSettings(
         ? value
         : defaults.imageFit;
     })(),
-    imageAspectRatio: getNumber("imageAspectRatio", defaults.imageAspectRatio),
+    imageRatio: getNumber("imageRatio", defaults.imageRatio),
     propertyLabels: (() => {
       const value = config.get("propertyLabels");
       return value === "hide" || value === "inline" || value === "above"
@@ -551,7 +551,7 @@ export function extractBasesTemplate(
         ? value
         : defaults.imageFit;
     })(),
-    imageAspectRatio: getNumber("imageAspectRatio", defaults.imageAspectRatio),
+    imageRatio: getNumber("imageRatio", defaults.imageRatio),
     propertyLabels: (() => {
       const value = config.get("propertyLabels");
       return value === "hide" || value === "inline" || value === "above"

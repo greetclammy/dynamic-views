@@ -36,7 +36,7 @@ export const VIEW_DEFAULTS: ViewDefaults = {
   thumbnailSize: "standard",
   imagePosition: "right",
   imageFit: "crop",
-  imageAspectRatio: 1.0,
+  imageRatio: 1.0,
   // Properties
   propertyLabels: "inline",
   pairProperties: false,

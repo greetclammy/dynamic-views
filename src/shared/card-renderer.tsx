@@ -1752,9 +1752,9 @@ function Card({
 
             // Get aspect ratio from settings
             const aspectRatio =
-              typeof settings.imageAspectRatio === "string"
-                ? parseFloat(settings.imageAspectRatio)
-                : settings.imageAspectRatio || 1.0;
+              typeof settings.imageRatio === "string"
+                ? parseFloat(settings.imageRatio)
+                : settings.imageRatio || 1.0;
             const wrapperRatio = aspectRatio / (aspectRatio + 1);
 
             // Set wrapper ratio for potential CSS calc usage

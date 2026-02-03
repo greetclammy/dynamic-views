@@ -37,7 +37,7 @@ export interface ViewDefaults {
   thumbnailSize: "compact" | "standard" | "expanded";
   imagePosition: "left" | "right" | "top" | "bottom";
   imageFit: "crop" | "contain";
-  imageAspectRatio: number;
+  imageRatio: number;
   // Properties
   propertyLabels: "hide" | "inline" | "above";
   pairProperties: boolean;

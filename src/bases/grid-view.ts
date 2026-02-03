@@ -774,7 +774,7 @@ export class DynamicViewsGridView extends BasesView {
       this.containerEl.style.setProperty("--grid-columns", String(cols));
       this.containerEl.style.setProperty(
         "--dynamic-views-image-aspect-ratio",
-        String(settings.imageAspectRatio),
+        String(settings.imageRatio),
       );
 
       // Transform to CardData (only visible entries)
