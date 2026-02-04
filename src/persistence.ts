@@ -231,19 +231,10 @@ export class PersistenceManager {
   getDatacoreState(queryId?: string): DatacoreState {
     if (!queryId) return { ...DEFAULT_DATACORE_STATE };
     const state = this.data.datacoreStates[queryId];
-    if (!state) return { ...DEFAULT_DATACORE_STATE };
-
     // Sparse: merge stored fields with defaults
-    const merged = { ...DEFAULT_DATACORE_STATE, ...state };
-
-    // Convert minimumColumns string to number for internal use (Bases parity)
-    if (merged.settings?.minimumColumns) {
-      const val = merged.settings.minimumColumns as unknown;
-      if (val === "one") merged.settings.minimumColumns = 1;
-      else if (val === "two") merged.settings.minimumColumns = 2;
-    }
-
-    return merged;
+    return state
+      ? { ...DEFAULT_DATACORE_STATE, ...state }
+      : { ...DEFAULT_DATACORE_STATE };
   }
 
   /**
@@ -270,13 +261,9 @@ export class PersistenceManager {
       } else if (typeof v === "string") {
         (sanitized as Record<string, string>)[stateKey] = sanitizeString(v);
       } else if (k === "settings" && typeof v === "object" && v !== null) {
-        const settingsObj = sanitizeObject(v as Record<string, unknown>);
-        // Convert minimumColumns to string for Bases parity
-        if (typeof settingsObj.minimumColumns === "number") {
-          settingsObj.minimumColumns =
-            settingsObj.minimumColumns === 1 ? "one" : "two";
-        }
-        (sanitized as Record<string, unknown>)[stateKey] = settingsObj;
+        (sanitized as Record<string, unknown>)[stateKey] = sanitizeObject(
+          v as Record<string, unknown>,
+        );
       } else {
         (sanitized as Record<string, unknown>)[stateKey] = v;
       }
@@ -304,29 +291,14 @@ export class PersistenceManager {
   getSettingsTemplate(
     viewType: "grid" | "masonry" | "datacore",
   ): SettingsTemplate | undefined {
-    const template = this.data.templates[viewType];
-    if (!template?.settings) return template;
-
-    // Convert minimumColumns string to number for internal use (Bases parity)
-    const val = template.settings.minimumColumns as unknown;
-    if (val === "one") template.settings.minimumColumns = 1;
-    else if (val === "two") template.settings.minimumColumns = 2;
-
-    return template;
+    return this.data.templates[viewType];
   }
 
   async setSettingsTemplate(
     viewType: "grid" | "masonry" | "datacore",
     template: SettingsTemplate | null,
   ): Promise<void> {
-    if (template?.settings) {
-      // Convert minimumColumns to string for Bases parity
-      if (typeof template.settings.minimumColumns === "number") {
-        (template.settings as Record<string, unknown>).minimumColumns =
-          template.settings.minimumColumns === 1 ? "one" : "two";
-      }
-      this.data.templates[viewType] = template;
-    } else if (template) {
+    if (template) {
       this.data.templates[viewType] = template;
     } else {
       delete this.data.templates[viewType];
