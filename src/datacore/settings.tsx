@@ -75,6 +75,7 @@ export function Settings({
         fallbackToContent: settings.fallbackToContent,
         fallbackToEmbeds: settings.fallbackToEmbeds,
         imageFormat: settings.imageFormat,
+        thumbnailSize: settings.thumbnailSize,
         imagePosition: settings.imagePosition,
         imageFit: settings.imageFit,
         imageRatio: settings.imageRatio,
@@ -332,6 +333,30 @@ export function Settings({
                   <option value="backdrop">Backdrop</option>
                 </select>
               </div>
+              {settings.imageFormat === "thumbnail" && (
+                <div className="setting-item setting-item-dropdown">
+                  <div className="setting-item-info">
+                    <label>Size</label>
+                  </div>
+                  <select
+                    value={settings.thumbnailSize}
+                    onChange={(e: unknown) => {
+                      const evt = e as Event & { target: HTMLSelectElement };
+                      onSettingsChange({
+                        thumbnailSize: evt.target.value as
+                          | "compact"
+                          | "standard"
+                          | "expanded",
+                      });
+                    }}
+                    className="dropdown"
+                  >
+                    <option value="compact">Compact</option>
+                    <option value="standard">Standard</option>
+                    <option value="expanded">Expanded</option>
+                  </select>
+                </div>
+              )}
               {settings.imageFormat !== "poster" &&
                 settings.imageFormat !== "backdrop" && (
                   <div className="setting-item setting-item-dropdown">
@@ -412,31 +437,6 @@ export function Settings({
                   </div>
                 </div>
               )}
-              {(settings.imageFormat === "thumbnail" ||
-                settings.imageFormat === "cover") && (
-                <div className="setting-item setting-item-dropdown">
-                  <div className="setting-item-info">
-                    <label>Ambient background</label>
-                  </div>
-                  <select
-                    value={settings.ambientBackground}
-                    onChange={(e: unknown) => {
-                      const evt = e as Event & { target: HTMLSelectElement };
-                      onSettingsChange({
-                        ambientBackground: evt.target.value as
-                          | "subtle"
-                          | "dramatic"
-                          | "disable",
-                      });
-                    }}
-                    className="dropdown"
-                  >
-                    <option value="subtle">Subtle</option>
-                    <option value="dramatic">Dramatic</option>
-                    <option value="disable">Disable</option>
-                  </select>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -484,11 +484,6 @@ export function Settings({
         <div
           className={`settings-section-content ${expandedSections.more ? "" : "collapsed"}`}
         >
-          {renderTextInput(
-            "cssclasses",
-            "cssclasses",
-            "Comma-separated if multiple",
-          )}
           <div className="setting-item setting-item-dropdown">
             <div className="setting-item-info">
               <label>Minimum columns</label>
@@ -507,6 +502,33 @@ export function Settings({
               <option value={2}>Two</option>
             </select>
           </div>
+          <div className="setting-item setting-item-dropdown">
+            <div className="setting-item-info">
+              <label>Ambient background</label>
+            </div>
+            <select
+              value={settings.ambientBackground}
+              onChange={(e: unknown) => {
+                const evt = e as Event & { target: HTMLSelectElement };
+                onSettingsChange({
+                  ambientBackground: evt.target.value as
+                    | "subtle"
+                    | "dramatic"
+                    | "disable",
+                });
+              }}
+              className="dropdown"
+            >
+              <option value="subtle">Subtle</option>
+              <option value="dramatic">Dramatic</option>
+              <option value="disable">Disable</option>
+            </select>
+          </div>
+          {renderTextInput(
+            "cssclasses",
+            "cssclasses",
+            "Comma-separated if multiple",
+          )}
           <div className="setting-item setting-item-dropdown">
             <div className="setting-item-info">
               <label>List marker</label>

@@ -73,6 +73,13 @@ import {
   syncResponsiveClasses,
 } from "../bases/shared-renderer";
 
+// Thumbnail size CSS values
+const THUMBNAIL_SIZE_MAP: Record<string, string> = {
+  compact: "64px",
+  standard: "80px",
+  expanded: "94.5px",
+};
+
 // Extend App type to include isMobile property
 declare module "obsidian" {
   interface App {
@@ -1123,6 +1130,11 @@ export function View({
             "--dynamic-views-text-preview-lines",
             String(settings.textPreviewLines),
           );
+          // Set CSS variable for thumbnail size
+          container.style.setProperty(
+            "--dynamic-views-thumbnail-size",
+            THUMBNAIL_SIZE_MAP[settings.thumbnailSize] ?? "80px",
+          );
 
           lastLayoutResultRef.current = result;
           prevMasonryCountRef.current = cards.length;
@@ -1146,6 +1158,11 @@ export function View({
         container.style.setProperty(
           "--dynamic-views-text-preview-lines",
           String(settings.textPreviewLines),
+        );
+        // Set CSS variable for thumbnail size
+        container.style.setProperty(
+          "--dynamic-views-thumbnail-size",
+          THUMBNAIL_SIZE_MAP[settings.thumbnailSize] ?? "80px",
         );
 
         // Store for incremental updates
@@ -1272,6 +1289,7 @@ export function View({
     settings.cardSize,
     settings.minimumColumns,
     settings.textPreviewLines,
+    settings.thumbnailSize,
     _styleRevision,
     sorted.length,
     propertySettingsKey,
@@ -1313,6 +1331,11 @@ export function View({
         "--dynamic-views-text-preview-lines",
         String(settings.textPreviewLines),
       );
+      // Set CSS variable for thumbnail size
+      container.style.setProperty(
+        "--dynamic-views-thumbnail-size",
+        THUMBNAIL_SIZE_MAP[settings.thumbnailSize] ?? "80px",
+      );
     };
 
     updateGrid();
@@ -1341,6 +1364,7 @@ export function View({
     settings.cardSize,
     settings.minimumColumns,
     settings.textPreviewLines,
+    settings.thumbnailSize,
     _styleRevision,
     dc,
   ]);
