@@ -231,10 +231,19 @@ export class PersistenceManager {
   getDatacoreState(queryId?: string): DatacoreState {
     if (!queryId) return { ...DEFAULT_DATACORE_STATE };
     const state = this.data.datacoreStates[queryId];
+    if (!state) return { ...DEFAULT_DATACORE_STATE };
+
     // Sparse: merge stored fields with defaults
-    return state
-      ? { ...DEFAULT_DATACORE_STATE, ...state }
-      : { ...DEFAULT_DATACORE_STATE };
+    const merged = { ...DEFAULT_DATACORE_STATE, ...state };
+
+    // Convert minimumColumns string to number for internal use (Bases parity)
+    if (merged.settings?.minimumColumns) {
+      const val = merged.settings.minimumColumns as unknown;
+      if (val === "one") merged.settings.minimumColumns = 1;
+      else if (val === "two") merged.settings.minimumColumns = 2;
+    }
+
+    return merged;
   }
 
   /**
@@ -261,9 +270,13 @@ export class PersistenceManager {
       } else if (typeof v === "string") {
         (sanitized as Record<string, string>)[stateKey] = sanitizeString(v);
       } else if (k === "settings" && typeof v === "object" && v !== null) {
-        (sanitized as Record<string, unknown>)[stateKey] = sanitizeObject(
-          v as Record<string, unknown>,
-        );
+        const settingsObj = sanitizeObject(v as Record<string, unknown>);
+        // Convert minimumColumns to string for Bases parity
+        if (typeof settingsObj.minimumColumns === "number") {
+          settingsObj.minimumColumns =
+            settingsObj.minimumColumns === 1 ? "one" : "two";
+        }
+        (sanitized as Record<string, unknown>)[stateKey] = settingsObj;
       } else {
         (sanitized as Record<string, unknown>)[stateKey] = v;
       }
