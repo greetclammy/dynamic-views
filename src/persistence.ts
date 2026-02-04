@@ -59,8 +59,13 @@ function cleanupTemplateSettings(
     }
 
     // Reset stale enum values to first valid value
+    // Skip minimumColumns - Bases uses strings, Datacore uses numbers
     const validValues = VALID_VIEW_VALUES[key as keyof ViewDefaults];
-    if (validValues && !validValues.includes(String(settings[key]) as never)) {
+    if (
+      key !== "minimumColumns" &&
+      validValues &&
+      !validValues.includes(String(settings[key]) as never)
+    ) {
       settings[key] = validValues[0];
       changed = true;
     }
