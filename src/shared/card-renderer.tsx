@@ -647,6 +647,50 @@ function parsePropertyList(csv: string): Set<string> {
 }
 
 /**
+ * When pairProperties is OFF, compute which property indices should pair.
+ * Single inverted props can trigger pairing (default: pair up).
+ */
+function computeInvertPairs(
+  props: Array<{ name: string }>,
+  unpairSet: Set<string>,
+): Map<number, number> {
+  const pairs = new Map<number, number>(); // leftIdx → rightIdx
+  const claimed = new Set<number>();
+
+  for (let i = 0; i < props.length; i++) {
+    if (claimed.has(i)) continue;
+    if (!unpairSet.has(props[i].name)) continue;
+
+    let partnerIdx: number;
+    if (i === 0) {
+      // First prop → pair down
+      partnerIdx = 1;
+    } else if (i + 1 < props.length && unpairSet.has(props[i + 1].name)) {
+      // Next prop also inverted → pair down with it
+      partnerIdx = i + 1;
+    } else {
+      // Default → pair up
+      partnerIdx = i - 1;
+    }
+
+    // Validate partner exists and not claimed
+    if (
+      partnerIdx >= 0 &&
+      partnerIdx < props.length &&
+      !claimed.has(partnerIdx)
+    ) {
+      // Normalize: lower index as key
+      const leftIdx = Math.min(i, partnerIdx);
+      const rightIdx = Math.max(i, partnerIdx);
+      pairs.set(leftIdx, rightIdx);
+      claimed.add(leftIdx);
+      claimed.add(rightIdx);
+    }
+  }
+  return pairs;
+}
+
+/**
  * Wrapper for shouldCollapseField that handles Datacore-specific concerns:
  * - undefined propertyName (no property configured)
  * - unknown resolvedValue type (convert to string | null)
@@ -2356,23 +2400,27 @@ function Card({
           paired: boolean;
         }
 
+        // Pre-compute pairs when pairProperties OFF
+        const invertPairs = settings.pairProperties
+          ? null
+          : computeInvertPairs(props, unpairSet);
+
         const sets: PropertySet[] = [];
         let i = 0;
         while (i < props.length) {
           const current = props[i];
           const next = i + 1 < props.length ? props[i + 1] : null;
 
-          // Determine if this pair should be paired or solo
-          const currentInInvert = unpairSet.has(current.name);
-          const nextInInvert = next ? unpairSet.has(next.name) : false;
-
-          let shouldPair: boolean;
+          let shouldPair = false;
           if (settings.pairProperties) {
-            // Global ON: pair unless either is inverted
-            shouldPair = next !== null && !currentInInvert && !nextInInvert;
-          } else {
-            // Global OFF: solo unless both are inverted
-            shouldPair = next !== null && currentInInvert && nextInInvert;
+            // ON: pair unless either inverted
+            shouldPair =
+              next !== null &&
+              !unpairSet.has(current.name) &&
+              !unpairSet.has(next.name);
+          } else if (invertPairs) {
+            // OFF: check pre-computed pairs
+            shouldPair = invertPairs.get(i) === i + 1;
           }
 
           if (shouldPair && next) {

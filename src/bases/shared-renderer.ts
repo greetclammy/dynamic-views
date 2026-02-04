@@ -94,6 +94,50 @@ function parsePropertyList(csv: string): Set<string> {
 }
 
 /**
+ * When pairProperties is OFF, compute which property indices should pair.
+ * Single inverted props can trigger pairing (default: pair up).
+ */
+function computeInvertPairs(
+  props: Array<{ name: string }>,
+  unpairSet: Set<string>,
+): Map<number, number> {
+  const pairs = new Map<number, number>(); // leftIdx → rightIdx
+  const claimed = new Set<number>();
+
+  for (let i = 0; i < props.length; i++) {
+    if (claimed.has(i)) continue;
+    if (!unpairSet.has(props[i].name)) continue;
+
+    let partnerIdx: number;
+    if (i === 0) {
+      // First prop → pair down
+      partnerIdx = 1;
+    } else if (i + 1 < props.length && unpairSet.has(props[i + 1].name)) {
+      // Next prop also inverted → pair down with it
+      partnerIdx = i + 1;
+    } else {
+      // Default → pair up
+      partnerIdx = i - 1;
+    }
+
+    // Validate partner exists and not claimed
+    if (
+      partnerIdx >= 0 &&
+      partnerIdx < props.length &&
+      !claimed.has(partnerIdx)
+    ) {
+      // Normalize: lower index as key
+      const leftIdx = Math.min(i, partnerIdx);
+      const rightIdx = Math.max(i, partnerIdx);
+      pairs.set(leftIdx, rightIdx);
+      claimed.add(leftIdx);
+      claimed.add(rightIdx);
+    }
+  }
+  return pairs;
+}
+
+/**
  * Shared canvas for text measurement (avoids layout reads)
  */
 let measureCanvas: HTMLCanvasElement | null = null;
@@ -1694,38 +1738,45 @@ export class SharedCardRenderer {
       paired: boolean;
     }> = [];
 
+    // Pre-compute pairs when pairProperties OFF
+    const invertPairs = settings.pairProperties
+      ? null
+      : computeInvertPairs(props, unpairSet);
+
     let i = 0;
     while (i < props.length) {
       const current = props[i];
       const next = i + 1 < props.length ? props[i + 1] : null;
       const fieldIndex1 = i + 1; // 1-based
 
-      if (next) {
-        const currentInverted = unpairSet.has(current.name);
-        const nextInverted = unpairSet.has(next.name);
-        // Pair logic: pairProperties XOR inverted
-        const shouldPair = settings.pairProperties
-          ? !currentInverted && !nextInverted
-          : currentInverted && nextInverted;
-
-        if (shouldPair) {
-          sets.push({
-            items: [
-              { ...current, fieldIndex: fieldIndex1 },
-              { ...next, fieldIndex: fieldIndex1 + 1 },
-            ],
-            paired: true,
-          });
-          i += 2;
-          continue;
-        }
+      let shouldPair = false;
+      if (settings.pairProperties) {
+        // ON: pair unless either inverted
+        shouldPair =
+          next !== null &&
+          !unpairSet.has(current.name) &&
+          !unpairSet.has(next.name);
+      } else if (invertPairs) {
+        // OFF: check pre-computed pairs
+        shouldPair = invertPairs.get(i) === i + 1;
       }
 
-      sets.push({
-        items: [{ ...current, fieldIndex: fieldIndex1 }],
-        paired: false,
-      });
-      i += 1;
+      if (shouldPair && next) {
+        sets.push({
+          items: [
+            { ...current, fieldIndex: fieldIndex1 },
+            { ...next, fieldIndex: fieldIndex1 + 1 },
+          ],
+          paired: true,
+        });
+        i += 2;
+      } else {
+        sets.push({
+          items: [{ ...current, fieldIndex: fieldIndex1 }],
+          paired: false,
+        });
+        i += 1;
+      }
     }
 
     // Pre-compute hide settings
