@@ -75,9 +75,8 @@ const ALLOWED_VIEW_KEYS = new Set<string>([
   // Internal markers
   "isTemplate",
   "templateSetAt",
-  // Persistence ID (hash:viewName) and file ctime for duplicate detection
+  // Persistence ID (hash-ctime-viewName)
   "id",
-  "ctime",
 ]);
 
 /**
@@ -118,8 +117,10 @@ export async function cleanupBaseFile(
         | string
         | undefined;
       if (idField) {
-        const [hash] = idField.split(":");
-        hashCounts.set(hash, (hashCounts.get(hash) || 0) + 1);
+        const hashMatch = idField.match(/^([a-z0-9]{6})-/);
+        if (hashMatch) {
+          hashCounts.set(hashMatch[1], (hashCounts.get(hashMatch[1]) || 0) + 1);
+        }
       }
     }
 
@@ -139,33 +140,39 @@ export async function cleanupBaseFile(
       // Dedupe: validate id matches current view name and file ctime
       if (viewName) {
         const idField = viewObj.id as string | undefined;
-        const storedCtime = viewObj.ctime as number | undefined;
+        let storedCtime: number | undefined;
+        let storedName: string | undefined;
+        let oldHash: string | undefined;
+
+        if (idField) {
+          const match = idField.match(/^([a-z0-9]{6})-(\d{13})-(.+)$/);
+          if (match) {
+            oldHash = match[1];
+            storedCtime = parseInt(match[2], 10);
+            storedName = match[3];
+          }
+        }
+
+        const nameMismatch = storedName !== viewName;
+        const ctimeMismatch = storedCtime !== fileCtime;
 
         let needsNewId = false;
-        let oldHash: string | undefined;
         let isRename = false;
         let finalHash: string | undefined;
 
-        if (idField) {
-          const [hash, storedName] = idField.split(":");
-          oldHash = hash;
-          const nameMismatch = storedName !== viewName;
-          const ctimeMismatch = storedCtime !== fileCtime;
-
-          if (nameMismatch || ctimeMismatch) {
-            needsNewId = true;
-            // Rename = unique hash + name changed + ctime same (not file duplicate)
-            isRename =
-              hashCounts.get(hash) === 1 && nameMismatch && !ctimeMismatch;
-          }
-        } else {
+        if (nameMismatch || ctimeMismatch) {
           needsNewId = true;
+          // Rename = unique hash + name changed + ctime same (not file duplicate)
+          isRename =
+            oldHash !== undefined &&
+            hashCounts.get(oldHash) === 1 &&
+            nameMismatch &&
+            !ctimeMismatch;
         }
 
         if (needsNewId) {
           const newHash = Math.random().toString(36).substring(2, 8);
-          viewObj.id = `${newHash}:${viewName}`;
-          viewObj.ctime = fileCtime;
+          viewObj.id = `${newHash}-${fileCtime}-${viewName}`;
           changeCount++;
           finalHash = newHash;
 
