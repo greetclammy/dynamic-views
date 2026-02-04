@@ -1995,8 +1995,8 @@ export class SharedCardRenderer {
     }
 
     // Check if this is an empty property that should be hidden based on dropdown mode
-    const isEmpty =
-      stringValue === "" || (isTagProperty(propertyName) && !stringValue);
+    // Empty = no displayable value (null, undefined, or empty string)
+    const isEmpty = !stringValue;
     if (isEmpty) {
       if (hideEmptyMode === "all") return;
       if (
