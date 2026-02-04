@@ -21,7 +21,7 @@ export const PLUGIN_SETTINGS: PluginSettings = {
 
 export const VIEW_DEFAULTS: ViewDefaults = {
   // Card size
-  cardSize: 400,
+  cardSize: 300,
   // Header
   titleProperty: "file base name",
   subtitleProperty: "folder",
