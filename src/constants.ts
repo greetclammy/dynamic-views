@@ -23,8 +23,8 @@ export const VIEW_DEFAULTS: ViewDefaults = {
   // Card size
   cardSize: 300,
   // Header
-  titleProperty: "file base name",
-  subtitleProperty: "folder",
+  titleProperty: "file.name",
+  subtitleProperty: "file.folder",
   // Text preview
   textPreviewProperty: "",
   fallbackToContent: true,
@@ -38,7 +38,7 @@ export const VIEW_DEFAULTS: ViewDefaults = {
   imageFit: "crop",
   imageRatio: 1.0,
   // Properties
-  propertyLabels: "inline",
+  propertyLabels: "hide",
   pairProperties: false,
   rightPropertyPosition: "right",
   invertPropertyPairing: "",
