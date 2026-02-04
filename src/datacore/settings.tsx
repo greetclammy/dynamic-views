@@ -484,25 +484,6 @@ export function Settings({
         <div
           className={`settings-section-content ${expandedSections.more ? "" : "collapsed"}`}
         >
-          <div className="setting-item setting-item-dropdown">
-            <div className="setting-item-info">
-              <label>List marker</label>
-            </div>
-            <select
-              value={settings.listMarker}
-              onChange={(e: unknown) => {
-                const evt = e as Event & { target: HTMLSelectElement };
-                onSettingsChange({
-                  listMarker: evt.target.value as "bullet" | "number" | "none",
-                });
-              }}
-              className="dropdown"
-            >
-              <option value="bullet">Bullet</option>
-              <option value="number">Number</option>
-              <option value="none">None</option>
-            </select>
-          </div>
           <div className="setting-item setting-item-text">
             <div className="setting-item-info">
               <label>View height</label>
@@ -544,6 +525,25 @@ export function Settings({
                 style={{ width: "80px" }}
               />
             </div>
+          </div>
+          <div className="setting-item setting-item-dropdown">
+            <div className="setting-item-info">
+              <label>List marker</label>
+            </div>
+            <select
+              value={settings.listMarker}
+              onChange={(e: unknown) => {
+                const evt = e as Event & { target: HTMLSelectElement };
+                onSettingsChange({
+                  listMarker: evt.target.value as "bullet" | "number" | "none",
+                });
+              }}
+              className="dropdown"
+            >
+              <option value="bullet">Bullet</option>
+              <option value="number">Number</option>
+              <option value="none">None</option>
+            </select>
           </div>
           <div className="setting-item setting-item-dropdown">
             <div className="setting-item-info">
