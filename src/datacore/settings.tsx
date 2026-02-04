@@ -486,54 +486,6 @@ export function Settings({
         >
           <div className="setting-item setting-item-dropdown">
             <div className="setting-item-info">
-              <label>Minimum columns</label>
-            </div>
-            <select
-              value={settings.minimumColumns}
-              onChange={(e: unknown) => {
-                const evt = e as Event & { target: HTMLSelectElement };
-                onSettingsChange({
-                  minimumColumns: parseInt(evt.target.value) as 1 | 2,
-                });
-              }}
-              className="dropdown"
-            >
-              <option value={1}>One</option>
-              <option value={2}>Two</option>
-            </select>
-          </div>
-          {settings.imageFormat !== "poster" &&
-            settings.imageFormat !== "backdrop" && (
-              <div className="setting-item setting-item-dropdown">
-                <div className="setting-item-info">
-                  <label>Ambient background</label>
-                </div>
-                <select
-                  value={settings.ambientBackground}
-                  onChange={(e: unknown) => {
-                    const evt = e as Event & { target: HTMLSelectElement };
-                    onSettingsChange({
-                      ambientBackground: evt.target.value as
-                        | "subtle"
-                        | "dramatic"
-                        | "disable",
-                    });
-                  }}
-                  className="dropdown"
-                >
-                  <option value="subtle">Subtle</option>
-                  <option value="dramatic">Dramatic</option>
-                  <option value="disable">Disable</option>
-                </select>
-              </div>
-            )}
-          {renderTextInput(
-            "cssclasses",
-            "cssclasses",
-            "Comma-separated if multiple",
-          )}
-          <div className="setting-item setting-item-dropdown">
-            <div className="setting-item-info">
               <label>List marker</label>
             </div>
             <select
@@ -593,6 +545,54 @@ export function Settings({
               />
             </div>
           </div>
+          <div className="setting-item setting-item-dropdown">
+            <div className="setting-item-info">
+              <label>Minimum columns</label>
+            </div>
+            <select
+              value={settings.minimumColumns}
+              onChange={(e: unknown) => {
+                const evt = e as Event & { target: HTMLSelectElement };
+                onSettingsChange({
+                  minimumColumns: parseInt(evt.target.value) as 1 | 2,
+                });
+              }}
+              className="dropdown"
+            >
+              <option value={1}>One</option>
+              <option value={2}>Two</option>
+            </select>
+          </div>
+          {renderTextInput(
+            "cssclasses",
+            "cssclasses",
+            "Comma-separated if multiple",
+          )}
+          {settings.imageFormat !== "poster" &&
+            settings.imageFormat !== "backdrop" && (
+              <div className="setting-item setting-item-dropdown">
+                <div className="setting-item-info">
+                  <label>Ambient background</label>
+                </div>
+                <select
+                  value={settings.ambientBackground}
+                  onChange={(e: unknown) => {
+                    const evt = e as Event & { target: HTMLSelectElement };
+                    onSettingsChange({
+                      ambientBackground: evt.target.value as
+                        | "subtle"
+                        | "dramatic"
+                        | "disable",
+                    });
+                  }}
+                  className="dropdown"
+                >
+                  <option value="subtle">Subtle</option>
+                  <option value="dramatic">Dramatic</option>
+                  <option value="disable">Disable</option>
+                </select>
+              </div>
+            )}
           <div className="setting-item setting-item-toggle">
             <div className="setting-item-info">
               <label>Use these settings for new views</label>

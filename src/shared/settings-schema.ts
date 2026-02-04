@@ -227,6 +227,36 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           shouldHide: (config: BasesConfig) => config.getOrder().length === 0,
         },
         {
+          type: "text",
+          displayName: "URL property",
+          key: "urlProperty",
+          placeholder: "Comma-separated if multiple",
+          default: d.urlProperty,
+        },
+        {
+          type: "toggle",
+          displayName: "Show properties above text preview",
+          key: "showPropertiesAbove",
+          default: d.showPropertiesAbove,
+          shouldHide: (config: BasesConfig) =>
+            config.getOrder().length === 0 ||
+            (!(config.get("textPreviewProperty") ?? d.textPreviewProperty) &&
+              (config.get("fallbackToContent") ?? d.fallbackToContent) ===
+                false),
+        },
+        {
+          type: "text",
+          displayName: "Invert position for property",
+          key: "invertPropertyPosition",
+          placeholder: "Comma-separated if multiple",
+          default: d.invertPropertyPosition,
+          shouldHide: (config: BasesConfig) =>
+            config.getOrder().length <= 1 ||
+            (!(config.get("textPreviewProperty") ?? d.textPreviewProperty) &&
+              (config.get("fallbackToContent") ?? d.fallbackToContent) ===
+                false),
+        },
+        {
           type: "toggle",
           displayName: "Pair properties",
           key: "pairProperties",
@@ -255,36 +285,6 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           default: d.invertPropertyPairing,
           shouldHide: (config: BasesConfig) => config.getOrder().length <= 1,
         },
-        {
-          type: "toggle",
-          displayName: "Show properties above text preview",
-          key: "showPropertiesAbove",
-          default: d.showPropertiesAbove,
-          shouldHide: (config: BasesConfig) =>
-            config.getOrder().length === 0 ||
-            (!(config.get("textPreviewProperty") ?? d.textPreviewProperty) &&
-              (config.get("fallbackToContent") ?? d.fallbackToContent) ===
-                false),
-        },
-        {
-          type: "text",
-          displayName: "Invert position for property",
-          key: "invertPropertyPosition",
-          placeholder: "Comma-separated if multiple",
-          default: d.invertPropertyPosition,
-          shouldHide: (config: BasesConfig) =>
-            config.getOrder().length <= 1 ||
-            (!(config.get("textPreviewProperty") ?? d.textPreviewProperty) &&
-              (config.get("fallbackToContent") ?? d.fallbackToContent) ===
-                false),
-        },
-        {
-          type: "text",
-          displayName: "URL property",
-          key: "urlProperty",
-          placeholder: "Comma-separated if multiple",
-          default: d.urlProperty,
-        },
       ],
     },
     {
@@ -302,6 +302,13 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           default: viewType === "masonry" ? "two" : "one",
         },
         {
+          type: "text",
+          displayName: "cssclasses",
+          key: "cssclasses",
+          placeholder: "Comma-separated if multiple",
+          default: d.cssclasses,
+        },
+        {
           type: "dropdown",
           displayName: "Ambient card background",
           key: "ambientBackground",
@@ -317,13 +324,6 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
             (!(config.get("imageProperty") || d.imageProperty) &&
               (config.get("fallbackToEmbeds") ?? d.fallbackToEmbeds) ===
                 "never"),
-        },
-        {
-          type: "text",
-          displayName: "cssclasses",
-          key: "cssclasses",
-          placeholder: "Comma-separated if multiple",
-          default: d.cssclasses,
         },
         {
           type: "toggle",
