@@ -7553,6 +7553,7 @@ body.dynamic-views-no-fade-truncated-text
   .dynamic-views .card.thumbnail-stack .card-content,
   .bases-view .card.thumbnail-stack .card-content {
     flex-direction: column;
+    flex-grow: 0;
   }
 
   /* Thumbnail order for stacked layout - left goes above text, right stays below */
