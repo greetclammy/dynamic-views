@@ -929,7 +929,11 @@ export const DATA_UPDATE_THROTTLE_MS = 250;
  */
 export function shouldProcessDataUpdate(
   lastTimeRef: { value: number },
-  trailingRef?: { timeoutId: number | null; callback: (() => void) | null },
+  trailingRef?: {
+    timeoutId: number | null;
+    callback: (() => void) | null;
+    isTrailing?: boolean;
+  },
 ): boolean {
   const now = Date.now();
 
@@ -943,7 +947,10 @@ export function shouldProcessDataUpdate(
         DATA_UPDATE_THROTTLE_MS - (now - lastTimeRef.value) + 10;
       trailingRef.timeoutId = window.setTimeout(() => {
         trailingRef.timeoutId = null;
-        // Don't update lastTimeRef here - let callback's throttle check do it
+        // Flag trailing call so render path can detect stale-settings reverts.
+        // Don't reset after callback — onDataUpdated defers via queueMicrotask,
+        // so a synchronous reset would clear the flag before processDataUpdate reads it.
+        trailingRef.isTrailing = true;
         trailingRef.callback?.();
       }, remaining);
     }

@@ -161,6 +161,7 @@ export class DynamicViewsGridView extends BasesView {
   private trailingUpdate: {
     timeoutId: number | null;
     callback: (() => void) | null;
+    isTrailing?: boolean;
   } = {
     timeoutId: null,
     callback: null,
@@ -586,6 +587,10 @@ export class DynamicViewsGridView extends BasesView {
 
   /** Internal handler after config has settled */
   private processDataUpdate(): void {
+    // Capture trailing flag before reset — used to detect stale-settings reverts
+    const isTrailing = this.trailingUpdate.isTrailing ?? false;
+    this.trailingUpdate.isTrailing = false;
+
     // Set callback for trailing calls (hybrid throttle)
     // Must call onDataUpdated (not processDataUpdate) to include CSS fast-path
     this.trailingUpdate.callback = () => this.onDataUpdated();
@@ -811,6 +816,17 @@ export class DynamicViewsGridView extends BasesView {
       const settingsChanged =
         this.renderState.lastSettingsHash !== null &&
         this.renderState.lastSettingsHash !== settingsHash;
+
+      // Skip stale trailing: settings changed but no data changes
+      // Prevents Obsidian's stale duplicate events from reverting user's setting changes
+      if (
+        isTrailing &&
+        settingsChanged &&
+        pathsUnchanged &&
+        changedPaths.size === 0
+      ) {
+        return;
+      }
 
       // If only content changed (not paths/settings), update in-place
       if (changedPaths.size > 0 && !settingsChanged && pathsUnchanged) {
