@@ -3,7 +3,7 @@
  * Pure positioning calculations - no DOM manipulation
  */
 
-// Debug logging for masonry calculations
+// Intentional debug toggle — flip to true for masonry layout diagnostics. Do not remove without explicit user instruction.
 const DEBUG_MASONRY = false;
 const logMasonry = (
   source: string,
