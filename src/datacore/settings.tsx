@@ -87,7 +87,6 @@ export function Settings({
         cssclasses: settings.cssclasses,
         minimumColumns: settings.minimumColumns,
         textPreviewLines: settings.textPreviewLines,
-        ambientBackground: settings.ambientBackground,
       };
 
       const timestamp = Date.now();
@@ -601,31 +600,6 @@ export function Settings({
             "cssclasses",
             "Comma-separated if multiple",
           )}
-          {settings.imageFormat !== "poster" &&
-            settings.imageFormat !== "backdrop" && (
-              <div className="setting-item setting-item-dropdown">
-                <div className="setting-item-info">
-                  <label>Ambient background</label>
-                </div>
-                <select
-                  value={settings.ambientBackground}
-                  onChange={(e: unknown) => {
-                    const evt = e as Event & { target: HTMLSelectElement };
-                    onSettingsChange({
-                      ambientBackground: evt.target.value as
-                        | "subtle"
-                        | "dramatic"
-                        | "disable",
-                    });
-                  }}
-                  className="dropdown"
-                >
-                  <option value="subtle">Subtle</option>
-                  <option value="dramatic">Dramatic</option>
-                  <option value="disable">Disable</option>
-                </select>
-              </div>
-            )}
           <div className="setting-item setting-item-toggle">
             <div className="setting-item-info">
               <label>Use these settings for new views</label>

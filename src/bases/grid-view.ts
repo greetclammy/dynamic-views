@@ -5,7 +5,6 @@
 
 import { BasesView, BasesEntry, QueryController, TFile } from "obsidian";
 import { CardData } from "../shared/card-renderer";
-import { reapplyAmbientColors } from "../shared/image-loader";
 import { transformBasesEntries } from "../shared/data-transform";
 import {
   readBasesSettings,
@@ -520,9 +519,8 @@ export class DynamicViewsGridView extends BasesView {
     );
 
     // Watch for Dynamic Views Style Settings changes only
-    const disconnectObserver = setupStyleSettingsObserver(
-      () => this.onDataUpdated(),
-      reapplyAmbientColors,
+    const disconnectObserver = setupStyleSettingsObserver(() =>
+      this.onDataUpdated(),
     );
     this.register(disconnectObserver);
 

@@ -815,12 +815,7 @@ function CoverSlideshow({
       {
         onSlideChange: (_newIndex, nextImg) => {
           if (cardEl) {
-            handleImageLoad(
-              nextImg,
-              imageEmbed,
-              cardEl,
-              updateLayoutRef.current,
-            );
+            handleImageLoad(nextImg, cardEl, updateLayoutRef.current);
           }
         },
         onAnimationComplete: () => {
@@ -850,7 +845,7 @@ function CoverSlideshow({
     ) as HTMLImageElement;
     if (firstImg) {
       // Use exact URL for comparison (avoids fragile substring matching)
-      const expectedSrc = getCachedBlobUrl(imageArray[0]);
+      const expectedSrc = imageArray[0];
       firstImg.addEventListener(
         "error",
         (e) => {
@@ -2206,16 +2201,9 @@ function Card({
                           e.currentTarget as HTMLElement
                         ).querySelector("img");
                         if (imgEl) {
-                          if (isCachedOrInternal(rawUrl)) {
-                            imgEl.removeClass("dynamic-views-hidden");
-                            const newSrc = getCachedBlobUrl(rawUrl);
-                            if (imgEl.src !== newSrc) {
-                              imgEl.src = newSrc;
-                            }
-                          } else {
-                            // Uncached external: show placeholder, fetch in background
-                            imgEl.addClass("dynamic-views-hidden");
-                            void getExternalBlobUrl(rawUrl);
+                          imgEl.removeClass("dynamic-views-hidden");
+                          if (imgEl.src !== rawUrl) {
+                            imgEl.src = rawUrl;
                           }
                         }
                       }
@@ -2229,11 +2217,10 @@ function Card({
                         const imgEl = (
                           e.currentTarget as HTMLElement
                         ).querySelector("img");
-                        const firstSrc = getCachedBlobUrl(firstUrl);
-                        if (imgEl && firstSrc) {
+                        if (imgEl && firstUrl) {
                           // First image is pre-validated, always show it
                           imgEl.removeClass("dynamic-views-hidden");
-                          imgEl.src = firstSrc;
+                          imgEl.src = firstUrl;
                         }
                       }
                     : undefined
@@ -2280,9 +2267,7 @@ function Card({
                             // Find current position by URL match (handles scrubbing)
                             const failedSrc = imgEl.src;
                             let startIndex = imageArray.findIndex(
-                              (url) =>
-                                getCachedBlobUrl(url) === failedSrc ||
-                                url === failedSrc,
+                              (url) => url === failedSrc,
                             );
                             if (startIndex === -1) startIndex = 0;
                             // Try next URL (pre-validated, should not fail)
@@ -2295,10 +2280,7 @@ function Card({
                               )
                                 return;
                               imgEl.removeClass("dynamic-views-hidden");
-                              const effectiveUrl = getCachedBlobUrl(
-                                imageArray[nextIndex],
-                              );
-                              imgEl.src = effectiveUrl;
+                              imgEl.src = imageArray[nextIndex];
                               return;
                             }
                             // All images failed - complete cleanup with double rAF
@@ -2328,7 +2310,6 @@ function Card({
                                     "--actual-aspect-ratio",
                                     DEFAULT_ASPECT_RATIO.toString(),
                                   );
-                                  cardEl.removeAttribute("data-adaptive-text");
                                   cardEl.classList.add("cover-ready");
                                   if (updateLayoutRef.current)
                                     updateLayoutRef.current();

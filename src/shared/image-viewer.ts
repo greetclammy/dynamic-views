@@ -10,8 +10,6 @@ import {
   getZoomSensitivityDesktop,
   getZoomSensitivityMobile,
 } from "../utils/style-settings";
-import { getCachedBlobUrl } from "./slideshow";
-import { isExternalUrl } from "../utils/image";
 import { showTipOnce } from "../utils/tips";
 
 /** Long-press detection threshold in ms */
@@ -589,11 +587,6 @@ function openImageViewer(
   );
   if (nextImg) {
     nextImg.remove();
-  }
-
-  // Use cached blob URL for external images to avoid re-fetching
-  if (isExternalUrl(imgEl.src)) {
-    imgEl.src = getCachedBlobUrl(imgEl.src);
   }
 
   // Append clone to appropriate container based on fullscreen setting

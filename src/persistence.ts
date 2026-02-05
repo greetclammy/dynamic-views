@@ -29,7 +29,6 @@ const VALID_VIEW_VALUES: Partial<
   propertyLabels: ["hide", "inline", "above"],
   rightPropertyPosition: ["left", "column", "right"],
   minimumColumns: ["one", "two"],
-  ambientBackground: ["subtle", "dramatic", "disable"],
 };
 
 const VIEW_DEFAULTS_KEYS = new Set(Object.keys(VIEW_DEFAULTS));

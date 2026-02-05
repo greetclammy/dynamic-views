@@ -332,23 +332,6 @@ export function getBasesViewOptions(
           default: d.cssclasses,
         },
         {
-          type: "dropdown",
-          displayName: "Ambient card background",
-          key: "ambientBackground",
-          options: {
-            subtle: "Subtle",
-            dramatic: "Dramatic",
-            disable: "Disable",
-          },
-          default: d.ambientBackground,
-          shouldHide: (config: BasesConfig) =>
-            (config.get("imageFormat") ?? d.imageFormat) === "poster" ||
-            (config.get("imageFormat") ?? d.imageFormat) === "backdrop" ||
-            (!(config.get("imageProperty") || d.imageProperty) &&
-              (config.get("fallbackToEmbeds") ?? d.fallbackToEmbeds) ===
-                "never"),
-        },
-        {
           type: "toggle",
           displayName: "Use these settings for new views",
           key: "isTemplate",
@@ -490,12 +473,6 @@ export function readBasesSettings(
       const fallback = viewType === "masonry" ? 2 : defaults.minimumColumns;
       return fallback;
     })(),
-    ambientBackground: (() => {
-      const value = config.get("ambientBackground");
-      return value === "subtle" || value === "dramatic" || value === "disable"
-        ? value
-        : defaults.ambientBackground;
-    })(),
     cssclasses: getString("cssclasses", defaults.cssclasses),
   };
 
@@ -622,12 +599,6 @@ export function extractBasesTemplate(
       if (value === "one") return 1;
       if (value === "two") return 2;
       return defaults.minimumColumns;
-    })(),
-    ambientBackground: (() => {
-      const value = config.get("ambientBackground");
-      return value === "subtle" || value === "dramatic" || value === "disable"
-        ? value
-        : defaults.ambientBackground;
     })(),
     cssclasses: getString("cssclasses", defaults.cssclasses),
   };

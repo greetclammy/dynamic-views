@@ -6,7 +6,6 @@ import {
 } from "../utils/image";
 import { loadFilePreview } from "../utils/text-preview";
 import { getSlideshowMaxImages } from "../utils/style-settings";
-import { getExternalBlobUrl } from "./slideshow";
 
 // Track in-flight loads - Map to Promises so concurrent requests can await
 const inFlightTextPreviews = new Map<string, Promise<string>>();
@@ -105,10 +104,8 @@ export async function loadImageForEntry(
       // Process image paths using shared utility (sync - no validation needed)
       const { internalPaths, externalUrls } = processImagePaths(validPaths);
 
-      // Validate external URLs - returns blob URL if valid, null if failed
-      const validatedExternalUrls = (
-        await Promise.all(externalUrls.map((url) => getExternalBlobUrl(url)))
-      ).filter((url): url is string => url !== null);
+      // External URLs are used directly (browser handles load/error at render time)
+      const validatedExternalUrls = externalUrls;
 
       // Convert internal paths to resource URLs using shared utility
       let validImages: string[] = [

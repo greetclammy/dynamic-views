@@ -272,156 +272,6 @@ export function isThumbnailScrubbingDisabled(): boolean {
 }
 
 /**
- * Check if Card background: Ambient is enabled (subtle or dramatic)
- * Checks the closest .dynamic-views container for per-view ambient classes,
- * falling back to body classes for Datacore views
- */
-export function isCardBackgroundAmbient(cardEl?: Element): boolean {
-  const container = cardEl?.closest(".dynamic-views");
-  if (container) {
-    return (
-      container.classList.contains("dynamic-views-ambient-bg-subtle") ||
-      container.classList.contains("dynamic-views-adaptive-text")
-    );
-  }
-  return (
-    hasBodyClass("dynamic-views-ambient-bg-subtle") ||
-    hasBodyClass("dynamic-views-adaptive-text")
-  );
-}
-
-/**
- * Get ambient opacity for card backgrounds
- * Returns 0.17 for subtle, 0.9 for dramatic
- * Checks the closest .dynamic-views container for per-view ambient classes,
- * falling back to body classes for Datacore views
- */
-export function getCardAmbientOpacity(cardEl?: Element): number {
-  const container = cardEl?.closest(".dynamic-views");
-  if (container) {
-    return container.classList.contains("dynamic-views-adaptive-text")
-      ? 0.9
-      : 0.17;
-  }
-  if (hasBodyClass("dynamic-views-adaptive-text")) {
-    return 0.9;
-  }
-  return 0.17;
-}
-
-/**
- * Check if Cover background: Ambient is enabled
- */
-export function isCoverBackgroundAmbient(): boolean {
-  return hasBodyClass("dynamic-views-cover-bg-ambient");
-}
-
-/**
- * Check if backdrop overlay tint is disabled
- * When disabled, luminance detection determines adaptive text colors
- */
-function isBackdropTintDisabled(): boolean {
-  return hasBodyClass("dynamic-views-backdrop-theme-disable");
-}
-
-/**
- * Check if backdrop adaptive text is enabled (default: ON)
- * Returns true when the "disable" toggle is NOT set
- */
-function isBackdropAdaptiveTextEnabled(): boolean {
-  return !hasBodyClass("dynamic-views-backdrop-no-adaptive-text");
-}
-
-/**
- * Check if backdrop overlay is effectively transparent (opacity = 0)
- * Only called when tint is NOT disabled (caller checks isBackdropTintDisabled first)
- */
-function isBackdropOverlayTransparent(): boolean {
-  // Determine which opacity variable to check based on tint mode
-  const isDarkTint = hasBodyClass("dynamic-views-backdrop-theme-dark");
-  const isLightTint = hasBodyClass("dynamic-views-backdrop-theme-light");
-
-  if (isDarkTint) {
-    return (
-      getCSSVariableAsNumber("--dynamic-views-backdrop-overlay-dark", 70) === 0
-    );
-  }
-  if (isLightTint) {
-    return (
-      getCSSVariableAsNumber("--dynamic-views-backdrop-overlay-light", 70) === 0
-    );
-  }
-
-  // Default to "match" behavior (CSS default) - check opacity based on current theme
-  const isDarkTheme = hasBodyClass("theme-dark");
-  const varName = isDarkTheme
-    ? "--dynamic-views-backdrop-overlay-dark"
-    : "--dynamic-views-backdrop-overlay-light";
-  return getCSSVariableAsNumber(varName, 70) === 0;
-}
-
-/**
- * Check if backdrop images should use luminance-based adaptive text
- * True when adaptive text is enabled AND (tint disabled OR overlay transparent)
- */
-export function shouldUseBackdropLuminance(): boolean {
-  return (
-    isBackdropAdaptiveTextEnabled() &&
-    (isBackdropTintDisabled() || isBackdropOverlayTransparent())
-  );
-}
-
-/**
- * Check if poster overlay tint is disabled
- */
-function isPosterTintDisabled(): boolean {
-  return hasBodyClass("dynamic-views-poster-theme-disable");
-}
-
-/**
- * Check if poster adaptive text is enabled (default: ON)
- */
-function isPosterAdaptiveTextEnabled(): boolean {
-  return !hasBodyClass("dynamic-views-poster-no-adaptive-text");
-}
-
-/**
- * Check if poster overlay is effectively transparent (opacity = 0)
- */
-function isPosterOverlayTransparent(): boolean {
-  const isDarkTint = hasBodyClass("dynamic-views-poster-theme-dark");
-  const isLightTint = hasBodyClass("dynamic-views-poster-theme-light");
-
-  if (isDarkTint) {
-    return (
-      getCSSVariableAsNumber("--dynamic-views-poster-overlay-dark", 70) === 0
-    );
-  }
-  if (isLightTint) {
-    return (
-      getCSSVariableAsNumber("--dynamic-views-poster-overlay-light", 70) === 0
-    );
-  }
-
-  const isDarkTheme = hasBodyClass("theme-dark");
-  const varName = isDarkTheme
-    ? "--dynamic-views-poster-overlay-dark"
-    : "--dynamic-views-poster-overlay-light";
-  return getCSSVariableAsNumber(varName, 70) === 0;
-}
-
-/**
- * Check if poster images should use luminance-based adaptive text
- * True when adaptive text is enabled AND (tint disabled OR overlay transparent)
- */
-export function shouldUsePosterLuminance(): boolean {
-  return (
-    isPosterAdaptiveTextEnabled() &&
-    (isPosterTintDisabled() || isPosterOverlayTransparent())
-  );
-}
-
-/**
  * Get maximum number of images for slideshow
  * Returns slider value (default 10, min 2, max 24)
  */
@@ -483,16 +333,7 @@ export function getStyleSettingsHash(): string {
  */
 export function setupStyleSettingsObserver(
   onStyleChange: () => void,
-  onAmbientSettingChange?: () => void,
 ): () => void {
-  // Ambient-related classes that trigger onAmbientSettingChange
-  const ambientClasses = [
-    "dynamic-views-ambient-bg-off",
-    "dynamic-views-ambient-bg-subtle",
-    "dynamic-views-adaptive-text",
-    "dynamic-views-cover-bg-ambient",
-  ];
-
   // Dynamic classes that should NOT trigger re-renders (added/removed by plugin at runtime)
   const ignoredDynamicClasses = [
     "dynamic-views-backdrop-theme-match", // Style Settings default
@@ -525,29 +366,8 @@ export function setupStyleSettingsObserver(
           )
           .sort();
 
-        const oldJoined = oldFiltered.join();
-        const newJoined = newFiltered.join();
-        const dynamicViewsChanged = oldJoined !== newJoined;
-
-        if (dynamicViewsChanged) {
-          // Check if ambient settings specifically changed (including subtle↔dramatic)
-          const oldAmbientSet = ambientClasses
-            .filter((c) => oldClasses.includes(c))
-            .sort()
-            .join();
-          const newAmbientSet = ambientClasses
-            .filter((c) => newClasses.includes(c))
-            .sort()
-            .join();
-          const ambientChanged = oldAmbientSet !== newAmbientSet;
-
-          if (ambientChanged && onAmbientSettingChange) {
-            // Ambient-only change: call dedicated handler, skip full re-render
-            onAmbientSettingChange();
-          } else {
-            // Non-ambient change: full style refresh
-            onStyleChange();
-          }
+        if (oldFiltered.join() !== newFiltered.join()) {
+          onStyleChange();
           break;
         }
       }

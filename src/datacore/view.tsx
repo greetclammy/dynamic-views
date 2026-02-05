@@ -52,7 +52,7 @@ import {
   getCardSpacing,
   setupStyleSettingsObserver,
 } from "../utils/style-settings";
-import { reapplyAmbientColors } from "../shared/image-loader";
+
 import {
   calculateMasonryLayout,
   calculateIncrementalMasonryLayout,
@@ -497,9 +497,8 @@ export function View({
 
   // Setup Style Settings observer - re-render when CSS variables change
   dc.useEffect(() => {
-    const disconnect = setupStyleSettingsObserver(
-      () => setStyleRevision((r) => r + 1),
-      reapplyAmbientColors,
+    const disconnect = setupStyleSettingsObserver(() =>
+      setStyleRevision((r) => r + 1),
     );
     return disconnect;
   }, []);
@@ -1970,16 +1969,8 @@ export function View({
     }
   };
 
-  // Apply ambient background class
-  const ambientClass =
-    settings.ambientBackground === "subtle"
-      ? "dynamic-views-ambient-bg-subtle"
-      : settings.ambientBackground === "dramatic"
-        ? "dynamic-views-adaptive-text"
-        : "dynamic-views-ambient-bg-off";
-
   return (
-    <div ref={explorerRef} className={`dynamic-views ${ambientClass}`}>
+    <div ref={explorerRef} className="dynamic-views">
       <div
         ref={toolbarRef}
         className={`controls-wrapper${isResultsScrolled ? " scrolled" : ""}`}

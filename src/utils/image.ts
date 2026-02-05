@@ -1,5 +1,4 @@
 import { App, TFile } from "obsidian";
-import { getExternalBlobUrl } from "../shared/slideshow";
 import { getSlideshowMaxImages } from "./style-settings";
 
 /**
@@ -653,11 +652,7 @@ export async function extractImageEmbeds(
         continue;
       }
 
-      // Validate external URL - only include if successfully cached
-      const blobUrl = await getExternalBlobUrl(path);
-      if (blobUrl) {
-        resultUrls.push(blobUrl);
-      }
+      resultUrls.push(path);
     } else {
       // Internal path - resolve via metadata cache
       const targetFile = app.metadataCache.getFirstLinkpathDest(

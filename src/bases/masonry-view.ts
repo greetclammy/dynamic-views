@@ -28,10 +28,7 @@ import {
   syncResponsiveClasses,
   applyViewContainerStyles,
 } from "./shared-renderer";
-import {
-  getCachedAspectRatio,
-  reapplyAmbientColors,
-} from "../shared/image-loader";
+import { getCachedAspectRatio } from "../shared/image-loader";
 import {
   PANE_MULTIPLIER,
   ROWS_PER_COLUMN,
@@ -611,7 +608,7 @@ export class DynamicViewsMasonryView extends BasesView {
     const disconnectObserver = setupStyleSettingsObserver(() => {
       resetGapCache(); // Invalidate gap cache on settings change
       this.onDataUpdated();
-    }, reapplyAmbientColors);
+    });
     this.register(disconnectObserver);
 
     // Setup hover-to-start keyboard navigation
@@ -1917,8 +1914,6 @@ export class DynamicViewsMasonryView extends BasesView {
           .filter((img): img is HTMLImageElement => img !== null);
 
         // Apply cached aspect ratios and collect images that need to load
-        // Note: Do NOT add cover-ready here - it would prevent setupImageLoadHandler
-        // from extracting/applying ambient color when the load event fires
         const uncachedImages = newCardImages.filter((img) => {
           const cachedRatio = getCachedAspectRatio(img.src);
           if (cachedRatio !== undefined) {

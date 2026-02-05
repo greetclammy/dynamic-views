@@ -49,7 +49,6 @@ export interface ViewDefaults {
   urlProperty: string;
   // Other
   minimumColumns: 1 | 2;
-  ambientBackground: "subtle" | "dramatic" | "disable";
   cssclasses: string;
 }
 

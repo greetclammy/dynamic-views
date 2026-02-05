@@ -1233,7 +1233,6 @@ export class SharedCardRenderer {
       });
       setupBackdropImageLoader(
         img,
-        bgWrapper,
         cardEl,
         imageUrls,
         this.updateLayoutRef.current,
@@ -1249,7 +1248,6 @@ export class SharedCardRenderer {
       });
       setupBackdropImageLoader(
         img,
-        bgWrapper,
         cardEl,
         imageUrls,
         this.updateLayoutRef.current,
@@ -1419,7 +1417,6 @@ export class SharedCardRenderer {
     if (cardEl) {
       setupImageLoadHandler(
         currentImg,
-        imageEmbedContainer,
         cardEl,
         this.updateLayoutRef.current || undefined,
       );
@@ -1454,7 +1451,6 @@ export class SharedCardRenderer {
           if (cardEl) {
             handleImageLoad(
               nextImg,
-              imageEmbedContainer,
               cardEl,
               this.updateLayoutRef.current || undefined,
             );
@@ -1484,7 +1480,7 @@ export class SharedCardRenderer {
     });
 
     // Auto-advance if first image fails to load (skip animation for instant display)
-    const expectedFirstUrl = getCachedBlobUrl(imageUrls[0]);
+    const expectedFirstUrl = imageUrls[0];
     currentImg.addEventListener(
       "error",
       (e) => {
@@ -1572,7 +1568,6 @@ export class SharedCardRenderer {
     if (cardEl) {
       setupImageLoadHandler(
         imgEl,
-        imageEmbedContainer,
         cardEl,
         format === "cover"
           ? this.updateLayoutRef.current || undefined
@@ -1591,7 +1586,7 @@ export class SharedCardRenderer {
         if (currentUrlIndex < imageUrls.length) {
           if (signal?.aborted || !imgEl.isConnected) return; // Guard before DOM mutation
           imgEl.removeClass("dynamic-views-hidden"); // Unhide
-          imgEl.src = getCachedBlobUrl(imageUrls[currentUrlIndex]);
+          imgEl.src = imageUrls[currentUrlIndex];
           return;
         }
         // All images failed - use double rAF for cover-ready (consistent with backdrop)
@@ -1663,16 +1658,9 @@ export class SharedCardRenderer {
             ),
           );
           const rawUrl = scrubbableUrls[index];
-          if (isCachedOrInternal(rawUrl)) {
-            imgEl.removeClass("dynamic-views-hidden");
-            const targetUrl = getCachedBlobUrl(rawUrl);
-            if (imgEl.src !== targetUrl) {
-              imgEl.src = targetUrl;
-            }
-          } else {
-            // Uncached external: show placeholder, fetch in background
-            imgEl.addClass("dynamic-views-hidden");
-            void getExternalBlobUrl(rawUrl);
+          imgEl.removeClass("dynamic-views-hidden");
+          if (imgEl.src !== rawUrl) {
+            imgEl.src = rawUrl;
           }
         },
         { signal },
@@ -1687,7 +1675,7 @@ export class SharedCardRenderer {
           if (!firstUrl) return;
           // First image is pre-validated, always show it
           imgEl.removeClass("dynamic-views-hidden");
-          imgEl.src = getCachedBlobUrl(firstUrl);
+          imgEl.src = firstUrl;
         },
         { signal },
       );

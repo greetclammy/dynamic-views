@@ -3,170 +3,17 @@
  * Extracts common logic between card-renderer.tsx and shared-renderer.ts
  */
 
-import { requestUrl } from "obsidian";
 import {
   SLIDESHOW_ANIMATION_MS,
   SWIPE_DETECT_THRESHOLD,
   SCROLL_THROTTLE_MS,
 } from "./constants";
-import { isExternalUrl } from "../utils/image";
 
-// Blob URL cache for external images to prevent re-downloads
-// Uses Obsidian's requestUrl to bypass CORS restrictions
-const externalBlobCache = new Map<string, string>();
-// Cache capacity limit - evicts oldest entry (by insertion order) when exceeded
-// Note: This is insertion-order eviction, not true LRU (accessed items aren't moved to end)
-const BLOB_CACHE_LIMIT = 150;
-// Track in-flight fetch requests to prevent duplicate concurrent fetches
-const pendingFetches = new Map<string, Promise<string | null>>();
-// Track URLs that failed validation to prevent retrying broken images
-const failedValidationUrls = new Set<string>();
-// Flag to prevent orphaned blob URLs during cleanup
-let isCleanedUp = false;
 // Time window to detect "undo" navigation (First→Last→First)
 // If user wraps backward (First→Last) then forward (Last→First) within this window,
 // animation direction is NOT reversed (treats it as accidental undo, not intentional wrap)
 // Value chosen to match typical rapid navigation time while avoiding false positives
 const UNDO_WINDOW_MS = 2500;
-
-/**
- * Validate blob URL loads as an image
- * Returns true if image loads successfully with valid dimensions
- */
-function validateBlobUrl(blobUrl: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const cleanup = (result: boolean) => {
-      img.onload = null;
-      img.onerror = null;
-      img.src = "";
-      resolve(result);
-    };
-    img.onload = () => cleanup(img.naturalWidth > 0 && img.naturalHeight > 0);
-    img.onerror = () => cleanup(false);
-    img.src = blobUrl;
-  });
-}
-
-/**
- * Get cached blob URL for external image (sync)
- * Returns cached blob URL if available, otherwise original URL
- */
-export function getCachedBlobUrl(url: string): string {
-  return externalBlobCache.get(url) ?? url;
-}
-
-/**
- * Check if URL is ready to display (internal or cached external)
- * Use before updating img.src to avoid loading uncached external images
- */
-export function isCachedOrInternal(url: string): boolean {
-  if (!isExternalUrl(url)) return true;
-  return externalBlobCache.has(url);
-}
-
-/**
- * Initialize blob URL cache state
- * Call on plugin load to reset cleanup flag from previous session
- */
-export function initExternalBlobCache(): void {
-  isCleanedUp = false;
-}
-
-/**
- * Clean up blob URL cache and revoke all blob URLs
- * Call on plugin unload to prevent memory leaks
- * Sets cleanup flag to prevent orphaned blob URLs from in-flight fetches
- */
-export function cleanupExternalBlobCache(): void {
-  isCleanedUp = true;
-  externalBlobCache.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
-  externalBlobCache.clear();
-  pendingFetches.clear();
-  failedValidationUrls.clear();
-}
-
-/**
- * Get blob URL for external image, fetching and caching if needed
- * Uses Obsidian's requestUrl to bypass CORS restrictions
- * Returns null if fetch fails, blob URL if valid, original URL for non-external
- * Deduplicates concurrent requests for same URL
- */
-export async function getExternalBlobUrl(url: string): Promise<string | null> {
-  // Skip if cleanup already happened (plugin unloaded)
-  if (isCleanedUp) return null;
-  if (!isExternalUrl(url)) return url;
-  if (externalBlobCache.has(url)) return externalBlobCache.get(url)!;
-
-  // Skip URLs that previously failed validation to avoid wasted network requests
-  if (failedValidationUrls.has(url)) return null;
-
-  // Deduplicate concurrent requests (check cleanup flag to prevent orphaned blob URLs)
-  if (pendingFetches.has(url)) {
-    if (isCleanedUp) return null;
-    return pendingFetches.get(url)!;
-  }
-
-  const fetchPromise = (async (): Promise<string | null> => {
-    try {
-      const response = await requestUrl(url);
-      // Include content-type for proper rendering (especially SVGs)
-      // Safe access: headers may be undefined in edge cases
-      const contentType =
-        response.headers?.["content-type"] ?? "application/octet-stream";
-      const blob = new Blob([response.arrayBuffer], { type: contentType });
-      const blobUrl = URL.createObjectURL(blob);
-
-      // Validate blob loads as image before caching
-      const isValid = await validateBlobUrl(blobUrl);
-      if (!isValid) {
-        URL.revokeObjectURL(blobUrl);
-        failedValidationUrls.add(url); // Track failed URL to prevent retries
-        return null;
-      }
-
-      // Only cache if cleanup hasn't happened during fetch
-      if (isCleanedUp) {
-        URL.revokeObjectURL(blobUrl); // Prevent orphan
-        return null;
-      }
-
-      // LRU eviction: remove oldest entry if cache is full
-      if (externalBlobCache.size >= BLOB_CACHE_LIMIT) {
-        const oldest = externalBlobCache.keys().next().value as
-          | string
-          | undefined;
-        if (oldest) {
-          URL.revokeObjectURL(externalBlobCache.get(oldest)!);
-          externalBlobCache.delete(oldest);
-        }
-      }
-
-      externalBlobCache.set(url, blobUrl);
-      return blobUrl;
-    } catch {
-      // Fetch failed (network error, etc.)
-      return null;
-    } finally {
-      pendingFetches.delete(url);
-    }
-  })();
-
-  pendingFetches.set(url, fetchPromise);
-  return fetchPromise;
-}
-
-/**
- * Cache an external image by fetching as blob (fire-and-forget)
- * Called when the first slideshow image loads
- */
-export function cacheExternalImage(imgEl: HTMLImageElement): void {
-  const url = imgEl.src;
-  if (url && isExternalUrl(url) && !externalBlobCache.has(url)) {
-    // Fire and forget - cache for future navigations
-    void getExternalBlobUrl(url);
-  }
-}
 
 // Gesture detection thresholds
 const WHEEL_SWIPE_THRESHOLD = 5; // Accumulated deltaX to trigger navigation
@@ -252,33 +99,10 @@ export function createSlideshowNavigator(
 
     const { currImg, nextImg } = elements;
     const newUrl = imageUrls[newIndex];
-    // Check if this is an uncached external image
-    const isUncachedExternal = !isCachedOrInternal(newUrl);
-    // Get effective URL early (used by error handler and image src)
-    const effectiveUrl = getCachedBlobUrl(newUrl);
 
     isAnimating = true;
 
-    // For uncached external images: show placeholder, fetch in background
-    if (isUncachedExternal) {
-      nextImg.addClass("dynamic-views-hidden");
-      void getExternalBlobUrl(newUrl).then((blobUrl) => {
-        if (signal.aborted) return;
-        if (!blobUrl) {
-          // Fetch failed - track and auto-advance (unless all failed)
-          failedIndices.add(newIndex);
-          if (failedIndices.size >= imageUrls.length) return; // All failed, stop
-          nextImg.removeClass("dynamic-views-hidden");
-          isAnimating = false;
-          navigate(direction);
-          return;
-        }
-        nextImg.src = blobUrl;
-        nextImg.removeClass("dynamic-views-hidden");
-      });
-    }
-
-    // Notify about slide change (for ambient color, etc.)
+    // Notify about slide change
     if (callbacks?.onSlideChange) {
       nextImg.addEventListener(
         "load",
@@ -300,7 +124,7 @@ export function createSlideshowNavigator(
         // Ignore errors from src being cleared (resolves to index.html) or changed
         // Only handle errors for the URL we actually set (use event target, not element ref)
         const targetSrc = (e.target as HTMLImageElement).src;
-        if (targetSrc !== effectiveUrl) return;
+        if (targetSrc !== newUrl) return;
 
         // Track failed index to prevent infinite loop
         failedIndices.add(newIndex);
@@ -328,7 +152,7 @@ export function createSlideshowNavigator(
 
     // Skip animation: directly update current image
     if (skipAnimation) {
-      currImg.src = effectiveUrl;
+      currImg.src = newUrl;
       currImg.removeClass("dynamic-views-hidden");
       currentIndex = newIndex;
       isAnimating = false;
@@ -346,10 +170,7 @@ export function createSlideshowNavigator(
       return;
     }
 
-    // Only set src if cached (uncached external handled above with placeholder)
-    if (!isUncachedExternal) {
-      nextImg.src = effectiveUrl;
-    }
+    nextImg.src = newUrl;
 
     // Check if this is an "undo" of recent First→Last navigation
     // Must check BEFORE updating the timestamp
@@ -437,9 +258,8 @@ export function createSlideshowNavigator(
     failedIndices.clear();
     const elements = getElements();
     if (elements) {
-      const firstUrl = getCachedBlobUrl(imageUrls[0]);
-      elements.currImg.src = firstUrl;
-      // Trigger onSlideChange for ambient color update
+      elements.currImg.src = imageUrls[0];
+      // Trigger onSlideChange callback on reset
       if (callbacks?.onSlideChange) {
         elements.currImg.addEventListener(
           "load",
@@ -593,7 +413,7 @@ export function setupSwipeGestures(
 
 /**
  * Preload images on first hover
- * External images are fetched and cached as blob URLs to prevent re-downloads
+ * Uses browser's native image cache for both internal and external URLs
  */
 export function setupImagePreload(
   cardEl: HTMLElement,
@@ -608,14 +428,7 @@ export function setupImagePreload(
       if (!preloaded) {
         preloaded = true;
         imageUrls.slice(1).forEach((url) => {
-          if (isExternalUrl(url)) {
-            // Fetch and cache as blob URL (fire-and-forget)
-            void getExternalBlobUrl(url);
-          } else {
-            // Internal images: just trigger browser preload
-            const img = new Image();
-            img.src = url;
-          }
+          new Image().src = url;
         });
       }
     },
