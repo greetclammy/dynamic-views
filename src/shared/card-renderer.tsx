@@ -2490,18 +2490,11 @@ function Card({
                 className={`property-pair property-pair-${pairNum}`}
               >
                 {set.props.map((p, i) => {
-                  const collapsed = shouldCollapseFieldDatacore(
-                    p.name || undefined,
-                    p.value,
-                    propertyLabels,
-                    hideEmptyMode,
-                    hideMissing,
-                  );
                   const posClass = i === 0 ? "pair-left" : "pair-right";
                   return (
                     <div
                       key={`field-${p.fieldIndex}`}
-                      className={`property property-${p.fieldIndex} ${posClass}${collapsed ? " property-collapsed" : ""}`}
+                      className={`property property-${p.fieldIndex} ${posClass}`}
                     >
                       {p.name &&
                         renderPropertyContent(
@@ -2522,17 +2515,10 @@ function Card({
           } else {
             // Unpaired: direct element, no wrapper
             const p = set.props[0];
-            const collapsed = shouldCollapseFieldDatacore(
-              p.name || undefined,
-              p.value,
-              propertyLabels,
-              hideEmptyMode,
-              hideMissing,
-            );
             const fieldElement = (
               <div
                 key={`field-${p.fieldIndex}`}
-                className={`property property-${p.fieldIndex}${collapsed ? " property-collapsed" : ""}`}
+                className={`property property-${p.fieldIndex}`}
               >
                 {p.name &&
                   renderPropertyContent(
