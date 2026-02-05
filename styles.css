@@ -1365,16 +1365,6 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: dynamic-views-title-lines
-        title: Title lines
-        description: Maximum number of card title lines
-        type: variable-number-slider
-        default: 2
-        min: 1
-        max: 5
-        step: 1
-        format: ''
-    -
         id: dynamic-views-title-alignment
         title: Title alignment
         description: Horizontal alignment of card titles
@@ -6298,7 +6288,9 @@ body.dynamic-views-full-row-align-right
 }
 
 /* Collapsed pair partner: expand visible property to full width */
-.dynamic-views .property-pair:has(> .property-collapsed) > .property:not(.property-collapsed) {
+.dynamic-views
+  .property-pair:has(> .property-collapsed)
+  > .property:not(.property-collapsed) {
   max-width: 100%;
   flex: 1 1 auto;
 }

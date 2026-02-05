@@ -25,6 +25,7 @@ export interface ViewDefaults {
   cardSize: number;
   // Header
   titleProperty: string;
+  titleLines: number;
   subtitleProperty: string;
   // Text preview
   textPreviewProperty: string;

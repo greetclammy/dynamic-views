@@ -25,6 +25,7 @@ export const VIEW_DEFAULTS: ViewDefaults = {
   cardSize: 300,
   // Header
   titleProperty: "file.name",
+  titleLines: 2,
   subtitleProperty: "file.folder",
   // Text preview
   textPreviewProperty: "",

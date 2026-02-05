@@ -68,6 +68,7 @@ export function Settings({
       // Extract current settings
       const templateSettings: Partial<ViewDefaults & DatacoreDefaults> = {
         titleProperty: settings.titleProperty,
+        titleLines: settings.titleLines,
         textPreviewProperty: settings.textPreviewProperty,
         imageProperty: settings.imageProperty,
         urlProperty: settings.urlProperty,
@@ -219,6 +220,32 @@ export function Settings({
             "Title property",
             "titleProperty",
             "Comma-separated if multiple",
+          )}
+          {settings.titleProperty && (
+            <div className="setting-item">
+              <div className="setting-item-info">
+                <label>Lines</label>
+              </div>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  step="1"
+                  value={settings.titleLines}
+                  onChange={(e: unknown) => {
+                    const evt = e as Event & { target: HTMLInputElement };
+                    onSettingsChange({
+                      titleLines: parseInt(evt.target.value),
+                    });
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <span className="slider-value">{settings.titleLines}</span>
+              </div>
+            </div>
           )}
           {renderTextInput(
             "Subtitle property",

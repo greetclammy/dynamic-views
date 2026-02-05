@@ -262,6 +262,10 @@ export function applyViewContainerStyles(
     "--dynamic-views-text-preview-lines",
     String(settings.textPreviewLines),
   );
+  container.style.setProperty(
+    "--dynamic-views-title-lines",
+    String(settings.titleLines),
+  );
 }
 
 /**

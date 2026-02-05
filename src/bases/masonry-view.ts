@@ -486,6 +486,14 @@ export class DynamicViewsMasonryView extends BasesView {
       );
     }
 
+    const titleLines = this.config.get("titleLines");
+    if (typeof titleLines === "number") {
+      this.containerEl.style.setProperty(
+        "--dynamic-views-title-lines",
+        String(titleLines),
+      );
+    }
+
     const imageRatio = this.config.get("imageRatio");
     if (typeof imageRatio === "number") {
       this.containerEl.style.setProperty(

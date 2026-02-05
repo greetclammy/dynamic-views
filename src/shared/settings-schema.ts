@@ -76,6 +76,17 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
           default: d.titleProperty,
         },
         {
+          type: "slider",
+          displayName: "Lines",
+          key: "titleLines",
+          min: 1,
+          max: 5,
+          step: 1,
+          default: d.titleLines,
+          shouldHide: (config: BasesConfig) =>
+            !(config.get("titleProperty") ?? d.titleProperty),
+        },
+        {
           type: "text",
           displayName: "Subtitle property",
           key: "subtitleProperty",
@@ -392,6 +403,7 @@ export function readBasesSettings(
   const viewSettings: ViewDefaults = {
     cardSize: getNumber("cardSize", defaults.cardSize),
     titleProperty: getString("titleProperty", defaults.titleProperty),
+    titleLines: getNumber("titleLines", defaults.titleLines),
     subtitleProperty: getString("subtitleProperty", defaults.subtitleProperty),
     textPreviewProperty: getString(
       "textPreviewProperty",
@@ -525,6 +537,7 @@ export function extractBasesTemplate(
   const full: ViewDefaults = {
     cardSize: getNumber("cardSize", defaults.cardSize),
     titleProperty: getString("titleProperty", defaults.titleProperty),
+    titleLines: getNumber("titleLines", defaults.titleLines),
     subtitleProperty: getString("subtitleProperty", defaults.subtitleProperty),
     textPreviewProperty: getString(
       "textPreviewProperty",

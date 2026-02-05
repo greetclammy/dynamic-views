@@ -1077,6 +1077,10 @@ export function View({
           String(settings.textPreviewLines),
         );
         container.style.setProperty(
+          "--dynamic-views-title-lines",
+          String(settings.titleLines),
+        );
+        container.style.setProperty(
           "--dynamic-views-thumbnail-size",
           THUMBNAIL_SIZE_MAP[settings.thumbnailSize] ?? "80px",
         );
