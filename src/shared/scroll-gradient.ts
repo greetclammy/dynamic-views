@@ -236,6 +236,13 @@ export function setupScrollGradients(
 export function initializeScrollGradients(container: HTMLElement): void {
   const fields = container.querySelectorAll<HTMLElement>(".property");
 
+  // Column mode skips JS measurement (CSS handles 50% widths),
+  // so paired fields never get "property-measured" — allow gradient init directly
+  const isColumnMode =
+    container
+      .closest(".dynamic-views")
+      ?.classList.contains("dynamic-views-paired-property-column") ?? false;
+
   // Phase 1: Read all dimensions (single forced layout)
   const measurements: Array<{
     field: HTMLElement;
@@ -246,15 +253,14 @@ export function initializeScrollGradients(container: HTMLElement): void {
 
   fields.forEach((field) => {
     // Skip paired fields that haven't been measured yet
-    // (unless in compact mode where measurement isn't needed)
-    // With new DOM: no wrapper for unpaired, so closest(".property-pair") is null = unpaired
+    // (unless in compact/column mode where JS measurement isn't needed)
     const pair = field.closest(".property-pair");
     const isPaired = !!pair;
     const isMeasured = pair?.classList.contains("property-measured") ?? false;
     const isCompact = field
       .closest(".card")
       ?.classList.contains("compact-mode");
-    if (isPaired && !isMeasured && !isCompact) return;
+    if (isPaired && !isMeasured && !isCompact && !isColumnMode) return;
 
     // Get cached refs or query and cache (only cache successful finds)
     let wrapper = wrapperCache.get(field);

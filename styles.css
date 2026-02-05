@@ -2996,7 +2996,8 @@ body.dynamic-views-hide-group-property-labels
   margin: var(--dynamic-views-card-spacing-mobile, 6px) 0;
 }
 
-/* Grid uses row-gap for spacing; zero out card margins to prevent grid row inflation */
+/* Grid uses row-gap for spacing; zero out card margins to prevent grid row inflation.
+   Scoped to Bases to match specificity of the Bases-only card margin rules above. */
 .workspace-leaf-content[data-type="bases"]
   .dynamic-views
   .dynamic-views-grid
