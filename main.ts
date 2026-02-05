@@ -37,6 +37,11 @@ import { clearInFlightLoads } from "./src/shared/content-loader";
 import { invalidateCacheForFile } from "./src/shared/image-loader";
 import { initTips, cleanupTips } from "./src/utils/tips";
 
+// Plugin/feature names (proper nouns, not subject to sentence case)
+const DATACORE = "Datacore";
+const GRID_VIEW = "Grid view";
+const MASONRY_VIEW = "Masonry view";
+
 export default class DynamicViews extends Plugin {
   persistenceManager: PersistenceManager;
 

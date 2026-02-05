@@ -39,13 +39,13 @@ export function showExternalLinkContextMenu(e: MouseEvent, url: string): void {
   menu.showAtMouseEvent(e);
 }
 
-// SVG icons used in desktop context menu items
-const ICONS = {
-  filePlus: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-file-plus"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M9 15h6"></path><path d="M12 18v-6"></path></svg>`,
-  splitVertical: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-separator-vertical"><line x1="12" x2="12" y1="3" y2="21"></line><polyline points="8 8 4 12 8 16"></polyline><polyline points="16 16 20 12 16 8"></polyline></svg>`,
-  edit: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-edit-3"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>`,
-  arrowUpRight: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-arrow-up-right"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg>`,
-  trash: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-trash-2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>`,
+// Obsidian icon names for desktop context menu items
+const ICON_NAMES = {
+  filePlus: "file-plus",
+  splitVertical: "separator-vertical",
+  edit: "pencil",
+  arrowUpRight: "arrow-up-right",
+  trash: "trash-2",
 } as const;
 
 // Desktop menu structure (defined at module scope to avoid recreation)
@@ -282,10 +282,9 @@ export function showFileContextMenu(
           item.className = isWarning
             ? "menu-item tappable is-warning"
             : "menu-item tappable";
-          item.innerHTML = `
-            <div class="menu-item-icon">${icon}</div>
-            <div class="menu-item-title">${title}</div>
-          `;
+          const iconDiv = item.createDiv({ cls: "menu-item-icon" });
+          setIcon(iconDiv, icon);
+          item.createDiv({ cls: "menu-item-title", text: title });
           item.addEventListener("click", () => {
             onClick();
             document.body.click();

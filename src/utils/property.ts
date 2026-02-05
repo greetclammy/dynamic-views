@@ -32,11 +32,9 @@ function getPropertyInfo(
   propertyName: string,
 ): { type?: string; widget?: string } | undefined {
   const fmProp = stripNotePrefix(propertyName);
-  /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- getAllPropertyInfos not in official types */
-  return (app.metadataCache as any).getAllPropertyInfos?.()?.[fmProp] as
+  return app.metadataCache.getAllPropertyInfos?.()?.[fmProp] as
     | { type?: string; widget?: string }
     | undefined;
-  /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 }
 
 /**
