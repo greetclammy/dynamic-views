@@ -327,7 +327,7 @@ export function Settings({
                     if (value === "poster") {
                       showTipOnce(
                         "tipPosterFormat",
-                        "Tip: Press on poster card to view its details. Press again to hide.",
+                        "Tip: Press on poster card to view details. Press again to hide.",
                       );
                     }
                   }}
