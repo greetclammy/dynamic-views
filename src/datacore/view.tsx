@@ -317,7 +317,11 @@ export function View({
           availableWidth < targetWidth + buffer ? availableWidth : targetWidth;
       }
 
-      const offsetLeft = sectionRect.left - contentRect.left + fileMargins;
+      // Max: align to pane edges; Wide: center relative to content
+      const offsetLeft =
+        widthMode === "max"
+          ? sectionRect.left - contentRect.left + fileMargins
+          : -(effectiveWidth - fileLineWidth) / 2;
       codeBlock.style.setProperty("width", `${effectiveWidth}px`, "important");
       codeBlock.style.setProperty(
         "max-width",
