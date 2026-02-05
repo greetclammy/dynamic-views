@@ -1291,7 +1291,7 @@ export function View({
         Math.floor((containerWidth + gap) / (cardSize + gap)),
       );
 
-      container.style.setProperty("--grid-columns", String(cols));
+      container.style.setProperty("--dynamic-views-grid-columns", String(cols));
       // Set CSS variable for image aspect ratio
       container.style.setProperty(
         "--dynamic-views-image-aspect-ratio",

@@ -790,12 +790,13 @@ export class DynamicViewsGridView extends BasesView {
 
         // Restore column CSS (may be lost on tab switch)
         // Only set if actually changed to avoid triggering observers
-        const currentGridColumns =
-          this.containerEl.style.getPropertyValue("--grid-columns");
+        const currentGridColumns = this.containerEl.style.getPropertyValue(
+          "--dynamic-views-grid-columns",
+        );
         const targetGridColumns = String(this.lastColumnCount);
         if (currentGridColumns !== targetGridColumns) {
           this.containerEl.style.setProperty(
-            "--grid-columns",
+            "--dynamic-views-grid-columns",
             targetGridColumns,
           );
         }
@@ -852,7 +853,10 @@ export class DynamicViewsGridView extends BasesView {
 
       // Set CSS variables for grid layout
       this.lastColumnCount = cols;
-      this.containerEl.style.setProperty("--grid-columns", String(cols));
+      this.containerEl.style.setProperty(
+        "--dynamic-views-grid-columns",
+        String(cols),
+      );
       this.containerEl.style.setProperty(
         "--dynamic-views-image-aspect-ratio",
         String(settings.imageRatio),
@@ -1082,7 +1086,7 @@ export class DynamicViewsGridView extends BasesView {
                 const scrollBefore = this.scrollEl.scrollTop;
                 this.lastColumnCount = cols;
                 this.containerEl.style.setProperty(
-                  "--grid-columns",
+                  "--dynamic-views-grid-columns",
                   String(cols),
                 );
                 if (scrollBefore > 0) {
@@ -1514,7 +1518,9 @@ export class DynamicViewsGridView extends BasesView {
               ),
             )
           : parseInt(
-              this.containerEl.style.getPropertyValue("--grid-columns") || "2",
+              this.containerEl.style.getPropertyValue(
+                "--dynamic-views-grid-columns",
+              ) || "2",
             ) || 2;
         const batchSize = Math.min(columns * ROWS_PER_COLUMN, MAX_BATCH_SIZE);
         this.displayedCount = Math.min(

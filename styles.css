@@ -2622,7 +2622,7 @@ label.toggle-switch input[type="checkbox"]:checked + span.toggle-slider {
 /* Unified grid layout for all grid views (all width modes) */
 .dynamic-views .dynamic-views-grid {
   display: grid;
-  grid-template-columns: repeat(var(--grid-columns, 1), 1fr);
+  grid-template-columns: repeat(var(--dynamic-views-grid-columns, 1), 1fr);
   gap: var(--size-4-2);
   align-items: stretch;
   width: 100%;
@@ -2997,7 +2997,11 @@ body.dynamic-views-hide-group-property-labels
 }
 
 /* Grid uses row-gap for spacing; zero out card margins to prevent grid row inflation */
-.dynamic-views .dynamic-views-grid .dynamic-views-group > .card {
+.workspace-leaf-content[data-type="bases"]
+  .dynamic-views
+  .dynamic-views-grid
+  .dynamic-views-group
+  > .card {
   margin-top: 0;
   margin-bottom: 0;
 }
