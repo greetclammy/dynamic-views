@@ -29,10 +29,6 @@ import {
   toggleShuffleActiveView,
   getPaneType,
 } from "./src/utils/randomize";
-import {
-  cleanupExternalBlobCache,
-  initExternalBlobCache,
-} from "./src/shared/slideshow";
 import { clearInFlightLoads } from "./src/shared/content-loader";
 import { invalidateCacheForFile } from "./src/shared/image-loader";
 import { initTips, cleanupTips } from "./src/utils/tips";
@@ -75,9 +71,6 @@ export default class DynamicViews extends Plugin {
   }
 
   async onload() {
-    // Initialize blob cache (reset cleanup flag from previous session)
-    initExternalBlobCache();
-
     this.persistenceManager = new PersistenceManager(this);
     await this.persistenceManager.load();
     initTips(this.persistenceManager);
@@ -424,8 +417,6 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, '${queryId}');
       `dynamic-views-open-on-${settings.openFileAction}`,
     );
 
-    // Clean up external blob URL cache to prevent memory leaks
-    cleanupExternalBlobCache();
     clearInFlightLoads();
     cleanupTips();
   }
