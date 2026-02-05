@@ -64,6 +64,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
     // Smart timestamp variables - declared before SettingGroup for use in callbacks
     let smartTimestampSetting: Setting | undefined;
     let conditionalText: HTMLSpanElement;
+    // eslint-disable-next-line prefer-const -- assigned after declaration, not reassigned
     let smartTimestampSubSettingsEl: HTMLDivElement;
 
     // Helper function to update smart timestamp visibility
@@ -344,3 +345,4 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
     void this.trimTextFieldSettings();
   }
 }
+/* eslint-enable @typescript-eslint/no-misused-promises */
