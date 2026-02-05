@@ -80,6 +80,30 @@ const THUMBNAIL_SIZE_MAP: Record<string, string> = {
   expanded: "94.5px",
 };
 
+/** Shared width parameters computed from section CSS variables and dimensions. */
+function calculateWidthParams(section: Element): {
+  fileLineWidth: number;
+  fileMargins: number;
+  availableWidth: number;
+  targetWidth: number;
+  canExpandToMax: boolean;
+} {
+  const cs = getComputedStyle(section);
+  const fileLineWidth =
+    parseFloat(cs.getPropertyValue("--file-line-width")) || 700;
+  const fileMargins = parseFloat(cs.getPropertyValue("--file-margins")) || 16;
+  const availableWidth =
+    section.getBoundingClientRect().width - fileMargins * 2;
+  const targetWidth = WIDE_MODE_MULTIPLIER * fileLineWidth;
+  return {
+    fileLineWidth,
+    fileMargins,
+    availableWidth,
+    targetWidth,
+    canExpandToMax: availableWidth > targetWidth,
+  };
+}
+
 // Extend App type to include isMobile property
 declare module "obsidian" {
   interface App {
@@ -293,35 +317,32 @@ export function View({
     if (!cmContent) return;
 
     const updateWidth = () => {
+      const params = calculateWidthParams(section);
       const sectionRect = section.getBoundingClientRect();
       const contentRect = cmContent.getBoundingClientRect();
-      const cs = getComputedStyle(section);
-      const fileLineWidth =
-        parseFloat(cs.getPropertyValue("--file-line-width")) || 700;
-      const fileMargins =
-        parseFloat(cs.getPropertyValue("--file-margins")) || 16;
-      const availableWidth = sectionRect.width - fileMargins * 2;
-      const targetWidth = WIDE_MODE_MULTIPLIER * fileLineWidth;
 
-      setCanExpandToMax(availableWidth > targetWidth);
+      setCanExpandToMax(params.canExpandToMax);
 
-      // Determine effective width and offset
+      // Determine effective width
       let effectiveWidth: number;
       if (widthMode === "max") {
-        effectiveWidth = availableWidth;
+        effectiveWidth = params.availableWidth;
       } else {
-        // Wide mode: use target width, constrained to available space (with hysteresis)
+        // Hysteresis: 40px buffer prevents oscillation when available width
+        // hovers near target during rapid CodeMirror resize events
         const isConstrained = codeBlock.style.width !== "";
         const buffer = isConstrained ? 40 : 0;
         effectiveWidth =
-          availableWidth < targetWidth + buffer ? availableWidth : targetWidth;
+          params.availableWidth < params.targetWidth + buffer
+            ? params.availableWidth
+            : params.targetWidth;
       }
 
       // Max: align to pane edges; Wide: center relative to content
       const offsetLeft =
         widthMode === "max"
-          ? sectionRect.left - contentRect.left + fileMargins
-          : -(effectiveWidth - fileLineWidth) / 2;
+          ? sectionRect.left - contentRect.left + params.fileMargins
+          : -(effectiveWidth - params.fileLineWidth) / 2;
       codeBlock.style.setProperty("width", `${effectiveWidth}px`, "important");
       codeBlock.style.setProperty(
         "max-width",
@@ -374,22 +395,16 @@ export function View({
     }
 
     const updateWidth = () => {
-      const cs = getComputedStyle(section);
-      const fileLineWidth =
-        parseFloat(cs.getPropertyValue("--file-line-width")) || 700;
-      const fileMargins =
-        parseFloat(cs.getPropertyValue("--file-margins")) || 16;
-      const targetWidth = WIDE_MODE_MULTIPLIER * fileLineWidth;
-      const availableWidth =
-        section.getBoundingClientRect().width - fileMargins * 2;
+      const params = calculateWidthParams(section);
 
-      setCanExpandToMax(availableWidth > targetWidth);
+      setCanExpandToMax(params.canExpandToMax);
 
       const effectiveWidth =
         widthMode === "max"
-          ? availableWidth
-          : Math.min(targetWidth, availableWidth);
-      const offset = (effectiveWidth - fileLineWidth) / 2;
+          ? params.availableWidth
+          : Math.min(params.targetWidth, params.availableWidth);
+      // Guard: when pane is narrower than line width, don't shift right
+      const offset = Math.max(0, (effectiveWidth - params.fileLineWidth) / 2);
 
       elPre.style.setProperty("width", `${effectiveWidth}px`, "important");
       elPre.style.setProperty("max-width", `${effectiveWidth}px`, "important");
@@ -1573,7 +1588,14 @@ export function View({
     if (widthMode === "normal") {
       nextMode = "wide";
     } else if (widthMode === "wide") {
-      nextMode = canExpandToMax ? "max" : "normal";
+      // Synchronous check avoids race with async ResizeObserver updates
+      const section = explorerRef.current?.closest(
+        ".markdown-source-view, .markdown-preview-view, .markdown-reading-view",
+      );
+      const canExpand = section
+        ? calculateWidthParams(section).canExpandToMax
+        : canExpandToMax;
+      nextMode = canExpand ? "max" : "normal";
     } else {
       nextMode = "normal";
     }
@@ -1940,14 +1962,6 @@ export function View({
     }
   };
 
-  // Apply width mode class
-  const widthClass =
-    widthMode === "max"
-      ? "max-width"
-      : widthMode === "wide"
-        ? "wide-width"
-        : "";
-
   // Apply ambient background class
   const ambientClass =
     settings.ambientBackground === "subtle"
@@ -1957,10 +1971,7 @@ export function View({
         : "dynamic-views-ambient-bg-off";
 
   return (
-    <div
-      ref={explorerRef}
-      className={`dynamic-views ${widthClass} ${ambientClass}`}
-    >
+    <div ref={explorerRef} className={`dynamic-views ${ambientClass}`}>
       <div
         ref={toolbarRef}
         className={`controls-wrapper${isResultsScrolled ? " scrolled" : ""}`}
