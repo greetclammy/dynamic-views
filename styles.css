@@ -1563,12 +1563,14 @@ body.dynamic-views-title-overflow-scroll .dynamic-views .card-title {
   scrollbar-width: none;
 }
 
-/* Results container with fade effect */
-.dynamic-views .results-container {
+/* Scroll fade gradient at bottom of scrollable results */
+.dynamic-views .results-container,
+.dynamic-views-bases-container {
   position: relative;
 }
 
-.dynamic-views .results-container::after {
+.dynamic-views .results-container::after,
+.dynamic-views-bases-container::after {
   content: "";
   position: sticky;
   bottom: 0;
@@ -1586,14 +1588,16 @@ body.dynamic-views-title-overflow-scroll .dynamic-views .card-title {
   transition: opacity var(--anim-duration-fast, 140ms);
 }
 
-.dynamic-views .results-container.with-fade::after {
+.dynamic-views .results-container.with-fade::after,
+.dynamic-views-bases-container.with-fade::after {
   opacity: 1;
 }
 
 /* Style Settings: disable fade gradient */
 body.dynamic-views-disable-fade-gradient
   .dynamic-views
-  .results-container::after {
+  .results-container::after,
+body.dynamic-views-disable-fade-gradient .dynamic-views-bases-container::after {
   display: none;
 }
 

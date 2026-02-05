@@ -372,7 +372,8 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, '${queryId}');
         activeFile?.path ?? "",
       ).path;
       const filePath = getAvailableBasePath(this.app, folderPath, "Untitled");
-      const content = `views:\n  - type: ${viewType}\n    name: ${viewName}\n`;
+      const minCol = viewType === "dynamic-views-masonry" ? "two" : "one";
+      const content = `views:\n  - type: ${viewType}\n    name: ${viewName}\n    minimumColumns: ${minCol}\n`;
 
       await this.app.vault.create(filePath, content);
 
