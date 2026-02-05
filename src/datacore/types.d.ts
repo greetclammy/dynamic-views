@@ -27,7 +27,9 @@ declare module "obsidian" {
   }
   interface MetadataCache {
     /** Get all known property types across the vault (undocumented API) */
-    getAllPropertyInfos(): Record<string, { type?: string; widget?: string }> | undefined;
+    getAllPropertyInfos():
+      | Record<string, { type?: string; widget?: string }>
+      | undefined;
   }
   interface DataAdapter {
     /** Get absolute filesystem path (undocumented API) */
@@ -37,7 +39,7 @@ declare module "obsidian" {
 
 declare global {
   interface Window {
-    app: App;
+    app: import("obsidian").App;
   }
 }
 

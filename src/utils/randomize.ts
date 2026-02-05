@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
 import { App, Notice, View, BasesEntry, PaneType, Keymap } from "obsidian";
 import type { DynamicViewsGridView } from "../bases/grid-view";
 import type { DynamicViewsMasonryView } from "../bases/masonry-view";
@@ -25,6 +24,9 @@ export function getPaneType(
 
 // Internal Obsidian base-view structure
 interface BasesViewWrapper extends View {
+  controller?: {
+    view?: BasesViewWrapper["basesView"];
+  };
   basesView?: {
     type: string;
     data?: {
@@ -62,7 +64,7 @@ export function getActiveBasesView(
 
   // Check if it's a Bases view
   if (viewType === "bases" || viewType === "base-view") {
-    const wrapper = view as any;
+    const wrapper = view as BasesViewWrapper;
 
     // Check controller.view.data.data (standard Bases views)
     if (
@@ -84,6 +86,7 @@ export function getActiveBasesView(
       return {
         type: viewInstanceType,
         data: wrapper.controller.view.data,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- .bind() returns any
         onDataUpdated: wrapper.controller.view.onDataUpdated?.bind(
           wrapper.controller.view,
         ),

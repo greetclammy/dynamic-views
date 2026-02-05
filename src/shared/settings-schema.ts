@@ -3,6 +3,7 @@
  * Defines settings structure for both Bases and Datacore views
  */
 
+import type { ViewOption } from "obsidian";
 import type {
   PluginSettings,
   ViewDefaults,
@@ -26,8 +27,9 @@ interface BasesConfig {
  *
  * @param viewType - "grid" or "masonry" to look up the correct settings template
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bases API requires any for options array structure
-export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
+export function getBasesViewOptions(
+  viewType?: "grid" | "masonry",
+): ViewOption[] {
   // Merge settings template into defaults (if template exists)
   // For new views: config is empty → controls show these defaults = template values
   // For existing views: config has values → these defaults are ignored by Obsidian
@@ -35,17 +37,20 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
   if (viewType) {
     try {
       // Access plugin instance to read settings template
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-      const plugin = (window as any).app?.plugins?.plugins?.["dynamic-views"];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (plugin?.persistenceManager) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const template =
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-          plugin.persistenceManager.getSettingsTemplate(viewType);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const plugin = window.app?.plugins?.plugins?.["dynamic-views"];
+      // Cast through unknown — persistenceManager is on DynamicViews, not base Plugin
+      const pm = (
+        plugin as unknown as {
+          persistenceManager?: {
+            getSettingsTemplate(
+              viewType: string,
+            ): { settings?: Record<string, unknown> } | undefined;
+          };
+        }
+      )?.persistenceManager;
+      if (pm) {
+        const template = pm.getSettingsTemplate(viewType);
         if (template?.settings) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           Object.assign(d, template.settings);
         }
       }
@@ -352,14 +357,15 @@ export function getBasesViewOptions(viewType?: "grid" | "masonry"): any[] {
       ],
     },
   ];
-  return schema;
+  // Schema objects use widened string types; assertion is safe because
+  // the literal structure matches ViewOption discriminated union members.
+  return schema as ViewOption[];
 }
 
 /**
  * Additional options specific to masonry view
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bases API requires any for options array structure
-export function getMasonryViewOptions(): any[] {
+export function getMasonryViewOptions(): ViewOption[] {
   return getBasesViewOptions("masonry");
 }
 

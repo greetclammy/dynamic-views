@@ -325,8 +325,10 @@ export function datacoreResultToCardData(
   // Backward-compat: populate indexed fields for Datacore list-view
   for (let i = 0; i < cardData.properties.length && i < 14; i++) {
     const p = cardData.properties[i];
-    (cardData as Record<string, unknown>)[`propertyName${i + 1}`] = p.name;
-    (cardData as Record<string, unknown>)[`property${i + 1}`] = p.value;
+    (cardData as unknown as Record<string, unknown>)[`propertyName${i + 1}`] =
+      p.name;
+    (cardData as unknown as Record<string, unknown>)[`property${i + 1}`] =
+      p.value;
   }
 
   // Resolve subtitle property (supports comma-separated list)

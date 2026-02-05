@@ -20,9 +20,9 @@ interface NotebookNavigatorAPI {
 }
 
 function getNotebookNavigatorAPI(app: App): NotebookNavigatorAPI | null {
-  const api = app.plugins?.plugins?.["notebook-navigator"]?.api as
-    | NotebookNavigatorAPI
-    | undefined;
+  const plugin = app.plugins?.plugins?.["notebook-navigator"];
+  const api = (plugin as unknown as { api?: NotebookNavigatorAPI } | undefined)
+    ?.api;
   return api ?? null;
 }
 
