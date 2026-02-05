@@ -627,7 +627,7 @@ export interface CardData {
 export interface CardRendererProps {
   cards: CardData[];
   settings: ResolvedSettings;
-  viewMode: "card" | "masonry";
+  viewMode: "grid" | "masonry";
   sortMethod: string;
   isShuffled: boolean;
   focusableCardIndex: number;
@@ -1544,7 +1544,7 @@ interface CardProps {
   card: CardData;
   index: number;
   settings: ResolvedSettings;
-  viewMode: "card" | "masonry";
+  viewMode: "grid" | "masonry";
   sortMethod: string;
   isShuffled: boolean;
   focusableCardIndex: number;
@@ -2392,6 +2392,28 @@ function Card({
           paired: boolean;
         }
 
+        // Pre-filter: exclude properties that will be collapsed
+        const visibleProps: Array<{
+          name: string;
+          value: unknown;
+          fieldIndex: number;
+        }> = [];
+        for (let idx = 0; idx < props.length; idx++) {
+          const prop = props[idx];
+          if (
+            shouldCollapseFieldDatacore(
+              prop.name || undefined,
+              prop.value,
+              propertyLabels,
+              hideEmptyMode,
+              hideMissing,
+            )
+          ) {
+            continue;
+          }
+          visibleProps.push({ ...prop, fieldIndex: idx + 1 });
+        }
+
         // Pre-compute pairs when pairProperties OFF
         const invertPairs = settings.pairProperties
           ? null
@@ -2399,9 +2421,9 @@ function Card({
 
         const sets: PropertySet[] = [];
         let i = 0;
-        while (i < props.length) {
-          const current = props[i];
-          const next = i + 1 < props.length ? props[i + 1] : null;
+        while (i < visibleProps.length) {
+          const current = visibleProps[i];
+          const next = i + 1 < visibleProps.length ? visibleProps[i + 1] : null;
 
           let shouldPair = false;
           if (settings.pairProperties) {
@@ -2411,22 +2433,21 @@ function Card({
               !unpairSet.has(current.name) &&
               !unpairSet.has(next.name);
           } else if (invertPairs) {
-            // OFF: check pre-computed pairs
-            shouldPair = invertPairs.get(i) === i + 1;
+            // OFF: check pre-computed pairs (uses original indices)
+            shouldPair =
+              next !== null &&
+              invertPairs.get(current.fieldIndex - 1) === next.fieldIndex - 1;
           }
 
           if (shouldPair && next) {
             sets.push({
-              props: [
-                { ...current, fieldIndex: i + 1 },
-                { ...next, fieldIndex: i + 2 },
-              ],
+              props: [current, next],
               paired: true,
             });
             i += 2;
           } else {
             sets.push({
-              props: [{ ...current, fieldIndex: i + 1 }],
+              props: [current],
               paired: false,
             });
             i += 1;

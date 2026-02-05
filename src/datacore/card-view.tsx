@@ -5,7 +5,7 @@ import type { App, PaneType } from "obsidian";
 interface CardViewProps {
   cards: CardData[];
   settings: ResolvedSettings;
-  viewMode: "card" | "masonry";
+  viewMode: "grid" | "masonry";
   sortMethod: string;
   isShuffled: boolean;
   focusableCardIndex: number;

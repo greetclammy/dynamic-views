@@ -120,7 +120,7 @@ export interface PluginData {
   flags: Partial<Flags>;
 }
 
-export type ViewMode = "card" | "masonry" | "list";
+export type ViewMode = "grid" | "masonry" | "list";
 export type WidthMode = "normal" | "wide" | "max";
 
 // ============================================================================

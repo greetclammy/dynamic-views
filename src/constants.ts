@@ -91,7 +91,7 @@ export const DEFAULT_BASES_STATE = {
 /** Default Datacore state (UI + settings) */
 export const DEFAULT_DATACORE_STATE = {
   sortMethod: "mtime-desc",
-  viewMode: "card",
+  viewMode: "grid",
   searchQuery: "",
   resultLimit: "",
   widthMode: "normal",

@@ -173,7 +173,7 @@ export function View({
     getPersistedValue("searchQuery", ""),
   );
   const [viewMode, setViewMode] = dc.useState(
-    getPersistedValue("viewMode", "card") as ViewMode,
+    getPersistedValue("viewMode", "grid") as ViewMode,
   );
   const [widthMode, setWidthMode] = dc.useState(
     getPersistedValue("widthMode", "normal") as WidthMode,
@@ -1273,7 +1273,7 @@ export function View({
 
   // Apply dynamic grid layout (all width modes)
   dc.useEffect(() => {
-    if (viewMode !== "card") return;
+    if (viewMode !== "grid") return;
 
     const container = containerRef.current;
     if (!container) return;
@@ -1305,6 +1305,10 @@ export function View({
       container.style.setProperty(
         "--dynamic-views-text-preview-lines",
         String(settings.textPreviewLines),
+      );
+      container.style.setProperty(
+        "--dynamic-views-title-lines",
+        String(settings.titleLines),
       );
       // Set CSS variable for thumbnail size
       container.style.setProperty(
@@ -1349,7 +1353,7 @@ export function View({
   // Note: masonry mode handles this inside its layout useEffect
   dc.useEffect(() => {
     // Skip for list (no cards) and masonry (handled in layout effect)
-    if (viewMode !== "card") return;
+    if (viewMode !== "grid") return;
 
     const container = containerRef.current;
     if (!container) return;
@@ -1962,7 +1966,7 @@ export function View({
     } else if (viewMode === "masonry") {
       return <MasonryView {...commonProps} />;
     } else {
-      return <CardView {...commonProps} viewMode="card" />;
+      return <CardView {...commonProps} viewMode="grid" />;
     }
   };
 
@@ -1988,7 +1992,7 @@ export function View({
           viewMode={viewMode}
           showViewDropdown={showViewDropdown}
           onToggleViewDropdown={handleToggleViewDropdown}
-          onSetViewCard={() => handleSetViewMode("card")}
+          onSetViewGrid={() => handleSetViewMode("grid")}
           onSetViewMasonry={() => handleSetViewMode("masonry")}
           onSetViewList={() => handleSetViewMode("list")}
           sortMethod={sortMethod}

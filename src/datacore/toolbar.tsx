@@ -232,7 +232,7 @@ interface ToolbarProps {
   viewMode: ViewMode;
   showViewDropdown: boolean;
   onToggleViewDropdown: () => void;
-  onSetViewCard: () => void;
+  onSetViewGrid: () => void;
   onSetViewMasonry: () => void;
   onSetViewList: () => void;
 
@@ -302,7 +302,7 @@ export function Toolbar({
   viewMode,
   showViewDropdown,
   onToggleViewDropdown,
-  onSetViewCard,
+  onSetViewGrid,
   onSetViewMasonry,
   onSetViewList,
   sortMethod,
@@ -427,7 +427,7 @@ export function Toolbar({
                     <line x1="3" y1="12" x2="3.01" y2="12" />
                     <line x1="3" y1="18" x2="3.01" y2="18" />
                   </>
-                ) : viewMode === "card" ? (
+                ) : viewMode === "grid" ? (
                   <>
                     <path d="M12 3v18" />
                     <path d="M3 12h18" />
@@ -459,13 +459,13 @@ export function Toolbar({
             {showViewDropdown ? (
               <div ref={viewMenuRef} className="view-dropdown-menu">
                 <div
-                  className={`view-option${viewMode === "card" ? " active" : ""}`}
-                  onClick={onSetViewCard}
+                  className={`view-option${viewMode === "grid" ? " active" : ""}`}
+                  onClick={onSetViewGrid}
                   onKeyDown={(e: unknown) => {
                     const evt = e as KeyboardEvent;
                     if (evt.key === "Enter" || evt.key === " ") {
                       evt.preventDefault();
-                      onSetViewCard();
+                      onSetViewGrid();
                     }
                   }}
                   tabIndex={0}

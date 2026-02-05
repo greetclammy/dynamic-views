@@ -1736,7 +1736,36 @@ export class SharedCardRenderer {
       settings.invertPropertyPosition,
     );
 
-    // Group properties into sets using pairing algorithm
+    // Pre-compute hide settings (needed before pairing to exclude collapsed)
+    const hideMissing = shouldHideMissingProperties();
+    const hideEmptyMode = getHideEmptyMode();
+
+    // Pre-filter: exclude properties that will be collapsed, preserving original indices
+    const visibleProps: Array<{
+      name: string;
+      value: unknown;
+      fieldIndex: number;
+    }> = [];
+    for (let idx = 0; idx < props.length; idx++) {
+      const prop = props[idx];
+      // Empty-name properties are padding slots — exclude them
+      if (!prop.name) continue;
+      const stringValue = typeof prop.value === "string" ? prop.value : null;
+      if (
+        shouldCollapseField(
+          stringValue,
+          prop.name,
+          hideMissing,
+          hideEmptyMode,
+          settings.propertyLabels,
+        )
+      ) {
+        continue;
+      }
+      visibleProps.push({ ...prop, fieldIndex: idx + 1 }); // 1-based
+    }
+
+    // Group visible properties into sets using pairing algorithm
     const sets: Array<{
       items: Array<{ name: string; value: unknown; fieldIndex: number }>;
       paired: boolean;
@@ -1748,10 +1777,9 @@ export class SharedCardRenderer {
       : computeInvertPairs(props, unpairSet);
 
     let i = 0;
-    while (i < props.length) {
-      const current = props[i];
-      const next = i + 1 < props.length ? props[i + 1] : null;
-      const fieldIndex1 = i + 1; // 1-based
+    while (i < visibleProps.length) {
+      const current = visibleProps[i];
+      const next = i + 1 < visibleProps.length ? visibleProps[i + 1] : null;
 
       let shouldPair = false;
       if (settings.pairProperties) {
@@ -1761,31 +1789,26 @@ export class SharedCardRenderer {
           !unpairSet.has(current.name) &&
           !unpairSet.has(next.name);
       } else if (invertPairs) {
-        // OFF: check pre-computed pairs
-        shouldPair = invertPairs.get(i) === i + 1;
+        // OFF: check pre-computed pairs (uses original indices)
+        shouldPair =
+          next !== null &&
+          invertPairs.get(current.fieldIndex - 1) === next.fieldIndex - 1;
       }
 
       if (shouldPair && next) {
         sets.push({
-          items: [
-            { ...current, fieldIndex: fieldIndex1 },
-            { ...next, fieldIndex: fieldIndex1 + 1 },
-          ],
+          items: [current, next],
           paired: true,
         });
         i += 2;
       } else {
         sets.push({
-          items: [{ ...current, fieldIndex: fieldIndex1 }],
+          items: [current],
           paired: false,
         });
         i += 1;
       }
     }
-
-    // Pre-compute hide settings
-    const hideMissing = shouldHideMissingProperties();
-    const hideEmptyMode = getHideEmptyMode();
 
     // Position each set: top or bottom
     const topSets: typeof sets = [];
