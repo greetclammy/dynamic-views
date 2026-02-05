@@ -6202,6 +6202,7 @@ body.dynamic-views-full-row-align-right
   display: flex;
   align-items: center;
   min-width: 0;
+  max-width: 100%;
   overflow-x: visible; /* Field doesn't scroll, wrapper does */
   scrollbar-width: none;
   position: relative;
