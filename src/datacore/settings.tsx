@@ -7,6 +7,7 @@ import {
 import type { DatacoreAPI } from "./types";
 import type { TFile } from "obsidian";
 import type DynamicViews from "../../main";
+import { showTipOnce } from "../utils/tips";
 
 interface SettingsProps {
   dc: DatacoreAPI;
@@ -320,10 +321,15 @@ export function Settings({
                   value={settings.imageFormat}
                   onChange={(e: unknown) => {
                     const evt = e as Event & { target: HTMLSelectElement };
-                    onSettingsChange({
-                      imageFormat: evt.target
-                        .value as typeof settings.imageFormat,
-                    });
+                    const value = evt.target
+                      .value as typeof settings.imageFormat;
+                    onSettingsChange({ imageFormat: value });
+                    if (value === "poster") {
+                      showTipOnce(
+                        "tipPosterFormat",
+                        "Tip: Press on poster card to view its details. Press again to hide.",
+                      );
+                    }
                   }}
                   className="dropdown"
                 >

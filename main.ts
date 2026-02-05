@@ -35,6 +35,7 @@ import {
 } from "./src/shared/slideshow";
 import { clearInFlightLoads } from "./src/shared/content-loader";
 import { invalidateCacheForFile } from "./src/shared/image-loader";
+import { initTips, cleanupTips } from "./src/utils/tips";
 
 export default class DynamicViews extends Plugin {
   persistenceManager: PersistenceManager;
@@ -74,6 +75,7 @@ export default class DynamicViews extends Plugin {
 
     this.persistenceManager = new PersistenceManager(this);
     await this.persistenceManager.load();
+    initTips(this.persistenceManager);
 
     // Set initial body classes for settings
     const settings = this.persistenceManager.getPluginSettings();
@@ -420,5 +422,6 @@ return app.plugins.plugins['dynamic-views'].createView(dc, QUERY, '${queryId}');
     // Clean up external blob URL cache to prevent memory leaks
     cleanupExternalBlobCache();
     clearInFlightLoads();
+    cleanupTips();
   }
 }

@@ -12,6 +12,7 @@ import {
 } from "../utils/style-settings";
 import { getCachedBlobUrl } from "./slideshow";
 import { isExternalUrl } from "../utils/image";
+import { showTipOnce } from "../utils/tips";
 
 /** Long-press detection threshold in ms */
 const LONG_PRESS_THRESHOLD = 500;
@@ -928,6 +929,13 @@ function openImageViewer(
 
     // Register in tracking map AFTER all setup succeeds (prevents partial state)
     viewerClones.set(embedEl, cloneEl);
+
+    if (!isMobile) {
+      showTipOnce(
+        "tipImageViewer",
+        "Tip: Press Space to maximize. Long press or right click to reset zoom.",
+      );
+    }
   } catch (error) {
     // Comprehensive cleanup in reverse order of allocation
     console.error("Failed to setup image viewer", error);

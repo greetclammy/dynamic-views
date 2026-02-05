@@ -6,6 +6,7 @@ import type {
   BasesUIState,
   DatacoreState,
   SettingsTemplate,
+  Flags,
 } from "./types";
 import {
   PLUGIN_SETTINGS,
@@ -106,6 +107,7 @@ export class PersistenceManager {
       templates: {},
       basesStates: {},
       datacoreStates: {},
+      flags: {},
     };
   }
 
@@ -119,6 +121,7 @@ export class PersistenceManager {
         templates: loadedData.templates || {},
         basesStates: loadedData.basesStates || {},
         datacoreStates: loadedData.datacoreStates || {},
+        flags: loadedData.flags || {},
       };
     }
 
@@ -156,7 +159,21 @@ export class PersistenceManager {
       sparse.basesStates = this.data.basesStates;
     if (Object.keys(this.data.datacoreStates).length > 0)
       sparse.datacoreStates = this.data.datacoreStates;
+    if (Object.keys(this.data.flags).length > 0) sparse.flags = this.data.flags;
     await this.plugin.saveData(sparse);
+  }
+
+  // ============================================================================
+  // Flags (one-time interactions: tips, onboarding, etc.)
+  // ============================================================================
+
+  hasFlag(key: keyof Flags): boolean {
+    return this.data.flags[key] === true;
+  }
+
+  async setFlag(key: keyof Flags): Promise<void> {
+    this.data.flags[key] = true;
+    await this.save();
   }
 
   /** Returns fully resolved plugin settings (sparse overrides merged with defaults) */
