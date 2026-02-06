@@ -7367,7 +7367,11 @@ body.dynamic-views-no-fade-truncated-text
   }
 
   /* Stack properties on narrow cards */
-  .dynamic-views .card-properties,
+  .dynamic-views .card-properties {
+    justify-content: flex-start !important;
+    flex-wrap: nowrap;
+  }
+
   .dynamic-views .tags-wrapper,
   .dynamic-views .path-wrapper,
   .bases-view .tags-wrapper,
