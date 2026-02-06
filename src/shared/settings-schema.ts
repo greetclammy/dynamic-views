@@ -243,7 +243,7 @@ export function getBasesViewOptions(
           key: "propertyLabels",
           options: {
             inline: "Inline",
-            above: "On top",
+            above: "Above",
             hide: "Hide",
           },
           default: d.propertyLabels,
