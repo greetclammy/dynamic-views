@@ -9,6 +9,7 @@ import type {
   Flags,
 } from "./types";
 import {
+  BASES_DEFAULTS,
   PLUGIN_SETTINGS,
   VIEW_DEFAULTS,
   DATACORE_DEFAULTS,
@@ -71,8 +72,12 @@ function cleanupTemplateSettings(
     }
   }
 
-  // Remove keys that match VIEW_DEFAULTS (sparse templates)
+  // Remove keys that match VIEW_DEFAULTS (sparse templates).
+  // For Bases views, skip keys where BASES_DEFAULTS overrides VIEW_DEFAULTS
+  // (same guard as cleanupBaseFile in utils.ts).
+  const isBases = viewType !== "datacore";
   for (const key of Object.keys(VIEW_DEFAULTS) as (keyof ViewDefaults)[]) {
+    if (isBases && key in BASES_DEFAULTS) continue;
     if (settings[key] === undefined) continue;
 
     // minimumColumns: view-type-specific default (templates store numbers)
