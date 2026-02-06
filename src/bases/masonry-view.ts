@@ -274,6 +274,7 @@ export class DynamicViewsMasonryView extends BasesView {
       this.config,
       this.plugin.persistenceManager.getPluginSettings(),
       "masonry",
+      this.lastRenderedSettings ?? undefined,
     );
 
     // Normalize property names once — downstream code uses pre-normalized values

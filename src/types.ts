@@ -40,7 +40,7 @@ export interface ViewDefaults {
   imageFit: "crop" | "contain";
   imageRatio: number;
   // Properties
-  propertyLabels: "hide" | "inline" | "above";
+  propertyLabels: "none" | "inline" | "above";
   pairProperties: boolean;
   rightPropertyPosition: "left" | "column" | "right";
   invertPropertyPairing: string;
@@ -62,7 +62,7 @@ export interface DatacoreDefaults {
 
 /** Bases-only defaults (overrides VIEW_DEFAULTS for Bases views) */
 export interface BasesDefaults {
-  propertyLabels: "hide" | "inline" | "above";
+  propertyLabels: "none" | "inline" | "above";
 }
 
 /** Fully resolved settings — the merge of PluginSettings + ViewDefaults + DatacoreDefaults */

@@ -1020,7 +1020,7 @@ export class SharedCardRenderer {
         card.subtitle,
         card,
         entry,
-        { ...settings, propertyLabels: "hide" },
+        { ...settings, propertyLabels: "none" },
         shouldHideMissingProperties(),
         getHideEmptyMode(),
         signal,
@@ -1827,7 +1827,7 @@ export class SharedCardRenderer {
             placeholderContent.createSpan("empty-value-marker");
           markerSpan.textContent = getEmptyValueMarker();
         }
-      } else if (settings.propertyLabels === "hide") {
+      } else if (settings.propertyLabels === "none") {
         fieldEl.addClass("property-collapsed");
       }
     };
@@ -1993,7 +1993,7 @@ export class SharedCardRenderer {
       if (hideEmptyMode === "all") return;
       if (
         hideEmptyMode === "labels-hidden" &&
-        settings.propertyLabels === "hide"
+        settings.propertyLabels === "none"
       )
         return;
     }
@@ -2117,7 +2117,7 @@ export class SharedCardRenderer {
     if (isKnownTimestampProperty) {
       // stringValue is already formatted by data-transform
       const timestampWrapper = propertyContent.createSpan();
-      if (showTimestampIcon() && settings.propertyLabels === "hide") {
+      if (showTimestampIcon() && settings.propertyLabels === "none") {
         const iconName = getTimestampIcon(propertyName, settings);
         const iconEl = timestampWrapper.createSpan("timestamp-icon");
         setIcon(iconEl, iconName);

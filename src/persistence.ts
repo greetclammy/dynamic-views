@@ -26,7 +26,7 @@ const VALID_VIEW_VALUES: Partial<
   thumbnailSize: ["compact", "standard", "expanded"],
   imagePosition: ["left", "right", "top", "bottom"],
   imageFit: ["crop", "contain"],
-  propertyLabels: ["hide", "inline", "above"],
+  propertyLabels: ["none", "inline", "above"],
   rightPropertyPosition: ["left", "column", "right"],
   minimumColumns: ["one", "two"],
 };
