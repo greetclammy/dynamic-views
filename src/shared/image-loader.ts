@@ -92,6 +92,8 @@ export function handleImageLoad(
   // Cache for future re-renders
   if (imgEl.src && aspectRatio !== undefined) {
     imageMetadataCache.set(imgEl.src, { aspectRatio });
+    // Lock aspect ratio to first successful image (for slideshow contain mode)
+    cardEl.dataset.aspectRatioSet = "1";
   }
 
   // Set actual aspect ratio for masonry contain mode (used when "Fixed cover height" is OFF)

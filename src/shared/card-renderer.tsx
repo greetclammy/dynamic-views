@@ -814,13 +814,15 @@ function CoverSlideshow({
       signal,
       {
         onSlideChange: (_newIndex, nextImg) => {
-          if (cardEl) {
+          // Only set aspect ratio if not yet set by a successful image load
+          // (first image may have failed and set default ratio)
+          if (cardEl && !cardEl.dataset.aspectRatioSet) {
             handleImageLoad(nextImg, cardEl, updateLayoutRef.current);
           }
         },
         onAnimationComplete: () => {
           clearHoverZoom();
-          if (updateLayoutRef.current) updateLayoutRef.current();
+          // No layout update needed - card dimensions are locked to first slide
         },
       },
     );

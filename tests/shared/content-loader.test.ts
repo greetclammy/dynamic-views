@@ -20,11 +20,6 @@ jest.mock("../../src/utils/text-preview", () => ({
   loadFilePreview: jest.fn(),
 }));
 
-// Mock slideshow utilities (getExternalBlobUrl validates external URLs)
-jest.mock("../../src/shared/slideshow", () => ({
-  getExternalBlobUrl: jest.fn((url: string) => Promise.resolve(url)),
-}));
-
 describe("content-loader", () => {
   let mockApp: App;
   let mockFile: TFile;

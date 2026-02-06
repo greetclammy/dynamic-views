@@ -8,3 +8,4 @@ data.json
 *.zip
 .claude
 coverage/
+screenshots

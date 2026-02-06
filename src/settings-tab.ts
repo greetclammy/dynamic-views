@@ -329,10 +329,7 @@ export class DynamicViewsSettingTab extends PluginSettingTab {
       cls: "mod-cta dynamic-views-feedback-button",
     });
     button.addEventListener("click", () => {
-      window.open(
-        "https://github.com/greetclammy/dynamic-views/issues",
-        "_blank",
-      );
+      window.open("https://github.com/churnish/dynamic-views/issues", "_blank");
     });
 
     const iconDiv = button.createEl("div");

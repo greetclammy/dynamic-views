@@ -104,13 +104,11 @@ export async function loadImageForEntry(
       // Process image paths using shared utility (sync - no validation needed)
       const { internalPaths, externalUrls } = processImagePaths(validPaths);
 
-      // External URLs are used directly (browser handles load/error at render time)
-      const validatedExternalUrls = externalUrls;
-
       // Convert internal paths to resource URLs using shared utility
+      // External URLs are used directly (browser handles load/error at render time)
       let validImages: string[] = [
         ...resolveInternalImagePaths(internalPaths, path, app),
-        ...validatedExternalUrls,
+        ...externalUrls,
       ];
 
       // Handle embed images based on fallbackToEmbeds mode

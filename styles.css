@@ -43,7 +43,7 @@ settings:
         title: Dark overlay strength
         description: Opacity of the dark overlay
         type: variable-number-slider
-        default: 50
+        default: 70
         min: 0
         max: 100
         step: 1
@@ -546,7 +546,7 @@ settings:
         title: Dark overlay strength
         description: Opacity of the dark overlay
         type: variable-number-slider
-        default: 50
+        default: 70
         min: 0
         max: 100
         step: 1
@@ -3978,18 +3978,6 @@ body.dynamic-views-masonry-fixed-cover-height
   padding-top: calc(var(--dynamic-views-image-aspect-ratio, 0.55) * 100%);
 }
 
-/* Slideshow covers always use fixed height (ignore "Fixed cover height" setting) */
-[data-view-type="dynamic-views-masonry"]
-  .card.card-cover-contain.card-cover-top.image-format-cover
-  .card-cover.card-cover-slideshow,
-[data-view-type="dynamic-views-masonry"]
-  .card.card-cover-contain.card-cover-bottom.image-format-cover
-  .card-cover.card-cover-slideshow {
-  padding-top: calc(
-    var(--dynamic-views-image-aspect-ratio, 0.55) * 100%
-  ) !important;
-}
-
 /* Masonry contain mode: hide cover until dimensions known (exclude placeholders) */
 [data-view-type="dynamic-views-masonry"]
   .card.card-cover-contain:not(.cover-ready).card-cover-top
@@ -5100,7 +5088,7 @@ body:is(
   .card.image-format-backdrop
   .card-backdrop::after {
   background: rgb(
-    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 50) * 1%)
+    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 70) * 1%)
   );
 }
 
@@ -5136,7 +5124,7 @@ body.dynamic-views-backdrop-theme-dark
   .card.image-format-backdrop
   .card-backdrop::after {
   background: rgb(
-    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 50) * 1%)
+    0 0 0 / calc(var(--dynamic-views-backdrop-overlay-dark, 70) * 1%)
   );
 }
 
@@ -5211,7 +5199,7 @@ body:is(
   .card.image-format-poster
   .card-poster::after {
   background: rgb(
-    0 0 0 / calc(var(--dynamic-views-poster-overlay-dark, 50) * 1%)
+    0 0 0 / calc(var(--dynamic-views-poster-overlay-dark, 70) * 1%)
   );
 }
 
@@ -5247,7 +5235,7 @@ body.dynamic-views-poster-theme-dark
   .card.image-format-poster
   .card-poster::after {
   background: rgb(
-    0 0 0 / calc(var(--dynamic-views-poster-overlay-dark, 50) * 1%)
+    0 0 0 / calc(var(--dynamic-views-poster-overlay-dark, 70) * 1%)
   );
 }
 

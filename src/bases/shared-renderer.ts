@@ -1413,7 +1413,7 @@ export class SharedCardRenderer {
       attr: { src: "", alt: "" },
     });
 
-    // Handle image load for masonry layout and color extraction
+    // Handle image load for masonry layout
     if (cardEl) {
       setupImageLoadHandler(
         currentImg,
@@ -1448,7 +1448,9 @@ export class SharedCardRenderer {
       signal,
       {
         onSlideChange: (_newIndex, nextImg) => {
-          if (cardEl) {
+          // Only set aspect ratio if not yet set by a successful image load
+          // (first image may have failed and set default ratio)
+          if (cardEl && !cardEl.dataset.aspectRatioSet) {
             handleImageLoad(
               nextImg,
               cardEl,
@@ -1458,9 +1460,7 @@ export class SharedCardRenderer {
         },
         onAnimationComplete: () => {
           clearHoverZoom();
-          if (this.updateLayoutRef.current) {
-            this.updateLayoutRef.current("slideshow-animation-complete");
-          }
+          // No layout update needed - card dimensions are locked to first slide
         },
       },
     );
@@ -1563,7 +1563,7 @@ export class SharedCardRenderer {
       attr: { src: imageUrls[0], alt: "" },
     });
 
-    // Handle image load for masonry layout and color extraction
+    // Handle image load for masonry layout
     // Only pass layout callback for covers (thumbnails have fixed CSS height)
     if (cardEl) {
       setupImageLoadHandler(
